@@ -12,3 +12,11 @@ Code provides implementation facts.
 Project Model stores confirmed project cognition.  
 AI proposes.  
 Humans confirm.
+
+## Team skills
+
+The shared Codex skills live in `.agents/skills/`. See
+`docs/standards/TEAM_SKILLS.md` for the selected set and when to use each one.
+`docs/standards/AGENT_STANDARD.md` and `docs/standards/TEAM_SOP.md` take
+precedence over third-party skill instructions. In particular, record Project
+Model impact and obtain human confirmation for `UPDATE` or `UNCERTAIN`.
