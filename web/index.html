@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ProjectMind · 项目地图演示</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="项目导航">
+        <div class="brand"><span class="brand-mark">P</span><span>ProjectMind<small>PROJECT COGNITION</small></span></div>
+        <div class="sidebar-label">当前工作区</div>
+        <div class="repo-card">
+          <span class="repo-icon">◇</span>
+          <div><strong id="repo-name">读取中…</strong><small>本地 Git 仓库</small></div>
+        </div>
+        <div class="sidebar-label space-top">浏览</div>
+        <div class="nav-item active"><span>▦</span> 功能地图 <small>01</small></div>
+        <div class="sidebar-note">
+          <span class="note-dot"></span>
+          <div><strong>演示范围</strong><p>这张图由开发者人工整理。文件存在性由当前 Git 提交核查。</p></div>
+        </div>
+        <div class="sidebar-footer">先看见项目全貌，再核查每一处来源。</div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumb">项目空间 <span>/</span> <strong>功能地图</strong></div>
+          <div class="top-actions">
+            <span class="demo-pill"><span></span> 人工整理 · 演示图</span>
+            <button class="button ghost" id="refresh-button" type="button">刷新提交</button>
+          </div>
+        </header>
+
+        <div class="content-grid">
+          <section class="workspace" aria-labelledby="page-title">
+            <div class="intro-row">
+              <div>
+                <div class="eyebrow">PROJECT MAP / 01</div>
+                <h1 id="page-title">从项目全貌进入细节</h1>
+                <p class="intro-copy">选择功能节点，查看职责、关系和固定代码版本中的实际来源。</p>
+              </div>
+              <button class="button primary" id="export-button" type="button" disabled>导出当前摘要 ↓</button>
+            </div>
+
+            <div class="revision-strip">
+              <div class="revision-icon">⌁</div>
+              <div class="revision-copy"><span>证据对应的 Git 提交</span><strong id="revision">正在读取…</strong></div>
+              <span id="branch-name" class="branch-pill">—</span>
+            </div>
+
+            <div class="map-card">
+              <div class="map-card-header"><div><span class="map-icon">◎</span><strong>ProjectMind 功能地图</strong><span class="map-subtitle">点击节点查看详情</span></div><span id="node-count" class="count-label">—</span></div>
+              <div class="map-scroll"><div class="map-stage" id="map-stage"><div class="loading">正在建立地图…</div></div></div>
+              <div class="map-card-footer"><span><i class="legend-dot current"></i> 功能部分</span><span><i class="legend-line"></i> 已描述的关系</span><span class="map-note">结构由人整理；来源文件由 Git 核查</span></div>
+            </div>
+
+            <div class="scope-card"><span>ⓘ</span><p id="map-note">正在读取地图说明…</p></div>
+          </section>
+
+          <aside class="details" aria-labelledby="details-title">
+            <div class="details-heading"><span class="eyebrow">INSPECTOR</span><h2 id="details-title">节点详情</h2><p>选择地图中的节点，查看有用的信息与出处。</p></div>
+            <div id="details-content" class="details-content"><div class="empty-details"><span>⌁</span><strong>等待选择节点</strong><p>从左侧地图选择一个功能部分。</p></div></div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
