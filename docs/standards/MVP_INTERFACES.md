@@ -1,6 +1,6 @@
 # 比赛版最小接口约定
 
-> 适用基线：`feat/15-local-repo-input` 的 `8a6a19c`，2026-09-29。**IMPLEMENTED** 是该提交已经能从代码验证的行为；**PROPOSED** 是下一轮四人协作的交换约定，必须通过实现 PR 才变为事实。接口不仅是函数名，还包括输入约束、来源版本、错误、调用顺序和结果性质。本文不定义长期 Project Model Schema。
+> 原有 MVP 的核查基线为 `feat/15-local-repo-input` 的 `8a6a19c`；独立扩展入口在后续 `feat/19-extension-seams` 分支实现。**IMPLEMENTED** 表示对应分支已能从代码验证的行为，不表示已合入 `main`；**PROPOSED** 表示业务能力仍待实现。接口不仅是函数名，还包括输入约束、来源版本、错误、调用顺序和结果性质。本文不定义长期 Project Model Schema。
 
 ## 共同词汇与不变量
 
