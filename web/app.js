@@ -3,6 +3,10 @@ const details = document.getElementById("details-content");
 let snapshot = null;
 let selectedId = null;
 let comparison = null;
+let aiStatus = null;
+let aiResult = null;
+let aiBusy = false;
+let aiMessage = null;
 
 function reviewCandidate(id) {
   return comparison?.reviewCandidates.find((item) => item.nodeId === id);
@@ -68,6 +72,7 @@ function renderMap() {
 }
 
 function showDetails(id) {
+  if (selectedId !== id) aiMessage = null;
   selectedId = id;
   renderMap();
   details.replaceChildren();
@@ -120,6 +125,57 @@ function showDetails(id) {
     evidenceSection.append(card);
   }
   details.append(evidenceSection);
+  renderAI();
+}
+
+function renderAI() {
+  const button = document.getElementById("explain-button");
+  const result = document.getElementById("ai-result");
+  result.replaceChildren();
+  const candidate = selectedId && reviewCandidate(selectedId);
+  button.disabled = aiBusy || !aiStatus?.configured || !candidate;
+  if (!aiBusy) {
+    if (aiMessage) document.getElementById("ai-status").textContent = aiMessage;
+    else if (!aiStatus?.configured) document.getElementById("ai-status").textContent = aiStatus?.note || "AI 配置尚未读取。";
+    else if (!comparison) document.getElementById("ai-status").textContent = "先完成 Git 版本比较。";
+    else if (!candidate) document.getElementById("ai-status").textContent = "选中的部分没有直接声明的变化来源。";
+    else document.getElementById("ai-status").textContent = `已就绪：将分析 ${candidate.changedEvidencePaths.join("、")}。模型：${aiStatus.model}`;
+  }
+  if (!aiResult || aiResult.nodeId !== selectedId || aiResult.baseRevision !== comparison?.baseRevision || aiResult.targetRevision !== comparison?.targetRevision) return;
+  const explanation = aiResult.explanation;
+  result.append(element("div", "ai-candidate-label", "AI 候选 · 未经团队确认"));
+  result.append(element("h3", "ai-summary", explanation.summary));
+  for (const [title, values] of [["从差异中可观察到", explanation.observations], ["可能的影响", explanation.possibleEffects], ["仍不能确定", explanation.unknowns]]) {
+    const section = element("section", "ai-section");
+    section.append(element("h4", "section-title", title));
+    if (!values.length) section.append(element("p", "ai-empty", "没有列出"));
+    for (const value of values) section.append(element("p", "ai-item", value));
+    result.append(section);
+  }
+  result.append(element("p", "ai-provenance", `引用变化来源：${explanation.evidencePaths.join("、") || "未列出"} · ${aiResult.baseRevision.slice(0, 8)} → ${aiResult.targetRevision.slice(0, 8)}${aiResult.diffTruncated ? " · 差异已截断" : ""}`));
+  result.append(element("p", "ai-footnote", aiResult.note));
+}
+
+async function explainSelected() {
+  if (!snapshot || !comparison || !selectedId || !aiStatus?.configured || !reviewCandidate(selectedId)) return;
+  aiBusy = true;
+  aiResult = null;
+  aiMessage = null;
+  renderAI();
+  document.getElementById("ai-status").textContent = "正在分析选中部分的 Git 差异…";
+  try {
+    const response = await fetch("/api/explain", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base: comparison.baseRevision, target: comparison.targetRevision, nodeId: selectedId }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "AI 解释失败");
+    aiResult = result;
+    aiMessage = "已生成候选解释，请对照来源复核。";
+  } catch (error) {
+    aiMessage = `解释失败：${error.message}`;
+  } finally {
+    aiBusy = false;
+    renderAI();
+  }
 }
 
 async function loadEvidence(path, card, button) {
@@ -187,6 +243,8 @@ async function compareVersions() {
   if (!snapshot) return;
   const base = document.getElementById("base-revision").value.trim();
   const status = document.getElementById("compare-status");
+  aiResult = null;
+  aiMessage = null;
   if (!/^[0-9a-f]{40,64}$/i.test(base)) {
     comparison = null;
     renderComparison();
@@ -204,11 +262,13 @@ async function compareVersions() {
     renderComparison();
     if (selectedId) showDetails(selectedId);
     else renderMap();
+    renderAI();
   } catch (error) {
     comparison = null;
     renderComparison();
     status.textContent = `比较失败：${error.message}`;
     if (selectedId) showDetails(selectedId);
+    renderAI();
   }
 }
 
@@ -220,6 +280,9 @@ async function init() {
     if (!response.ok) throw new Error(result.error || "无法读取仓库");
     snapshot = result;
     comparison = null;
+    aiResult = null;
+    aiStatus = null;
+    aiMessage = null;
     document.getElementById("repo-name").textContent = result.repository;
     document.getElementById("revision").textContent = result.revision;
     document.getElementById("branch-name").textContent = result.branch;
@@ -235,6 +298,14 @@ async function init() {
     if (selectedId) showDetails(selectedId);
     else renderMap();
     if (result.parentRevision) await compareVersions();
+    try {
+      const aiResponse = await fetch("/api/ai-status");
+      aiStatus = await aiResponse.json();
+      if (!aiResponse.ok) throw new Error(aiStatus.error || "无法读取 AI 配置");
+    } catch (error) {
+      aiStatus = { configured: false, note: `无法读取 AI 配置：${error.message}` };
+    }
+    renderAI();
   } catch (error) {
     stage.replaceChildren(element("div", "loading error", `地图读取失败：${error.message}`));
     document.getElementById("revision").textContent = "无法读取";
@@ -244,4 +315,5 @@ async function init() {
 document.getElementById("refresh-button").addEventListener("click", init);
 document.getElementById("export-button").addEventListener("click", exportSummary);
 document.getElementById("compare-button").addEventListener("click", compareVersions);
+document.getElementById("explain-button").addEventListener("click", explainSelected);
 init();

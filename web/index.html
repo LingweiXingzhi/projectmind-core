@@ -69,6 +69,13 @@
               <div id="compare-result" class="compare-result"></div>
             </div>
 
+            <div class="ai-card" aria-labelledby="ai-title">
+              <div class="ai-heading"><div><span class="eyebrow">AI CANDIDATE / 03</span><h2 id="ai-title">解释选中部分的变化</h2><p>只分析该节点直接声明的变化来源。解释需要团队复核。</p></div><button class="button primary" id="explain-button" type="button" disabled>让 AI 解释</button></div>
+              <p class="ai-disclosure">点击后，所选节点的名称、演示描述、变化文件名及最多 12,000 个字符的 Git 差异会发送至 OpenAI。不会自动调用，也不会把解释写入正式项目模型。</p>
+              <div id="ai-status" class="ai-status">正在检查 AI 配置…</div>
+              <div id="ai-result" class="ai-result"></div>
+            </div>
+
             <div class="scope-card"><span>ⓘ</span><p id="map-note">正在读取地图说明…</p></div>
           </section>
 
