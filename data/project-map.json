@@ -1,0 +1,42 @@
+{
+  "note": "这是开发者人工整理的 ProjectMind 自身演示图，用于验证点击详情与来源核查；它不是自动分析结果，也不是团队批准的正式架构。",
+  "nodes": [
+    {
+      "id": "repository-snapshot",
+      "title": "仓库版本定位",
+      "summary": "固定当前 Git 提交，为图和证据提供同一个代码版本。",
+      "entryPoint": "app.py · build_snapshot()",
+      "position": { "x": 72, "y": 194 },
+      "evidence": [
+        { "path": "app.py", "reason": "读取真实提交并检查证据文件" }
+      ]
+    },
+    {
+      "id": "functional-map",
+      "title": "功能地图浏览",
+      "summary": "用功能节点与连线呈现当前演示结构，点击节点查看详情。",
+      "entryPoint": "web/app.js · renderMap()",
+      "position": { "x": 348, "y": 76 },
+      "evidence": [
+        { "path": "web/app.js", "reason": "绘制功能节点与关系" },
+        { "path": "data/project-map.json", "reason": "人工维护的演示节点和关系" }
+      ]
+    },
+    {
+      "id": "evidence-detail",
+      "title": "详情与来源核查",
+      "summary": "展示职责、关联部分、关键入口，并查看固定提交中的原文。",
+      "entryPoint": "web/app.js · showDetails()",
+      "position": { "x": 622, "y": 194 },
+      "evidence": [
+        { "path": "app.py", "reason": "从指定 Git 提交读取来源" },
+        { "path": "web/app.js", "reason": "展示节点详情和来源内容" }
+      ]
+    }
+  ],
+  "edges": [
+    { "from": "repository-snapshot", "to": "functional-map", "label": "提供版本" },
+    { "from": "functional-map", "to": "evidence-detail", "label": "打开详情" },
+    { "from": "repository-snapshot", "to": "evidence-detail", "label": "固定来源" }
+  ]
+}
