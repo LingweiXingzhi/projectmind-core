@@ -118,12 +118,26 @@ function drawConnections(svg) {
     if (!from || !to) continue;
     const first = layoutFor(from);
     const second = layoutFor(to);
-    const x1 = first.x + 202;
-    const y1 = first.y + 70;
-    const x2 = second.x;
-    const y2 = second.y + 70;
+    const dx = second.x - first.x;
+    const dy = second.y - first.y;
+    let x1, y1, x2, y2, curve;
+    if (Math.abs(dx) >= 202) {
+      const direction = Math.sign(dx);
+      x1 = first.x + (direction > 0 ? 202 : 0);
+      y1 = first.y + 70;
+      x2 = second.x + (direction > 0 ? 0 : 202);
+      y2 = second.y + 70;
+      curve = `M ${x1} ${y1} C ${x1 + 70 * direction} ${y1}, ${x2 - 70 * direction} ${y2}, ${x2} ${y2}`;
+    } else {
+      const direction = Math.sign(dy) || 1;
+      x1 = first.x + 101;
+      y1 = first.y + (direction > 0 ? 140 : 0);
+      x2 = second.x + 101;
+      y2 = second.y + (direction > 0 ? 0 : 140);
+      curve = `M ${x1} ${y1} C ${x1} ${y1 + 50 * direction}, ${x2} ${y2 - 50 * direction}, ${x2} ${y2}`;
+    }
     const line = svgElement("path", {
-      d: `M ${x1} ${y1} C ${x1 + 70} ${y1}, ${x2 - 70} ${y2}, ${x2} ${y2}`,
+      d: curve,
       class: "connection-line",
     });
     svg.append(line);
