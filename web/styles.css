@@ -56,11 +56,11 @@ h1 { margin: 10px 0 8px; color: #f0f5f7; font-size: clamp(24px, 2.2vw, 32px); le
 .map-subtitle { color: #75909d; font-size: 11px; margin-left: 5px; }
 .count-label { color: #93afba; font-size: 10px; }
 .map-scroll { overflow-x: auto; }
-.map-stage { width: 900px; height: 470px; position: relative; background-image: radial-gradient(#55708252 1px, transparent 1px); background-size: 24px 24px; background-position: 2px 6px; }
-.connections { position: absolute; inset: 0; width: 900px; height: 470px; pointer-events: none; }
-.connection-line { fill: none; stroke: #5b827f; stroke-width: 1.7; stroke-dasharray: 5 5; }
-.connection-label { fill: #83a89f; font-family: "Microsoft YaHei", sans-serif; font-size: 10px; paint-order: stroke; stroke: #17232d; stroke-width: 7px; stroke-linejoin: round; }
-.map-node { position: absolute; width: 202px; height: 140px; border: 1px solid #567871; border-radius: 12px; padding: 17px; text-align: left; color: #eaf6f0; background: linear-gradient(145deg, #24413f, #1d3236); box-shadow: 0 10px 26px #07131566; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.map-stage { width: 680px; height: 470px; position: relative; background-image: radial-gradient(#55708252 1px, transparent 1px); background-size: 24px 24px; background-position: 2px 6px; }
+.connections { position: absolute; inset: 0; width: 680px; height: 470px; pointer-events: none; }
+.connection-line { fill: none; stroke: #5b827f; stroke-width: 1.5; stroke-dasharray: 5 5; opacity: .45; }
+.connection-line.active { stroke: #83ddc7; stroke-width: 2; opacity: .95; }
+.map-node { position: absolute; width: 185px; height: 140px; border: 1px solid #567871; border-radius: 12px; padding: 17px; text-align: left; color: #eaf6f0; background: linear-gradient(145deg, #24413f, #1d3236); box-shadow: 0 10px 26px #07131566; transition: border-color .15s, box-shadow .15s, transform .15s; }
 .map-node { touch-action: none; }
 .map-node:hover, .map-node:focus-visible { border-color: #96eed5; transform: translateY(-3px); outline: none; }
 .map-node.selected { border-color: #9af2d8; box-shadow: 0 0 0 3px #68e2c029, 0 14px 35px #0006; }
