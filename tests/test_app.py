@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app import build_snapshot, read_evidence
+from app import build_snapshot, export_markdown, read_evidence
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -27,8 +27,9 @@ class SnapshotTests(unittest.TestCase):
             map_path.write_text(
                 json.dumps({
                     "note": "demo",
-                    "nodes": [{"id": "one", "evidence": [
-                        {"path": "entry.py"}, {"path": "missing.py"}
+                    "nodes": [{"id": "one", "title": "Example", "summary": "A test node", "entryPoint": "entry.py", "evidence": [
+                        {"path": "entry.py", "reason": "entry"},
+                        {"path": "missing.py", "reason": "missing"}
                     ]}],
                     "edges": [],
                 }),
@@ -41,6 +42,10 @@ class SnapshotTests(unittest.TestCase):
             self.assertFalse(snapshot["nodes"][0]["evidence"][1]["existsAtCommit"])
             evidence = read_evidence(repo, map_path, "entry.py", commit)
             self.assertEqual(evidence["content"], "committed version\n")
+            exported = export_markdown(snapshot)
+            self.assertIn(f"Git 提交：{commit}", exported)
+            self.assertIn("entry.py — 该提交中存在", exported)
+            self.assertIn("missing.py — 该提交中缺失", exported)
 
     def test_only_declared_paths_can_be_read(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

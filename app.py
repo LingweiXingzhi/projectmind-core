@@ -51,8 +51,8 @@ def load_map(map_path: Path) -> dict:
         return json.load(handle)
 
 
-def build_snapshot(repo: Path, map_path: Path) -> dict:
-    commit = commit_id(repo)
+def build_snapshot(repo: Path, map_path: Path, revision: str = "HEAD") -> dict:
+    commit = commit_id(repo, revision)
     tracked = files_at_commit(repo, commit)
     curated = load_map(map_path)
     nodes = []
@@ -77,6 +77,28 @@ def build_snapshot(repo: Path, map_path: Path) -> dict:
     }
 
 
+def export_markdown(snapshot: dict) -> str:
+    titles = {node["id"]: node["title"] for node in snapshot["nodes"]}
+    lines = [
+        f"# {snapshot['repository']} · 功能地图演示",
+        "",
+        f"Git 提交：{snapshot['revision']}",
+        "",
+        f"> {snapshot['mapNote']}",
+        "",
+    ]
+    for node in snapshot["nodes"]:
+        lines.extend([f"## {node['title']}", "", node["summary"], "", f"关键入口：{node['entryPoint']}", "", "来源："])
+        for item in node["evidence"]:
+            state = "该提交中存在" if item["existsAtCommit"] else "该提交中缺失"
+            lines.append(f"- {item['path']} — {state}；{item['reason']}")
+        lines.append("")
+    lines.extend(["## 关系", ""])
+    for edge in snapshot["edges"]:
+        lines.append(f"- {titles.get(edge['from'], edge['from'])} → {titles.get(edge['to'], edge['to'])}：{edge['label']}")
+    return "\n".join(lines) + "\n"
+
+
 def read_evidence(repo: Path, map_path: Path, path: str, revision: str) -> dict:
     curated = load_map(map_path)
     allowed = {item["path"] for node in curated["nodes"] for item in node["evidence"]}
@@ -96,11 +118,13 @@ def read_evidence(repo: Path, map_path: Path, path: str, revision: str) -> dict:
 
 def make_handler(repo: Path, map_path: Path):
     class Handler(BaseHTTPRequestHandler):
-        def send_bytes(self, status: HTTPStatus, data: bytes, content_type: str) -> None:
+        def send_bytes(self, status: HTTPStatus, data: bytes, content_type: str, filename: str | None = None) -> None:
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
+            if filename:
+                self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
             self.end_headers()
             self.wfile.write(data)
 
@@ -118,6 +142,18 @@ def make_handler(repo: Path, map_path: Path):
                     path = query.get("path", [""])[0]
                     revision = query.get("revision", [""])[0]
                     self.send_json(HTTPStatus.OK, read_evidence(repo, map_path, path, revision))
+                    return
+                if request.path == "/api/export":
+                    query = parse_qs(request.query)
+                    revision = query.get("revision", [""])[0]
+                    snapshot = build_snapshot(repo, map_path, revision)
+                    filename = f"projectmind-map-{snapshot['revision'][:8]}.md"
+                    self.send_bytes(
+                        HTTPStatus.OK,
+                        export_markdown(snapshot).encode("utf-8"),
+                        "text/markdown; charset=utf-8",
+                        filename,
+                    )
                     return
                 assets = {
                     "/": ("index.html", "text/html; charset=utf-8"),

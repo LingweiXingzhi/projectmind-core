@@ -133,35 +133,12 @@ async function loadEvidence(path, card, button) {
 
 function exportSummary() {
   if (!snapshot) return;
-  const lines = [
-    `# ${snapshot.repository} · 功能地图演示`,
-    "",
-    `Git 提交：${snapshot.revision}`,
-    "",
-    `> ${snapshot.mapNote}`,
-    "",
-  ];
-  for (const node of snapshot.nodes) {
-    lines.push(`## ${node.title}`, "", node.summary, "", `关键入口：${node.entryPoint}`, "", "来源：");
-    for (const item of node.evidence) {
-      lines.push(`- ${item.path} — ${item.existsAtCommit ? "该提交中存在" : "该提交中缺失"}；${item.reason}`);
-    }
-    lines.push("");
-  }
-  lines.push("## 关系", "");
-  for (const edge of snapshot.edges) {
-    lines.push(`- ${byTitle(edge.from)} → ${byTitle(edge.to)}：${edge.label}`);
-  }
-  const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" }));
   const link = element("a");
-  link.href = url;
+  link.href = `/api/export?${new URLSearchParams({ revision: snapshot.revision })}`;
   link.download = `projectmind-map-${snapshot.revision.slice(0, 8)}.md`;
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
-}
-
-function byTitle(id) {
-  return snapshot.nodes.find((node) => node.id === id)?.title || id;
+  link.remove();
 }
 
 async function init() {
