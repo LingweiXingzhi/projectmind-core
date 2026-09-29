@@ -7,11 +7,17 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
-from app import AIError, ai_status, build_snapshot, compare_commits, explain_change, export_markdown, read_evidence, request_model
+from app import AIError, ai_status, build_snapshot, compare_commits, explain_change, export_markdown, read_evidence, request_model, resolve_sources
 
 
 def run_git(repo: Path, *args: str) -> str:
     return subprocess.check_output(["git", "-C", str(repo), *args]).decode("utf-8", errors="replace").strip()
+
+
+def demo_node(identifier: str, paths: list[str]) -> dict:
+    return {"id": identifier, "title": identifier, "summary": "Test node", "entryPoint": "test entry",
+            "position": {"x": 0, "y": 0},
+            "evidence": [{"path": path, "reason": "test evidence"} for path in paths]}
 
 
 class SnapshotTests(unittest.TestCase):
@@ -30,10 +36,7 @@ class SnapshotTests(unittest.TestCase):
             map_path.write_text(
                 json.dumps({
                     "note": "demo",
-                    "nodes": [{"id": "one", "title": "Example", "summary": "A test node", "entryPoint": "entry.py", "evidence": [
-                        {"path": "entry.py", "reason": "entry"},
-                        {"path": "missing.py", "reason": "missing"}
-                    ]}],
+                    "nodes": [demo_node("one", ["entry.py", "missing.py"])],
                     "edges": [],
                 }),
                 encoding="utf-8",
@@ -54,7 +57,7 @@ class SnapshotTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory)
             map_path = repo / "map.json"
-            map_path.write_text(json.dumps({"nodes": []}), encoding="utf-8")
+            map_path.write_text(json.dumps({"note": "test", "nodes": [demo_node("one", [])], "edges": []}), encoding="utf-8")
             with self.assertRaises(ValueError):
                 read_evidence(repo, map_path, "secret.txt", "0" * 40)
 
@@ -70,11 +73,11 @@ class SnapshotTests(unittest.TestCase):
             run_git(repo, "commit", "-m", "base")
             base = run_git(repo, "rev-parse", "HEAD")
             map_path = repo / "map.json"
-            map_path.write_text(json.dumps({"nodes": [
-                {"id": "old", "evidence": [{"path": "old.py"}]},
-                {"id": "renamed", "evidence": [{"path": "renamed.py"}]},
-                {"id": "unrelated", "evidence": [{"path": "unchanged.py"}]},
-            ]}), encoding="utf-8")
+            map_path.write_text(json.dumps({"note": "test", "nodes": [
+                demo_node("old", ["old.py"]),
+                demo_node("renamed", ["renamed.py"]),
+                demo_node("unrelated", ["unchanged.py"]),
+            ], "edges": []}), encoding="utf-8")
 
             run_git(repo, "mv", "old.py", "renamed.py")
             run_git(repo, "commit", "-m", "rename")
@@ -104,10 +107,10 @@ class SnapshotTests(unittest.TestCase):
             run_git(repo, "commit", "-m", "base")
             base = run_git(repo, "rev-parse", "HEAD")
             map_path = repo / "map.json"
-            map_path.write_text(json.dumps({"nodes": [
-                {"id": "selected", "title": "Selected", "summary": "Demo", "evidence": [{"path": "entry.py"}]},
-                {"id": "other", "title": "Other", "summary": "Demo", "evidence": [{"path": "unrelated.py"}]},
-            ]}), encoding="utf-8")
+            map_path.write_text(json.dumps({"note": "test", "nodes": [
+                demo_node("selected", ["entry.py"]),
+                demo_node("other", ["unrelated.py"]),
+            ], "edges": []}), encoding="utf-8")
             (repo / "entry.py").write_text("new entry\n", encoding="utf-8")
             (repo / "unrelated.py").write_text("new unrelated\n", encoding="utf-8")
             run_git(repo, "add", ".")
@@ -146,6 +149,26 @@ class SnapshotTests(unittest.TestCase):
             self.assertFalse(ai_status()["configured"])
             with self.assertRaises(AIError):
                 request_model({})
+
+    def test_chosen_repository_needs_its_own_valid_map(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory) / "sample"
+            repo.mkdir()
+            run_git(repo, "init")
+            nested = repo / "nested"
+            nested.mkdir()
+            map_path = Path(directory) / "sample-map.json"
+            map_path.write_text(json.dumps({"note": "sample", "nodes": [demo_node("one", ["sample.py"])],
+                                            "edges": []}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "requires --map"):
+                resolve_sources(nested, None)
+            resolved_repo, resolved_map = resolve_sources(nested, map_path)
+            self.assertEqual(resolved_repo, repo.resolve())
+            self.assertEqual(resolved_map, map_path.resolve())
+            map_path.write_text(json.dumps({"note": "invalid", "nodes": [demo_node("one", [])],
+                                            "edges": [{"from": "one", "to": "missing", "label": "wrong"}]}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "edge"):
+                resolve_sources(repo, map_path)
 
 
 if __name__ == "__main__":
