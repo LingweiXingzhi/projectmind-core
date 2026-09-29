@@ -54,6 +54,10 @@ def load_map(map_path: Path) -> dict:
 def build_snapshot(repo: Path, map_path: Path, revision: str = "HEAD") -> dict:
     commit = commit_id(repo, revision)
     tracked = files_at_commit(repo, commit)
+    try:
+        parent = git(repo, "rev-parse", "--verify", f"{commit}^").decode().strip()
+    except GitError:
+        parent = None
     curated = load_map(map_path)
     nodes = []
     for node in curated["nodes"]:
@@ -69,6 +73,7 @@ def build_snapshot(repo: Path, map_path: Path, revision: str = "HEAD") -> dict:
     return {
         "repository": repo.name,
         "revision": commit,
+        "parentRevision": parent,
         "branch": branch,
         "mapOrigin": "curated_demo",
         "mapNote": curated["note"],
@@ -77,7 +82,42 @@ def build_snapshot(repo: Path, map_path: Path, revision: str = "HEAD") -> dict:
     }
 
 
-def export_markdown(snapshot: dict) -> str:
+def compare_commits(repo: Path, map_path: Path, base_ref: str, target_ref: str) -> dict:
+    base = commit_id(repo, base_ref)
+    target = commit_id(repo, target_ref)
+    raw = git(repo, "diff", "--name-status", "-z", "-M", base, target, "--")
+    parts = [part.decode("utf-8", errors="replace") for part in raw.split(b"\0") if part]
+    changes = []
+    index = 0
+    while index < len(parts):
+        code = parts[index]
+        index += 1
+        if code.startswith(("R", "C")):
+            old_path, path = parts[index:index + 2]
+            index += 2
+            changes.append({"code": code, "oldPath": old_path, "path": path})
+        else:
+            path = parts[index]
+            index += 1
+            changes.append({"code": code, "path": path})
+
+    changed_paths = {path for change in changes for path in (change["path"], change.get("oldPath")) if path}
+    curated = load_map(map_path)
+    candidates = []
+    for node in curated["nodes"]:
+        matching = sorted({item["path"] for item in node["evidence"] if item["path"] in changed_paths})
+        if matching:
+            candidates.append({"nodeId": node["id"], "changedEvidencePaths": matching})
+    return {
+        "baseRevision": base,
+        "targetRevision": target,
+        "changes": changes,
+        "reviewCandidates": candidates,
+        "note": "待复核仅表示节点声明的来源文件出现在 Git 差异中；它不证明功能或架构发生变化。",
+    }
+
+
+def export_markdown(snapshot: dict, comparison: dict | None = None) -> str:
     titles = {node["id"]: node["title"] for node in snapshot["nodes"]}
     lines = [
         f"# {snapshot['repository']} · 功能地图演示",
@@ -96,6 +136,14 @@ def export_markdown(snapshot: dict) -> str:
     lines.extend(["## 关系", ""])
     for edge in snapshot["edges"]:
         lines.append(f"- {titles.get(edge['from'], edge['from'])} → {titles.get(edge['to'], edge['to'])}：{edge['label']}")
+    if comparison:
+        lines.extend(["", "## Git 变化与待复核候选", "", f"基准提交：{comparison['baseRevision']}", f"目标提交：{comparison['targetRevision']}", "", f"> {comparison['note']}", ""])
+        for change in comparison["changes"]:
+            display_path = f"{change['oldPath']} → {change['path']}" if "oldPath" in change else change["path"]
+            lines.append(f"- {change['code']} {display_path}")
+        lines.extend(["", "待复核节点："])
+        for candidate in comparison["reviewCandidates"]:
+            lines.append(f"- {titles.get(candidate['nodeId'], candidate['nodeId'])}：{', '.join(candidate['changedEvidencePaths'])}")
     return "\n".join(lines) + "\n"
 
 
@@ -143,14 +191,22 @@ def make_handler(repo: Path, map_path: Path):
                     revision = query.get("revision", [""])[0]
                     self.send_json(HTTPStatus.OK, read_evidence(repo, map_path, path, revision))
                     return
+                if request.path == "/api/compare":
+                    query = parse_qs(request.query)
+                    base = query.get("base", [""])[0]
+                    target = query.get("target", [""])[0]
+                    self.send_json(HTTPStatus.OK, compare_commits(repo, map_path, base, target))
+                    return
                 if request.path == "/api/export":
                     query = parse_qs(request.query)
                     revision = query.get("revision", [""])[0]
+                    base = query.get("base", [""])[0]
                     snapshot = build_snapshot(repo, map_path, revision)
+                    comparison = compare_commits(repo, map_path, base, snapshot["revision"]) if base else None
                     filename = f"projectmind-map-{snapshot['revision'][:8]}.md"
                     self.send_bytes(
                         HTTPStatus.OK,
-                        export_markdown(snapshot).encode("utf-8"),
+                        export_markdown(snapshot, comparison).encode("utf-8"),
                         "text/markdown; charset=utf-8",
                         filename,
                     )
