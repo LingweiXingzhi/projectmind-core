@@ -15,10 +15,13 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
+from extension_host import ExtensionContext, ExtensionError, ExtensionHost
+
 
 ROOT = Path(__file__).resolve().parent
 MAP_PATH = ROOT / "data" / "project-map.json"
 WEB_PATH = ROOT / "web"
+EXTENSIONS_PATH = ROOT / "extensions"
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
 MAX_DIFF_CHARS = 12000
 
@@ -322,7 +325,17 @@ def read_evidence(repo: Path, map_path: Path, path: str, revision: str) -> dict:
     }
 
 
-def make_handler(repo: Path, map_path: Path):
+def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None):
+    extensions = ExtensionHost(
+        extensions_root or EXTENSIONS_PATH,
+        ExtensionContext(
+            repo=repo,
+            map_path=map_path,
+            snapshot=lambda: build_snapshot(repo, map_path),
+            compare=lambda base, target: compare_commits(repo, map_path, base, target),
+        ),
+    )
+
     class Handler(BaseHTTPRequestHandler):
         def send_bytes(self, status: HTTPStatus, data: bytes, content_type: str, filename: str | None = None) -> None:
             self.send_response(status)
@@ -337,9 +350,33 @@ def make_handler(repo: Path, map_path: Path):
         def send_json(self, status: HTTPStatus, value: dict) -> None:
             self.send_bytes(status, json.dumps(value, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
+        def read_json_body(self, max_bytes: int) -> dict:
+            if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
+                raise ValueError("Expected application/json")
+            length = int(self.headers.get("Content-Length", "0"))
+            if length < 1 or length > max_bytes:
+                raise ValueError("Invalid request size")
+            request = json.loads(self.rfile.read(length))
+            if not isinstance(request, dict):
+                raise ValueError("Expected JSON object")
+            return request
+
         def do_GET(self) -> None:
             request = urlparse(self.path)
             try:
+                if request.path == "/api/extensions":
+                    self.send_json(HTTPStatus.OK, extensions.listing())
+                    return
+                if request.path.startswith("/api/extensions/"):
+                    identifier = request.path.removeprefix("/api/extensions/")
+                    query = {key: values[0] for key, values in parse_qs(request.query).items()}
+                    self.send_json(HTTPStatus.OK, extensions.run(identifier, "GET", query))
+                    return
+                if request.path.startswith("/ext/"):
+                    identifier = request.path.removeprefix("/ext/")
+                    self.send_bytes(HTTPStatus.OK, extensions.page(identifier, WEB_PATH / "extension.html"),
+                                    "text/html; charset=utf-8")
+                    return
                 if request.path == "/api/snapshot":
                     self.send_json(HTTPStatus.OK, build_snapshot(repo, map_path))
                     return
@@ -375,6 +412,8 @@ def make_handler(repo: Path, map_path: Path):
                 assets = {
                     "/": ("index.html", "text/html; charset=utf-8"),
                     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                    "/extensions.js": ("extensions.js", "text/javascript; charset=utf-8"),
+                    "/extension.js": ("extension.js", "text/javascript; charset=utf-8"),
                     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
                 }
                 if request.path in assets:
@@ -382,6 +421,8 @@ def make_handler(repo: Path, map_path: Path):
                     self.send_bytes(HTTPStatus.OK, (WEB_PATH / filename).read_bytes(), content_type)
                     return
                 self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+            except ExtensionError as exc:
+                self.send_json(exc.status, {"error": str(exc)})
             except (ValueError, KeyError) as exc:
                 self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             except FileNotFoundError as exc:
@@ -390,21 +431,21 @@ def make_handler(repo: Path, map_path: Path):
                 self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
 
         def do_POST(self) -> None:
-            if urlparse(self.path).path != "/api/explain":
+            path = urlparse(self.path).path
+            if path != "/api/explain" and not path.startswith("/api/extensions/"):
                 self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
                 return
             try:
-                if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
-                    raise ValueError("Expected application/json")
-                length = int(self.headers.get("Content-Length", "0"))
-                if length < 1 or length > 2048:
-                    raise ValueError("Invalid request size")
-                request = json.loads(self.rfile.read(length))
-                if not isinstance(request, dict):
-                    raise ValueError("Expected JSON object")
+                request = self.read_json_body(65536 if path.startswith("/api/extensions/") else 2048)
+                if path.startswith("/api/extensions/"):
+                    identifier = path.removeprefix("/api/extensions/")
+                    self.send_json(HTTPStatus.OK, extensions.run(identifier, "POST", request))
+                    return
                 result = explain_change(repo, map_path, request.get("base", ""),
                                         request.get("target", ""), request.get("nodeId", ""))
                 self.send_json(HTTPStatus.OK, result)
+            except ExtensionError as exc:
+                self.send_json(exc.status, {"error": str(exc)})
             except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
                 self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             except AIError as exc:

@@ -29,6 +29,12 @@ python app.py
 
 这一步验证“图 → 详情 → Git 来源 → 版本变化 → 待复核候选 → 可选 AI 解释 → 临时布局与导出”的运行路径。演示图不代表自动识别出的架构，也不代表团队批准的正式 Project Model。
 
+## 团队独立扩展
+
+新增功能放入 `extensions/<功能名>/extension.py`，定义标题、说明与 `handle(context, method, data)`。重启服务后，主页侧栏自动出现该功能的独立页面入口，数据接口为 `/api/extensions/<功能名>`；不需要为每个人的新功能修改 `app.py` 或共享页面。`extensions/project_summary/` 是可运行的样例。扩展只接入独立功能页，不会自动修改人工功能图；需要在主图展示的内容仍由团队复核并集成。
+
+具体输入、错误和四人目录分工见 [独立扩展接口](docs/standards/EXTENSION_INTERFACE.md)。
+
 ## 查看另一个本地 Git 仓库
 
 可以在启动时指定仓库及其**人工整理的地图 JSON**。这里不自动扫描代码，也不会在启动时读取未指定的其他项目：
