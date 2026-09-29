@@ -1,0 +1,62 @@
+{
+  "fixtureKind": "synthetic_contract_example_not_a_real_repository",
+  "sourceLocator": { "kind": "git_remote", "value": "example://contract-fixture" },
+  "snapshot": {
+    "repository": "contract-fixture",
+    "revision": "1111111111111111111111111111111111111111",
+    "parentRevision": "0000000000000000000000000000000000000000",
+    "branch": "fixture",
+    "mapOrigin": "curated_demo",
+    "mapNote": "Synthetic interface example; not a ProjectMind implementation fact.",
+    "nodes": [
+      {
+        "id": "entry-feature",
+        "title": "入口功能样例",
+        "summary": "仅用于验证数据交换",
+        "entryPoint": "src/entry.py · start()",
+        "position": { "x": 20, "y": 54 },
+        "evidence": [
+          { "path": "src/entry.py", "reason": "固定样例来源", "existsAtCommit": true }
+        ]
+      }
+    ],
+    "edges": []
+  },
+  "comparison": {
+    "baseRevision": "0000000000000000000000000000000000000000",
+    "targetRevision": "1111111111111111111111111111111111111111",
+    "changes": [{ "code": "M", "path": "src/entry.py" }],
+    "reviewCandidates": [
+      { "nodeId": "entry-feature", "changedEvidencePaths": ["src/entry.py"] }
+    ],
+    "note": "Synthetic comparison example; change is only a review candidate."
+  },
+  "codeFacts": {
+    "revision": "1111111111111111111111111111111111111111",
+    "files": [
+      {
+        "path": "src/entry.py",
+        "language": "python",
+        "entries": [{ "name": "start", "kind": "function", "line": 1 }]
+      }
+    ],
+    "skipped": []
+  },
+  "aiCandidate": {
+    "status": "ai_candidate",
+    "model": "fixture-only",
+    "nodeId": "entry-feature",
+    "baseRevision": "0000000000000000000000000000000000000000",
+    "targetRevision": "1111111111111111111111111111111111111111",
+    "changedEvidencePaths": ["src/entry.py"],
+    "diffTruncated": false,
+    "explanation": {
+      "summary": "样例变更",
+      "observations": ["样例文件被修改"],
+      "possibleEffects": [],
+      "unknowns": ["运行行为未验证"],
+      "evidencePaths": ["src/entry.py"]
+    },
+    "note": "Synthetic AI result; no model was called."
+  }
+}
