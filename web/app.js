@@ -7,6 +7,90 @@ let aiStatus = null;
 let aiResult = null;
 let aiBusy = false;
 let aiMessage = null;
+let layoutOverrides = {};
+let savedLayoutRevision = null;
+
+function layoutKey() {
+  return `projectmind:draft-layout:${snapshot.repository}`;
+}
+
+function layoutFor(node) {
+  return layoutOverrides[node.id] || node.position;
+}
+
+function setLayoutStatus(message) {
+  document.getElementById("layout-status").textContent = message;
+}
+
+function loadLayout() {
+  layoutOverrides = {};
+  savedLayoutRevision = null;
+  try {
+    const stored = JSON.parse(localStorage.getItem(layoutKey()) || "null");
+    if (stored?.positions && typeof stored.positions === "object") {
+      for (const node of snapshot.nodes) {
+        const position = stored.positions[node.id];
+        if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
+          layoutOverrides[node.id] = { x: Math.max(0, Math.min(698, position.x)), y: Math.max(0, Math.min(330, position.y)) };
+        }
+      }
+      savedLayoutRevision = stored.revision || null;
+      setLayoutStatus(savedLayoutRevision === snapshot.revision ? "已恢复此提交的本机临时布局。" : `已恢复旧布局（原提交 ${String(savedLayoutRevision).slice(0, 8)}），请复核后再保存。`);
+      return;
+    }
+    setLayoutStatus("当前使用人工原始布局。拖动节点后可保存临时位置。");
+  } catch (error) {
+    setLayoutStatus(`无法读取本机临时布局：${error.message}`);
+  }
+}
+
+function saveLayout() {
+  if (!snapshot) return;
+  const positions = Object.fromEntries(snapshot.nodes.map((node) => [node.id, layoutFor(node)]));
+  try {
+    localStorage.setItem(layoutKey(), JSON.stringify({ revision: snapshot.revision, positions }));
+    savedLayoutRevision = snapshot.revision;
+    setLayoutStatus(`临时布局已保存在本机浏览器，对应提交 ${snapshot.revision.slice(0, 8)}。`);
+  } catch (error) {
+    setLayoutStatus(`保存失败：${error.message}`);
+  }
+}
+
+function resetLayout() {
+  if (!snapshot) return;
+  try {
+    localStorage.removeItem(layoutKey());
+    layoutOverrides = {};
+    savedLayoutRevision = null;
+    renderMap();
+    setLayoutStatus("已恢复人工原始布局。本机临时布局已清除。");
+  } catch (error) {
+    setLayoutStatus(`恢复失败：${error.message}`);
+  }
+}
+
+function exportDraft() {
+  if (!snapshot) return;
+  const draft = {
+    status: "temporary_unconfirmed_draft",
+    note: "节点位置仅供查看；职责和关系来自人工演示图，须由团队复核。此文件不是正式 Project Model。",
+    exportedAt: new Date().toISOString(),
+    repository: snapshot.repository,
+    revision: snapshot.revision,
+    mapOrigin: snapshot.mapOrigin,
+    nodes: snapshot.nodes.map((node) => ({ ...node, position: layoutFor(node) })),
+    edges: snapshot.edges,
+    comparison: comparison && comparison.targetRevision === snapshot.revision ? comparison : null,
+  };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(draft, null, 2)], { type: "application/json" }));
+  const link = element("a");
+  link.href = url;
+  link.download = `projectmind-draft-${snapshot.revision.slice(0, 8)}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 function reviewCandidate(id) {
   return comparison?.reviewCandidates.find((item) => item.nodeId === id);
@@ -25,20 +109,35 @@ function svgElement(tag, attributes) {
   return node;
 }
 
-function renderMap() {
-  stage.replaceChildren();
-  const svg = svgElement("svg", { class: "connections", viewBox: "0 0 900 470", "aria-hidden": "true" });
+function drawConnections(svg) {
+  svg.replaceChildren();
   const byId = new Map(snapshot.nodes.map((node) => [node.id, node]));
   for (const edge of snapshot.edges) {
     const from = byId.get(edge.from);
     const to = byId.get(edge.to);
     if (!from || !to) continue;
-    const x1 = from.position.x + 202;
-    const y1 = from.position.y + 70;
-    const x2 = to.position.x;
-    const y2 = to.position.y + 70;
+    const first = layoutFor(from);
+    const second = layoutFor(to);
+    const dx = second.x - first.x;
+    const dy = second.y - first.y;
+    let x1, y1, x2, y2, curve;
+    if (Math.abs(dx) >= 202) {
+      const direction = Math.sign(dx);
+      x1 = first.x + (direction > 0 ? 202 : 0);
+      y1 = first.y + 70;
+      x2 = second.x + (direction > 0 ? 0 : 202);
+      y2 = second.y + 70;
+      curve = `M ${x1} ${y1} C ${x1 + 70 * direction} ${y1}, ${x2 - 70 * direction} ${y2}, ${x2} ${y2}`;
+    } else {
+      const direction = Math.sign(dy) || 1;
+      x1 = first.x + 101;
+      y1 = first.y + (direction > 0 ? 140 : 0);
+      x2 = second.x + 101;
+      y2 = second.y + (direction > 0 ? 0 : 140);
+      curve = `M ${x1} ${y1} C ${x1} ${y1 + 50 * direction}, ${x2} ${y2 - 50 * direction}, ${x2} ${y2}`;
+    }
     const line = svgElement("path", {
-      d: `M ${x1} ${y1} C ${x1 + 70} ${y1}, ${x2 - 70} ${y2}, ${x2} ${y2}`,
+      d: curve,
       class: "connection-line",
     });
     svg.append(line);
@@ -53,20 +152,55 @@ function renderMap() {
       svg.append(label);
     }
   }
+}
+
+function renderMap() {
+  stage.replaceChildren();
+  const svg = svgElement("svg", { class: "connections", viewBox: "0 0 900 470", "aria-hidden": "true" });
+  drawConnections(svg);
   stage.append(svg);
 
   snapshot.nodes.forEach((node, index) => {
     const button = element("button", `map-node${node.id === selectedId ? " selected" : ""}${reviewCandidate(node.id) ? " review-candidate" : ""}`);
     button.type = "button";
-    button.style.left = `${node.position.x}px`;
-    button.style.top = `${node.position.y}px`;
+    button.style.left = `${layoutFor(node).x}px`;
+    button.style.top = `${layoutFor(node).y}px`;
     button.setAttribute("aria-pressed", String(node.id === selectedId));
     button.append(element("span", "node-number", String(index + 1).padStart(2, "0")));
     button.append(element("strong", "node-title", node.title));
     button.append(element("span", "node-summary", node.summary));
     if (reviewCandidate(node.id)) button.append(element("span", "node-review", "待复核"));
     button.append(element("span", "node-arrow", "↗"));
-    button.addEventListener("click", () => showDetails(node.id));
+    let dragged = false;
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      const start = { ...layoutFor(node) };
+      const startX = event.clientX;
+      const startY = event.clientY;
+      dragged = false;
+      button.setPointerCapture(event.pointerId);
+      const move = (movement) => {
+        const dx = movement.clientX - startX;
+        const dy = movement.clientY - startY;
+        if (Math.abs(dx) + Math.abs(dy) < 4 && !dragged) return;
+        dragged = true;
+        const position = { x: Math.max(0, Math.min(698, Math.round(start.x + dx))), y: Math.max(0, Math.min(330, Math.round(start.y + dy))) };
+        layoutOverrides[node.id] = position;
+        button.style.left = `${position.x}px`;
+        button.style.top = `${position.y}px`;
+        drawConnections(svg);
+        setLayoutStatus("临时布局已调整，尚未保存。");
+      };
+      const end = () => {
+        button.removeEventListener("pointermove", move);
+        button.removeEventListener("pointerup", end);
+        button.removeEventListener("pointercancel", end);
+      };
+      button.addEventListener("pointermove", move);
+      button.addEventListener("pointerup", end);
+      button.addEventListener("pointercancel", end);
+    });
+    button.addEventListener("click", () => { if (dragged) dragged = false; else showDetails(node.id); });
     stage.append(button);
   });
 }
@@ -283,6 +417,8 @@ async function init() {
     aiResult = null;
     aiStatus = null;
     aiMessage = null;
+    loadLayout();
+    for (const id of ["save-layout-button", "reset-layout-button", "export-draft-button"]) document.getElementById(id).disabled = false;
     document.getElementById("repo-name").textContent = result.repository;
     document.getElementById("revision").textContent = result.revision;
     document.getElementById("branch-name").textContent = result.branch;
@@ -316,4 +452,7 @@ document.getElementById("refresh-button").addEventListener("click", init);
 document.getElementById("export-button").addEventListener("click", exportSummary);
 document.getElementById("compare-button").addEventListener("click", compareVersions);
 document.getElementById("explain-button").addEventListener("click", explainSelected);
+document.getElementById("save-layout-button").addEventListener("click", saveLayout);
+document.getElementById("reset-layout-button").addEventListener("click", resetLayout);
+document.getElementById("export-draft-button").addEventListener("click", exportDraft);
 init();
