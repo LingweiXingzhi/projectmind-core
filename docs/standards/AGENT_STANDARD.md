@@ -64,6 +64,10 @@ After code changes, classify Project Model impact as exactly one of:
 For `UPDATE` or `UNCERTAIN`, do NOT finalize the Project Model yourself.
 Provide a proposed change and evidence for human approval.
 
+## MAIN REVIEW GATE
+
+Agents may prepare a task branch, commit, push that branch, and open or update a PR. Every PR entering `main` must follow the repository's configured mandatory human review gate. Agents must not bypass human approval or merge into `main` without the project owner's explicit authorization. The required approval count is set by the repository administrator's Ruleset; do not assume a number or claim that protection is configured without checking GitHub. As of 2026-09-30, the gate is not yet configured, so a CLEAN/MERGEABLE PR is still not approved.
+
 ## AI / TOKEN EFFICIENCY
 
 Prefer deterministic methods before LLM reasoning:

@@ -33,7 +33,7 @@ python app.py
 
 新增功能放入 `extensions/<功能名>/extension.py`，定义标题、说明与 `handle(context, method, data)`。重启服务后，主页侧栏自动出现该功能的独立页面入口，数据接口为 `/api/extensions/<功能名>`；不需要为每个人的新功能修改 `app.py` 或共享页面。`extensions/project_summary/` 是可运行的样例。扩展只接入独立功能页，不会自动修改人工功能图；需要在主图展示的内容仍由团队复核并集成。
 
-具体输入、错误和四人目录分工见 [独立扩展接口](docs/standards/EXTENSION_INTERFACE.md)。
+具体输入和错误见 [独立扩展接口](docs/standards/EXTENSION_INTERFACE.md)；四人职责与目录分工见 [协作约定](docs/standards/COLLABORATION_CONTRACT.md)。
 
 ## 查看另一个本地 Git 仓库
 

@@ -1,6 +1,8 @@
 # ProjectMind 四人协作约定（比赛版）
 
-> 状态：2026-09-29 的**实施约定提案**，供团队审查。它约束比赛版协作方式，不批准长期产品架构或正式 Project Model。原有 MVP 的固定点见 [本次审计](../audits/2026-09-29-mvp-audit.md)；其后新增的独立扩展入口见 [接口约定](MVP_INTERFACES.md)。负责人已确认的产品方向优先于本提案；代码是否存在以指定 Git 提交为准。
+> 状态：负责人于 2026-09-30 **正式确认 V1 为唯一现行四人分工**。本文是 A/B/C/D 职责与修改边界的唯一事实源；V2、V3 等旧映射仅作历史记录。本文不批准长期产品架构或正式 Project Model。模块数据格式见 [MVP 接口](MVP_INTERFACES.md)，扩展技术协议见 [扩展接口](EXTENSION_INTERFACE.md)，团队流程见 [TEAM_SOP](TEAM_SOP.md)。[2026-09-29 审计](../audits/2026-09-29-mvp-audit.md)仅记录当时状态，不是现行接口依据。
+
+**三个状态分开看：**当前 Core 功能与 Extension Host 已在代码中实现（IMPLEMENTED），PR #6、#8、#10、#12、#14、#16、#18、#20 已合入 `core/main`（MERGED）；团队尚未完成人工验收，当前 `main` 只可称候选共同基线，不可称 TEAM APPROVED。B/C/D 三个业务扩展目录尚未实现。正式共同基线 SHA 由团队验收后宣布。
 
 ## 1. 共同交付物与信息可信度
 
@@ -19,22 +21,22 @@
 ## 2. 开工前共同基线
 
 1. 每人拿到一个 Issue：用户能看到的交付结果、验收步骤、责任人、依赖项、预计改动文件。没有 Issue 号的临时修复可先报告集成人，再补记。优先修复本次审计提出的“地图版本身份缺失”和“AI 结果未进入交接”两处缺口。
-2. 四人确认相同的**基准提交完整 SHA**和共同运行入口。当前可运行实现位于连续的 PR #6、#8、#10、#12、#14、#16；`main` 目前还没有这些产品代码。接口约定在 `docs/17-mvp-interface-contract`，独立扩展代码在其后的 `feat/19-extension-seams`。**B/C/D 要使用独立扩展口，就从 `feat/19-extension-seams` 的同一提交建分支，PR 暂以该分支为 base**；依赖分支依次合入后，调整 PR base，整条产品 PR 链合入 `main` 后再从 `main` 建新分支。不要把“PR 已打开”说成“main 已有功能”。
+2. 四人等待团队人工验收并宣布同一个**正式 `core/main` 基准提交完整 SHA**和共同运行入口，然后分别从该 SHA 建任务分支。当前 `main` 已有可运行产品代码和独立扩展入口，但仍是候选基线；不能把 MERGED 当成 TEAM APPROVED。
 3. 使用同一份 [接口约定](MVP_INTERFACES.md)。各自的 Codex 先读 `AGENTS.md`、相关 Issue、接口约定和任务涉及的文件；不需要每次全仓重新概括。
-4. 明确会接触的文件。两人要改同一文件时先约定一个集成人。当前分支已有 [独立扩展入口](EXTENSION_INTERFACE.md)：B/C/D 各自提交 `extensions/<功能名>/` 及测试，重启服务后独立页面与数据接口自动出现，无须 A 修改 `app.py` 或共享前端。B/C/D 的业务函数仍只是下文的拟议交接点，必须各自实现；若要把输出嵌进现有功能图，才由 A 改共享主线。
+4. 明确会接触的文件。两人要改同一文件时先约定一个集成人。`core/main` 已有 [独立扩展入口](EXTENSION_INTERFACE.md)：B/C/D 各自提交自己的扩展目录及测试，重启服务后独立页面与数据接口自动出现，无须 A 修改 `app.py` 或共享前端。B/C/D 的业务函数仍只是下文的拟议交接点，必须各自实现；若要把输出嵌进现有功能图，才由 A 改共享主线。
 
 ## 3. 四人的任务与接口交接
 
-这里的 A/B/C/D 是**责任位**，不是人员任命。每人可独立用 Codex 开一个任务分支；当天至少交付一个能运行或能用固定样例验证的纵向结果。负责人只需把姓名填到 Issue，不必重新讨论普通技术细节。
+**V1 正式职责：A = Core / Integration，B = Code Facts，C = Map Proposal，D = Handoff。** 这里的 A/B/C/D 是**责任位**，不是人员任命。每人可独立用 Codex 开一个任务分支；当天至少交付一个能运行或能用固定样例验证的纵向结果。负责人只需把姓名填到 Issue，不必重新讨论普通技术细节。
 
 | 责任位 | 从现在能做的首个交付 | 主改位置 | 交给其他人的输入/输出 | 依赖 |
 |---|---|---|---|---|
-| A：集成与体验 | 保持现有图、详情、比较、导出同一入口可运行；核查扩展接入和主线体验 | `app.py`、`web/`、`README.md` | 消费 `Snapshot`、`Comparison`；负责现有功能图与公共路由改动 | 当前可运行分支；主图若消费 B/C/D 输出时才依赖它们 |
-| B：代码事实 | 给选定 Git 提交提取一小组真实入口及路径，输出可核查 JSON，不断言功能职责 | `extensions/code_facts/`、`tests/test_code_facts.py` | `repo + revision + 可选路径` → `CodeFacts`；自己的扩展接口/页面；见接口文档 | 可立即用测试仓库开工；不等 C |
-| C：候选功能结构 | 用固定样例的代码事实与人工图，提出少量功能节点/关系候选，显示依据和未知；不覆盖人工图 | `extensions/map_proposal/`、`tests/test_map_proposal.py` | `Snapshot + CodeFacts` → `MapProposal`；自己的扩展接口/页面 | 首日不等 B；真实接入等 B 的首个输出 |
-| D：协同交接与验收 | 用当前 `Snapshot + Comparison` 生成可让另一位 Agent 复核的简短交接包，并由非作者复现演示 | `extensions/handoff/`、`tests/test_handoff.py` | `Snapshot + 来源 + Comparison? + AI 候选?` → `Handoff`；自己的扩展接口/页面 | 可立即用现有接口开工 |
+| A：Core / Integration | 负责 ProjectMind Core、共享运行入口、共享 UI、Core 公共接口和最终主图集成；保持现有图、详情、比较、导出同一入口可运行；B/C/D 输出进入主图时负责共享接线 | `app.py`、`extension_host.py`、`web/`、`data/project-map.json`、`README.md`、公共测试 | 消费 `Snapshot`、`Comparison` 及需要进入主图的 B/C/D 输出；负责公共路由和主图改动 | 从团队批准的共同基线开工；主图消费 B/C/D 输出时依赖各自已验收结果 |
+| B：Code Facts | 给选定 Git 提交提取一小组真实入口及路径，输出可核查 JSON，不断言功能职责 | `extensions/code_facts/`、`tests/test_code_facts.py` | `repo + revision + 可选路径` → `CodeFacts`；自己的扩展接口/页面；见接口文档 | 固定样例开发不依赖 C |
+| C：Map Proposal | 用固定样例的代码事实与人工图，提出少量功能节点/关系候选，显示依据和未知；不覆盖人工图 | `extensions/map_proposal/`、`tests/test_map_proposal.py` | `Snapshot + CodeFacts` → `MapProposal`；自己的扩展接口/页面 | 固定样例开发不依赖 B；真实接入等 B 的首个输出 |
+| D：Handoff | 用当前 `Snapshot + Comparison` 生成可让另一位 Agent 复核的简短交接包，并由非作者复现演示 | `extensions/handoff/`、`tests/test_handoff.py` | `Snapshot + 来源 + Comparison? + AI 候选?` → `Handoff`；自己的扩展接口/页面 | 固定样例开发可使用现有接口 |
 
-**禁止把分工误解成四天后集成四个大块。** A 从第一天就保住运行主线；B/C/D 每天提交自己的可运行扩展或固定输入输出样例，A 每天验证新入口及原主线。某项接入失败时保留前一天可运行版本，Issue 写明卡在输入、输出还是运行环境。D 的首项交接功能应当可以只凭现有数据运行，不等新解析器。四人任务是下一步建议，具体 Issue 和姓名由团队填入；不是宣称 B/C/D 业务功能已经实现。
+**禁止把分工误解成四天后集成四个大块。** 正式基线获批后，A 从第一天就保住运行主线；B/C/D 每天提交自己的可运行扩展或固定输入输出样例，A 每天验证新入口及原主线。某项接入失败时保留前一天可运行版本，Issue 写明卡在输入、输出还是运行环境。D 的首项交接功能应当可以只凭现有数据运行，不等新解析器。下面的任务卡是 V1 职责下的首批工作切片；具体 Issue 和姓名由团队填入，不代表 B/C/D 业务功能已经实现。
 
 **可直接领取的四张任务卡（各自单独 Issue/PR）：**
 
@@ -51,7 +53,7 @@
 
 每天固定一次集成检查：记录共同基准 SHA；依次接入已通过验收的 PR；由非作者从运行说明启动、走通上述主线；把实际通过/失败的步骤、提交和阻塞记在 PR。两人共同修改 `app.py`、地图 JSON 或同一前端文件时由 A 决定合并顺序，先在各自分支更新 base 再解决冲突，不能用“保留我的版本”覆盖另一人的功能。PR 在依赖分支合入后重新指定 base，避免叠加 PR 的差异混淆。
 
-建议给 `main` 启用 PR 审查与最低测试检查；仓库管理员实际设置前，这只是建议，不声称规则已启用。四人短赛程建议至少**一位非作者**审阅涉及共享接口、正式图或演示主线的 PR；单纯文案也需核对实现状态。失败的检查、未核对的 AI 结果和无法复现的演示不能当作已验收。小 PR 便于及时审查和集成。[GitHub 受保护分支](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)、[Google 的小改动评审建议](https://google.github.io/eng-practices/review/developer/small-cls.html)。
+所有进入 `main` 的 PR 都按 [TEAM_SOP](TEAM_SOP.md) 执行人工审核门禁；Agent 不得自行绕过。当前 GitHub `main` 审批规则尚未配置完成，不能把可合并状态当作批准；规则配置完成和负责人明确授权前不得合并。Required approvals 数量由仓库管理员配置的 Ruleset 决定。失败的检查、未核对的 AI 结果和无法复现的演示不能当作已验收。小 PR 便于及时审查和集成。[GitHub 受保护分支](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)、[Google 的小改动评审建议](https://google.github.io/eng-practices/review/developer/small-cls.html)。
 
 ## 5. 接口变更办法
 

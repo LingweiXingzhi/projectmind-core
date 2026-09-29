@@ -1,10 +1,10 @@
 # 比赛版独立扩展接口
 
-> 状态：`feat/19-extension-seams` 已实现的本地扩展入口。此接口供四人并行接入首版 Demo，不代表正式 Project Model 或长期插件标准。
+> 状态：本地扩展入口已随 PR #20 合入 `core/main`。本文只定义 Extension 技术协议；A/B/C/D 的现行职责与修改范围以 [四人协作约定](COLLABORATION_CONTRACT.md) 为唯一依据。本接口不代表正式 Project Model 或长期插件标准。
 
 ## 新增一个功能
 
-1. 在 `extensions/` 下新建自己的目录，例如 `extensions/code_facts/`。目录名以小写字母开头，后面只能用小写字母、数字或下划线，最多 40 个字符。各负责人只改自己的扩展目录和对应测试。
+1. 在 `extensions/` 下新建自己的目录，例如 `extensions/code_facts/`。目录名以小写字母开头，后面只能用小写字母、数字或下划线，最多 40 个字符。各扩展开发者只改自己的扩展目录和对应测试；职责分配见 [四人协作约定](COLLABORATION_CONTRACT.md)。
 2. 放入 `extension.py`，定义 `EXTENSION = {"title": "显示名称", "description": "一句话说明"}` 和 `handle(context, method, data) -> dict`。`method` 为 `GET` 或 `POST`；`data` 是查询参数或请求 JSON 对象。返回值必须能编码为 JSON 对象。
 3. 可选放入自包含的 `index.html` 作为功能页面。暂不提供扩展目录内其他静态资源的路由；页面需要的脚本和样式请写在该页面里。不提供页面时使用内置通用结果页，它只调用 GET。
 4. 重启本地服务。启动时发现扩展，主页侧栏自动显示可用扩展入口；无须修改 `app.py`、`web/index.html` 或 `web/app.js`。可以参考已交付的 `extensions/project_summary/extension.py`。
@@ -42,11 +42,6 @@ def handle(context, method, data):
 
 处理可预期的输入错误时抛 `ExtensionError(HTTPStatus.BAD_REQUEST, "说明")` 等；返回 `{"error": "说明"}` 并配合相应 HTTP 状态。未知扩展为 404，加载失败为 503，扩展内部意外异常为不暴露细节的 500。扩展自行决定业务字段，但跨人交换的字段须按 [接口约定](MVP_INTERFACES.md) 固定样例及错误方式。修改已被其他功能使用的字段前，按 [协作约定](COLLABORATION_CONTRACT.md#5-接口变更办法) 通知消费者。
 
-## 四人接入位置
+## 接入与协作
 
-- A 负责现有主图、共同运行入口和公共接口；只有要把结果**嵌进主图**时才需改共享前端或主图数据。
-- B 可在 `extensions/code_facts/` 实现代码事实页面和数据接口。
-- C 可在 `extensions/map_proposal/` 实现候选结构页面和数据接口。
-- D 可在 `extensions/handoff/` 实现交接页面和数据接口。若要独立下载，可在自己的页面实现。
-
-各扩展分别开 Issue 和 PR，附固定输入、输出、错误样例及验收步骤。先在同一基线各自开发，再按团队 SOP 集成。扩展路由和入口自动生成并不消除业务依赖：例如 C 真正消费 B 的代码事实时，仍需核对同一个完整 Git SHA、字段含义和错误行为。
+各扩展分别开 Issue 和 PR，附固定输入、输出、错误样例及验收步骤；从团队批准的同一基线开发，并按 [团队流程](TEAM_SOP.md) 集成。扩展路由和入口自动生成并不消除业务依赖：一个扩展消费另一个扩展的代码事实时，仍需核对同一个完整 Git SHA、字段含义和错误行为。扩展结果若要进入共享主图，按 [四人协作约定](COLLABORATION_CONTRACT.md) 由 Core 集成人接线。
