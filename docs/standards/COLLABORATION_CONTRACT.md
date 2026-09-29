@@ -21,7 +21,7 @@
 1. 每人拿到一个 Issue：用户能看到的交付结果、验收步骤、责任人、依赖项、预计改动文件。没有 Issue 号的临时修复可先报告集成人，再补记。优先修复本次审计提出的“地图版本身份缺失”和“AI 结果未进入交接”两处缺口。
 2. 四人确认相同的**基准提交完整 SHA**和共同运行入口。当前可运行实现位于连续的 PR #6、#8、#10、#12、#14、#16；`main` 目前还没有这些产品代码。本约定在 `docs/17-mvp-interface-contract` 分支上；**它并入 `feat/15-local-repo-input` 前，四人的新分支从本约定分支的同一提交建立，PR 暂以它为 base**。约定并入后，再把后续 PR 的 base 调整到 `feat/15-local-repo-input`；整条产品 PR 链合入 `main` 后，新任务才从 `main` 建分支。不要把“PR 已打开”说成“main 已有功能”。
 3. 使用同一份 [接口约定](MVP_INTERFACES.md)。各自的 Codex 先读 `AGENTS.md`、相关 Issue、接口约定和任务涉及的文件；不需要每次全仓重新概括。
-4. 明确会接触的文件。两人要改同一文件时先约定一个集成人；先独立交付新模块及公共调用示例，再由集成人接线。当前 MVP **没有自动发现新模块的插件接口**；现有 HTTP 路由只覆盖已经实现的功能。B/C/D 的拟议函数是约定的本地 Python 交接点，写完后仍需要 A 把它们接到运行入口。
+4. 明确会接触的文件。两人要改同一文件时先约定一个集成人。当前分支已有 [独立扩展入口](EXTENSION_INTERFACE.md)：B/C/D 各自提交 `extensions/<功能名>/` 及测试，重启服务后独立页面与数据接口自动出现，无须 A 修改 `app.py` 或共享前端。B/C/D 的业务函数仍只是下文的拟议交接点，必须各自实现；若要把输出嵌进现有功能图，才由 A 改共享主线。
 
 ## 3. 四人的任务与接口交接
 
@@ -29,19 +29,19 @@
 
 | 责任位 | 从现在能做的首个交付 | 主改位置 | 交给其他人的输入/输出 | 依赖 |
 |---|---|---|---|---|
-| A：集成与体验 | 保持现有图、详情、比较、导出同一入口可运行；把后续模块接进界面 | `app.py`、`web/`、`README.md` | 消费 `Snapshot`、`Comparison`，展示 `CodeFacts` / `MapProposal`；负责公共路由改动 | 当前可运行分支；接入 B/C/D 时才依赖它们 |
-| B：代码事实 | 给选定 Git 提交提取一小组真实入口及路径，输出可核查 JSON，不断言功能职责 | `code_facts.py`、`tests/test_code_facts.py` | `repo + revision + 可选路径` → `CodeFacts`；见接口文档 | 可立即用测试仓库开工；不等 C |
-| C：候选功能结构 | 用固定样例的代码事实与人工图，提出少量功能节点/关系候选，显示依据和未知；不覆盖人工图 | `map_proposal.py`、`tests/test_map_proposal.py` | `Snapshot + CodeFacts` → `MapProposal`；先用接口文档的固定样例开发 | 首日不等 B；真实接入等 B 的首个输出 |
-| D：协同交接与验收 | 用当前 `Snapshot + Comparison` 生成可让另一位 Agent 复核的简短交接包，并由非作者复现演示 | `handoff.py`、`tests/test_handoff.py` | `Snapshot + 来源 + Comparison? + AI 候选?` → `Handoff`；若要加下载按钮由 A 接线 | 可立即用现有接口开工 |
+| A：集成与体验 | 保持现有图、详情、比较、导出同一入口可运行；核查扩展接入和主线体验 | `app.py`、`web/`、`README.md` | 消费 `Snapshot`、`Comparison`；负责现有功能图与公共路由改动 | 当前可运行分支；主图若消费 B/C/D 输出时才依赖它们 |
+| B：代码事实 | 给选定 Git 提交提取一小组真实入口及路径，输出可核查 JSON，不断言功能职责 | `extensions/code_facts/`、`tests/test_code_facts.py` | `repo + revision + 可选路径` → `CodeFacts`；自己的扩展接口/页面；见接口文档 | 可立即用测试仓库开工；不等 C |
+| C：候选功能结构 | 用固定样例的代码事实与人工图，提出少量功能节点/关系候选，显示依据和未知；不覆盖人工图 | `extensions/map_proposal/`、`tests/test_map_proposal.py` | `Snapshot + CodeFacts` → `MapProposal`；自己的扩展接口/页面 | 首日不等 B；真实接入等 B 的首个输出 |
+| D：协同交接与验收 | 用当前 `Snapshot + Comparison` 生成可让另一位 Agent 复核的简短交接包，并由非作者复现演示 | `extensions/handoff/`、`tests/test_handoff.py` | `Snapshot + 来源 + Comparison? + AI 候选?` → `Handoff`；自己的扩展接口/页面 | 可立即用现有接口开工 |
 
-**禁止把分工误解成四天后集成四个大块。** A 从第一天就保住运行主线；B/C/D 先交可调用函数与固定输入输出样例，A 每天接入至少一个完成的纵向结果。某项接入失败时保留前一天可运行版本，Issue 写明卡在输入、输出还是运行环境。D 的首项交接功能应当可以只凭现有数据运行，不等新解析器。四人任务是下一步建议，具体 Issue 和姓名由团队填入；不是宣称功能已经实现。
+**禁止把分工误解成四天后集成四个大块。** A 从第一天就保住运行主线；B/C/D 每天提交自己的可运行扩展或固定输入输出样例，A 每天验证新入口及原主线。某项接入失败时保留前一天可运行版本，Issue 写明卡在输入、输出还是运行环境。D 的首项交接功能应当可以只凭现有数据运行，不等新解析器。四人任务是下一步建议，具体 Issue 和姓名由团队填入；不是宣称 B/C/D 业务功能已经实现。
 
 **可直接领取的四张任务卡（各自单独 Issue/PR）：**
 
 1. **A｜地图来源能被看见并区分于代码提交。** 从第 2 节约定的共同基线开分支。启动现有自我演示，在同一代码 SHA 下改动一份人工地图副本后刷新：界面与导出都必须让非作者看出地图文件内容已变化、地图是否已被团队核查为 UNKNOWN；不能只显示代码 SHA。比较结果若依据另一份地图计算，提示重新获取快照。先写一个会失败的固定样例，再完成最小改动；公共文件 `app.py`、`web/`、`tests/test_app.py` 仅由 A 接线。交付一段从干净分支可复现的命令和两种输出。无前置任务。
-2. **B｜真实提交中的入口事实。** 在 `code_facts.py` 实现接口文档的 `collect_code_facts`，测试只放 `tests/test_code_facts.py`。用临时 Git 仓库提交一份已知代码，传完整 SHA 后返回该提交中真实的路径、入口名和行号；再修改未提交工作区，输出仍保持原提交事实。未知语言进入 `skipped`，不猜功能职责。提交公共调用样例和错误样例，不改 `app.py`。无前置任务；A 只在 B 的输出已固定后接线。
-3. **C｜候选功能说明。** 在 `map_proposal.py` 实现 `suggest_map`，测试只放 `tests/test_map_proposal.py`；先使用 [固定合约样例](MVP_CONTRACT_EXAMPLE.json) 开发，输出一个带 `evidencePaths` 和 `unknowns` 的候选；版本不一致或无证据时返回明确失败或空结果，不改人工图。可用可控响应验证数据限制，真实模型调用需另行记录。开发无前置任务；联调真实代码事实时依赖 B 的首个结果，由 A 接线展示。C 不碰 `app.py`、`web/` 或 `data/project-map.json`。
-4. **D｜另一位 Agent 能继续工作的交接包。** 在 `handoff.py` 实现 `build_handoff`，测试只放 `tests/test_handoff.py`；用 [固定合约样例](MVP_CONTRACT_EXAMPLE.json) 中的快照、调用者提供的仓库来源和比较结果，明确代码 SHA、地图版本 UNKNOWN、变化路径、待复核节点和证据；可选 AI 候选作为独立输入并保留未知项。另一个队友只看交接包，应能指出“仓库从哪取得、代码对应哪个提交、地图是否已核查、哪个节点待复核、下一步去哪核查”。D 不碰公共路由；A 后续接下载按钮。无前置任务。
+2. **B｜真实提交中的入口事实。** 在 `extensions/code_facts/` 实现接口文档的 `collect_code_facts` 和自己的 `handle`/页面，测试只放 `tests/test_code_facts.py`。用临时 Git 仓库提交一份已知代码，传完整 SHA 后返回该提交中真实的路径、入口名和行号；再修改未提交工作区，输出仍保持原提交事实。未知语言进入 `skipped`，不猜功能职责。提交 HTTP 调用样例和错误样例，不改 `app.py`。无前置任务。
+3. **C｜候选功能说明。** 在 `extensions/map_proposal/` 实现 `suggest_map` 和自己的 `handle`/页面，测试只放 `tests/test_map_proposal.py`；先使用 [固定合约样例](MVP_CONTRACT_EXAMPLE.json) 开发，输出一个带 `evidencePaths` 和 `unknowns` 的候选；版本不一致或无证据时返回明确失败或空结果，不改人工图。可用可控响应验证数据限制，真实模型调用需另行记录。开发无前置任务；联调真实代码事实时依赖 B 的首个结果。C 不碰 `app.py`、共享 `web/` 或 `data/project-map.json`。
+4. **D｜另一位 Agent 能继续工作的交接包。** 在 `extensions/handoff/` 实现 `build_handoff` 和自己的 `handle`/页面，测试只放 `tests/test_handoff.py`；用 [固定合约样例](MVP_CONTRACT_EXAMPLE.json) 中的快照、调用者提供的仓库来源和比较结果，明确代码 SHA、地图版本 UNKNOWN、变化路径、待复核节点和证据；可选 AI 候选作为独立输入并保留未知项。另一个队友只看交接包，应能指出“仓库从哪取得、代码对应哪个提交、地图是否已核查、哪个节点待复核、下一步去哪核查”。D 不碰公共路由，可以在自己的页面提供下载。无前置任务。
 
 任务 1 和 4 优先填补本次审计的实际缺口；任务 2 和 3 扩展自动整理能力。四张任务卡是当前基线的最小切片，下一位 Agent 应在各自 Issue 中记录提交与验收，不自行扩成全语言解析器、全量知识图谱或正式架构审查。
 
