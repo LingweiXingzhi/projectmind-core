@@ -1,5 +1,9 @@
 const stage = document.getElementById("map-stage");
 const details = document.getElementById("details-content");
+const NODE_WIDTH = 185;
+const NODE_HEIGHT = 140;
+const STAGE_WIDTH = 680;
+const STAGE_HEIGHT = 470;
 let snapshot = null;
 let selectedId = null;
 let comparison = null;
@@ -31,7 +35,7 @@ function loadLayout() {
       for (const node of snapshot.nodes) {
         const position = stored.positions[node.id];
         if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
-          layoutOverrides[node.id] = { x: Math.max(0, Math.min(698, position.x)), y: Math.max(0, Math.min(330, position.y)) };
+          layoutOverrides[node.id] = { x: Math.max(0, Math.min(STAGE_WIDTH - NODE_WIDTH, position.x)), y: Math.max(0, Math.min(STAGE_HEIGHT - NODE_HEIGHT, position.y)) };
         }
       }
       savedLayoutRevision = stored.revision || null;
@@ -121,42 +125,34 @@ function drawConnections(svg) {
     const dx = second.x - first.x;
     const dy = second.y - first.y;
     let x1, y1, x2, y2, curve;
-    if (Math.abs(dx) >= 202) {
+    if (Math.abs(dx) >= NODE_WIDTH) {
       const direction = Math.sign(dx);
-      x1 = first.x + (direction > 0 ? 202 : 0);
-      y1 = first.y + 70;
-      x2 = second.x + (direction > 0 ? 0 : 202);
-      y2 = second.y + 70;
-      curve = `M ${x1} ${y1} C ${x1 + 70 * direction} ${y1}, ${x2 - 70 * direction} ${y2}, ${x2} ${y2}`;
+      x1 = first.x + (direction > 0 ? NODE_WIDTH : 0);
+      y1 = first.y + NODE_HEIGHT / 2;
+      x2 = second.x + (direction > 0 ? 0 : NODE_WIDTH);
+      y2 = second.y + NODE_HEIGHT / 2;
+      const bend = Math.min(70, Math.abs(x2 - x1) / 2);
+      curve = `M ${x1} ${y1} C ${x1 + bend * direction} ${y1}, ${x2 - bend * direction} ${y2}, ${x2} ${y2}`;
     } else {
       const direction = Math.sign(dy) || 1;
-      x1 = first.x + 101;
-      y1 = first.y + (direction > 0 ? 140 : 0);
-      x2 = second.x + 101;
-      y2 = second.y + (direction > 0 ? 0 : 140);
-      curve = `M ${x1} ${y1} C ${x1} ${y1 + 50 * direction}, ${x2} ${y2 - 50 * direction}, ${x2} ${y2}`;
+      x1 = first.x + NODE_WIDTH / 2;
+      y1 = first.y + (direction > 0 ? NODE_HEIGHT : 0);
+      x2 = second.x + NODE_WIDTH / 2;
+      y2 = second.y + (direction > 0 ? 0 : NODE_HEIGHT);
+      const bend = Math.min(50, Math.abs(y2 - y1) / 2);
+      curve = `M ${x1} ${y1} C ${x1} ${y1 + bend * direction}, ${x2} ${y2 - bend * direction}, ${x2} ${y2}`;
     }
     const line = svgElement("path", {
       d: curve,
-      class: "connection-line",
+      class: `connection-line${edge.from === selectedId || edge.to === selectedId ? " active" : ""}`,
     });
     svg.append(line);
-    if (edge.label) {
-      const label = svgElement("text", {
-        x: (x1 + x2) / 2,
-        y: (y1 + y2) / 2 - 12,
-        class: "connection-label",
-        "text-anchor": "middle",
-      });
-      label.textContent = edge.label;
-      svg.append(label);
-    }
   }
 }
 
 function renderMap() {
   stage.replaceChildren();
-  const svg = svgElement("svg", { class: "connections", viewBox: "0 0 900 470", "aria-hidden": "true" });
+  const svg = svgElement("svg", { class: "connections", viewBox: `0 0 ${STAGE_WIDTH} ${STAGE_HEIGHT}`, "aria-hidden": "true" });
   drawConnections(svg);
   stage.append(svg);
 
@@ -184,7 +180,7 @@ function renderMap() {
         const dy = movement.clientY - startY;
         if (Math.abs(dx) + Math.abs(dy) < 4 && !dragged) return;
         dragged = true;
-        const position = { x: Math.max(0, Math.min(698, Math.round(start.x + dx))), y: Math.max(0, Math.min(330, Math.round(start.y + dy))) };
+        const position = { x: Math.max(0, Math.min(STAGE_WIDTH - NODE_WIDTH, Math.round(start.x + dx))), y: Math.max(0, Math.min(STAGE_HEIGHT - NODE_HEIGHT, Math.round(start.y + dy))) };
         layoutOverrides[node.id] = position;
         button.style.left = `${position.x}px`;
         button.style.top = `${position.y}px`;
