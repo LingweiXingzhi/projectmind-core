@@ -1,6 +1,6 @@
 # 比赛版最小接口约定
 
-> 原有 MVP 的核查基线为 `feat/15-local-repo-input` 的 `8a6a19c`；独立扩展入口在后续 `feat/19-extension-seams` 分支实现。**IMPLEMENTED** 表示对应分支已能从代码验证的行为，不表示已合入 `main`；**PROPOSED** 表示业务能力仍待实现。接口不仅是函数名，还包括输入约束、来源版本、错误、调用顺序和结果性质。本文不定义长期 Project Model Schema。
+> 状态：下文 **IMPLEMENTED** 的 MVP 入口与独立扩展入口已合入 `core/main`；合入不等于团队已批准这个 SHA 作为正式共同开发基线。**PROPOSED** 的业务能力仍待实现。接口不仅是函数名，还包括输入约束、来源版本、错误、调用顺序和结果性质。本文是模块数据 Contract；四人职责只以 [协作约定](COLLABORATION_CONTRACT.md) 为准，不定义长期 Project Model Schema。
 
 ## 共同词汇与不变量
 
@@ -53,7 +53,7 @@
 
 `POST /api/explain`，`Content-Type: application/json`，JSON `{base:<完整SHA>, target:<完整SHA>, nodeId:<快照节点ID>}`，请求体当前不超过 2,048 字节。成功 → `{status:"ai_candidate",model,nodeId,baseRevision,targetRevision,changedEvidencePaths,diffTruncated,explanation,note}`；`explanation` 含 `summary:string, observations:string[], possibleEffects:string[], unknowns:string[], evidencePaths:string[]`。只对节点声明且本次变化的证据路径取差异，发往模型的差异最多 12,000 字符；`evidencePaths` 只能引用这些路径。未配置、模型不可用或返回不合约定时失败，不应显示为已确认结论。当前实现可自动化验证请求形状，尚未在本机真实调用外部模型。
 
-同一能力在本地 Python 里可调用 `explain_change(repo, map_path, base_ref, target_ref, node_id) -> dict`，有界 Git 差异在函数内部构造。它**不是**可复用的通用 `build_change_context` 模块：若 B/C/D 想复用差异范围，先按当前接口调用或提出小型提取 PR，由 A 负责公共接线，不能各自复制一套 Git 选择规则。
+同一能力在本地 Python 里可调用 `explain_change(repo, map_path, base_ref, target_ref, node_id) -> dict`，有界 Git 差异在函数内部构造。它**不是**可复用的通用 `build_change_context` 模块：其他功能若想复用差异范围，先按当前接口调用或提出小型提取 PR；公共接线责任以 [协作约定](COLLABORATION_CONTRACT.md) 为准，不能各自复制一套 Git 选择规则。
 
 前端“保存临时布局”写当前浏览器的 `localStorage`；“导出图草稿 JSON”得到 `{status:"temporary_unconfirmed_draft",note,exportedAt,repository,revision,mapOrigin,nodes,edges,comparison?}`。`nodes` 的 `position` 是拖动后位置；它不改变职责、节点或关系，也不自动写入 model 仓库。`comparison` 为 JSON 对象或 `null`。**当前导出不含 AI 解释，也不含独立地图版本**；另一位协同者不能仅凭它复核完整 AI 结论。同名本地仓库当前可能共用布局键，因此多仓库并行使用时需复核导出内容；这是待修缺口，不应把该键当跨仓库身份。
 
@@ -63,19 +63,19 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404
 
 ### 独立扩展入口
 
-当前分支已实现 `extensions/<功能名>/extension.py` 的自动发现、独立 HTTP 数据入口和可选独立页面。新增一个扩展只需修改自己的目录及测试；服务重启后主页侧栏自动出现入口。详情、错误行为和样例见 [独立扩展接口](EXTENSION_INTERFACE.md)。这是功能接入方式，B/C/D 的业务能力仍须分别实现和验收；它不会自动修改人工功能图。
+`core/main` 已实现 `extensions/<功能名>/extension.py` 的自动发现、独立 HTTP 数据入口和可选独立页面。新增一个扩展只需修改自己的目录及测试；服务重启后主页侧栏自动出现入口。详情、错误行为和样例见 [独立扩展接口](EXTENSION_INTERFACE.md)。这是功能接入方式，CodeFacts、MapProposal、Handoff 的业务能力仍须分别实现和验收；它不会自动修改人工功能图。
 
 ## PROPOSED：下一轮新增能力的最小交换约定
 
-以下字段只为当前四人并行服务，不是 Master Spec 的四层模型或永久 Schema。负责人不必逐字段决定普通工程细节；实现者需要在首个 PR 固定样例和错误行为。B/C/D 分别在自己的扩展目录中实现功能、页面与 HTTP 数据入口；若要把结果嵌入现有主图，再由 A 处理共享界面。
+以下字段只为当前并行开发提供数据交换边界，不是 Master Spec 的四层模型或永久 Schema。实现者需要在首个 PR 固定样例和错误行为。各扩展在自身目录实现功能、页面与 HTTP 数据入口；输出嵌入现有主图的职责见 [协作约定](COLLABORATION_CONTRACT.md)。
 
-**接入状态：通用扩展路由与页面入口已经实现，下文 B/C/D 的业务函数仍是提案。** 已实现的 `Snapshot` 和 `Comparison` 是可读取的 JSON 交换面。B/C/D 可以用 [同一份合成合约样例](MVP_CONTRACT_EXAMPLE.json) 独立开发和验证；该文件只用于测试交换形状，不代表仓库里真实存在 `src/entry.py`。各功能自己实现 `handle` 并调用自己的业务函数；现有路由的响应字段须保留，或明确提供兼容过渡。
+**接入状态：通用扩展路由与页面入口已经实现，下文 CodeFacts、MapProposal、Handoff 的业务函数仍是提案。** 已实现的 `Snapshot` 和 `Comparison` 是可读取的 JSON 交换面。可用 [同一份合成合约样例](MVP_CONTRACT_EXAMPLE.json) 独立开发和验证；该文件只用于测试交换形状，不代表仓库里真实存在 `src/entry.py`。各功能自己实现 `handle` 并调用自己的业务函数；现有路由的响应字段须保留，或明确提供兼容过渡。
 
-### A：地图来源补丁与跨请求一致性
+### 地图来源补丁与跨请求一致性
 
-在 `Snapshot`、`Comparison` 和两种导出中增加同含义的地图身份，例如 `mapSource: {kind:"local_curated_file", digest:"sha256:<64位摘要>", confirmedForRevision:null}`。`digest` 必须对本次实际读取的地图字节计算；`confirmedForRevision:null` 表示团队尚未核查适用版本，**即使地图文件恰好处在代码仓库中也不能自动改成提交 SHA**。比较基于另一份地图内容时，不可继续显示为同一次快照的“待复核节点”：A 可让服务端返回不匹配错误，或让界面强制刷新并提示，具体由 A 在 PR 固定。`Snapshot.revision` 仍只表示代码提交。此补丁的首个验收是“同一代码 SHA、改地图内容 → digest 改变且用户看到地图状态”。这比提前设计正式 model 仓库格式小得多。
+在 `Snapshot`、`Comparison` 和两种导出中增加同含义的地图身份，例如 `mapSource: {kind:"local_curated_file", digest:"sha256:<64位摘要>", confirmedForRevision:null}`。`digest` 必须对本次实际读取的地图字节计算；`confirmedForRevision:null` 表示团队尚未核查适用版本，**即使地图文件恰好处在代码仓库中也不能自动改成提交 SHA**。比较基于另一份地图内容时，不可继续显示为同一次快照的“待复核节点”：实现可让服务端返回不匹配错误，或让界面强制刷新并提示，具体在 PR 固定。`Snapshot.revision` 仍只表示代码提交。此补丁的首个验收是“同一代码 SHA、改地图内容 → digest 改变且用户看到地图状态”。这比提前设计正式 model 仓库格式小得多。
 
-### B：`collect_code_facts(repo, revision, paths=None) -> CodeFacts`
+### `collect_code_facts(repo, revision, paths=None) -> CodeFacts`
 
 输入：已解析的本地 Git 仓库根目录、完整提交 SHA、可选的仓库相对路径列表。输出最少为：
 
@@ -89,9 +89,9 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404
 }
 ```
 
-`entries` 是在该提交中能核查的代码事实，允许为空；`line` 是该版本的 1 起始行号。首版可只支持一门在演示仓库实际使用的语言，其他文件进入 `skipped`；不能为满足图而猜造函数。输入路径不存在、提交无效时给明确错误，不在后台偷偷读取当前工作区。此输出不负责判断“功能模块”或建立全量调用图。B 用一个临时 Git 仓库的已知文本作独立验收。
+`entries` 是在该提交中能核查的代码事实，允许为空；`line` 是该版本的 1 起始行号。首版可只支持一门在演示仓库实际使用的语言，其他文件进入 `skipped`；不能为满足图而猜造函数。输入路径不存在、提交无效时给明确错误，不在后台偷偷读取当前工作区。此输出不负责判断“功能模块”或建立全量调用图。用一个临时 Git 仓库的已知文本作独立验收。
 
-### C：`suggest_map(snapshot, code_facts) -> MapProposal`
+### `suggest_map(snapshot, code_facts) -> MapProposal`
 
 输入：同一提交的 `Snapshot` 和 `CodeFacts`；若 SHA 不一致，拒绝生成。输出最少为：
 
@@ -104,11 +104,11 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404
 }
 ```
 
-初版可给一个稳定的“根据当前人工节点和代码事实补充候选说明”的例子，不要求自动构造整仓架构；若调用 LLM，仍需显式配置、限制输入、保留未知项。`evidencePaths` 必须从输入真实路径中选；若没有足够依据，返回空 `candidates` 与原因。C 先用本文固定样例独立测试，B 输出可用后再联调。候选不得写回 `data/project-map.json` 或正式 model 仓库。
+初版可给一个稳定的“根据当前人工节点和代码事实补充候选说明”的例子，不要求自动构造整仓架构；若调用 LLM，仍需显式配置、限制输入、保留未知项。`evidencePaths` 必须从输入真实路径中选；若没有足够依据，返回空 `candidates` 与原因。先用本文固定样例独立测试，真实 CodeFacts 输出可用后再联调。候选不得写回 `data/project-map.json` 或正式 model 仓库。
 
-`status:"ai_candidate"` 只用于确实经过模型生成的结果。C 首日可用可控模型响应验证接口；无可用模型时返回明确的未配置状态，不用规则结果冒充 AI。以后若增加纯规则候选，另标生成方式。
+`status:"ai_candidate"` 只用于确实经过模型生成的结果。首日可用可控模型响应验证接口；无可用模型时返回明确的未配置状态，不用规则结果冒充 AI。以后若增加纯规则候选，另标生成方式。
 
-### D：`build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None) -> Handoff`
+### `build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None) -> Handoff`
 
 输入：当前 `Snapshot`、明确提供的仓库来源 `source_locator={kind:"git_remote"|"local_path",value:<非空字符串>}`、可选 `Comparison`，以及可选的 `/api/explain` 原样成功结果列表；比较目标若不是快照 SHA，拒绝或显式返回不匹配。当前 `Snapshot.repository` 只有目录名，不能用它推算可在另一台机器打开的地址。本机路径交给别的电脑时可能不可用，接收者须按 `kind` 判断。最少输出形状：
 
@@ -129,12 +129,12 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404
 }
 ```
 
-没有比较时 `changes`、`reviewCandidates` 为空列表；传入 AI 解释时 `aiCandidates` 中保留原 `status:"ai_candidate"`、来源路径和 `explanation.unknowns`，不能凭空生成。A 完成地图身份补丁后，`mapRevision` 应升级为实际 `mapSource`，但未确认适用的状态仍保留。不得加入没有来源的“正式架构已确认”字样。D 用非作者在新会话读包后回答“代码证据对应哪个提交、地图版本是否已核查、哪个节点待复核”作为验收；D 可在自己扩展页面提供独立下载，若要接入现有主图导出按钮才由 A 修改共享界面。
+没有比较时 `changes`、`reviewCandidates` 为空列表；传入 AI 解释时 `aiCandidates` 中保留原 `status:"ai_candidate"`、来源路径和 `explanation.unknowns`，不能凭空生成。地图身份补丁完成后，`mapRevision` 应升级为实际 `mapSource`，但未确认适用的状态仍保留。不得加入没有来源的“正式架构已确认”字样。用非作者在新会话读包后回答“代码证据对应哪个提交、地图版本是否已核查、哪个节点待复核”作为验收；扩展页面可提供独立下载，主图导出按钮的共享改动按 [协作约定](COLLABORATION_CONTRACT.md) 处理。
 
 ### 后续提案：`review_draft(draft, reference_snapshot) -> DraftReviewCandidate`
 
-仅在团队决定把“导出后交 AI 分析”接入应用内时实施。输入为导出的 `temporary_unconfirmed_draft` 和供对照的当前快照；先检查仓库来源、代码提交与地图状态是否可比。输出仍是 `ai_candidate`，最少列出**可从两份图直接观察的节点/关系差异**、可能后果、证据节点 ID 和不能判断之处；对不一致版本先返回“不可比较”，不能把临时拖动位置当架构依赖改变。它不写正式图。当前没有这个函数、HTTP 路由或任务责任人；不能把此提案交给 C 当首日隐藏任务。
+仅在团队决定把“导出后交 AI 分析”接入应用内时实施。输入为导出的 `temporary_unconfirmed_draft` 和供对照的当前快照；先检查仓库来源、代码提交与地图状态是否可比。输出仍是 `ai_candidate`，最少列出**可从两份图直接观察的节点/关系差异**、可能后果、证据节点 ID 和不能判断之处；对不一致版本先返回“不可比较”，不能把临时拖动位置当架构依赖改变。它不写正式图。当前没有这个函数、HTTP 路由或任务责任人；不能把此提案当作首日隐藏任务。
 
 ## 改动与验收
 
-每个新增模块的 PR 附上固定输入、实际输出、错误样例、只针对公共接口的必要测试和接入方式。字段含义或版本约束改变时先按 [协作约定](COLLABORATION_CONTRACT.md#5-接口变更办法)通知使用者；扩展路由按已实现的约定自动接入，B/C/D 的业务接口通过验收后才更新本文件的 `IMPLEMENTED` 状态。当前已实现出口不会因为本提案而自动改变。
+每个新增模块的 PR 附上固定输入、实际输出、错误样例、只针对公共接口的必要测试和接入方式。字段含义或版本约束改变时先按 [协作约定](COLLABORATION_CONTRACT.md#5-接口变更办法)通知使用者；扩展路由按已实现的约定自动接入，各业务接口通过验收后才更新本文件的 `IMPLEMENTED` 状态。当前已实现出口不会因为本提案而自动改变。
