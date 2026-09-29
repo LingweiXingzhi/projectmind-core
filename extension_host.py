@@ -80,7 +80,7 @@ class ExtensionHost:
                     metadata["title"], metadata["description"], handle,
                     page if page.is_file() and not page.is_symlink() else None,
                 )
-            except Exception as exc:
+            except (Exception, SystemExit) as exc:
                 self.unavailable[identifier] = f"加载失败：{type(exc).__name__}"
 
     def listing(self) -> dict:

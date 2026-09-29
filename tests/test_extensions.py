@@ -88,6 +88,32 @@ class ExtensionHttpTests(unittest.TestCase):
             urlopen(base + "/api/extensions/broken")
         self.assertEqual(missing.exception.code, 503)
 
+    def test_system_exit_during_load_does_not_stop_core_or_other_extensions(self) -> None:
+        exiting = self.extensions_root / "exiting"
+        exiting.mkdir()
+        (exiting / "extension.py").write_text("import sys\nsys.exit('stop')\n", encoding="utf-8")
+        healthy = self.extensions_root / "healthy"
+        healthy.mkdir()
+        (healthy / "extension.py").write_text(
+            "EXTENSION = {'title': '正常扩展', 'description': '仍可运行'}\n"
+            "def handle(context, method, data):\n"
+            "    return {'ok': True}\n",
+            encoding="utf-8",
+        )
+        try:
+            base = self.start_server()
+        except SystemExit as exc:
+            self.fail(f"Extension loading stopped the core server: {exc}")
+
+        with urlopen(base + "/api/snapshot") as response:
+            self.assertTrue(json.load(response)["nodes"])
+        with urlopen(base + "/api/extensions") as response:
+            listing = {item["id"]: item for item in json.load(response)["extensions"]}
+        self.assertEqual(listing["exiting"]["status"], "unavailable")
+        self.assertEqual(listing["healthy"]["status"], "ready")
+        with urlopen(base + "/api/extensions/healthy") as response:
+            self.assertEqual(json.load(response), {"ok": True})
+
     def test_runtime_failure_is_contained_and_other_routes_still_work(self) -> None:
         folder = self.extensions_root / "runtime_failure"
         folder.mkdir()
