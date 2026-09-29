@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -56,7 +57,50 @@ def files_at_commit(repo: Path, commit: str) -> set[str]:
 
 def load_map(map_path: Path) -> dict:
     with map_path.open(encoding="utf-8") as handle:
-        return json.load(handle)
+        curated = json.load(handle)
+    if not isinstance(curated, dict) or not isinstance(curated.get("note"), str):
+        raise ValueError("Map needs a note string")
+    nodes = curated.get("nodes")
+    edges = curated.get("edges")
+    if not isinstance(nodes, list) or not nodes or not isinstance(edges, list):
+        raise ValueError("Map needs a nonempty nodes list and an edges list")
+    ids = set()
+    for node in nodes:
+        if not isinstance(node, dict) or any(not isinstance(node.get(key), str) or not node[key]
+                                             for key in ("id", "title", "summary", "entryPoint")):
+            raise ValueError("Each map node needs id, title, summary, and entryPoint strings")
+        if node["id"] in ids:
+            raise ValueError(f"Duplicate map node ID: {node['id']}")
+        ids.add(node["id"])
+        position = node.get("position")
+        if not isinstance(position, dict) or any(
+            isinstance(position.get(axis), bool) or not isinstance(position.get(axis), (int, float))
+            or not math.isfinite(position[axis]) or position[axis] < 0 for axis in ("x", "y")
+        ):
+            raise ValueError(f"Map node {node['id']} needs nonnegative finite x/y positions")
+        evidence = node.get("evidence")
+        if not isinstance(evidence, list) or any(
+            not isinstance(item, dict) or not isinstance(item.get("path"), str) or not item["path"]
+            or not isinstance(item.get("reason"), str) for item in evidence
+        ):
+            raise ValueError(f"Map node {node['id']} needs an evidence list with path and reason")
+    for edge in edges:
+        if not isinstance(edge, dict) or not isinstance(edge.get("from"), str) or not isinstance(edge.get("to"), str) \
+                or edge["from"] not in ids or edge["to"] not in ids or not isinstance(edge.get("label"), str):
+            raise ValueError("Each map edge needs known from/to node IDs and a label string")
+    return curated
+
+
+def resolve_sources(repo_path: Path | None, map_path: Path | None) -> tuple[Path, Path]:
+    candidate = (repo_path or ROOT).expanduser().resolve()
+    if not candidate.is_dir():
+        raise ValueError(f"Repository directory does not exist: {candidate}")
+    root = Path(git(candidate, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").strip()).resolve()
+    if root != ROOT and map_path is None:
+        raise ValueError("A different repository requires --map with a curated map JSON file")
+    selected_map = (map_path or MAP_PATH).expanduser().resolve()
+    load_map(selected_map)
+    return root, selected_map
 
 
 def build_snapshot(repo: Path, map_path: Path, revision: str = "HEAD") -> dict:
@@ -374,8 +418,14 @@ def make_handler(repo: Path, map_path: Path):
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the local ProjectMind map demo")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--repo", type=Path, help="Local Git repository to inspect; defaults to this repository")
+    parser.add_argument("--map", type=Path, help="Curated map JSON for the chosen repository")
     args = parser.parse_args()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(ROOT, MAP_PATH))
+    try:
+        repo, map_path = resolve_sources(args.repo, args.map)
+    except (ValueError, GitError, OSError, json.JSONDecodeError) as exc:
+        parser.error(str(exc))
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(repo, map_path))
     print(f"ProjectMind demo: http://127.0.0.1:{server.server_port}", flush=True)
     try:
         server.serve_forever()

@@ -29,6 +29,16 @@ python app.py
 
 这一步验证“图 → 详情 → Git 来源 → 版本变化 → 待复核候选 → 可选 AI 解释 → 临时布局与导出”的运行路径。演示图不代表自动识别出的架构，也不代表团队批准的正式 Project Model。
 
+## 查看另一个本地 Git 仓库
+
+可以在启动时指定仓库及其**人工整理的地图 JSON**。这里不自动扫描代码，也不会在启动时读取未指定的其他项目：
+
+```powershell
+python app.py --repo "仓库完整路径" --map "地图 JSON 完整路径"
+```
+
+地图文件可参照 `data/project-map.json`：顶层需要 `note`、`nodes`、`edges`；每个节点需要 `id`、`title`、`summary`、`entryPoint`、`position`（`x`/`y` 数字）和 `evidence`（仓库内相对路径 `path` 及说明 `reason`）；每条关系需要已存在的节点 `from`、`to` 和 `label`。目前画布为 680×470，节点约为 185×140；为让节点完整显示，初始位置建议满足 `x` 在 0–495、`y` 在 0–330。程序会在启动时检查地图格式，并按目标仓库的 Git 提交核查来源文件。地图内容仍须人工复核。
+
 运行核心验证：
 
 ```powershell
