@@ -2,6 +2,11 @@ const stage = document.getElementById("map-stage");
 const details = document.getElementById("details-content");
 let snapshot = null;
 let selectedId = null;
+let comparison = null;
+
+function reviewCandidate(id) {
+  return comparison?.reviewCandidates.find((item) => item.nodeId === id);
+}
 
 function element(tag, className, content) {
   const node = document.createElement(tag);
@@ -47,7 +52,7 @@ function renderMap() {
   stage.append(svg);
 
   snapshot.nodes.forEach((node, index) => {
-    const button = element("button", `map-node${node.id === selectedId ? " selected" : ""}`);
+    const button = element("button", `map-node${node.id === selectedId ? " selected" : ""}${reviewCandidate(node.id) ? " review-candidate" : ""}`);
     button.type = "button";
     button.style.left = `${node.position.x}px`;
     button.style.top = `${node.position.y}px`;
@@ -55,6 +60,7 @@ function renderMap() {
     button.append(element("span", "node-number", String(index + 1).padStart(2, "0")));
     button.append(element("strong", "node-title", node.title));
     button.append(element("span", "node-summary", node.summary));
+    if (reviewCandidate(node.id)) button.append(element("span", "node-review", "待复核"));
     button.append(element("span", "node-arrow", "↗"));
     button.addEventListener("click", () => showDetails(node.id));
     stage.append(button);
@@ -72,6 +78,10 @@ function showDetails(id) {
   const title = element("h3", "detail-title", node.title);
   const summary = element("p", "detail-summary", node.summary);
   details.append(tag, title, summary);
+  const candidate = reviewCandidate(id);
+  if (candidate) {
+    details.append(element("div", "review-notice", `来源文件发生变化，建议复核：${candidate.changedEvidencePaths.join("、")}。这不表示架构已经改变。`));
+  }
 
   const entry = element("section", "detail-section");
   entry.append(element("h4", "section-title", "关键入口"));
@@ -134,11 +144,72 @@ async function loadEvidence(path, card, button) {
 function exportSummary() {
   if (!snapshot) return;
   const link = element("a");
-  link.href = `/api/export?${new URLSearchParams({ revision: snapshot.revision })}`;
+  const params = new URLSearchParams({ revision: snapshot.revision });
+  if (comparison) params.set("base", comparison.baseRevision);
+  link.href = `/api/export?${params}`;
   link.download = `projectmind-map-${snapshot.revision.slice(0, 8)}.md`;
   document.body.append(link);
   link.click();
   link.remove();
+}
+
+function renderComparison() {
+  const result = document.getElementById("compare-result");
+  result.replaceChildren();
+  document.getElementById("change-count").textContent = comparison ? `${comparison.changes.length} 个变化文件` : "—";
+  if (!comparison) return;
+  document.getElementById("compare-status").textContent = comparison.note;
+  const files = element("div", "change-list");
+  files.append(element("h3", "section-title", "真实 Git 变化"));
+  if (!comparison.changes.length) files.append(element("p", "no-changes", "这两个提交之间没有文件变化。"));
+  for (const change of comparison.changes) {
+    const row = element("div", "change-row");
+    const label = change.code.startsWith("R") ? "重命名" : ({ A: "新增", M: "修改", D: "删除" }[change.code] || change.code);
+    row.append(element("span", "change-code", label));
+    row.append(element("code", "change-path", change.oldPath ? `${change.oldPath} → ${change.path}` : change.path));
+    files.append(row);
+  }
+  const candidates = element("div", "candidate-list");
+  candidates.append(element("h3", "section-title", `待复核节点 · ${comparison.reviewCandidates.length}`));
+  if (!comparison.reviewCandidates.length) candidates.append(element("p", "no-changes", "当前地图没有节点直接引用这些变化文件。"));
+  for (const candidate of comparison.reviewCandidates) {
+    const node = snapshot.nodes.find((item) => item.id === candidate.nodeId);
+    if (!node) continue;
+    const button = element("button", "candidate-button", `${node.title} ↗`);
+    button.type = "button";
+    button.addEventListener("click", () => showDetails(node.id));
+    candidates.append(button);
+  }
+  result.append(files, candidates);
+}
+
+async function compareVersions() {
+  if (!snapshot) return;
+  const base = document.getElementById("base-revision").value.trim();
+  const status = document.getElementById("compare-status");
+  if (!/^[0-9a-f]{40,64}$/i.test(base)) {
+    comparison = null;
+    renderComparison();
+    status.textContent = "请输入完整的基准提交 ID。";
+    if (selectedId) showDetails(selectedId);
+    return;
+  }
+  status.textContent = "正在读取 Git 差异…";
+  try {
+    const params = new URLSearchParams({ base, target: snapshot.revision });
+    const response = await fetch(`/api/compare?${params}`);
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "无法比较提交");
+    comparison = result;
+    renderComparison();
+    if (selectedId) showDetails(selectedId);
+    else renderMap();
+  } catch (error) {
+    comparison = null;
+    renderComparison();
+    status.textContent = `比较失败：${error.message}`;
+    if (selectedId) showDetails(selectedId);
+  }
 }
 
 async function init() {
@@ -148,15 +219,22 @@ async function init() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "无法读取仓库");
     snapshot = result;
+    comparison = null;
     document.getElementById("repo-name").textContent = result.repository;
     document.getElementById("revision").textContent = result.revision;
     document.getElementById("branch-name").textContent = result.branch;
     document.getElementById("node-count").textContent = `${result.nodes.length} 个功能部分`;
     document.getElementById("map-note").textContent = result.mapNote;
+    document.getElementById("target-revision").textContent = result.revision;
+    document.getElementById("base-revision").value = result.parentRevision || "";
+    document.getElementById("compare-button").disabled = !result.parentRevision;
+    document.getElementById("compare-status").textContent = result.parentRevision ? "准备比较相邻提交…" : "当前提交没有父提交。";
+    renderComparison();
     document.getElementById("export-button").disabled = false;
     selectedId = result.nodes[0]?.id || null;
     if (selectedId) showDetails(selectedId);
     else renderMap();
+    if (result.parentRevision) await compareVersions();
   } catch (error) {
     stage.replaceChildren(element("div", "loading error", `地图读取失败：${error.message}`));
     document.getElementById("revision").textContent = "无法读取";
@@ -165,4 +243,5 @@ async function init() {
 
 document.getElementById("refresh-button").addEventListener("click", init);
 document.getElementById("export-button").addEventListener("click", exportSummary);
+document.getElementById("compare-button").addEventListener("click", compareVersions);
 init();

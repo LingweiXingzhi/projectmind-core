@@ -57,6 +57,18 @@
               <div class="map-card-footer"><span><i class="legend-dot current"></i> 功能部分</span><span><i class="legend-line"></i> 已描述的关系</span><span class="map-note">结构由人整理；来源文件由 Git 核查</span></div>
             </div>
 
+            <div class="compare-card" aria-labelledby="compare-title">
+              <div class="compare-heading"><div><span class="eyebrow">GIT CHANGE / 02</span><h2 id="compare-title">对照两个真实提交</h2><p>Git 列出变化文件；地图只标记来源文件发生变化的待复核节点。</p></div><span id="change-count" class="count-label">—</span></div>
+              <div class="compare-controls">
+                <label>基准提交 SHA<input id="base-revision" type="text" spellcheck="false" placeholder="输入完整提交 ID" /></label>
+                <div class="compare-arrow">→</div>
+                <div class="target-revision"><span>目标提交</span><code id="target-revision">读取中…</code></div>
+                <button class="button ghost" id="compare-button" type="button" disabled>比较变化</button>
+              </div>
+              <div id="compare-status" class="compare-status">读取中…</div>
+              <div id="compare-result" class="compare-result"></div>
+            </div>
+
             <div class="scope-card"><span>ⓘ</span><p id="map-note">正在读取地图说明…</p></div>
           </section>
 
