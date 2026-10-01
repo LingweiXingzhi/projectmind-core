@@ -1,0 +1,71 @@
+{
+  "revision": "b0e7d56b1d148b9489c8330b1ed5718ad1f037a2",
+  "files": [
+    {
+      "path": "empty.py",
+      "language": "python",
+      "entries": []
+    },
+    {
+      "path": "user.py",
+      "language": "python",
+      "entries": [
+        {
+          "name": "login",
+          "kind": "function",
+          "line": 2
+        },
+        {
+          "name": "UserService",
+          "kind": "class",
+          "line": 5
+        },
+        {
+          "name": "UserService.save",
+          "kind": "method",
+          "line": 6
+        },
+        {
+          "name": "UserService.fetch",
+          "kind": "async_method",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "path": "utils.py",
+      "language": "python",
+      "entries": [
+        {
+          "name": "normalize_name",
+          "kind": "function",
+          "line": 1
+        },
+        {
+          "name": "outer",
+          "kind": "function",
+          "line": 4
+        },
+        {
+          "name": "outer.inner",
+          "kind": "function",
+          "line": 5
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "path": "broken.py",
+      "reason": "无法按当前 Python 解析器读取编码或语法"
+    },
+    {
+      "path": "image.bin",
+      "reason": "首版仅支持 .py Python 文件"
+    },
+    {
+      "path": "notes.md",
+      "reason": "首版仅支持 .py Python 文件"
+    }
+  ]
+}
