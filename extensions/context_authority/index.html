@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Context Authority Inspector</title>
+<style>
+  body { font-family: Consolas, monospace; margin: 24px; background: #fafafa; color: #222; }
+  h1 { font-size: 20px; } h2 { font-size: 15px; margin-top: 22px; border-bottom: 1px solid #ddd; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #eee; }
+  .ok { color: #0a7d32; } .warn { color: #b26a00; } .bad { color: #b21d1d; }
+  .small { color: #666; font-size: 12px; }
+  pre { background: #f0f0f0; padding: 8px; font-size: 12px; white-space: pre-wrap; }
+  button { margin: 4px 6px 12px 0; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<h1>Context Authority Inspector</h1>
+<div class="small">派生视图 — 当前事实底座（不是需要人工维护的第二份真源）。registry hash: <span id="hash">…</span></div>
+<button onclick="load('state')">CURRENT</button>
+<button onclick="load('conflicts')">CONFLICTS</button>
+<button onclick="load('claims')">RAW CLAIMS</button>
+<div id="out">loading…</div>
+<script>
+async function load(action) {
+  const out = document.getElementById("out");
+  out.textContent = "loading…";
+  const res = await fetch(`/api/extensions/context_authority?action=${action}`);
+  const data = await res.json();
+  if (action === "state" || action === undefined) return renderState(data);
+  if (action === "conflicts") return renderConflicts(data);
+  out.innerHTML = "<pre>" + JSON.stringify(data, null, 1) + "</pre>";
+}
+function renderState(s) {
+  document.getElementById("hash").textContent = s.registry_hash || "";
+  let html = "<h2>CURRENT PROJECT STATE</h2><table><tr><th>key</th><th>value</th><th>type</th><th>source</th></tr>";
+  for (const [k, v] of Object.entries(s.current || {})) {
+    html += `<tr><td>${k}</td><td><pre>${JSON.stringify(v.value)}</pre></td><td>${v.type}</td><td class="small">${v.source.kind}: ${v.source.ref || ""}</td></tr>`;
+  }
+  html += "</table>";
+  html += `<h2>CONFLICTS <span class="${s.conflicts.length ? "bad" : "ok"}">⚠ ${s.conflicts.length}</span> <span class="small">(HUMAN_REQUIRED)</span></h2>`;
+  for (const c of s.conflicts || []) {
+    html += `<div>· <b>${c.key}</b>: ${c.claims.map(x => x.claim_id + "=" + JSON.stringify(x.value)).join(" vs ")}</div>`;
+  }
+  html += `<h2>STALE / SUPERSEDED <span class="warn">⚠ ${(s.stale || []).length}</span></h2><div class="small">` +
+    (s.stale || []).map(x => `· ${x.claim_id} [${x.state}] ${x.key}`).join("<br>") + "</div>";
+  html += `<h2>PROPOSALS ○ ${(s.proposals || []).length} · RESEARCH ○ ${(s.research || []).length} · HISTORICAL ○ ${(s.historical || []).length}</h2><div class="small">` +
+    (s.proposals || []).concat(s.research || []).map(x => `· ${x.claim_id} (${x.type}) ${x.key}`).join("<br>") + "</div>";
+  if ((s.verification_unavailable || []).length) {
+    html += `<h2 class="warn">VERIFICATION UNAVAILABLE</h2><div class="small">` +
+      s.verification_unavailable.map(x => `· ${x.key}: ${x.reason}`).join("<br>") + "</div>";
+  }
+  out.innerHTML = html;
+}
+function renderConflicts(c) {
+  document.getElementById("out").innerHTML =
+    `<h2>Conflicts: ${(c.conflicts || []).length}</h2><pre>${JSON.stringify(c.conflicts, null, 1)}</pre>`;
+}
+load("state");
+</script>
+</body>
+</html>
