@@ -10,6 +10,8 @@ API (follows docs/standards/EXTENSION_INTERFACE.md):
   POST {"action": "resolve_state"}                    -> CURRENT_STATE
   POST {"action": "context", "task": "...",           -> Context Pack
         "revision": optional, "verify": optional bool}
+  POST {"action": "validate_context", "pack": {...},  -> validated Context Pack
+        "expected_revision": optional full SHA}
 POST ≤65,536 bytes per the shared extension contract. Strict key validation.
 The resolver is deterministic: no LLM, no timestamps-wins, no silent fallback.
 """
@@ -20,7 +22,7 @@ from pathlib import Path
 
 from extension_host import ExtensionError
 
-from extensions.context_authority.context_pack import build_context_pack
+from extensions.context_authority.context_pack import build_context_pack, validate_context_pack
 from extensions.context_authority.registry import RegistryProblems, load_registry
 from extensions.context_authority.resolver import resolve
 from extensions.context_authority.verifiers import build_default_verifiers
@@ -32,7 +34,7 @@ EXTENSION = {
 
 REGISTRY_PATH = Path(__file__).resolve().parent / "data" / "claims.jsonl"
 GET_ACTIONS = ("state", "claims", "conflicts")
-POST_ACTIONS = ("resolve_state", "context")
+POST_ACTIONS = ("resolve_state", "context", "validate_context")
 
 
 def _resolve_state(context) -> dict:
@@ -46,6 +48,8 @@ def handle(context, method: str, data: dict) -> dict:
     if method not in ("GET", "POST"):
         raise ExtensionError(HTTPStatus.METHOD_NOT_ALLOWED, "只支持 GET 或 POST")
     if method == "GET":
+        if data is not None and not isinstance(data, dict):
+            raise ExtensionError(HTTPStatus.BAD_REQUEST, "查询参数必须是对象")
         action = (data or {}).get("action", "state")
         if action not in GET_ACTIONS:
             raise ExtensionError(HTTPStatus.BAD_REQUEST,
@@ -62,16 +66,24 @@ def handle(context, method: str, data: dict) -> dict:
 
     if not isinstance(data, dict):
         raise ExtensionError(HTTPStatus.BAD_REQUEST, "请求体必须是 JSON 对象")
-    unknown = set(data) - {"action", "task", "revision", "verify"}
-    if unknown:
-        raise ExtensionError(HTTPStatus.BAD_REQUEST,
-                             f"输入仅接受 action/task/revision/verify，收到 {sorted(unknown)}")
     action = data.get("action")
     if action not in POST_ACTIONS:
         raise ExtensionError(HTTPStatus.BAD_REQUEST,
                              f"POST action 须为 {POST_ACTIONS} 之一")
+    allowed = {"resolve_state": {"action"},
+               "context": {"action", "task", "revision", "verify"},
+               "validate_context": {"action", "pack", "expected_revision"}}[action]
+    unknown = set(data) - allowed
+    if unknown:
+        raise ExtensionError(HTTPStatus.BAD_REQUEST,
+                             f"{action} 输入仅接受 {sorted(allowed)}，收到 {sorted(unknown)}")
     if action == "resolve_state":
         return _resolve_state(context)
+    if action == "validate_context":
+        try:
+            return validate_context_pack(data.get("pack"), data.get("expected_revision"))
+        except ValueError as exc:
+            raise ExtensionError(HTTPStatus.BAD_REQUEST, str(exc)) from exc
     task = data.get("task")
     if not isinstance(task, str) or not task.strip():
         raise ExtensionError(HTTPStatus.BAD_REQUEST, "action=context 需要 task 字符串")

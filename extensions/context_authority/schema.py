@@ -9,6 +9,7 @@ Design rules (see CONTEXT_AUTHORITY_MVP_REPORT.md):
 """
 from __future__ import annotations
 
+import json
 import re
 from http import HTTPStatus
 
@@ -88,8 +89,7 @@ def validate_claim(claim: object) -> dict:
     scope = claim["scope"]
     if not isinstance(scope, str) or not SCOPE_PATTERN.fullmatch(scope):
         raise ClaimValidationError(f"bad scope {scope!r} (id={cid})")
-    if not isinstance(claim["value"], (dict, str, int, float, bool, list)):
-        raise ClaimValidationError(f"value must be JSON scalar/object; id={cid}")
+    validate_json_value(claim["value"], cid)
     src = claim["source"]
     if not isinstance(src, dict) or not src:
         raise ClaimValidationError(f"source must be a non-empty object; id={cid}")
@@ -99,8 +99,14 @@ def validate_claim(claim: object) -> dict:
     if src.get("kind") not in KNOWN_SOURCES:
         raise ClaimValidationError(
             f"source.kind must be one of {KNOWN_SOURCES}; id={cid}")
-    if not isinstance(src.get("ref", ""), str):
-        raise ClaimValidationError(f"source.ref must be a string; id={cid}")
+    if src["kind"] == "research_artifact" and ctype in CURRENT_ELIGIBLE:
+        raise ClaimValidationError(
+            f"research_artifact cannot establish current authority for {ctype}; "
+            f"record distinct human confirmation with a human source; id={cid}")
+    if not isinstance(src.get("ref"), str) or not src["ref"].strip():
+        raise ClaimValidationError(f"source.ref must be a non-empty string; id={cid}")
+    if "revision" in src and not (isinstance(src["revision"], str) and src["revision"]):
+        raise ClaimValidationError(f"source.revision must be a non-empty string; id={cid}")
     sup = claim.get("supersedes", [])
     if not isinstance(sup, list) or any(not isinstance(x, str) for x in sup):
         raise ClaimValidationError(f"supersedes must be a list of claim ids; id={cid}")
@@ -111,6 +117,30 @@ def validate_claim(claim: object) -> dict:
             isinstance(claim["revision"], str) and claim["revision"]):
         raise ClaimValidationError(f"revision must be a non-empty string; id={cid}")
     return claim
+
+
+def validate_json_value(value, cid: str = "live") -> None:
+    """Reject Python-only structures and non-finite numbers, including nested ones."""
+    pending = [value]
+    seen = set()
+    while pending:
+        item = pending.pop()
+        if isinstance(item, (dict, list)):
+            if id(item) in seen:
+                continue
+            seen.add(id(item))
+            if isinstance(item, dict):
+                if any(not isinstance(k, str) for k in item):
+                    raise ClaimValidationError(f"JSON object keys must be strings; id={cid}")
+                pending.extend(item.values())
+            else:
+                pending.extend(item)
+        elif item is not None and not isinstance(item, (str, int, float, bool)):
+            raise ClaimValidationError(f"value must contain only JSON values; id={cid}")
+    try:
+        json.dumps(value, allow_nan=False)
+    except (ValueError, TypeError, RecursionError) as exc:
+        raise ClaimValidationError(f"value must be finite, acyclic JSON; id={cid}") from exc
 
 
 def normalize_claim(claim: dict) -> dict:

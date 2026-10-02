@@ -270,7 +270,7 @@ class RealDriftFixtureTests(unittest.TestCase):
         hist = [h for h in self.state["historical"]
                 if h["claim_id"] == "claim-b-not-implemented"]
         self.assertEqual(hist[0]["value"], "NOT_IMPLEMENTED")
-        self.assertNotIn("NOT_IMPLEMENTED", json.dumps(self.state["current"]))
+        self.assertNotIn("NOT_IMPLEMENTED", json.dumps(cur))
 
     # ---- F4 old line reference vs current code line
     def test_f4_line_reference(self):
@@ -332,7 +332,10 @@ class ConstructedScenarioTests(unittest.TestCase):
         state = resolve(
             [claim("claim-f", "implementation.thing", {"v": 1}, "VERIFIED_FACT")],
             verifiers={"implementation.thing": verifier})
-        self.assertEqual(state["current"]["implementation.thing"]["value"], {"v": 1})
+        # An unavailable live check cannot certify the recorded volatile value.
+        self.assertNotIn("implementation.thing", state["current"])
+        self.assertEqual(state["stale"][0]["value"], {"v": 1})
+        self.assertEqual(state["stale"][0]["verification_status"], "unavailable")
         self.assertEqual(state["verification_unavailable"][0]["reason"], "offline")
 
 
@@ -367,7 +370,7 @@ class HandleLayerTests(unittest.TestCase):
 
     def test_get_claims_and_conflicts(self):
         claims = self.ext.handle(self.ctx, "GET", {"action": "claims"})
-        self.assertEqual(len(claims["claims"]), 19)
+        self.assertEqual(len(claims["claims"]), 23)
         conflicts = self.ext.handle(self.ctx, "GET", {"action": "conflicts"})
         self.assertEqual(conflicts["conflicts"], [])
 

@@ -26,36 +26,55 @@
 async function load(action) {
   const out = document.getElementById("out");
   out.textContent = "loading…";
-  const res = await fetch(`/api/extensions/context_authority?action=${action}`);
-  const data = await res.json();
-  if (action === "state" || action === undefined) return renderState(data);
-  if (action === "conflicts") return renderConflicts(data);
-  out.innerHTML = "<pre>" + JSON.stringify(data, null, 1) + "</pre>";
+  try {
+    const res = await fetch(`/api/extensions/context_authority?action=${action}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (action === "state" || action === undefined) return renderState(data);
+    if (action === "conflicts") return renderConflicts(data);
+    out.replaceChildren(element("pre", JSON.stringify(data, null, 2)));
+  } catch (error) {
+    out.textContent = `Context Authority unavailable: ${error.message}`;
+  }
+}
+function element(tag, text) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function details(row, title) {
+  const node = element("details");
+  node.append(element("summary", title), element("pre", JSON.stringify(row, null, 2)));
+  return node;
 }
 function renderState(s) {
   document.getElementById("hash").textContent = s.registry_hash || "";
-  let html = "<h2>CURRENT PROJECT STATE</h2><table><tr><th>key</th><th>value</th><th>type</th><th>source</th></tr>";
-  for (const [k, v] of Object.entries(s.current || {})) {
-    html += `<tr><td>${k}</td><td><pre>${JSON.stringify(v.value)}</pre></td><td>${v.type}</td><td class="small">${v.source.kind}: ${v.source.ref || ""}</td></tr>`;
+  const out = document.getElementById("out");
+  out.replaceChildren(element("h2", "CURRENT PROJECT STATE"));
+  const table = element("table");
+  const header = element("tr");
+  for (const title of ["key / scope", "value", "type", "evidence"]) header.append(element("th", title));
+  table.append(header);
+  const rows = s.current_by_scope || Object.entries(s.current || {}).map(([key, value]) => ({key, ...value}));
+  for (const row of rows) {
+    const tr = element("tr");
+    tr.append(element("td", `${row.key} / ${row.scope}`), element("td", JSON.stringify(row.value)), element("td", row.type));
+    const td = element("td");
+    td.append(details(row, (row.claim_ids || []).join(", ")));
+    tr.append(td);
+    table.append(tr);
   }
-  html += "</table>";
-  html += `<h2>CONFLICTS <span class="${s.conflicts.length ? "bad" : "ok"}">⚠ ${s.conflicts.length}</span> <span class="small">(HUMAN_REQUIRED)</span></h2>`;
-  for (const c of s.conflicts || []) {
-    html += `<div>· <b>${c.key}</b>: ${c.claims.map(x => x.claim_id + "=" + JSON.stringify(x.value)).join(" vs ")}</div>`;
+  out.append(table);
+  for (const [field, title] of [["conflicts", "CONFLICTS — HUMAN_REQUIRED"], ["registry_problems", "REGISTRY PROBLEMS — HUMAN_REQUIRED"], ["stale", "STALE / SUPERSEDED"], ["proposals", "PROPOSALS"], ["research", "RESEARCH"], ["historical", "HISTORICAL"], ["verification_unavailable", "VERIFICATION UNAVAILABLE"]]) {
+    const items = s[field] || [];
+    const heading = element("h2", `${title}: ${items.length}`);
+    heading.className = items.length && ["conflicts", "registry_problems"].includes(field) ? "bad" : "warn";
+    out.append(heading);
+    for (const row of items) out.append(details(row, `${row.key || row.kind || ""} / ${row.scope || ""} ${row.claim_id || ""}`));
   }
-  html += `<h2>STALE / SUPERSEDED <span class="warn">⚠ ${(s.stale || []).length}</span></h2><div class="small">` +
-    (s.stale || []).map(x => `· ${x.claim_id} [${x.state}] ${x.key}`).join("<br>") + "</div>";
-  html += `<h2>PROPOSALS ○ ${(s.proposals || []).length} · RESEARCH ○ ${(s.research || []).length} · HISTORICAL ○ ${(s.historical || []).length}</h2><div class="small">` +
-    (s.proposals || []).concat(s.research || []).map(x => `· ${x.claim_id} (${x.type}) ${x.key}`).join("<br>") + "</div>";
-  if ((s.verification_unavailable || []).length) {
-    html += `<h2 class="warn">VERIFICATION UNAVAILABLE</h2><div class="small">` +
-      s.verification_unavailable.map(x => `· ${x.key}: ${x.reason}`).join("<br>") + "</div>";
-  }
-  out.innerHTML = html;
 }
 function renderConflicts(c) {
-  document.getElementById("out").innerHTML =
-    `<h2>Conflicts: ${(c.conflicts || []).length}</h2><pre>${JSON.stringify(c.conflicts, null, 1)}</pre>`;
+  document.getElementById("out").replaceChildren(element("h2", `Conflicts: ${(c.conflicts || []).length} — HUMAN_REQUIRED`), element("pre", JSON.stringify(c.conflicts || [], null, 2)));
 }
 load("state");
 </script>

@@ -47,7 +47,7 @@
    - value 全等 → 折叠为一条 ACTIVE（claim_ids 并列，按 id 排序）；
    - value 不等 → 全体 `CONFLICTED`，输出 `{status: CONFLICT, resolution: HUMAN_REQUIRED}`，**绝不自动选赢家**；
    - 时间戳不参与任何比较（T8）。
-3. **stale 检测**（仅 VERIFIED_FACT 且 key 注册了 live verifier）：存储 value ≠ live value → 旧 claim `STALE`（附 live_value），并派生确定性 auto-claim（`claim-auto-<key>`）为 ACTIVE；verifier 不可用 → 记入 `verification_unavailable`，**不伪造**。
+3. **stale 检测**（仅 VERIFIED_FACT 且 key 注册了 live verifier）：存储 value ≠ live value → 旧 claim `STALE`（附 live_value），并派生确定性 auto-claim 为 ACTIVE；verifier 不可用 → 旧值退出 current，保留 STALE provenance，记入 `verification_unavailable`。
 4. **current 白名单**：只有 VERIFIED_FACT / HUMAN_DECISION / CONTRACT 可进 current；PROPOSAL→proposals、RESEARCH→research、HISTORICAL→historical。
 5. **确定性**：所有输出排序；registry 行序不影响结果（T13/T14）；`registry_hash = sha256(按 id 排序的规范 JSON)`。
 
@@ -65,19 +65,25 @@
 ## 5. Context Pack
 
 `build_context_pack(task, repo_root, registry_path, revision=None, run_verifiers=True)`
-→ `{task, task_domains, project_revision, current_state, relevant_contracts,
+→ `{schema_version:"0.1", task, task_domains, project_revision, current_state, relevant_contracts,
 human_decisions, verified_facts, known_conflicts, known_stale_sources,
-proposals, research_notes, do_not_assume, verification_unavailable,
-registry_problems, evidence[]}`——每条均带 claim_id/source/revision。
+proposals, research_notes, historical_sources, do_not_assume, verification_unavailable,
+registry_problems, evidence[], integrity}`。project_revision 从 Git 解析，显式输入要求完整小写 40/64 字符 commit SHA。evidence 区分 claim_revision/source_revision，保留每条 claim 的独立来源。
 
 ## 6. API（遵循 EXTENSION_INTERFACE）
 
 - `GET /api/extensions/context_authority?action=state|claims|conflicts`
 - `POST /api/extensions/context_authority` ≤65536B：
-  `{"action":"resolve_state"}` 或 `{"action":"context","task":"...","revision"?:"...","verify"?:"bool"}`
+  `{"action":"resolve_state"}`、`{"action":"context","task":"...","revision"?:"...","verify"?:"bool"}` 或 `{"action":"validate_context","pack":{...},"expected_revision"?:"..."}`
 - 严格键校验；未知字段/未知 action → 400；注册表数据错误 → 400（显式失败，不吞）。
 
-## 7. Live verifiers（当前三个）
+## 7. Live verifiers
 
 `implementation.main_head`（本地 git origin/main）、`implementation.pr_21_head`、
-`implementation.pr_22_head`（gh api）。verifier 不可用时输出显式标记，不装作已验证。
+`implementation.pr_22_head`、`implementation.code_facts`（gh api）。区分 PR_OPEN / CLOSED / MERGED。main 仅核查缓存 origin/main，freshness=local_reference，不声称网络实时。verifier 不可用时退出 current。
+
+## 8. 验证后冻结的消费边界
+
+current_by_scope 保留每个 (key,scope)。兼容 current 仅包含无 scope 歧义的 key；counts.current 计 scoped rows。非法 supersedes（环/自引用/断链/跨 key/不合法权威）进入 HUMAN_REQUIRED 和 registry_problems，不静默丢失。直接 resolve 调用也执行 schema/重复 ID 验证；research_artifact 来源不能支撑 current-eligible 类型。
+
+validate_context_pack(pack, expected_revision) 校验所有投影、类型、状态、证据、revision、counts、warnings 和 checksum，失败显式 ValueError。checksum 无签名，只证明内部一致；一致伪造的人类决定或遗漏 claim 必须沿独立证据核查。扩大的 pack 可能超过 host POST 65,536B，应调用 Python validator；不修改共享 host 上限。C 的稳定/临时/禁用字段详见根目录 C_CONSUMABLE_INTERFACE.md 与 AGENT_BOOTSTRAP.md。

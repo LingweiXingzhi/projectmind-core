@@ -31,6 +31,21 @@ class RegistryProblems:
         return len(self.items)
 
 
+def validate_registry_claims(claims: list[dict]) -> list[dict]:
+    """Enforce the registry boundary for direct resolver/tooling callers too."""
+    if not isinstance(claims, list):
+        raise RegistryError("claims must be a list")
+    validated = []
+    seen = set()
+    for claim in claims:
+        normalized = normalize_claim(validate_claim(claim))
+        if normalized["id"] in seen:
+            raise RegistryError(f"duplicate claim id {normalized['id']!r}")
+        seen.add(normalized["id"])
+        validated.append(normalized)
+    return validated
+
+
 def load_registry(path: Path, problems: RegistryProblems | None = None) -> list[dict]:
     """Load + validate claims.jsonl. Raises RegistryError for structural
     problems and ClaimValidationError (via validate_claim) for bad entries.
@@ -62,8 +77,11 @@ def load_registry(path: Path, problems: RegistryProblems | None = None) -> list[
 
 def save_registry(path: Path, claims: list[dict]) -> None:
     """Append-only helper for tooling/tests; the server itself never writes."""
+    claims = validate_registry_claims(claims)
+    existing = load_registry(path) if path.exists() else []
+    validate_registry_claims(existing + claims)
+    payload = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n"
+                      for c in claims)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8", newline="\n") as fh:
-        for claim in claims:
-            validate_claim(claim)
-            fh.write(json.dumps(claim, ensure_ascii=False, sort_keys=True) + "\n")
+        fh.write(payload)
