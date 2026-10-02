@@ -69,6 +69,23 @@ class HandoffTests(unittest.TestCase):
                       'entry-feature', 'src/entry.py', '运行行为未验证', '下一步']:
             self.assertIn(value, text)
 
+    def test_markdown_is_readable_and_escapes_source_markup(self):
+        self.fixture['snapshot']['nodes'][0]['title'] = '<script>x</script>|[link](x)\nnext'
+        text = render_markdown(self.build())
+        self.assertNotIn('```json', text)
+        self.assertNotIn('<script>', text)
+        self.assertIn('共 1 个变化文件', text)
+        self.assertIn('| 新增', render_markdown(self.build(comparison={**self.fixture['comparison'], 'changes': [{'code': 'A', 'path': 'new.py'}]}, ai_candidates=[])))
+        self.assertIn('&lt;script&gt;', text)
+        self.assertIn('\\|', text)
+
+    def test_markdown_distinguishes_missing_comparison_and_unmapped_changes(self):
+        text = render_markdown(self.build(comparison=None, ai_candidates=[]))
+        self.assertIn('不能据此判断代码是否变化', text)
+        comparison = {**self.fixture['comparison'], 'reviewCandidates': []}
+        text = render_markdown(self.build(comparison=comparison, ai_candidates=[]))
+        self.assertIn('新增文件可能尚未登记', text)
+
     def test_actual_host_discovers_extension_and_adapter_rejects_stale_page(self):
         context = SimpleNamespace(snapshot=lambda: self.fixture['snapshot'],
                                   compare=lambda base, target: self.fixture['comparison'])
