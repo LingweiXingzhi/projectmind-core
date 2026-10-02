@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProjectMind · 交接包</title>
+<style>body{font:16px system-ui;margin:40px auto;max-width:900px;padding:0 20px;background:#f6f7fa;color:#202737}h1{margin-bottom:8px}label{display:block;margin:20px 0 6px}input,textarea,select,button{font:inherit;padding:10px;border:1px solid #bdc6d3;border-radius:7px}input,textarea{box-sizing:border-box;width:100%}button{cursor:pointer;margin:16px 8px 0 0;background:white}button:disabled{opacity:.45}pre{white-space:pre-wrap;word-break:break-word;background:white;padding:20px;border-radius:10px}#message{color:#9b2929}small{color:#586578}</style>
+<a href="/">← 项目地图</a><h1>交给下一位协同者</h1><p>保存当前代码版本、变化与核查入口。输出始终是交接草稿。</p>
+<p id="version">正在读取版本…</p>
+<label for="kind">仓库来源</label><select id="kind"><option value="git_remote">Git 仓库地址</option><option value="local_path">本地路径</option></select>
+<input id="source" placeholder="请填可供接手者取得项目的来源">
+<label for="base">比较基准提交（选填）</label><input id="base" placeholder="完整 SHA；留空则不附比较">
+<label for="ai">AI 解释原样响应列表（选填）</label><textarea id="ai" rows="3" placeholder='例如 [ /api/explain 的完整成功响应 ]'></textarea><small>只接收同一版本、同一次比较的候选结果；留空表示未提供。</small>
+<div><button id="generate" disabled>生成交接包</button><button id="json" disabled>下载 JSON</button><button id="md" disabled>下载 Markdown</button></div><p id="message" role="status"></p><pre id="preview">生成后在这里预览。</pre>
+<script>
+let snapshot, output;
+const el=id=>document.getElementById(id);
+function clear(){output=null;el('json').disabled=el('md').disabled=true;el('preview').textContent='尚无有效交接包。';}
+async function request(url, options){const r=await fetch(url,options);const data=await r.json();if(!r.ok)throw Error(data.error||'读取失败');return data;}
+async function refresh(){snapshot=await request('/api/snapshot');el('version').textContent='代码：'+snapshot.revision+' · 地图核查：UNKNOWN';el('generate').disabled=false;}
+['kind','source','base','ai'].forEach(id=>el(id).addEventListener('input',clear));
+el('generate').onclick=async()=>{clear();el('message').textContent='';el('generate').disabled=true;try{const data={expectedRevision:snapshot.revision,sourceLocator:{kind:el('kind').value,value:el('source').value.trim()}};if(el('base').value.trim())data.baseRevision=el('base').value.trim();if(el('ai').value.trim())data.aiCandidates=JSON.parse(el('ai').value);output=await request('/api/extensions/handoff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});el('preview').textContent=output.markdown;el('json').disabled=el('md').disabled=false;}catch(e){el('message').textContent=e.message;try{await refresh();}catch(err){el('message').textContent+='；'+err.message;}}finally{el('generate').disabled=!snapshot;}};
+function download(format){if(!output)return;const text=format==='json'?JSON.stringify(output.handoff,null,2):output.markdown;const u=URL.createObjectURL(new Blob([text],{type:format==='json'?'application/json;charset=utf-8':'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download='projectmind-handoff-'+output.handoff.codeRevision.slice(0,12)+'.'+format;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+el('json').onclick=()=>download('json');el('md').onclick=()=>download('md');refresh().catch(e=>el('message').textContent=e.message);
+</script></html>
