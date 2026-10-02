@@ -1,0 +1,208 @@
+{
+  "per_condition": {
+    "raw": {
+      "runs": 3,
+      "answers": 60,
+      "correct": 60,
+      "partial": 0,
+      "uncertain": 0,
+      "wrong": 0,
+      "ground_truth_accuracy": 1.0,
+      "partial_credit_accuracy": 1.0,
+      "factual_disagreement_rate": 0.0,
+      "disagreeing_pairs": 0,
+      "pairs": 60,
+      "stale_source_usage": 0,
+      "stale_source_usage_rate": 0.0,
+      "unsupported_assumptions": 0,
+      "unsupported_assumption_rate": 0.0,
+      "conflict_detection_rate": null
+    },
+    "ca": {
+      "runs": 3,
+      "answers": 60,
+      "correct": 53,
+      "partial": 1,
+      "uncertain": 6,
+      "wrong": 0,
+      "ground_truth_accuracy": 0.8833333333333333,
+      "partial_credit_accuracy": 0.8916666666666667,
+      "factual_disagreement_rate": 0.03333333333333333,
+      "disagreeing_pairs": 2,
+      "pairs": 60,
+      "stale_source_usage": 0,
+      "stale_source_usage_rate": 0.0,
+      "unsupported_assumptions": 0,
+      "unsupported_assumption_rate": 0.0,
+      "conflict_detection_rate": null
+    }
+  },
+  "per_question_disagreement": {
+    "raw": {
+      "q01": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q02": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q03": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q04": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q05": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q06": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q07": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q08": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q09": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q10": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q11": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q12": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q13": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q14": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q15": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q16": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q17": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q18": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q19": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q20": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      }
+    },
+    "ca": {
+      "q01": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q02": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q03": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q04": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q05": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q06": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q07": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q08": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q09": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q10": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q11": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q12": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q13": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q14": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q15": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q16": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q17": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q18": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      },
+      "q19": {
+        "disagreeing_pairs": 2,
+        "pairs": 3
+      },
+      "q20": {
+        "disagreeing_pairs": 0,
+        "pairs": 3
+      }
+    }
+  },
+  "conflict_detection_rate": null,
+  "conflict_detection_note": "Frozen twenty questions contain no unresolved-conflict truth label. N/A; adversarial HUMAN_REQUIRED tests separately cover actual conflicts."
+}

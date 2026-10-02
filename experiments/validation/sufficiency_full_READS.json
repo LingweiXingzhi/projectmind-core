@@ -1,0 +1,184 @@
+[
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_questions.jsonl",
+    "operation": "Get-Content",
+    "scope": "entire file"
+  },
+  {
+    "paths": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs",
+      "G:/jiagou/projectmind-core/docs/standards",
+      "G:/jiagou/projectmind-context-authority/extensions/context_authority"
+    ],
+    "operation": "rg --files",
+    "scope": "file names only"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_MVP_INTERFACES.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/C_CONSUMABLE_INTERFACE.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/AGENT_BOOTSTRAP.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-core/docs/standards/MVP_INTERFACES.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-core/docs/standards/COLLABORATION_CONTRACT.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr22_status.json",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_status.json",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_head.txt",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_extensions.txt",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_extensions.txt",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-core/extension_host.py",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/schema.py",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/extension.py",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_BOUNDARY_AUDIT.md",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/context_pack.py",
+    "operation": "rg -n -C 4",
+    "pattern": "SCHEMA_VERSION|def validate_context_pack|def build_context_pack|expected_revision|current_by_scope|verification_unavailable|known_conflicts|registry_problems|claim_revision|source_revision|integrity|local_reference",
+    "scope": "matching lines and 4 context lines"
+  },
+  {
+    "path": "G:/jiagou/projectmind-core/app.py",
+    "operation": "rg -n -C 4",
+    "pattern": "ThreadingHTTPServer|65536|65_536|extensions|ExtensionContext|Content-Length|def do_POST|def build_snapshot|mapOrigin|resolve_revision",
+    "scope": "matching lines and 4 context lines"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_PR22_BENCHMARK_REPORT.md",
+    "operation": "rg -n -C 2",
+    "pattern": "path|paths|相对|绝对|反斜|NUL|nul|encoding|编码|parse|解析|零声明|duplicate|重定义|空文件",
+    "scope": "matching lines and 2 context lines"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/FINAL_BENCHMARK_REPORT.md",
+    "operation": "rg -n -C 2",
+    "pattern": "path|paths|相对|绝对|反斜|NUL|nul|encoding|编码|parse|解析|零声明|duplicate|重定义|空文件",
+    "scope": "matching lines and 2 context lines"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_full.json",
+    "operation": "Get-Content -Encoding UTF8 -Raw | ConvertFrom-Json",
+    "scope": "entire saved output for structural validation; not source evidence"
+  },
+  {
+    "path": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts",
+    "operation": "rg --files -g '*.py'",
+    "scope": "Python source file names only",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_full.json",
+    "operation": "Copy-Item",
+    "scope": "entire saved output copied without transformation to sufficiency_full_initial.json",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/__init__.py",
+    "operation": "Get-Content -Encoding UTF8",
+    "scope": "entire file",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_full.json",
+    "operation": "Get-Content -Encoding UTF8 -Raw",
+    "scope": "entire saved output for bounded supplement; not new source evidence",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_full_READS.json",
+    "operation": "Get-Content -Encoding UTF8 -Raw",
+    "scope": "entire saved output for bounded supplement; not new source evidence",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_full_initial.json",
+    "operation": "Get-Content -Encoding UTF8 -Raw | ConvertFrom-Json",
+    "scope": "entire saved output for structural comparison of bounded supplement; not source evidence",
+    "phase": "bounded B-source supplement"
+  },
+  {
+    "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_full.json",
+    "operation": "Get-Content -Encoding UTF8 -Raw | ConvertFrom-Json",
+    "scope": "entire saved output for structural comparison of bounded supplement; not source evidence",
+    "phase": "bounded B-source supplement"
+  }
+]

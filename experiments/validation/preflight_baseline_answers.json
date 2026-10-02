@@ -1,0 +1,185 @@
+[
+  {
+    "case_id": "CA-P01",
+    "conclusion": "The MERGED assertion cannot be relied on: the packet also records PR #22 as OPEN. Its evaluated branch head is recorded, but merge and main inclusion are unresolved. C is recorded as Map Proposal; the main baseline is candidate and unapproved.",
+    "action": "Perform preflight only. Report the status contradiction and require reconciled PR evidence before any plan relies on B being merged. Preserve the Context Authority-before-C mandate; do not implement or edit claims.",
+    "discrepancies": [
+      "current_state.current.implementation.code_facts says MERGED, while verified_facts for the same claim, implementation.pr_22_head, and binding do_not_assume say PR_OPEN.",
+      "known_conflicts and registry_problems are empty despite the visible status contradiction. Benchmark success does not resolve merge status."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.implementation.code_facts (claim-code-facts-pr)",
+      "context_pack.verified_facts[key=implementation.code_facts] (claim-code-facts-pr)",
+      "context_pack.current_state.current.implementation.pr_22_head (claim-pr22-head)",
+      "context_pack.do_not_assume[0]",
+      "context_pack.human_decisions (claim-v1-role-map, claim-ca-mvp)",
+      "context_pack.current_state.current.implementation.team_approval (claim-team-approval)",
+      "context_pack.known_conflicts; context_pack.registry_problems",
+      "AGENT_BOOTSTRAP.md rules 2, 4, 7, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P02",
+    "conclusion": "The current role map cannot be relied on as settled: the same human-decision claim has two incompatible mappings. The human_decisions list records C as Map Proposal, but the current view says interaction graph/details. The Context Authority-before-C mandate is consistent.",
+    "action": "Hold role-dependent C planning for HUMAN_REQUIRED reconciliation of the recorded decision. Continue unrelated preflight only; do not choose a mapping, reuse historical roles, implement, or rewrite the registry.",
+    "discrepancies": [
+      "current_state.current.team.roles.v1 and human_decisions[key=team.roles.v1] share claim-v1-role-map and the same source but disagree on A, B, C, and D.",
+      "known_conflicts is empty despite the visible human-decision contradiction. The superseded historical mapping cannot resolve it."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.team.roles.v1 (claim-v1-role-map)",
+      "context_pack.human_decisions[key=team.roles.v1] (claim-v1-role-map)",
+      "context_pack.known_stale_sources (claim-old-role-map)",
+      "context_pack.human_decisions[key=team.context_authority] (claim-ca-mvp)",
+      "context_pack.known_conflicts",
+      "AGENT_BOOTSTRAP.md rules 2, 5, 6, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P03",
+    "conclusion": "Business functions may be relied on only as proposals. Their placement in current does not establish accepted architecture or implementation: the item itself is PROPOSAL and says PROPOSED. C's Map Proposal role and B's OPEN PR status are separately recorded.",
+    "action": "Review or discuss the proposed functions with their proposal status explicit. Require implementation and acceptance evidence before using them as available architecture. Keep the Context Authority prerequisite and perform no implementation.",
+    "discrepancies": [
+      "current_state.current includes architecture.business_functions even though its type is PROPOSAL and proposals retains the same unaccepted claim.",
+      "current_state.counts.current is 11 while the visible current object has 12 keys; the summary does not validate the added entry."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.architecture.business_functions (claim-biz-functions-proposal)",
+      "context_pack.proposals[claim_id=claim-biz-functions-proposal]",
+      "context_pack.current_state.counts",
+      "context_pack.do_not_assume[0,1]",
+      "context_pack.human_decisions (claim-v1-role-map, claim-ca-mvp)",
+      "AGENT_BOOTSTRAP.md rules 2, 3, 4, 7"
+    ]
+  },
+  {
+    "case_id": "CA-P04",
+    "conclusion": "The cat-file finding and batching suggestion cannot be relied on as a contract requirement. The packet identifies them as scoped holdout research and explicitly disclaims contractual authority. The two separate PR22 CodeFacts contracts remain recorded contracts.",
+    "action": "Discuss batching as optional research and flag the inconsistent contract label. Do not impose its estimates as acceptance requirements or change the recorded contract. Perform preflight only and preserve the Context Authority prerequisite for C.",
+    "discrepancies": [
+      "relevant_contracts labels claim-catfile-research CONTRACT, while research_notes labels the same claim RESEARCH and says it is not a requirement or part of any contract.",
+      "The source is a research artifact in B_PR22_HOLDOUT scope; no packet evidence records adoption as a contract."
+    ],
+    "evidence_used": [
+      "context_pack.relevant_contracts[key=research.code_facts.performance] (claim-catfile-research)",
+      "context_pack.research_notes[claim_id=claim-catfile-research]",
+      "context_pack.relevant_contracts[key=contract.code_facts_input] (claim-codefacts-input)",
+      "context_pack.relevant_contracts[key=contract.code_facts_shape] (claim-b-shape)",
+      "context_pack.do_not_assume[2]",
+      "context_pack.human_decisions[key=team.context_authority] (claim-ca-mvp)",
+      "AGENT_BOOTSTRAP.md rules 3, 7, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P05",
+    "conclusion": "The current CodeFacts shape cannot be relied on: it conflicts with the same pinned contract in relevant_contracts. That list records five declaration kinds, lexical qualified names, keyword-based 1-based lines, and skipped-file reasons; the contradictory current payload does not supersede it. CodeFacts remains declaration-only.",
+    "action": "Report the payload mismatch and hold shape-dependent C integration until a reconciled contract packet is supplied. Use the consistent input constraints for preflight only; do not implement or silently replace either contract representation.",
+    "discrepancies": [
+      "For claim-b-shape at the same source revision, current gives only function, qualified_names=false, and line=106; relevant_contracts gives five kinds, lexical dotted names, and a per-declaration line rule.",
+      "current omits entries and skipped semantics. The separate build_snapshot location is scoped to app.py@ff22b76 at line 109; it does not establish a universal CodeFacts line number."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.contract.code_facts_shape (claim-b-shape)",
+      "context_pack.relevant_contracts[key=contract.code_facts_shape] (claim-b-shape)",
+      "context_pack.current_state.current.contract.code_facts_input (claim-codefacts-input)",
+      "context_pack.current_state.current.implementation.build_snapshot_line (claim-code-line-109)",
+      "context_pack.do_not_assume[5]",
+      "AGENT_BOOTSTRAP.md rules 2, 7, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P06",
+    "conclusion": "The packet asserts fixture_choice=left as a synthetic-study human decision, but does not supply its underlying decision evidence or establish applicability to C. It cannot establish an accepted project architecture choice. No competing value or known conflict is visible; neither may be invented.",
+    "action": "Record the scoped assertion and verification gap. Hold any C choice that depends on it until supporting decision evidence and scope are supplied; continue unrelated preflight. Do not select an unseen alternative or claim a hidden conflict, and do not implement.",
+    "discrepancies": [
+      "claim-study-left appears only in current, cites conflict_evidence.json, and is absent from human_decisions and evidence; the referenced file contents are outside this packet.",
+      "The assertion is scoped to synthetic-study rather than projectmind-core; no applicability link is supplied.",
+      "known_conflicts is empty and current counts says 11 despite 12 visible keys. This establishes a packet gap, not the existence or value of an omitted opposing claim."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.architecture.fixture_choice (claim-study-left)",
+      "context_pack.human_decisions",
+      "context_pack.evidence",
+      "context_pack.known_conflicts",
+      "context_pack.current_state.counts",
+      "context_pack.human_decisions[key=team.context_authority] (claim-ca-mvp)",
+      "AGENT_BOOTSTRAP.md introduction and rules 2, 6, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P07",
+    "conclusion": "The packet's code assertions cannot be relied on for requested revision eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee. They retain other revision scopes: build_snapshot@109 is scoped to ff22b76 and main is reported as 7484d44. Those scoped reports are not evidence of the requested commit's contents or existence.",
+    "action": "Perform revision-independent preflight using the recorded role and contract boundaries. Hold target-specific C planning until a packet verified for the requested full SHA is supplied. Do not infer target contents, move a line reference across revisions, or implement.",
+    "discrepancies": [
+      "project_revision requests eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee, but no source or evidence revision matches it and build_snapshot_line remains scoped to app.py@ff22b76.",
+      "The PR22 contracts are scoped to 0c46747147f765260bf2033f6eae40189b58ca0c and documents to ff22b76966e6198b062c60fa9f0f4dbb987b027e; no transfer of their implementation facts to the target is evidenced.",
+      "verification_unavailable is empty despite no target verification being supplied. A full-looking SHA alone does not prove it resolves to a commit; map applicability is also unknown."
+    ],
+    "evidence_used": [
+      "context_pack.project_revision",
+      "context_pack.current_state.current.implementation.build_snapshot_line (claim-code-line-109)",
+      "context_pack.current_state.current.implementation.main_head (claim-main-head)",
+      "context_pack.relevant_contracts (claim-codefacts-input, claim-b-shape)",
+      "context_pack.current_state.current.implementation.map_version (claim-map-version)",
+      "context_pack.evidence; context_pack.verification_unavailable",
+      "context_pack.human_decisions (claim-v1-role-map, claim-ca-mvp)",
+      "AGENT_BOOTSTRAP.md introduction and rules 2, 7, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P08",
+    "conclusion": "The Context Authority-before-C mandate is consistently recorded as a human decision, but its linked evidence has incompatible provenance. The packet cannot certify that the evidence substantiates this decision. It provides no contrary human decision or permission to bypass the recorded sequence.",
+    "action": "Preserve the recorded prerequisite and flag the evidence mismatch. Hold C-start authorization pending a repaired source link or explicit human confirmation; perform unrelated preflight only. Do not substitute repository content for an unverified human directive or implement.",
+    "discrepancies": [
+      "current and human_decisions identify claim-ca-mvp as source.kind=human, ref=user task directive 2026-10-02; evidence instead links that claim to repo docs/standards/COLLABORATION_CONTRACT.md at ffffffffffffffffffffffffffffffffffffffff.",
+      "The packet supplies no contents or explanation connecting that repository revision to the directive, while registry_problems remains empty."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.team.context_authority (claim-ca-mvp)",
+      "context_pack.human_decisions[key=team.context_authority] (claim-ca-mvp)",
+      "context_pack.evidence[claim_id=claim-ca-mvp]",
+      "context_pack.registry_problems",
+      "AGENT_BOOTSTRAP.md introduction and rules 2, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P09",
+    "conclusion": "Map Proposal implementation is asserted in current but cannot be confirmed from this packet: the cited repository artifact is not supplied and the claim has no matching evidence or verified_facts entry. suggest_map remains recorded as a proposal. This does not prove that implementation is absent.",
+    "action": "Hold plans that depend on an available or accepted Map Proposal implementation until scoped implementation and acceptance evidence is supplied. Review its proposal and prerequisite for preflight only; do not assume existing APIs, start implementation, or declare the feature absent.",
+    "discrepancies": [
+      "implementation.map_proposal says IMPLEMENTED under claim-study-status, citing main_extensions.txt@7484d44, but that claim is absent from verified_facts and evidence and the source contents are unavailable in the packet.",
+      "architecture.business_functions still calls suggest_map a proposal awaiting implementation and acceptance; no evidence reconciles that status with the implementation assertion.",
+      "current counts says 11 despite 12 visible keys. Matching the reported main SHA does not itself verify the artifact or functionality."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.implementation.map_proposal (claim-study-status)",
+      "context_pack.verified_facts; context_pack.evidence",
+      "context_pack.proposals[claim_id=claim-biz-functions-proposal]",
+      "context_pack.current_state.current.implementation.main_head (claim-main-head)",
+      "context_pack.current_state.counts",
+      "context_pack.human_decisions[key=team.context_authority] (claim-ca-mvp)",
+      "context_pack.do_not_assume[1]",
+      "AGENT_BOOTSTRAP.md introduction and rules 2, 3, 8"
+    ]
+  },
+  {
+    "case_id": "CA-P10",
+    "conclusion": "Handoff implementation is asserted in current but cannot be confirmed from this packet: the cited repository artifact is not supplied and the claim has no matching evidence or verified_facts entry. build_handoff remains recorded as a proposal and D as Handoff owner. Neither readiness nor implementation absence is established.",
+    "action": "Hold C plans that depend on an available or accepted Handoff implementation until scoped implementation and acceptance evidence is supplied. Keep D's recorded role and the Context Authority-before-C sequence for preflight only; do not assume an existing integration contract or implement.",
+    "discrepancies": [
+      "implementation.handoff says IMPLEMENTED under claim-study-status, citing main_extensions.txt@7484d44, but that claim is absent from verified_facts and evidence and the source contents are unavailable in the packet.",
+      "architecture.business_functions still calls build_handoff a proposal awaiting implementation and acceptance; no evidence reconciles that status with the implementation assertion.",
+      "current counts says 11 despite 12 visible keys. Matching the reported main SHA does not itself verify the artifact or functionality."
+    ],
+    "evidence_used": [
+      "context_pack.current_state.current.implementation.handoff (claim-study-status)",
+      "context_pack.verified_facts; context_pack.evidence",
+      "context_pack.proposals[claim_id=claim-biz-functions-proposal]",
+      "context_pack.human_decisions (claim-v1-role-map, claim-ca-mvp)",
+      "context_pack.current_state.current.implementation.main_head (claim-main-head)",
+      "context_pack.current_state.counts",
+      "context_pack.do_not_assume[1]",
+      "AGENT_BOOTSTRAP.md introduction and rules 2, 3, 8"
+    ]
+  }
+]

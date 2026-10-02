@@ -1,0 +1,28 @@
+{
+  "run": "B2",
+  "condition": "ca",
+  "read_files": [
+    "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/CONTEXT_PACK.json",
+    "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/AGENT_BOOTSTRAP.md",
+    "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/questions.jsonl"
+  ],
+  "constraints": {
+    "allowed_reads": "Only the three listed direct context_inputs files; frozen CONTEXT_PACK.json supplies facts, original AGENT_BOOTSTRAP.md supplies usage rules, questions.jsonl supplies questions.",
+    "forbidden_reads": [
+      "raw inputs",
+      "repository or code",
+      "truth files",
+      "other runs",
+      "internet",
+      "evidence source files or links referenced by the pack"
+    ],
+    "answer_policy": "Answer all 20 questions concisely using the frozen pack and bootstrap rules. Record uncertainty when information is missing. Do not promote proposals, research, historical or superseded material to current authority. Do not treat OPEN PRs as merged.",
+    "conflict_policy": "The frozen pack lists no known_conflicts; no current conflict was detected. Superseded role mapping was treated as provenance only.",
+    "self_scoring": false,
+    "allowed_writes": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_agent_runs/B2.jsonl",
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_agent_runs/B2_READS.json"
+    ],
+    "additional_files_read": false
+  }
+}

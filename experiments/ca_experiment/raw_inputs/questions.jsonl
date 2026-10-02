@@ -1,0 +1,20 @@
+{"qid": "q01", "question": "当前 V1 的 A/B/C/D 分工是什么？"}
+{"qid": "q02", "question": "B (Code Facts) 是否已经 merged 到 main？"}
+{"qid": "q03", "question": "B 当前是什么状态？"}
+{"qid": "q04", "question": "B 是否提供 dependency graph？"}
+{"qid": "q05", "question": "C (Map Proposal) 是否已经 implemented？"}
+{"qid": "q06", "question": "当前 main 的 revision 是什么？"}
+{"qid": "q07", "question": "当前 PR #22 的 head 是什么？"}
+{"qid": "q08", "question": "列举一个属于 RESEARCH 的条目"}
+{"qid": "q09", "question": "列举一个属于 PROPOSAL 的条目"}
+{"qid": "q10", "question": "哪个角色负责 Map Proposal？"}
+{"qid": "q11", "question": "列举一个已知 stale 的资料"}
+{"qid": "q12", "question": "FINAL_BENCHMARK_REPORT 里 'B NOT IMPLEMENTED' 还能当 current 吗？"}
+{"qid": "q13", "question": "B 的 entries 有哪几种 kind？"}
+{"qid": "q14", "question": "B 的 line 语义是什么？"}
+{"qid": "q15", "question": "main 是否 TEAM APPROVED？"}
+{"qid": "q16", "question": "人工地图有版本身份吗？"}
+{"qid": "q17", "question": "PR #21 带来什么内容？"}
+{"qid": "q18", "question": "当前 PR #21 的 head 是什么？"}
+{"qid": "q19", "question": "CodeFacts 的 revision 输入约定？"}
+{"qid": "q20", "question": "'建议用 git cat-file --batch' 是 B 的契约要求吗？"}

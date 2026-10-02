@@ -1,0 +1,52 @@
+{
+  "run": "B2",
+  "condition": "ca",
+  "reads": [
+    {
+      "order": 1,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/AGENT_BOOTSTRAP.md",
+      "operation": "full file read, displayed raw"
+    },
+    {
+      "order": 2,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/questions.jsonl",
+      "operation": "full file read, displayed raw"
+    },
+    {
+      "order": 3,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/CONTEXT_PACK.json",
+      "operation": "full file read and JSON parse; displayed top-level property names, types and counts"
+    },
+    {
+      "order": 4,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/CONTEXT_PACK.json",
+      "operation": "full file read and JSON parse; selected schema_version, task, task_domains, project_revision, current_state, verified_facts, human_decisions",
+      "display_truncated": true
+    },
+    {
+      "order": 5,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/CONTEXT_PACK.json",
+      "operation": "full file read and JSON parse; selected relevant_contracts and evidence",
+      "aggregate_display_truncated": true
+    },
+    {
+      "order": 6,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/CONTEXT_PACK.json",
+      "operation": "full file read and JSON parse; selected known_conflicts, known_stale_sources, proposals, research_notes, historical_sources, verification_unavailable, registry_problems, do_not_assume, integrity"
+    },
+    {
+      "order": 7,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/CONTEXT_PACK.json",
+      "operation": "full file read and JSON parse; displayed current_state fields/current_by_scope structure, compact evidence, human_decisions, relevant_contracts"
+    },
+    {
+      "order": 8,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/CONTEXT_PACK.json",
+      "operation": "full file read and JSON parse; displayed compact current_by_scope key/scope/value/type/claim_ids/source/freshness/verified_at, counts and registry_hash"
+    }
+  ],
+  "other_file_reads": [],
+  "internet_reads": [],
+  "independent_source_retrievals": [],
+  "basis": "Answers use the captured as-of pack only; no product code, truth, raw sources, prior answers or reports were read."
+}

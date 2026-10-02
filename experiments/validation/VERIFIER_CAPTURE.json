@@ -1,0 +1,61 @@
+{
+  "claim-main-head": {
+    "status": "ok",
+    "value": {
+      "sha": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+    },
+    "verified_at": "2026-10-02T16:22:38+00:00",
+    "source_kind": "repo",
+    "source_ref": "G:\\jiagou\\projectmind-context-authority::refs/remotes/origin/main",
+    "freshness": "local_reference"
+  },
+  "claim-pr21-head": {
+    "status": "ok",
+    "value": {
+      "status": "PR_OPEN",
+      "pr": 21,
+      "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+    },
+    "verified_at": "2026-10-02T16:22:39+00:00",
+    "source_kind": "gh_api",
+    "source_ref": "repos/LingweiXingzhi/projectmind-core/pulls/21",
+    "verified_fields": [
+      "status",
+      "pr",
+      "head"
+    ]
+  },
+  "claim-pr22-head": {
+    "status": "ok",
+    "value": {
+      "status": "PR_OPEN",
+      "pr": 22,
+      "head": "0c46747147f765260bf2033f6eae40189b58ca0c"
+    },
+    "verified_at": "2026-10-02T16:22:40+00:00",
+    "source_kind": "gh_api",
+    "source_ref": "repos/LingweiXingzhi/projectmind-core/pulls/22",
+    "verified_fields": [
+      "status",
+      "pr",
+      "head"
+    ]
+  },
+  "claim-code-facts-pr": {
+    "status": "ok",
+    "value": {
+      "status": "PR_OPEN",
+      "pr": 22,
+      "head": "0c46747147f765260bf2033f6eae40189b58ca0c",
+      "evaluated": "686 units 0 failures on frozen benchmark v0.1"
+    },
+    "verified_at": "2026-10-02T16:22:41+00:00",
+    "source_kind": "gh_api",
+    "source_ref": "repos/LingweiXingzhi/projectmind-core/pulls/22",
+    "verified_fields": [
+      "status",
+      "pr",
+      "head"
+    ]
+  }
+}

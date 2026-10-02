@@ -1,0 +1,27 @@
+{
+  "run": "B1",
+  "condition": "ca",
+  "read_scope": "Only the three named direct input files; no truth, raw sources, product code, previous answers, reports outside the pack, or internet.",
+  "files": [
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/AGENT_BOOTSTRAP.md",
+      "read_count": 1,
+      "purpose": "consumer preflight"
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/questions.jsonl",
+      "read_count": 1,
+      "purpose": "20 questions"
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_final_inputs/CONTEXT_PACK.json",
+      "read_count": 4,
+      "purpose": "top-level properties; state and warnings; compact scoped facts and classifications; evidence and integrity"
+    }
+  ],
+  "notes": [
+    "Answers use captured as-of facts and exact named source snapshots.",
+    "No outside source verification or self-scoring was performed.",
+    "Some large displayed sections were truncated; compact current_by_scope and classification sections were separately displayed without truncation."
+  ]
+}

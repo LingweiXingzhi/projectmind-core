@@ -2,6 +2,7 @@
 import hashlib
 import itertools
 import json
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -60,10 +61,16 @@ def aggregate(gt, judgments):
 def main():
     freeze = json.loads((HERE/'INPUT_FREEZE.json').read_text(encoding='utf-8'))
     for relative, expected in freeze['sha256'].items():
-        if hashlib.sha256((HERE/relative).read_bytes()).hexdigest() != expected:
+        if hashlib.sha256((HERE/relative.replace('\\', '/')).read_bytes()).hexdigest() != expected:
             raise ValueError(f'Frozen input changed: {relative}')
-    metrics = aggregate(rows(HERE/'ground_truth.jsonl'), rows(HERE/'judgments.jsonl'))
-    (HERE/'metrics.json').write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding='utf-8')
+    final = '--final' in sys.argv[1:]
+    if final:
+        freeze = json.loads((HERE/'FINAL_INPUT_FREEZE.json').read_text(encoding='utf-8'))
+        for relative, expected in freeze['sha256'].items():
+            if hashlib.sha256((HERE/relative.replace('\\', '/')).read_bytes()).hexdigest() != expected:
+                raise ValueError(f'Final frozen input changed: {relative}')
+    metrics = aggregate(rows(HERE/'ground_truth.jsonl'), rows(HERE/('final_judgments.jsonl' if final else 'judgments.jsonl')))
+    (HERE/('final_metrics.json' if final else 'metrics.json')).write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(metrics['per_condition'], ensure_ascii=False, indent=2))
     return 0
 

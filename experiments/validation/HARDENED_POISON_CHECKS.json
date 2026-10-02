@@ -1,0 +1,62 @@
+[
+  {
+    "case_id": "CA-P01",
+    "structurally_valid": false,
+    "error": "current projection loses or invents a scope",
+    "coherent_semantic_injection": false
+  },
+  {
+    "case_id": "CA-P02",
+    "structurally_valid": true,
+    "error": null,
+    "coherent_semantic_injection": true
+  },
+  {
+    "case_id": "CA-P03",
+    "structurally_valid": false,
+    "error": "duplicate evidence claim_id",
+    "coherent_semantic_injection": false
+  },
+  {
+    "case_id": "CA-P04",
+    "structurally_valid": false,
+    "error": "research artifact cannot authorize a current fact, contract or human decision",
+    "coherent_semantic_injection": false
+  },
+  {
+    "case_id": "CA-P05",
+    "structurally_valid": false,
+    "error": "current projection loses or invents a scope",
+    "coherent_semantic_injection": false
+  },
+  {
+    "case_id": "CA-P06",
+    "structurally_valid": true,
+    "error": null,
+    "coherent_semantic_injection": true
+  },
+  {
+    "case_id": "CA-P07",
+    "structurally_valid": false,
+    "error": "context pack revision differs from consumer revision",
+    "coherent_semantic_injection": false
+  },
+  {
+    "case_id": "CA-P08",
+    "structurally_valid": false,
+    "error": "evidence source revision mismatch",
+    "coherent_semantic_injection": false
+  },
+  {
+    "case_id": "CA-P09",
+    "structurally_valid": true,
+    "error": null,
+    "coherent_semantic_injection": true
+  },
+  {
+    "case_id": "CA-P10",
+    "structurally_valid": true,
+    "error": null,
+    "coherent_semantic_injection": true
+  }
+]

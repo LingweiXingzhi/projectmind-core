@@ -1,0 +1,20 @@
+{"qid": "q01", "question": "当前 V1 的 A/B/C/D 分工是什么？", "expected": "A=Core/Integration, B=Code Facts, C=Map Proposal, D=Handoff"}
+{"qid": "q02", "question": "B (Code Facts) 是否已经 merged 到 main？", "expected": "否（PR #22 OPEN，未 merge）"}
+{"qid": "q03", "question": "B 当前是什么状态？", "expected": "PR #22 OPEN @0c467471…（MERGEABLE，未合并、未 TEAM APPROVED）"}
+{"qid": "q04", "question": "B 是否提供 dependency graph？", "expected": "否（契约明文：不含调用关系/依赖/签名/入口）"}
+{"qid": "q05", "question": "C (Map Proposal) 是否已经 implemented？", "expected": "否（main 与 PR 均无 extensions/map_proposal）"}
+{"qid": "q06", "question": "当前 main 的 revision 是什么？", "expected": "7484d44ddeac3c054ca3ba68f92293d965bb615c"}
+{"qid": "q07", "question": "当前 PR #22 的 head 是什么？", "expected": "0c46747147f765260bf2033f6eae40189b58ca0c"}
+{"qid": "q08", "question": "列举一个属于 RESEARCH 的条目", "expected": "research.code_facts.performance（cat-file --batch 建议）"}
+{"qid": "q09", "question": "列举一个属于 PROPOSAL 的条目", "expected": "MVP_INTERFACES 的 mapSource 地图身份补丁（或 PROPOSED 节业务函数）"}
+{"qid": "q10", "question": "哪个角色负责 Map Proposal？", "expected": "C（V1：Map Proposal）"}
+{"qid": "q11", "question": "列举一个已知 stale 的资料", "expected": "main@7484d44 的旧角色映射文本（或 FINAL_BENCHMARK_REPORT 的 NOT IMPLEMENTED）"}
+{"qid": "q12", "question": "FINAL_BENCHMARK_REPORT 里 'B NOT IMPLEMENTED' 还能当 current 吗？", "expected": "不能（HISTORICAL；B 现为 PR #22 OPEN）"}
+{"qid": "q13", "question": "B 的 entries 有哪几种 kind？", "expected": "function/async_function/class/method/async_method（五种）"}
+{"qid": "q14", "question": "B 的 line 语义是什么？", "expected": "def/async def/class 关键字的 1 起始行号，非装饰器行"}
+{"qid": "q15", "question": "main 是否 TEAM APPROVED？", "expected": "否（candidate baseline；MERGED≠TEAM APPROVED）"}
+{"qid": "q16", "question": "人工地图有版本身份吗？", "expected": "无（本地文件，无 digest/commit 绑定）"}
+{"qid": "q17", "question": "PR #21 带来什么内容？", "expected": "V1 职责文档清理（docs: establish V1 roles；含五份标准文档更新）"}
+{"qid": "q18", "question": "当前 PR #21 的 head 是什么？", "expected": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"}
+{"qid": "q19", "question": "CodeFacts 的 revision 输入约定？", "expected": "完整 40/64 位小写 SHA 且直接指向 commit；HEAD/短 SHA/大写/标签拒绝"}
+{"qid": "q20", "question": "'建议用 git cat-file --batch' 是 B 的契约要求吗？", "expected": "否（RESEARCH 建议 ≠ contract）"}

@@ -1,0 +1,1243 @@
+{
+  "review_type": "independent_question_content_sufficiency",
+  "status": "COMPLETE",
+  "classification_definitions": {
+    "SUFFICIENT": "Provides all material facts requested by the question within the observed/proposed authority scope; unrelated future approval unknowns do not remove present facts.",
+    "PARTIAL": "Provides some requested facts but a material requested detail is absent or cannot be determined from the condition input.",
+    "INSUFFICIENT": "Lacks the main operative information needed for the requested task; honest refusal is not fabrication but not full content sufficiency."
+  },
+  "summary": {
+    "A": {
+      "condition_description": "Full documents/source, with bounded actual-B-source supplement",
+      "answers": 15,
+      "participant_counts": {
+        "SUFFICIENT": 15
+      },
+      "independent_counts": {
+        "SUFFICIENT": 15
+      },
+      "self_classifications_upheld": 15,
+      "differences": []
+    },
+    "B": {
+      "condition_description": "Final Context Pack only",
+      "answers": 15,
+      "participant_counts": {
+        "SUFFICIENT": 6,
+        "PARTIAL": 8,
+        "INSUFFICIENT": 1
+      },
+      "independent_counts": {
+        "SUFFICIENT": 6,
+        "PARTIAL": 8,
+        "INSUFFICIENT": 1
+      },
+      "self_classifications_upheld": 15,
+      "differences": []
+    },
+    "C": {
+      "condition_description": "Final Context Pack plus allowed independent source fallback",
+      "answers": 15,
+      "participant_counts": {
+        "SUFFICIENT": 13,
+        "PARTIAL": 2
+      },
+      "independent_counts": {
+        "SUFFICIENT": 15
+      },
+      "self_classifications_upheld": 13,
+      "differences": [
+        "S05",
+        "S06"
+      ]
+    }
+  },
+  "rows": [
+    {
+      "condition": "A",
+      "qid": "S01",
+      "question": "Which CodeFacts revision strings may C pass, and which common aliases must be rejected?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Exact 40/64 lowercase hexadecimal characters, direct commit, and common alias/noncommit rejection are provided. These captured input constraints are supported by the delivery contract and SHA/commit checks; formal future adoption is not requested.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:22",
+        "PR22 frozen facts.py:SHA_PATTERN and collect_code_facts commit resolution",
+        "FINAL_CONTEXT_PACK.json:claim-codefacts-input-units"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S02",
+      "question": "Which five entry kinds must C handle?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "The exact five kinds are provided and supported by the delivery enum and lexical AST classifier.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:49",
+        "PR22 frozen facts.py:_definitions",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S03",
+      "question": "Are declaration names lexical qualified names? How should repeated declarations be preserved?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "The full/fallback answers preserve repeated names as separate occurrences, supported by append-per-declaration source and the multiset boundary audit. The pack supplies lexical names but omits occurrence-preservation semantics.",
+      "independent_evidence": [
+        "raw_inputs/B_BOUNDARY_AUDIT.md:multiset/redefinition row",
+        "PR22 frozen facts.py:_definitions entries.append",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S04",
+      "question": "Does an entry line point to decorators or to def/class, and is it one-based?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "One-based def/async def/class keyword line and exclusion of decorator line are explicitly supplied, matching delivery and AST locations.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:50",
+        "PR22 frozen facts.py:_definitions node.lineno",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S05",
+      "question": "What path validation rules must C respect when requesting CodeFacts?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Formal integrated blank-GET semantics and acceptance at a selected future target remain unestablished; observed prototype behavior and explicit POST selection rules are nevertheless complete."
+      ],
+      "reason": "The supplemented full-source and fallback answers supply exact prototype lexical/list/tree rules and GET/POST selection behavior. They retain future formal adoption as a separate caveat and give an explicit usable POST selection rule. All requested operative rules are present; formal blank-GET approval is not an extra fact required by this question. The pack alone lacks these operative details.",
+      "independent_evidence": [
+        "PR22 frozen facts.py:_paths and collect_code_facts",
+        "PR22 frozen extension.py:handle GET paths conversion",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:input table",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:GET blank ambiguity"
+      ],
+      "participant_missing_facts": [
+        "Team-approved formal GET empty-path semantics and adoption of this prototype at C's chosen target commit remain unestablished; they are separate from the now-observed validation behavior."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S06",
+      "question": "What file-count, byte-size and language limits does B advertise?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Prototype limits are not a formal guarantee of future Core/B/C adoption; this does not remove the advertised limits asked for."
+      ],
+      "reason": "The question asks what B advertises, not what a future integrated service has formally adopted. Full/fallback answers provide 2000 files, 1 MiB per eligible Python file, 16 MiB eligible Python content, and .py/Python scope; source-defined accounting is correct. The pack omits explicit language/content scope.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:first-version limits",
+        "PR22 frozen facts.py:MAX_FILES/MAX_FILE_BYTES/MAX_TOTAL_BYTES and skip/accounting order"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S07",
+      "question": "How do valid zero-declaration files, parsing failures and encoding failures appear in CodeFacts?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback answers distinguish successful empty entries from skipped decoding/parsing failures and request-level errors. Source uses the same decoding/AST reason category; a separate parse-vs-encoding machine code is not promised. Exact prose stability is not required.",
+      "independent_evidence": [
+        "PR22 frozen facts.py:encoding/AST exception handling and files/skipped append",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:zero-declaration files",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:skipped semantics"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S08",
+      "question": "Can C infer a dependency graph, signatures, entry points or responsibilities from CodeFacts?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Declaration-only facts cannot establish dependencies, signatures, runtime entry points or responsibilities. The limitation and candidate/human boundary are supplied in all conditions.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:54,120",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:OUT boundaries",
+        "FINAL_CONTEXT_PACK.json:do_not_assume"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S09",
+      "question": "What are C's proposed input/output shapes and confirmation limits?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback provide the proposed signature, same-commit/repository input checks, minimal ai_candidate/candidates/evidence/unknown output and no-confirmation limits. Pack-only names the proposal without the requested exchange shape.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:suggest_map section",
+        "raw_inputs/pr21_COLLABORATION_CONTRACT.md:C responsibility",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:54"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S10",
+      "question": "How does C connect an extension without changing core, including route, handle signature, POST size and concurrency?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback provide independent directory discovery, routes and handle/context, 65536-byte JSON object limit and same-process threaded state requirements, verified in extension docs/host/app. Pack-only has no requested connection contract.",
+      "independent_evidence": [
+        "projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+        "projectmind-core/extension_host.py:discovery/context/run",
+        "projectmind-core/app.py:make_handler/read_json_body/routes/ThreadingHTTPServer"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S11",
+      "question": "Does Snapshot.revision prove the human map applies to that commit?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "All conditions explicitly deny that code revision proves map identity/applicability; current local-map unknown and proposed digest/confirmation separation are sufficient.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:code/map identity",
+        "FINAL_CONTEXT_PACK.json:claim-map-version and mapSource proposal"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S12",
+      "question": "May C overwrite the curated map or present its proposal as confirmed architecture?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback explicitly forbid C curated/formal map overwrite and candidate-as-confirmed architecture. Pack-only denies accepted architecture and withholds permission but lacks the requested explicit C file-write prohibition.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:suggest_map no curated/model writes",
+        "raw_inputs/pr21_COLLABORATION_CONTRACT.md:C/A responsibility",
+        "AGENT_BOOTSTRAP.md:authority boundary"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S13",
+      "question": "May C assume PR22 code exists in main or that main is team approved?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "All conditions correctly distinguish captured OPEN PR22, branch/main content and candidate/approval states. The question asks whether C may assume them, so later remote or human verification caveats do not make the negative answer incomplete.",
+      "independent_evidence": [
+        "raw_inputs/pr22_status.json",
+        "raw_inputs/main_extensions.txt",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:unintegrated prototype",
+        "FINAL_CONTEXT_PACK.json:PR/main/approval facts"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S14",
+      "question": "What must C do when its Context Pack has a relevant conflict, registry problem or unavailable verifier?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback give the consumer failure policy, scope checks, dependent-action stop, UNKNOWN/HUMAN_REQUIRED and exact-source fallback. Pack-only exposes empty issue fields but not the operational policy needed if an issue becomes relevant.",
+      "independent_evidence": [
+        "AGENT_BOOTSTRAP.md:consumer preflight",
+        "C_CONSUMABLE_INTERFACE.md:failure boundaries",
+        "extensions/context_authority/context_pack.py:validation/unavailable/conflict invariants"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "A",
+      "qid": "S15",
+      "question": "Which Context Authority fields are stable enough to consume, and what evidence/revision checks remain C's responsibility?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "Full/fallback identify normative frozen v0.1 interfaces versus provisional seed/routing/prose, and preserve independent pin, repository, source, freshness and human-authority checks. The pack alone shows field existence but contains no stability/API guarantee. Validation/body-size statements are consistent with inspected source and the independently reproduced 71822-byte size.",
+      "independent_evidence": [
+        "C_CONSUMABLE_INTERFACE.md:frozen/provisional fields and evidence axes",
+        "AGENT_BOOTSTRAP.md:independent evidence duties",
+        "extensions/context_authority/context_pack.py:_evidence/_freshness/validate_context_pack",
+        "extensions/context_authority/extension.py:context/validate_context actions"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_full.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S01",
+      "question": "Which CodeFacts revision strings may C pass, and which common aliases must be rejected?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Exact 40/64 lowercase hexadecimal characters, direct commit, and common alias/noncommit rejection are provided. These captured input constraints are supported by the delivery contract and SHA/commit checks; formal future adoption is not requested.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:22",
+        "PR22 frozen facts.py:SHA_PATTERN and collect_code_facts commit resolution",
+        "FINAL_CONTEXT_PACK.json:claim-codefacts-input-units"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S02",
+      "question": "Which five entry kinds must C handle?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "The exact five kinds are provided and supported by the delivery enum and lexical AST classifier.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:49",
+        "PR22 frozen facts.py:_definitions",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S03",
+      "question": "Are declaration names lexical qualified names? How should repeated declarations be preserved?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "Whether repeated same-qualified-name declarations remain separate entry occurrences instead of being collapsed."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "The full/fallback answers preserve repeated names as separate occurrences, supported by append-per-declaration source and the multiset boundary audit. The pack supplies lexical names but omits occurrence-preservation semantics.",
+      "independent_evidence": [
+        "raw_inputs/B_BOUNDARY_AUDIT.md:multiset/redefinition row",
+        "PR22 frozen facts.py:_definitions entries.append",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [
+        "Repeated-declaration representation and preservation rule.",
+        "Ordering and identity of entries sharing a qualified name."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S04",
+      "question": "Does an entry line point to decorators or to def/class, and is it one-based?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "One-based def/async def/class keyword line and exclusion of decorator line are explicitly supplied, matching delivery and AST locations.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:50",
+        "PR22 frozen facts.py:_definitions node.lineno",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S05",
+      "question": "What path validation rules must C respect when requesting CodeFacts?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "Rejection of empty/nonstring paths, backslashes, controls/DEL, empty/dot/dotdot segments; exact committed-tree membership; missing-path request failure and explicit None versus []/GET blank behavior."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "The supplemented full-source and fallback answers supply exact prototype lexical/list/tree rules and GET/POST selection behavior. They retain future formal adoption as a separate caveat and give an explicit usable POST selection rule. All requested operative rules are present; formal blank-GET approval is not an extra fact required by this question. The pack alone lacks these operative details.",
+      "independent_evidence": [
+        "PR22 frozen facts.py:_paths and collect_code_facts",
+        "PR22 frozen extension.py:handle GET paths conversion",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:input table",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:GET blank ambiguity"
+      ],
+      "participant_missing_facts": [
+        "Rules for absolute paths, traversal components, separators and normalization.",
+        "Rules for empty paths, nonexistent paths, symlinks and non-file Git entries.",
+        "Precise validation-error behavior and request rejection scope."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S06",
+      "question": "What file-count, byte-size and language limits does B advertise?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "Explicit .py/Python-only scope and that the advertised per-file/total byte caps concern eligible Python blob content."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "The question asks what B advertises, not what a future integrated service has formally adopted. Full/fallback answers provide 2000 files, 1 MiB per eligible Python file, 16 MiB eligible Python content, and .py/Python scope; source-defined accounting is correct. The pack omits explicit language/content scope.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:first-version limits",
+        "PR22 frozen facts.py:MAX_FILES/MAX_FILE_BYTES/MAX_TOTAL_BYTES and skip/accounting order"
+      ],
+      "participant_missing_facts": [
+        "Explicit supported-language and extension limits.",
+        "Which bytes count toward per-file and total limits and how over-limit requests fail."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S07",
+      "question": "How do valid zero-declaration files, parsing failures and encoding failures appear in CodeFacts?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "Successful zero-declaration files row with entries=[]; full skipped row shape and source-encoding/parse failure handling, including shared rather than distinct failure categorization."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback answers distinguish successful empty entries from skipped decoding/parsing failures and request-level errors. Source uses the same decoding/AST reason category; a separate parse-vs-encoding machine code is not promised. Exact prose stability is not required.",
+      "independent_evidence": [
+        "PR22 frozen facts.py:encoding/AST exception handling and files/skipped append",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:zero-declaration files",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:skipped semantics"
+      ],
+      "participant_missing_facts": [
+        "Whether a valid zero-declaration file remains in files with an empty entries list or uses another representation.",
+        "Exact skipped record shape and parsing-failure reason values.",
+        "Encoding detection, decoding-failure behavior and reason values."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S08",
+      "question": "Can C infer a dependency graph, signatures, entry points or responsibilities from CodeFacts?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Declaration-only facts cannot establish dependencies, signatures, runtime entry points or responsibilities. The limitation and candidate/human boundary are supplied in all conditions.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:54,120",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:OUT boundaries",
+        "FINAL_CONTEXT_PACK.json:do_not_assume"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S09",
+      "question": "What are C's proposed input/output shapes and confirmation limits?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "suggest_map parameter shape, same-repository/revision constraint, MapProposal minimum fields and real-evidence/model-status/confirmation limits."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback provide the proposed signature, same-commit/repository input checks, minimal ai_candidate/candidates/evidence/unknown output and no-confirmation limits. Pack-only names the proposal without the requested exchange shape.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:suggest_map section",
+        "raw_inputs/pr21_COLLABORATION_CONTRACT.md:C responsibility",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:54"
+      ],
+      "participant_missing_facts": [
+        "Proposed suggest_map function signature and input fields.",
+        "MapProposal/output fields and required types.",
+        "Explicit confirmation, review and acceptance constraints for C output."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S10",
+      "question": "How does C connect an extension without changing core, including route, handle signature, POST size and concurrency?",
+      "participant_classification": "INSUFFICIENT",
+      "independent_classification": "INSUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "NO_IMPLEMENTABLE_CONNECTION_DETAILS",
+      "missing_facts": [
+        "Extension placement/discovery, independent routes, handle/context signature, JSON-object/body-size constraints, shared-process threaded concurrency and own-scope integration rules."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback provide independent directory discovery, routes and handle/context, 65536-byte JSON object limit and same-process threaded state requirements, verified in extension docs/host/app. Pack-only has no requested connection contract.",
+      "independent_evidence": [
+        "projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+        "projectmind-core/extension_host.py:discovery/context/run",
+        "projectmind-core/app.py:make_handler/read_json_body/routes/ThreadingHTTPServer"
+      ],
+      "participant_missing_facts": [
+        "Extension placement and discovery/registration mechanism.",
+        "Route format and allowed HTTP methods.",
+        "Exact handle signature, arguments and return/error shape.",
+        "POST body-size limit and enforcement behavior.",
+        "Concurrency and handler-state requirements.",
+        "Concrete rule for connecting an extension while leaving core unchanged."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S11",
+      "question": "Does Snapshot.revision prove the human map applies to that commit?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "All conditions explicitly deny that code revision proves map identity/applicability; current local-map unknown and proposed digest/confirmation separation are sufficient.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:code/map identity",
+        "FINAL_CONTEXT_PACK.json:claim-map-version and mapSource proposal"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S12",
+      "question": "May C overwrite the curated map or present its proposal as confirmed architecture?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "The explicit C prohibition on curated/formal map overwrite; the pack supplies nonacceptance of architecture but not that file-write boundary."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback explicitly forbid C curated/formal map overwrite and candidate-as-confirmed architecture. Pack-only denies accepted architecture and withholds permission but lacks the requested explicit C file-write prohibition.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:suggest_map no curated/model writes",
+        "raw_inputs/pr21_COLLABORATION_CONTRACT.md:C/A responsibility",
+        "AGENT_BOOTSTRAP.md:authority boundary"
+      ],
+      "participant_missing_facts": [
+        "Explicit prohibition or authorization conditions for writing the curated map.",
+        "Who may confirm C output and how confirmation is represented.",
+        "Allowed output persistence and promotion workflow."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S13",
+      "question": "May C assume PR22 code exists in main or that main is team approved?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "All conditions correctly distinguish captured OPEN PR22, branch/main content and candidate/approval states. The question asks whether C may assume them, so later remote or human verification caveats do not make the negative answer incomplete.",
+      "independent_evidence": [
+        "raw_inputs/pr22_status.json",
+        "raw_inputs/main_extensions.txt",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:unintegrated prototype",
+        "FINAL_CONTEXT_PACK.json:PR/main/approval facts"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S14",
+      "question": "What must C do when its Context Pack has a relevant conflict, registry problem or unavailable verifier?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "Mandated handling of relevant conflicts, invalid registry graphs and unavailable verification: reject/stop dependent use, UNKNOWN/HUMAN_REQUIRED and exact evidence fallback."
+      ],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback give the consumer failure policy, scope checks, dependent-action stop, UNKNOWN/HUMAN_REQUIRED and exact-source fallback. Pack-only exposes empty issue fields but not the operational policy needed if an issue becomes relevant.",
+      "independent_evidence": [
+        "AGENT_BOOTSTRAP.md:consumer preflight",
+        "C_CONSUMABLE_INTERFACE.md:failure boundaries",
+        "extensions/context_authority/context_pack.py:validation/unavailable/conflict invariants"
+      ],
+      "participant_missing_facts": [
+        "Required behavior for a relevant known_conflicts entry.",
+        "Required behavior for registry_problems and verification_unavailable entries.",
+        "Blocking/fallback conditions, verifier invocation and human escalation procedure."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "B",
+      "qid": "S15",
+      "question": "Which Context Authority fields are stable enough to consume, and what evidence/revision checks remain C's responsibility?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "PARTIAL",
+      "self_classification_upheld": true,
+      "content_verdict": "HONEST_PARTIAL_ANSWER",
+      "missing_facts": [
+        "Normative frozen field/interface set versus provisional details; canonical consumer validation and exact evidence/revision/freshness/source responsibility rules."
+      ],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "Full/fallback identify normative frozen v0.1 interfaces versus provisional seed/routing/prose, and preserve independent pin, repository, source, freshness and human-authority checks. The pack alone shows field existence but contains no stability/API guarantee. Validation/body-size statements are consistent with inspected source and the independently reproduced 71822-byte size.",
+      "independent_evidence": [
+        "C_CONSUMABLE_INTERFACE.md:frozen/provisional fields and evidence axes",
+        "AGENT_BOOTSTRAP.md:independent evidence duties",
+        "extensions/context_authority/context_pack.py:_evidence/_freshness/validate_context_pack",
+        "extensions/context_authority/extension.py:context/validate_context actions"
+      ],
+      "participant_missing_facts": [
+        "Documented stable field set, required/optional types and schema compatibility policy.",
+        "Canonical Context Authority consumer functions and validation contract.",
+        "Exact evidence/revision applicability and freshness checks required of C.",
+        "Handling of null claim_revision/source_revision and granular verified_fields."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_pack.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S01",
+      "question": "Which CodeFacts revision strings may C pass, and which common aliases must be rejected?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Exact 40/64 lowercase hexadecimal characters, direct commit, and common alias/noncommit rejection are provided. These captured input constraints are supported by the delivery contract and SHA/commit checks; formal future adoption is not requested.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:22",
+        "PR22 frozen facts.py:SHA_PATTERN and collect_code_facts commit resolution",
+        "FINAL_CONTEXT_PACK.json:claim-codefacts-input-units"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S02",
+      "question": "Which five entry kinds must C handle?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "The exact five kinds are provided and supported by the delivery enum and lexical AST classifier.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:49",
+        "PR22 frozen facts.py:_definitions",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S03",
+      "question": "Are declaration names lexical qualified names? How should repeated declarations be preserved?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "The full/fallback answers preserve repeated names as separate occurrences, supported by append-per-declaration source and the multiset boundary audit. The pack supplies lexical names but omits occurrence-preservation semantics.",
+      "independent_evidence": [
+        "raw_inputs/B_BOUNDARY_AUDIT.md:multiset/redefinition row",
+        "PR22 frozen facts.py:_definitions entries.append",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S04",
+      "question": "Does an entry line point to decorators or to def/class, and is it one-based?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "One-based def/async def/class keyword line and exclusion of decorator line are explicitly supplied, matching delivery and AST locations.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:50",
+        "PR22 frozen facts.py:_definitions node.lineno",
+        "FINAL_CONTEXT_PACK.json:claim-b-shape"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S05",
+      "question": "What path validation rules must C respect when requesting CodeFacts?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": false,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Formal integrated blank-GET semantics and acceptance at a selected future target remain unestablished; observed prototype behavior and explicit POST selection rules are nevertheless complete."
+      ],
+      "reason": "The supplemented full-source and fallback answers supply exact prototype lexical/list/tree rules and GET/POST selection behavior. They retain future formal adoption as a separate caveat and give an explicit usable POST selection rule. All requested operative rules are present; formal blank-GET approval is not an extra fact required by this question. The pack alone lacks these operative details. Participant PARTIAL is not upheld because its only remaining gap is formal future integration/adoption, outside the requested prototype behavior/advertised-fact question.",
+      "independent_evidence": [
+        "PR22 frozen facts.py:_paths and collect_code_facts",
+        "PR22 frozen extension.py:handle GET paths conversion",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:input table",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:GET blank ambiguity"
+      ],
+      "participant_missing_facts": [
+        "A formally agreed empty/blank GET paths contract for the integrated B→C interface is not supplied; prototype behavior is observable but not formal acceptance."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S06",
+      "question": "What file-count, byte-size and language limits does B advertise?",
+      "participant_classification": "PARTIAL",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": false,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Prototype limits are not a formal guarantee of future Core/B/C adoption; this does not remove the advertised limits asked for."
+      ],
+      "reason": "The question asks what B advertises, not what a future integrated service has formally adopted. Full/fallback answers provide 2000 files, 1 MiB per eligible Python file, 16 MiB eligible Python content, and .py/Python scope; source-defined accounting is correct. The pack omits explicit language/content scope. Participant PARTIAL is not upheld because its only remaining gap is formal future integration/adoption, outside the requested prototype behavior/advertised-fact question.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:first-version limits",
+        "PR22 frozen facts.py:MAX_FILES/MAX_FILE_BYTES/MAX_TOTAL_BYTES and skip/accounting order"
+      ],
+      "participant_missing_facts": [
+        "Whether the prototype's capacity, language and timeout limits have been formally accepted or changed for actual Core/B/C integration is not established by the allowed evidence."
+      ],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S07",
+      "question": "How do valid zero-declaration files, parsing failures and encoding failures appear in CodeFacts?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback answers distinguish successful empty entries from skipped decoding/parsing failures and request-level errors. Source uses the same decoding/AST reason category; a separate parse-vs-encoding machine code is not promised. Exact prose stability is not required.",
+      "independent_evidence": [
+        "PR22 frozen facts.py:encoding/AST exception handling and files/skipped append",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:zero-declaration files",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:skipped semantics"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S08",
+      "question": "Can C infer a dependency graph, signatures, entry points or responsibilities from CodeFacts?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Declaration-only facts cannot establish dependencies, signatures, runtime entry points or responsibilities. The limitation and candidate/human boundary are supplied in all conditions.",
+      "independent_evidence": [
+        "raw_inputs/B_DELIVERY_CONTRACT.md:54,120",
+        "raw_inputs/B_BOUNDARY_AUDIT.md:OUT boundaries",
+        "FINAL_CONTEXT_PACK.json:do_not_assume"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S09",
+      "question": "What are C's proposed input/output shapes and confirmation limits?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback provide the proposed signature, same-commit/repository input checks, minimal ai_candidate/candidates/evidence/unknown output and no-confirmation limits. Pack-only names the proposal without the requested exchange shape.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:suggest_map section",
+        "raw_inputs/pr21_COLLABORATION_CONTRACT.md:C responsibility",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:54"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S10",
+      "question": "How does C connect an extension without changing core, including route, handle signature, POST size and concurrency?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback provide independent directory discovery, routes and handle/context, 65536-byte JSON object limit and same-process threaded state requirements, verified in extension docs/host/app. Pack-only has no requested connection contract.",
+      "independent_evidence": [
+        "projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+        "projectmind-core/extension_host.py:discovery/context/run",
+        "projectmind-core/app.py:make_handler/read_json_body/routes/ThreadingHTTPServer"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S11",
+      "question": "Does Snapshot.revision prove the human map applies to that commit?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "All conditions explicitly deny that code revision proves map identity/applicability; current local-map unknown and proposed digest/confirmation separation are sufficient.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:code/map identity",
+        "FINAL_CONTEXT_PACK.json:claim-map-version and mapSource proposal"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S12",
+      "question": "May C overwrite the curated map or present its proposal as confirmed architecture?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback explicitly forbid C curated/formal map overwrite and candidate-as-confirmed architecture. Pack-only denies accepted architecture and withholds permission but lacks the requested explicit C file-write prohibition.",
+      "independent_evidence": [
+        "raw_inputs/pr21_MVP_INTERFACES.md:suggest_map no curated/model writes",
+        "raw_inputs/pr21_COLLABORATION_CONTRACT.md:C/A responsibility",
+        "AGENT_BOOTSTRAP.md:authority boundary"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S13",
+      "question": "May C assume PR22 code exists in main or that main is team approved?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "All conditions correctly distinguish captured OPEN PR22, branch/main content and candidate/approval states. The question asks whether C may assume them, so later remote or human verification caveats do not make the negative answer incomplete.",
+      "independent_evidence": [
+        "raw_inputs/pr22_status.json",
+        "raw_inputs/main_extensions.txt",
+        "raw_inputs/B_DELIVERY_CONTRACT.md:unintegrated prototype",
+        "FINAL_CONTEXT_PACK.json:PR/main/approval facts"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": false,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S14",
+      "question": "What must C do when its Context Pack has a relevant conflict, registry problem or unavailable verifier?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [],
+      "reason": "Full/fallback give the consumer failure policy, scope checks, dependent-action stop, UNKNOWN/HUMAN_REQUIRED and exact-source fallback. Pack-only exposes empty issue fields but not the operational policy needed if an issue becomes relevant.",
+      "independent_evidence": [
+        "AGENT_BOOTSTRAP.md:consumer preflight",
+        "C_CONSUMABLE_INTERFACE.md:failure boundaries",
+        "extensions/context_authority/context_pack.py:validation/unavailable/conflict invariants"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    },
+    {
+      "condition": "C",
+      "qid": "S15",
+      "question": "Which Context Authority fields are stable enough to consume, and what evidence/revision checks remain C's responsibility?",
+      "participant_classification": "SUFFICIENT",
+      "independent_classification": "SUFFICIENT",
+      "self_classification_upheld": true,
+      "content_verdict": "COMPLETE_SCOPED_ANSWER",
+      "missing_facts": [],
+      "retained_authority_unknowns": [
+        "Current remote state, source authentication, actual human acceptance and target/map applicability require consumer checks when making a dependent operational decision."
+      ],
+      "reason": "Full/fallback identify normative frozen v0.1 interfaces versus provisional seed/routing/prose, and preserve independent pin, repository, source, freshness and human-authority checks. The pack alone shows field existence but contains no stability/API guarantee. Validation/body-size statements are consistent with inspected source and the independently reproduced 71822-byte size.",
+      "independent_evidence": [
+        "C_CONSUMABLE_INTERFACE.md:frozen/provisional fields and evidence axes",
+        "AGENT_BOOTSTRAP.md:independent evidence duties",
+        "extensions/context_authority/context_pack.py:_evidence/_freshness/validate_context_pack",
+        "extensions/context_authority/extension.py:context/validate_context actions"
+      ],
+      "participant_missing_facts": [],
+      "initial_pack_requires_fallback": true,
+      "answer_file": "sufficiency_fallback.json"
+    }
+  ],
+  "initial_full_source_review": {
+    "answer_file": "sufficiency_full_initial.json",
+    "participant_counts": {
+      "SUFFICIENT": 14,
+      "PARTIAL": 1
+    },
+    "independent_counts": {
+      "SUFFICIENT": 14,
+      "PARTIAL": 1
+    },
+    "rows": [
+      {
+        "qid": "S01",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S02",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S03",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S04",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S05",
+        "participant_classification": "PARTIAL",
+        "independent_classification": "PARTIAL",
+        "self_classification_upheld": true,
+        "missing_facts": [
+          "Exact prototype lexical path rejection/normalization rules were not provided by its initial document-only evidence."
+        ],
+        "reason": "Initial source-only path answer correctly acknowledges missing backslash/control/dot/empty-segment semantics. Its later exact-source supplement repairs this content gap."
+      },
+      {
+        "qid": "S06",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S07",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S08",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S09",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S10",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S11",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S12",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S13",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S14",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      },
+      {
+        "qid": "S15",
+        "participant_classification": "SUFFICIENT",
+        "independent_classification": "SUFFICIENT",
+        "self_classification_upheld": true,
+        "missing_facts": [],
+        "reason": "The initial answer supplies the requested scoped factual or consumer-boundary content; the later supplement only expands S06/S07 detail."
+      }
+    ]
+  },
+  "full_source_supplement": {
+    "changed_qids": [
+      "S05",
+      "S06",
+      "S07"
+    ],
+    "all_other_answer_records_identical": true,
+    "initial_answers_retained": true,
+    "new_sources": [
+      "PR22 frozen facts.py",
+      "PR22 frozen extension.py"
+    ],
+    "effect": "S05 now supplies complete operative path/selection behavior; S06/S07 gain supported accounting/error details without requiring future formal approval."
+  },
+  "input_hashes": {
+    "sufficiency_questions.jsonl": "e9a52a1f7dfdd2af07ff0e78cc56ccc8c762a93b4d462166eeeb1e09cb3ef753",
+    "sufficiency_full_initial.json": "bfe0861a42a8077069f1096a6210275829c0dd48ced50db05a75041403e6084b",
+    "sufficiency_full.json": "838890e0df2469350f6df035eca31d7d1f70cbbaa70149a1b1ac76f1dc05cd76",
+    "sufficiency_pack.json": "ba7232690788f91298e535db3e3f07b9026da43d721b91b48e15fa213893c3cf",
+    "sufficiency_fallback.json": "06f517ab04cf3d119ef712cbcdbe43c08920e10a2d432de3d07936ed955a5653",
+    "sufficiency_full_READS.json": "057bff7a12a78d1ab0f6493a8fed558617784eec1e4a61b41619a194b8343736",
+    "sufficiency_pack_READS.json": "2db9dfcb4565b735b7a4e7567beab3728f4d189843b25f25e7a55c031f61e036",
+    "sufficiency_fallback_READS.json": "a0312ded6a22a8aa1b1554c1655a3e962c4b4681495bf74441653d0e6b988510",
+    "FINAL_CONTEXT_PACK.json": "9516b1d560f8d94535d21646bf81491d38b9a9e726794daf1dc1a6e1e8caafba"
+  },
+  "reviewed_source_hashes": {
+    "G:\\jiagou\\projectmind-context-authority\\AGENT_BOOTSTRAP.md": "d9beeed0cd812fd89655bb77f7724d883f9a0aafb9a1c4584d27a79cbe60b754",
+    "G:\\jiagou\\projectmind-context-authority\\C_CONSUMABLE_INTERFACE.md": "119739cfba0265f666641cda552d2dcc7ed7d9470f4d3fd7a87757d340f8e91a",
+    "G:\\jiagou\\projectmind-context-authority\\extensions\\context_authority\\context_pack.py": "a16deb473f4e67d236152bedf06bef0de16c8daa09e02a3d74c6b98ff2e9435d",
+    "G:\\jiagou\\projectmind-context-authority\\extensions\\context_authority\\extension.py": "835e7798d48abd00fb8230ce2fffda94d6f48d37d0f40487226b406d6bf8d81f",
+    "G:\\jiagou\\projectmind-core\\docs\\standards\\EXTENSION_INTERFACE.md": "01a48c2e17ca94ea4af68fb1e1b91f4c170c5229da27bb5fca4d8d7b3dacfa21",
+    "G:\\jiagou\\projectmind-core\\extension_host.py": "a6d1eea79a9fe03cbceb5387d08c406474d485a2e347d7ec75a01d8b478acd1f",
+    "G:\\jiagou\\projectmind-core\\app.py": "1cc6c78e08e0d8f9ad5ed225dd903533b372ba5bfb1368604ab4061f40a6e827",
+    "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\raw_inputs\\B_DELIVERY_CONTRACT.md": "35b035b9ad6e5587acb1ee749b3da273e07d62c0a3c93cd6d7b94a906e5c5b6e",
+    "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\raw_inputs\\B_BOUNDARY_AUDIT.md": "42a0f5189da87c26c08f570c56ad7b9fdda2ee1dc02d0b760458492ee523eda1",
+    "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\raw_inputs\\pr21_MVP_INTERFACES.md": "f92b1949cb07fd6b53c5b24ed3307510dc91ed98c14a7dd56649bb60ef6cf7de",
+    "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\raw_inputs\\pr21_COLLABORATION_CONTRACT.md": "e9b01bfffc32e3adb7aad6bf7f017b3bcc317585719f4b8e0ad0e01483294c0c",
+    "G:\\jiagou\\projectmind-benchmark\\B_PR22_HOLDOUT\\pr22_tree\\LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c\\collaboration\\b\\2026-10-01-wang-haining\\extensions\\code_facts\\facts.py": "3d7d86bddfa78a3ccd2c945727ce2dda9a51830fc07dc72e825de4b37b47c020",
+    "G:\\jiagou\\projectmind-benchmark\\B_PR22_HOLDOUT\\pr22_tree\\LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c\\collaboration\\b\\2026-10-01-wang-haining\\extensions\\code_facts\\extension.py": "32e29eb779e8c0102d61768cca1e501618482c7f9a1da1855d0c8becf255d536"
+  },
+  "verification": {
+    "complete_primary_grid": 45,
+    "complete_initial_history_grid": 15,
+    "participant_manifests_complete": true,
+    "pack_compact_utf8_bytes_independently_measured": 71822,
+    "pack_integrity_independently_recomputed": true,
+    "new_participant_execution": false,
+    "git_or_web_calls": false,
+    "inputs_answers_product_modified_by_judge": false
+  },
+  "limitations": [
+    "Content sufficiency is not proof of human approval, live remote freshness, full development preflight, or safe deployment.",
+    "A was supplemented after initial evidence incompleteness was found; its 14/1 initial result is retained, and final A is not a fresh matched rerun.",
+    "C and A used the same frozen B prototype source, while B deliberately saw only the final pack. This is an information-access comparison, not an isolated bootstrap/schema causal study.",
+    "This fixed 15-question set has one participant per condition and no statistical generalization.",
+    "Only recorded reads are auditable; the instructional allowlist is not an OS sandbox.",
+    "Core/CA normative working files are allowed evidence but not all were included in a pre-dispatch cryptographic freeze; judge records current reviewed source hashes and does not silently claim immutable matched source state.",
+    "Prototype behavior is scoped to PR22 head; formal integration/adoption and current target applicability remain separate consumer checks.",
+    "The original performance research report, current remote state, fresh approval evidence and exact runtime target integration were not retrieved."
+  ]
+}

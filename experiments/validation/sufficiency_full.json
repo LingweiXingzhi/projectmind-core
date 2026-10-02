@@ -1,0 +1,200 @@
+[
+  {
+    "qid": "S01",
+    "answer": "Pass only the complete lowercase hexadecimal SHA of an existing object that directly is a commit: exactly 40 characters (SHA-1) or 64 (SHA-256). Reject HEAD/HEAD~1, branch or tag names, short or uppercase SHAs, other lengths, nonexistent hashes, annotated-tag objects and other non-commit objects. Resolve aliases before calling B; Core's broader 40–64-character validation is not B's contract.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-core/docs/standards/MVP_INTERFACES.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Treating Core's revision validator or a Git-resolvable alias as an accepted CodeFacts revision."
+  },
+  {
+    "qid": "S02",
+    "answer": "C must handle function, async_function, class, method and async_method. A direct function declaration in a class body is a method; a function nested inside a method is a function.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Reducing kind to function/class or treating every declaration lexically inside a class as a method."
+  },
+  {
+    "qid": "S03",
+    "answer": "Yes. Names are lexical qualified names such as Class.method and outer.inner, including the full nested chain. Preserve every repeated declaration as a separate entry, including repeated identical names; consume the entries as a multiset/list rather than a set or a dictionary keyed only by name. Lexical nesting does not establish call or dependency relationships.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_BOUNDARY_AUDIT.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Collapsing repeated names would lose declarations and their distinct source locations."
+  },
+  {
+    "qid": "S04",
+    "answer": "line is the one-based line of the def, async def or class declaration in the selected commit. It does not point to the first decorator.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Using decorator locations or zero-based editor offsets as CodeFacts line values."
+  },
+  {
+    "qid": "S05",
+    "answer": "In the supplied PR22 prototype, paths must be None or a list of at most 2,000 items BEFORE deduplication. Each item must be a nonempty string, contain no backslash, no ASCII character below 32 or DEL (127), and no empty, '.' or '..' slash-separated segment. Thus NUL, leading/trailing '/', repeated '/', and traversal segments are rejected. Use exact repository-relative Git-tree file paths and the repo root, not a subdirectory. Every requested path must exist in that commit; a missing path fails the entire request. Directories and globs are not expanded: names are matched literally against the recursive tree, with no separate drive-letter/colon/glob-character rejection. Duplicates are removed and selected paths sorted. None (including omitted/null POST paths) scans all committed files; [] selects none. The actual GET adapter maps missing paths or paths=\"\" to None; otherwise it uses splitlines() and applies the same validator. This supplies the exact prototype behavior. Formal agreement on GET empty-path semantics and adoption of this PR22 prototype remain unestablished; C can use explicit POST selections without treating those separate decisions as settled.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-core/docs/standards/MVP_INTERFACES.md",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py"
+    ],
+    "fallback_required": false,
+    "missing_facts": [
+      "Team-approved formal GET empty-path semantics and adoption of this prototype at C's chosen target commit remain unestablished; they are separate from the now-observed validation behavior."
+    ],
+    "misunderstanding_risk": "Treating source behavior as formal approval; expanding a glob instead of matching a literal Git path; overlooking the pre-deduplication item limit or POST [] versus GET empty-string distinction."
+  },
+  {
+    "qid": "S06",
+    "answer": "The advertised and source-defined limits are 2,000 files, 1 MiB (1,048,576 bytes) per eligible Python file, and 16 MiB (16,777,216 bytes) of eligible Python blob content per request. The source checks an explicit paths list's raw length before deduplication, then checks selected-file count; the latter includes files later skipped. Only regular/executable Git blobs with the case-sensitive .py suffix are parsed. A file above 1 MiB is skipped. The aggregate counter excludes files skipped for filename/type/suffix/individual-size checks, but includes eligible files that later fail encoding or parsing; exceeding 16 MiB fails the entire request. Each Git subprocess has a 10-second timeout, rather than a single 10-second deadline for the whole extraction. The shared host caps POST JSON at 65,536 bytes. Other languages, non-UTF-8 filenames, symlinks/submodules and other non-regular/non-blob entries are skipped. These are PR22 prototype limits, not proof of main adoption or completed Core/C integration.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+      "G:/jiagou/projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+      "G:/jiagou/projectmind-core/app.py"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Treating every limit as a per-file skip, counting only successful parses toward the aggregate cap, or interpreting the Git timeout as an overall request deadline."
+  },
+  {
+    "qid": "S07",
+    "answer": "The source appends every successfully parsed .py file to files as {path, language:\"python\", entries:[...]}; a valid zero-declaration file therefore has entries:[] and is not skipped. Encoding detection uses tokenize.detect_encoding, then decoding and ast.parse. SyntaxError, UnicodeError, LookupError, ValueError or RecursionError in those steps produce skipped:{path,reason:\"无法按当前 Python 解析器读取编码或语法\"}, and other files continue; parse and encoding failures share this reason and no separate machine-readable subtype. A non-UTF-8 filename is skipped earlier with its own reason, distinct from Python source encoding. Other early skip reasons cover symlink/submodule or non-regular entries, non-.py files and a file exceeding 1 MiB. Invalid inputs, nonexistent requested files, Git failures and aggregate content above 16 MiB raise CodeFactsError and become HTTP 400 in the adapter, rather than a successful partial response. Exact wording is observed prototype output, not a promised stable error API.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Equating a skip with zero declarations, assuming encoding and parsing failures have distinct structured codes, or expecting an aggregate-limit failure to return partial files."
+  },
+  {
+    "qid": "S08",
+    "answer": "CodeFacts alone does not establish a dependency/call graph, function signatures, runtime entry points, reachability or responsibilities. It supplies static declaration name/kind/location facts only. These broader conclusions require separate source evidence and, for responsibilities or confirmed architecture, human authority; C must preserve candidate and unknown status.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_BOUNDARY_AUDIT.md",
+      "G:/jiagou/projectmind-core/docs/standards/COLLABORATION_CONTRACT.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Promoting lexical declarations or nesting into verified architectural meaning."
+  },
+  {
+    "qid": "S09",
+    "answer": "The proposed function is suggest_map(snapshot, code_facts) -> MapProposal. Inputs must belong to the same repository/commit; reject mismatching Snapshot and CodeFacts revisions. Minimum output is {status:\"ai_candidate\", revision:<full SHA>, candidates:[{title, summary, evidencePaths:[], unknowns:[]}], note:<pending human review/no map overwrite>}. Evidence paths must come from real input paths; insufficient evidence yields empty candidates with a reason. Keep LLM configuration explicit, bound its input and retain unknowns. ai_candidate requires actual model generation; no available model means an explicit unconfigured response, and future rule-generated candidates need their own generation label. This remains a proposed business interface and cannot confirm architecture or write the curated/formal map.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-core/docs/standards/MVP_INTERFACES.md",
+      "G:/jiagou/projectmind-core/docs/standards/COLLABORATION_CONTRACT.md",
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Treating PROPOSED exchange shapes or model-generated candidates as implemented, approved architectural facts."
+  },
+  {
+    "qid": "S10",
+    "answer": "Create extensions/map_proposal/extension.py with EXTENSION={title,description} and handle(context, method, data) -> a JSON-encodable dict; optionally add a self-contained index.html and __init__.py for multiple Python files. The extension ID must match [a-z][a-z0-9_]{0,39}. Restart the service for discovery and sidebar registration. Routes are GET /api/extensions, GET /ext/map_proposal, and GET/POST /api/extensions/map_proposal. GET passes first values from query parameters; POST requires an application/json object of 1–65,536 bytes. context provides repo, map_path, snapshot() and compare(base,target). The host runs extensions in the same process and ThreadingHTTPServer handles concurrent requests, so protect shared mutable state. No Core or shared-front-end edits are required; embedding output into the shared main map is a separate Core integration responsibility.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+      "G:/jiagou/projectmind-core/extension_host.py",
+      "G:/jiagou/projectmind-core/app.py",
+      "G:/jiagou/projectmind-core/docs/standards/COLLABORATION_CONTRACT.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Assuming extension discovery also adds a curated-map node, or ignoring concurrent access to extension globals."
+  },
+  {
+    "qid": "S11",
+    "answer": "No. Snapshot.revision identifies the code commit. The curated human map is read from the current local file and has no independent fixed map identity/applicability confirmation. Even existsAtCommit only checks whether an evidence path exists; it does not prove an entry point, responsibility or relation. Record mapRevision as UNKNOWN until independently established. The proposed mapSource digest identifies map bytes, and confirmedForRevision:null still means applicability is unconfirmed.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-core/docs/standards/MVP_INTERFACES.md",
+      "G:/jiagou/projectmind-core/docs/standards/COLLABORATION_CONTRACT.md",
+      "G:/jiagou/projectmind-context-authority/C_CONSUMABLE_INTERFACE.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Using a code SHA or file-existence flag as confirmation that the human map was checked for that commit."
+  },
+  {
+    "qid": "S12",
+    "answer": "No. C may propose candidates with evidence and unknowns, but may not overwrite data/project-map.json or a formal model repository, and must not present candidates as confirmed architecture. Formal responsibility/relationship/applicability decisions require recorded human confirmation. Shared main-map integration belongs to Core after the relevant outputs are accepted.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-core/docs/standards/MVP_INTERFACES.md",
+      "G:/jiagou/projectmind-core/docs/standards/COLLABORATION_CONTRACT.md",
+      "G:/jiagou/projectmind-context-authority/AGENT_BOOTSTRAP.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Reading a proposal, research artifact or Context Pack as authorization to publish architectural truth."
+  },
+  {
+    "qid": "S13",
+    "answer": "No. The original PR22 status snapshot is open and merged:false at head 0c46747147f765260bf2033f6eae40189b58ca0c; its B delivery contract explicitly describes an independent reference prototype not integrated or jointly tested with actual Core/C. The recorded main SHA is 7484d44ddeac3c054ca3ba68f92293d965bb615c and its extension listing contains only project_summary. These are historical snapshots, so re-check the exact target source/status for a current development decision. IMPLEMENTED, MERGED and TEAM APPROVED are separate; main is a candidate baseline until the team explicitly approves its full SHA.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr22_status.json",
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_head.txt",
+      "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_extensions.txt",
+      "G:/jiagou/projectmind-core/docs/standards/COLLABORATION_CONTRACT.md",
+      "G:/jiagou/projectmind-context-authority/AGENT_BOOTSTRAP.md"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Mistaking an open reference-package PR, a historical snapshot, or mergeability/merged status for current implementation and team approval."
+  },
+  {
+    "qid": "S14",
+    "answer": "Inspect relevant known_conflicts, registry_problems, verification_unavailable and known_stale_sources after successful pack validation and intended key/scope selection. Stop actions dependent on conflicted claims or invalid replacement graphs and obtain HUMAN_REQUIRED resolution through evidence/human review; never select a winner automatically. Treat unavailable volatile verification as UNKNOWN, and stale/superseded claims as non-current. Continue unrelated work only. Retrieve the claim's exact source/revision, use full-doc/source fallback for missing evidence, record remaining UNKNOWN/HUMAN_REQUIRED facts, reject inconsistent claims and report changed facts through the CA review workflow.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/AGENT_BOOTSTRAP.md",
+      "G:/jiagou/projectmind-context-authority/C_CONSUMABLE_INTERFACE.md",
+      "G:/jiagou/projectmind-context-authority/extensions/context_authority/context_pack.py"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Using a stored value after failed verification or silently resolving an authority conflict using timestamps or global type precedence."
+  },
+  {
+    "qid": "S15",
+    "answer": "The frozen C v0.1 contract covers schema_version=\"0.1\", project_revision, current_state.current_by_scope, the unambiguous current convenience map, verified_facts/human_decisions/relevant_contracts, known_conflicts/known_stale_sources, proposals/research_notes/historical_sources, verification_unavailable/registry_problems, do_not_assume meaning, per-claim evidence, registry hash/integrity, and build_context_pack/validate_context_pack plus corresponding POST context/validate_context actions. Pin a full lowercase 40/64-character commit independently and validate with expected_revision before consuming; reject unsupported/legacy or invalid packs. Select both key and scope; absent current means UNKNOWN. Independently check each relevant claim's exact source, revision and human authority, including collapsed/derived claim provenance. claim_revision binds applicability, source_revision records provenance and revision is the effective locator. Check repository identity and align Snapshot/CodeFacts revisions; map applicability needs separate proof. Freshness=unverified has no live check and local_reference is only cached origin/main; current remote claims need an independent current remote check. Checksums prove structural consistency only. Keyword routing, seed keys, warning prose/order, generated claim IDs and additional metadata are provisional; this freeze itself is not formal team approval.",
+    "input_sufficiency": "SUFFICIENT",
+    "evidence_used": [
+      "G:/jiagou/projectmind-context-authority/C_CONSUMABLE_INTERFACE.md",
+      "G:/jiagou/projectmind-context-authority/AGENT_BOOTSTRAP.md",
+      "G:/jiagou/projectmind-context-authority/extensions/context_authority/context_pack.py",
+      "G:/jiagou/projectmind-context-authority/extensions/context_authority/extension.py"
+    ],
+    "fallback_required": false,
+    "missing_facts": [],
+    "misunderstanding_risk": "Treating a validated pack, checksum, source-document revision or convenience current projection as independent proof of truth, freshness, scope or architecture approval."
+  }
+]

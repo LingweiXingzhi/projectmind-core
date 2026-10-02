@@ -1,0 +1,52 @@
+{
+  "participant": "fresh C preflight",
+  "expected_revision": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "read_files": [
+    "AGENT_BOOTSTRAP.md",
+    "experiments/validation/preflight_hardened_inputs/cases.json",
+    "experiments/validation/preflight_hardened_inputs/consumer_expected_revision.json",
+    "experiments/validation/preflight_evidence/conflict_evidence.json",
+    "experiments/ca_experiment/raw_inputs/B_BOUNDARY_AUDIT.md",
+    "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+    "experiments/ca_experiment/raw_inputs/B_PR22_BENCHMARK_REPORT.md",
+    "experiments/ca_experiment/raw_inputs/FINAL_BENCHMARK_REPORT.md",
+    "experiments/ca_experiment/raw_inputs/main_COLLABORATION_CONTRACT.md",
+    "experiments/ca_experiment/raw_inputs/main_extensions.txt",
+    "experiments/ca_experiment/raw_inputs/main_head.txt",
+    "experiments/ca_experiment/raw_inputs/main_MVP_INTERFACES.md",
+    "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+    "experiments/ca_experiment/raw_inputs/pr21_extensions.txt",
+    "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+    "experiments/ca_experiment/raw_inputs/pr21_status.json",
+    "experiments/ca_experiment/raw_inputs/pr22_status.json"
+  ],
+  "directory_inventories": [
+    {
+      "path": "experiments/ca_experiment/raw_inputs",
+      "method": "filename enumeration only; no other directories enumerated"
+    }
+  ],
+  "validator_import": "extensions.context_authority.context_pack.validate_context_pack",
+  "validator_imported_repository_modules": [
+    "extension_host.py",
+    "extensions/__init__.py",
+    "extensions/context_authority/__init__.py",
+    "extensions/context_authority/context_pack.py",
+    "extensions/context_authority/registry.py",
+    "extensions/context_authority/resolver.py",
+    "extensions/context_authority/schema.py",
+    "extensions/context_authority/verifiers.py"
+  ],
+  "missing_original_evidence": [
+    "stress_perf/STRESS_PERF_REPORT.md is not among allowed raw inputs",
+    "Exact code sources at the consumer target revision",
+    "Current remote PR/main state and any new human approvals"
+  ],
+  "notes": [
+    "JSON parsed; original document snippets and snapshot listings independently inspected.",
+    "Clean control packs served only as comparison packets, never as independent authority.",
+    "Validator invoked with the supplied expected_revision for every case; successful checks treated as structural only.",
+    "No implementation, Git operation, internet access or score calculation.",
+    "Only the two requested output files were written."
+  ]
+}

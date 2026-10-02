@@ -1,0 +1,18 @@
+{
+  "run": "B1",
+  "condition": "ca",
+  "files_read": [
+    {"path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/CONTEXT_PACK.json", "read_count": 1, "method": "Get-Content -Raw"},
+    {"path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/AGENT_BOOTSTRAP.md", "read_count": 1, "method": "Get-Content -Raw"},
+    {"path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/questions.jsonl", "read_count": 1, "method": "Get-Content -Raw"}
+  ],
+  "adherence": {
+    "only_allowed_context_inputs_read": true,
+    "repository_code_raw_inputs_truth_other_answers_internet_parent_reports_read": false,
+    "answers_based_only_on_frozen_pack_and_bootstrap": true,
+    "omitted_facts_not_guessed": true,
+    "confirmed_proposed_research_historical_unknown_distinguished": true,
+    "self_scoring_performed": false,
+    "only_requested_output_files_written": true
+  }
+}
