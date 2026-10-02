@@ -9,7 +9,7 @@ class HandoffError(ValueError):
     pass
 
 
-def build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None):
+def build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None, work_notes=None):
     if not isinstance(snapshot, dict) or not SHA.fullmatch(str(snapshot.get('revision', ''))):
         raise HandoffError('快照必须包含完整代码提交 SHA')
     revision = snapshot['revision']
@@ -51,10 +51,16 @@ def build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None)
         explanation = candidate.get('explanation')
         if not isinstance(explanation, dict) or not isinstance(explanation.get('unknowns'), list):
             raise HandoffError('AI 候选缺少解释或未知项')
+        for key in ('observations', 'possibleEffects', 'unknowns', 'evidencePaths'):
+            values = explanation.get(key)
+            if not isinstance(values, list) or any(not isinstance(v, str) for v in values):
+                raise HandoffError('AI 解释的 ' + key + ' 必须为文本列表')
+        if not isinstance(explanation.get('summary'), str):
+            raise HandoffError('AI 解释摘要必须为文本')
         changed = candidate.get('changedEvidencePaths')
         cited = explanation.get('evidencePaths')
         matching = next((r['changedEvidencePaths'] for r in reviews if r['nodeId'] == candidate['nodeId']), [])
-        if not isinstance(changed, list) or not isinstance(cited, list) or not set(changed).issubset(set(matching)) or not set(cited).issubset(set(changed)):
+        if not isinstance(changed, list) or any(not isinstance(v, str) for v in changed) or not isinstance(cited, list) or not set(changed).issubset(set(matching)) or not set(cited).issubset(set(changed)):
             raise HandoffError('AI 候选引用了此次比较之外的证据')
     result = {'status': 'handoff_draft', 'repository': snapshot['repository'],
               'sourceLocator': deepcopy(source_locator), 'codeRevision': revision,
@@ -66,6 +72,13 @@ def build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None)
     if comparison is not None:
         result['baseRevision'] = comparison['baseRevision']
         result['comparisonNote'] = comparison.get('note', '')
+    if work_notes is not None:
+        keys = ('completed', 'pending', 'blockers', 'nextSteps')
+        if not isinstance(work_notes, dict) or set(work_notes) - set(keys):
+            raise HandoffError('工作备注只支持 completed、pending、blockers、nextSteps')
+        if any(not isinstance(v, str) or len(v) > 4000 for v in work_notes.values()):
+            raise HandoffError('每项工作备注须为文本，且不超过 4000 字符')
+        result['workNotes'] = {'status': 'contributor_notes', **deepcopy(work_notes)}
     return result
 
 
@@ -92,6 +105,8 @@ def render_markdown(handoff):
              '- 地图来源类型：' + t(handoff['mapOrigin'])]
     if 'baseRevision' in handoff:
         lines.append('- 比较基准：`' + handoff['baseRevision'] + '`')
+    if handoff.get('comparisonSource'):
+        lines.append('- 基准来源：' + t(handoff['comparisonSource']))
     if handoff.get('mapNote'):
         lines.append('- 地图备注：' + t(handoff['mapNote']))
     lines += ['', '## 本次变化', '']
@@ -157,6 +172,10 @@ def render_markdown(handoff):
             lines += ['', '候选备注：' + t(candidate['note'])]
     lines += ['', '## 尚未确认', '']
     lines.extend('- ' + t(value) for value in handoff['unknowns'])
+    if handoff.get('workNotes'):
+        lines += ['', '## 工作备注', '', '性质：协作者填写的工作记录，尚未独立核实。', '']
+        for key, label in [('completed', '已完成'), ('pending', '待办'), ('blockers', '阻塞'), ('nextSteps', '下一步')]:
+            lines.append('- ' + label + '：' + t(handoff['workNotes'].get(key, '').strip() or '未填写'))
     lines += ['', '## 下一步：接手步骤', '',
               '1. 按仓库来源取得项目，检出上方完整代码提交。',
               '2. 若有比较基准，对照该基准与代码提交检查变化文件。',

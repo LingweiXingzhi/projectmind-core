@@ -44,3 +44,17 @@ POST `/api/extensions/handoff`：
 省略可选字段即可；响应为 `{handoff, markdown}`。`build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None)` 可独立使用；AI 候选原样复制并检查对应比较、版本和证据，不生成新结论。页面输出通过文本展示，不执行输入中的 HTML。
 
 Project Model Impact：UPDATE（建议）。新增可运行交接扩展，建议团队审核后登记职责与代码映射；本 PR 不直接修改正式 Project Model 或人工地图。
+
+## 交接页快捷操作与工作记录
+
+仓库来源默认 Core，可编辑。此地址是接手者取得仓库的线索，不会切换服务正在读取的仓库；运行其他仓库时必须修改来源。
+
+“对比 main 并生成”在生成时把本机 `refs/remotes/origin/main` 解析为完整提交 SHA，再与当前快照比较。页面显示已取得的 main 版本；它不会联网拉取。需要最新 main 时先在 GitHub Desktop 执行 Fetch origin。缺少该引用会明确报错，不会猜测或改用其他分支。手动比较仍支持完整 SHA；留空生成不含比较的交接包。
+
+页面显示功能节点数、变化文件数、AI 候选数及优先复核项。输入改变会使旧下载失效，生成期间修改输入不会恢复旧结果。
+
+可填写已完成、待办、阻塞、下一步，每项最多 4000 字符。JSON 中 `workNotes.status` 固定为 `contributor_notes`；Markdown 明示备注尚未独立核实，不会把它们升级为代码事实或架构决定。
+
+扩展 GET 返回默认来源、本机 main SHA/读取错误及版本提示；POST 新增可选 `comparisonMode: "main"` 和 `workNotes`。既有 POST 请求仍有效。只修改 D 扩展与对应测试，宿主公共接口不变。
+
+验证：25 项 Python 测试通过，覆盖本机 main 缺失/变化后的重新解析、基准冲突、短 SHA 拒绝、备注隔离及非法 AI 列表。真实线上 AI、团队地图适用版本与跨设备接手验收仍待验证。

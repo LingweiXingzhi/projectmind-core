@@ -5,18 +5,25 @@
 <a href="/">← 项目地图</a><h1>交给下一位协同者</h1><p>保存当前代码版本、变化与核查入口。输出始终是交接草稿。</p>
 <p id="version">正在读取版本…</p>
 <label for="kind">仓库来源</label><select id="kind"><option value="git_remote">Git 仓库地址</option><option value="local_path">本地路径</option></select>
-<input id="source" placeholder="请填可供接手者取得项目的来源">
-<label for="base">比较基准提交（选填）</label><input id="base" placeholder="完整 SHA；留空则不附比较">
+<input id="source" value="https://github.com/LingweiXingzhi/projectmind-core"><small>默认 Core；其他仓库请修改来源地址，来源地址不会切换正在运行的本地仓库。</small>
+<p id="mainInfo"></p><button id="main" disabled>对比 main 并生成</button><label for="base">比较基准提交（选填）</label><input id="base" placeholder="完整 SHA；留空则不附比较">
 <label for="ai">AI 解释原样响应列表（选填）</label><textarea id="ai" rows="3" placeholder='例如 [ /api/explain 的完整成功响应 ]'></textarea><small>只接收同一版本、同一次比较的候选结果；留空表示未提供。</small>
-<div><button id="generate" disabled>生成交接包</button><button id="json" disabled>下载 JSON</button><button id="md" disabled>下载 Markdown</button></div><p id="message" role="status"></p><pre id="preview">生成后在这里预览。</pre>
+<details><summary>补充工作备注（选填）</summary>
+<label for="completed">已完成</label><textarea id="completed" maxlength="4000" rows="2"></textarea>
+<label for="pending">待办</label><textarea id="pending" maxlength="4000" rows="2"></textarea>
+<label for="blockers">阻塞</label><textarea id="blockers" maxlength="4000" rows="2"></textarea>
+<label for="nextSteps">下一步</label><textarea id="nextSteps" maxlength="4000" rows="2"></textarea>
+<small>只记录项目工作；这些备注尚未独立核实。</small></details>
+<div><button id="generate" disabled>生成交接包</button><button id="json" disabled>下载 JSON</button><button id="md" disabled>下载 Markdown</button></div><p id="message" role="status"></p><section id="summary" hidden><h2>本次交接</h2><p id="counts"></p><p id="review"></p><p>地图适用版本：UNKNOWN；AI 内容为候选，工作备注尚未独立核实。</p></section><pre id="preview">生成后在这里预览。</pre>
 <script>
-let snapshot, output;
+let snapshot, output, generation=0;
 const el=id=>document.getElementById(id);
-function clear(){output=null;el('json').disabled=el('md').disabled=true;el('preview').textContent='尚无有效交接包。';}
+function clear(){generation++;el('summary').hidden=true;output=null;el('json').disabled=el('md').disabled=true;el('preview').textContent='尚无有效交接包。';}
 async function request(url, options){const r=await fetch(url,options);const data=await r.json();if(!r.ok)throw Error(data.error||'读取失败');return data;}
-async function refresh(){snapshot=await request('/api/snapshot');el('version').textContent='代码：'+snapshot.revision+' · 地图核查：UNKNOWN';el('generate').disabled=false;}
-['kind','source','base','ai'].forEach(id=>el(id).addEventListener('input',clear));
-el('generate').onclick=async()=>{clear();el('message').textContent='';el('generate').disabled=true;try{const data={expectedRevision:snapshot.revision,sourceLocator:{kind:el('kind').value,value:el('source').value.trim()}};if(el('base').value.trim())data.baseRevision=el('base').value.trim();if(el('ai').value.trim())data.aiCandidates=JSON.parse(el('ai').value);output=await request('/api/extensions/handoff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});el('preview').textContent=output.markdown;el('json').disabled=el('md').disabled=false;}catch(e){el('message').textContent=e.message;try{await refresh();}catch(err){el('message').textContent+='；'+err.message;}}finally{el('generate').disabled=!snapshot;}};
+async function refresh(){snapshot=await request('/api/snapshot');el('version').textContent='代码：'+snapshot.revision+' · 地图核查：UNKNOWN';el('generate').disabled=el('main').disabled=false;const config=await request('/api/extensions/handoff');el('mainInfo').textContent=config.mainNote+(config.mainRevision?' 当前：'+config.mainRevision:' '+config.mainError);}
+['kind','source','base','ai','completed','pending','blockers','nextSteps'].forEach(id=>el(id).addEventListener('input',clear));
+async function generate(mode){clear();const ticket=generation;el('message').textContent='';el('generate').disabled=el('main').disabled=true;try{const data={expectedRevision:snapshot.revision,sourceLocator:{kind:el('kind').value,value:el('source').value.trim()}};if(mode==='main')data.comparisonMode='main';else if(el('base').value.trim())data.baseRevision=el('base').value.trim();const notes={};['completed','pending','blockers','nextSteps'].forEach(id=>{if(el(id).value.trim())notes[id]=el(id).value.trim();});if(Object.keys(notes).length)data.workNotes=notes;if(el('ai').value.trim())data.aiCandidates=JSON.parse(el('ai').value);const response=await request('/api/extensions/handoff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(ticket!==generation)return;output=response;const h=output.handoff;el('summary').hidden=false;el('counts').textContent='功能节点 '+h.nodes.length+' · '+('baseRevision' in h?'变化文件 '+h.changes.length:'未比较')+' · AI 候选 '+h.aiCandidates.length;el('review').textContent='优先复核：'+(h.reviewCandidates.map(r=>{const n=h.nodes.find(n=>n.id===r.nodeId);return n.title+'（'+r.changedEvidencePaths.join('、')+'）';}).join('；')||('baseRevision' in h?'没有地图证据匹配；仍需检查变化文件和地图覆盖范围。':'未比较，尚无复核项。'));el('preview').textContent=output.markdown;el('json').disabled=el('md').disabled=false;}catch(e){if(ticket!==generation)return;el('message').textContent=e.message;try{await refresh();}catch(err){el('message').textContent+='；'+err.message;}}finally{el('generate').disabled=el('main').disabled=!snapshot;}}
+el('generate').onclick=()=>generate('custom');el('main').onclick=()=>generate('main');
 function download(format){if(!output)return;const text=format==='json'?JSON.stringify(output.handoff,null,2):output.markdown;const u=URL.createObjectURL(new Blob([text],{type:format==='json'?'application/json;charset=utf-8':'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download='projectmind-handoff-'+output.handoff.codeRevision.slice(0,12)+'.'+format;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 el('json').onclick=()=>download('json');el('md').onclick=()=>download('md');refresh().catch(e=>el('message').textContent=e.message);
 </script></html>

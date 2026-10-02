@@ -102,6 +102,60 @@ class HandoffTests(unittest.TestCase):
             host.run('handoff', 'POST', payload)
         self.assertEqual(error.exception.status, HTTPStatus.BAD_REQUEST)
 
+    def test_main_resolves_local_tracking_ref_each_time(self):
+        import tempfile
+        import subprocess
+        from extensions.handoff.extension import handle
+        with tempfile.TemporaryDirectory() as folder:
+            def git(*args):
+                return subprocess.check_output(['git', '-C', folder, *args], stderr=subprocess.DEVNULL).decode().strip()
+            git('init', '-b', 'main')
+            git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'base')
+            first = git('rev-parse', 'HEAD')
+            context = SimpleNamespace(repo=Path(folder), snapshot=lambda: self.fixture['snapshot'],
+                                      compare=lambda base, target: {**self.fixture['comparison'], 'baseRevision': base})
+            self.assertIsNone(handle(context, 'GET', {})['mainRevision'])
+            with self.assertRaises(ExtensionError):
+                handle(context, 'POST', {'expectedRevision': self.fixture['snapshot']['revision'],
+                       'sourceLocator': self.fixture['sourceLocator'], 'comparisonMode': 'main'})
+            git('update-ref', 'refs/remotes/origin/main', first)
+            payload = {'expectedRevision': self.fixture['snapshot']['revision'],
+                       'sourceLocator': self.fixture['sourceLocator'], 'comparisonMode': 'main'}
+            self.assertEqual(handle(context, 'POST', payload)['handoff']['baseRevision'], first)
+            git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'next')
+            second = git('rev-parse', 'HEAD')
+            git('update-ref', 'refs/remotes/origin/main', second)
+            self.assertEqual(handle(context, 'POST', payload)['handoff']['baseRevision'], second)
+            self.assertEqual(handle(context, 'GET', {})['mainRevision'], second)
+            payload['baseRevision'] = first
+            with self.assertRaises(ExtensionError):
+                handle(context, 'POST', payload)
+
+    def test_notes_are_separate_unverified_records_and_validate_types(self):
+        notes = {'completed': '导出草稿', 'nextSteps': '<script>检查证据</script>'}
+        result = self.build(work_notes=notes)
+        self.assertEqual(result['workNotes']['status'], 'contributor_notes')
+        self.assertIn('尚未独立核实', render_markdown(result))
+        self.assertNotIn('<script>', render_markdown(result))
+        self.assertNotIn('status', notes)
+        for value in ([], {'completed': []}, {'nextSteps': 'x' * 4001}, {'unexpected': 'x'}):
+            with self.assertRaises(HandoffError):
+                self.build(work_notes=value)
+
+    def test_reject_malformed_ai_lists_and_short_baseline(self):
+        from extensions.handoff.extension import handle
+        for key in ('observations', 'possibleEffects', 'unknowns', 'evidencePaths'):
+            candidate = copy.deepcopy(self.fixture['aiCandidate'])
+            candidate['explanation'][key] = 'invalid list'
+            with self.assertRaises(HandoffError):
+                self.build(ai_candidates=[candidate])
+        context = SimpleNamespace(snapshot=lambda: self.fixture['snapshot'],
+                                 compare=lambda *args: self.fail('invalid baseline reached compare'))
+        with self.assertRaises(ExtensionError) as error:
+            handle(context, 'POST', {'expectedRevision': self.fixture['snapshot']['revision'],
+                   'sourceLocator': self.fixture['sourceLocator'], 'baseRevision': '1234'})
+        self.assertEqual(error.exception.status, HTTPStatus.BAD_REQUEST)
+
     def test_live_http_page_generate_and_stale_error(self):
         from app import make_handler, MAP_PATH
         server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(ROOT, MAP_PATH))
