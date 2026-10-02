@@ -69,19 +69,99 @@ def build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None)
     return result
 
 
+def _text(value):
+    """Keep source text as text, including table cells and Markdown links."""
+    text = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    text = ' / '.join(text.splitlines())
+    for char in ('\\', '`', '*', '_', '[', ']', '|', '#', '~'):
+        text = text.replace(char, '\\' + char)
+    return text
+
+
 def render_markdown(handoff):
-    # JSON blocks preserve multiline/untrusted source text without upgrading it.
-    import json
-    lines = ['# ProjectMind 交接草稿', '', '未确认草稿；AI 候选不是团队决定。', '',
-             '仓库来源类型：' + handoff['sourceLocator']['kind'],
-             '代码提交：`' + handoff['codeRevision'] + '`', '地图核查状态：UNKNOWN', '']
-    for title, value in [('仓库来源', handoff['sourceLocator']), ('功能与证据', handoff['nodes']),
-                         ('关系（来自人工地图）', handoff['edges']), ('变化文件', handoff['changes']),
-                         ('待复核节点', handoff['reviewCandidates']), ('AI 候选（保留原响应）', handoff['aiCandidates']),
-                         ('未知项', handoff['unknowns']), ('下一步', handoff['nextCheck'])]:
-        encoded = json.dumps(value, ensure_ascii=False, indent=2)
-        fence = '`' * max(3, max((len(m.group()) + 1 for m in re.finditer(r'`+', encoded)), default=3))
-        lines.extend(['## ' + title, '', fence + 'json', encoded, fence, ''])
+    """Human-readable projection; the JSON download remains the full record."""
+    t = _text
+    source = handoff['sourceLocator']
+    nodes = {n['id']: n for n in handoff['nodes']}
+    lines = ['# ProjectMind 交接摘要', '', '状态：未确认交接草稿。功能与关系来自人工地图，AI 内容仅为候选。', '',
+             '## 版本与来源', '',
+             '- 项目：' + t(handoff['repository']),
+             '- 仓库来源：' + ('Git 仓库地址' if source['kind'] == 'git_remote' else '本地路径') + ' · ' + t(source['value']),
+             '- 代码提交：`' + handoff['codeRevision'] + '`',
+             '- 地图核查状态：**UNKNOWN（尚未确认适用版本）**',
+             '- 地图来源类型：' + t(handoff['mapOrigin'])]
     if 'baseRevision' in handoff:
-        lines.extend(['比较基准：`' + handoff['baseRevision'] + '`', handoff.get('comparisonNote', '')])
+        lines.append('- 比较基准：`' + handoff['baseRevision'] + '`')
+    if handoff.get('mapNote'):
+        lines.append('- 地图备注：' + t(handoff['mapNote']))
+    lines += ['', '## 本次变化', '']
+    if 'baseRevision' not in handoff:
+        lines.append('未提供提交比较，不能据此判断代码是否变化。')
+    elif not handoff['changes']:
+        lines.append('这两个提交之间没有文件变化。')
+    else:
+        lines += ['共 ' + str(len(handoff['changes'])) + ' 个变化文件。', '', '| 变化 | 文件 |', '| --- | --- |']
+        names = {'A': '新增', 'M': '修改', 'D': '删除', 'R': '重命名', 'C': '复制', 'T': '类型变化'}
+        for change in handoff['changes']:
+            code = change['code']
+            label = names.get(code[:1], code)
+            path = t(change['path'])
+            if change.get('oldPath'):
+                path = t(change['oldPath']) + ' → ' + path
+            lines.append('| ' + t(label) + ' | ' + path + ' |')
+    lines += ['', '## 优先复核', '']
+    if handoff['reviewCandidates']:
+        for item in handoff['reviewCandidates']:
+            node = nodes[item['nodeId']]
+            lines.append('- ' + t(node['title']) + '（' + t(item['nodeId']) + '）：' + '、'.join(t(p) for p in item['changedEvidencePaths']))
+    elif 'baseRevision' in handoff:
+        lines.append('没有变化路径匹配到当前地图声明的节点证据。这不证明没有功能影响；新增文件可能尚未登记在地图中。')
+    else:
+        lines.append('未进行比较，尚未生成待复核节点。')
+    if handoff.get('comparisonNote'):
+        lines += ['', t(handoff['comparisonNote'])]
+    lines += ['', '## 功能与核查入口', '', '| 功能（节点 ID） | 职责说明 | 关键入口 | 证据路径及状态 |', '| --- | --- | --- | --- |']
+    for node in handoff['nodes']:
+        evidence = []
+        for item in node['evidence']:
+            state = '此提交存在' if item.get('existsAtCommit') else '缺失或未核查'
+            evidence.append(t(item['path']) + '（' + state + '；' + t(item.get('reason', '')) + '）')
+        lines.append('| ' + t(node['title']) + '（' + t(node['id']) + '） | ' + t(node['summary']) + ' | ' + t(node['entryPoint']) + ' | ' + '；'.join(evidence) + ' |')
+    lines += ['', '## 人工地图中的关系', '']
+    if not handoff['edges']:
+        lines.append('地图未提供关系。')
+    for edge in handoff['edges']:
+        source_title = nodes.get(edge['from'], {}).get('title', edge['from'])
+        target_title = nodes.get(edge['to'], {}).get('title', edge['to'])
+        lines.append('- ' + t(source_title) + '（' + t(edge['from']) + '） → ' + t(target_title) + '（' + t(edge['to']) + '）：' + t(edge['label']))
+    lines += ['', '## AI 候选解释', '']
+    if not handoff['aiCandidates']:
+        lines.append('未提供 AI 解释结果。')
+    for candidate in handoff['aiCandidates']:
+        explanation = candidate['explanation']
+        lines += ['### ' + t(nodes[candidate['nodeId']]['title']), '',
+                  '- 性质：ai_candidate，未确认。',
+                  '- 模型：' + t(candidate.get('model', 'UNKNOWN')),
+                  '- 比较版本：`' + candidate['baseRevision'] + '` → `' + candidate['targetRevision'] + '`',
+                  '- 差异截断：' + ('是' if candidate.get('diffTruncated') else '否'),
+                  '- 变化证据：' + '、'.join(t(p) for p in candidate['changedEvidencePaths']),
+                  '- 引用证据：' + '、'.join(t(p) for p in explanation['evidencePaths']),
+                  '- 摘要：' + t(explanation.get('summary', ''))]
+        for key, label in [('observations', '观察'), ('possibleEffects', '可能影响'), ('unknowns', '未知项')]:
+            lines += ['', '**' + label + '**', '']
+            values = explanation.get(key, [])
+            lines.extend('- ' + t(value) for value in values)
+            if not values:
+                lines.append('无已提供内容。')
+        if candidate.get('note'):
+            lines += ['', '候选备注：' + t(candidate['note'])]
+    lines += ['', '## 尚未确认', '']
+    lines.extend('- ' + t(value) for value in handoff['unknowns'])
+    lines += ['', '## 下一步：接手步骤', '',
+              '1. 按仓库来源取得项目，检出上方完整代码提交。',
+              '2. 若有比较基准，对照该基准与代码提交检查变化文件。',
+              '3. 按优先复核项与功能表中的证据路径核查；没有节点匹配时，直接检查变化文件及地图覆盖范围。',
+              '4. 向团队确认地图适用版本；保留 AI 候选与未知项，核查后再作决定。', '',
+              '核查提示：' + t(handoff['nextCheck']), '',
+              '完整结构化记录请同时下载 JSON；本摘要不包含源码或 Git 差异正文。', '']
     return '\n'.join(lines)
