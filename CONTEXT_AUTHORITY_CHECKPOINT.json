@@ -1,0 +1,26 @@
+{
+ "checkpoint_time": "2026-10-02T23:15:59",
+ "task": "Context Authority MVP",
+ "audit_complete": true,
+ "schema_complete": true,
+ "resolver_complete": true,
+ "api_complete": true,
+ "ui_complete": true,
+ "tests_complete": true,
+ "fixtures_complete": true,
+ "experiment_complete": false,
+ "current_failures": [],
+ "human_decisions_required": [
+  "contract.code_facts_shape: MVP_INTERFACES PROPOSED 示例（裸名/单 kind/行号106）需团队更新为交付契约形状（五 kind/限定名）——不自动修改正式文档"
+ ],
+ "branch": "feat/context-authority-mvp @ c6e5532 (worktree G:/jiagou/projectmind-context-authority)",
+ "regression": "44/44 (12 existing core/extension + 32 new CA tests); ExtensionHost discovers context_authority",
+ "performance": {
+  "resolve_100_claims_s": 0.001,
+  "resolve_1000_s": 0.007,
+  "resolve_5000_s": 0.034,
+  "pack_build_s": 0.001
+ },
+ "experiment_progress": "20 questions + ground_truth.jsonl written; CURRENT_STATE.json + CONTEXT_PACK.json generated; condition A agents 1-2 running",
+ "next_action": "finish 6 agent runs (A3, B1-B3), judge vs ground truth, compute metrics, write reports"
+}

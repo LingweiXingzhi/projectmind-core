@@ -367,7 +367,7 @@ class HandleLayerTests(unittest.TestCase):
 
     def test_get_claims_and_conflicts(self):
         claims = self.ext.handle(self.ctx, "GET", {"action": "claims"})
-        self.assertEqual(len(claims["claims"]), 16)
+        self.assertEqual(len(claims["claims"]), 19)
         conflicts = self.ext.handle(self.ctx, "GET", {"action": "conflicts"})
         self.assertEqual(conflicts["conflicts"], [])
 
