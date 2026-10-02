@@ -2,7 +2,7 @@
 
 | Directory | Disk/Git state | Existing evidence | Publication disposition |
 |---|---|---|---|
-| projectmind-context-authority | feat/context-authority-mvp; own task | Fresh CA tests and independent validation underway | Own feature remote branch only after gates |
+| projectmind-context-authority | feat/context-authority-mvp; own task |172/172 x3, complete independent studies; C_CONSUMABLE_WITH_LIMITS | Own branch published; Draft PR29; no merge |
 | projectmind-core | clean docs/v1-source-of-truth-cleanup @ff22b76, known GitHub remote | Existing runnable core and PR21 | Team branch; read only, no upload |
 | projectmind-model | clean docs/open-source-mvp-proposal @0635b5f, known GitHub remote | Model docs, formal source | Formal source; read only, no upload |
 | projectmind-benchmark | No Git repo, no remote | Final reports, exact frozen fingerprints, 34/34 fresh selftests | Manifest/plan; independent remote decision needed |

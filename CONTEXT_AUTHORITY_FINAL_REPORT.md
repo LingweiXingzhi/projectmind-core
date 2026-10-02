@@ -86,9 +86,10 @@ consumer freeze does not supply team approval or permission to merge/write maps.
 
 ## Publication and human decisions
 
-Publish only this own feature branch by normal push and create a Draft PR to
-main after final evidence/report checks. Publication receipt and final branch/PR
-are recorded in UNATTENDED_FINAL_REPORT.md. The branch already inherits PR21
+Published only this own feature branch by normal push and created Draft PR
+https://github.com/LingweiXingzhi/projectmind-core/pull/29 to main. Publication
+receipt and final branch/PR are recorded in UNATTENDED_FINAL_REPORT.md.
+The branch already inherits PR21
 documentation; reviewers must account for that dependency. Own commits do not
 modify PR21/22's branch/metadata or the formal team standards.
 

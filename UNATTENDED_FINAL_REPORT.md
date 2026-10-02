@@ -2,8 +2,8 @@
 
 CONTEXT_AUTHORITY_STATUS: C_CONSUMABLE_WITH_LIMITS
 C_CONSUMABLE: YES_WITH_LIMITS
-PUBLICATION_STATUS: READY_FOR_OWN_FEATURE_PUSH
-FINISHED: false — final publication receipt pending.
+PUBLICATION_STATUS: OWN_FEATURE_PUBLISHED_AND_DRAFT_PR_CREATED
+FINISHED: true — safe authorized work complete; STOP.
 
 Continued existing feature worktree, completed implementation and independent
 validation, preserved the failed frozen baseline, and prepared publication.
@@ -16,7 +16,7 @@ post-fix experiment revision. Later report/receipt commits do not relabel it.
   pack adversarial cases;4 live/seed and9 metrics tests, original44 retained.
 -100 resolve repetitions/reversed registry and20 pack generations equal for
   captured identical verifier outcomes; Inspector text/evidence injection smoke
-  PASS.32 active frozen input/GT fingerprints match; exact Git-blob checks follow.
+  PASS.32 active frozen input/GT fingerprints match on disk, index and published Git blobs.
 - Independent final accuracy:Raw60/60 and CA60/60; factual disagreement0% both;
   unsupported/stale-as-current0. Original CA88.33% strict/89.17% partial and3.33%
   disagreement preserved. Conflict detection rate N/A, zero applicable truth items.
@@ -44,7 +44,12 @@ superiority or arbitrary-attack safety.
 
 Own branch:feat/context-authority-mvp.
 Branch URL:https://github.com/LingweiXingzhi/projectmind-core/tree/feat/context-authority-mvp
-Draft PR:pending creation after normal own-branch push.
+Draft PR:https://github.com/LingweiXingzhi/projectmind-core/pull/29 (OPEN, Draft, base=main).
+Verified evidence publication commit:bf4c09a75c75f26441ee65adec75711b562dbb69.
+Final receipt commit only records completion; resolve the branch for that latest
+commit. No code or frozen experiment change follows the validated product.
+First connection probe timed out before push; retry succeeded. Normal push
+created the previously absent own branch and configured its upstream.
 
 The existing branch inherits PR21 documentation atff22b76; own validation and
 product changes do not modify PR21/22's branches or metadata. Draft dependency
@@ -69,9 +74,12 @@ devkit has no Git/remote and only historical tests. No other upload was guessed.
 
 ## Scheduler and human decisions
 
+SCHEDULER_STATUS: PAUSED_NATIVE_HEARTBEAT
+
 Native heartbeat projectmind-context-authority was created every300 minutes;
-reads checkpoints/next_action and remains quiet on unchanged/non-actionable
-state. It will be paused once publication completes and finished=true.
+it resumed the interrupted review after the session usage limit and retained
+completed work. Completion pauses it; finished=true prevents further project
+mutation. Scheduler pause confirmation is recorded in both checkpoints.
 UNATTENDED_RESUME.md has the disk-first recovery protocol; no guessed Windows
 CLI/task was installed. Human decisions D1–D8 cover formal interface/baseline,
 Benchmark target, authority/source limits and main merge permission.
@@ -92,8 +100,13 @@ B BRANCH MODIFIED: NO
 D BRANCH MODIFIED: NO
 OTHER TEAM BRANCH MODIFIED: NO
 PROJECT MODEL FORMAL SOURCE MODIFIED: NO
-OWN BRANCHES PUSHED: [] — pending own feature push.
-DRAFT PRs CREATED: [] — pending Draft PR.
+OWN BRANCHES PUSHED: [feat/context-authority-mvp]
+DRAFT PRs CREATED: [https://github.com/LingweiXingzhi/projectmind-core/pull/29]
 
-After verified feature push/Draft PR and receipt upload:finished=true, pause
-heartbeat and STOP. No automatic main merge, C development or further scope.
+All other remote refs match the pre-publication receipt; protected PR21/22
+state/head/base and Core/Model clean heads match original audit. Main is still
+7484d44ddeac3c054ca3ba68f92293d965bb615c. Exact evidence is in
+experiments/publication/SAFETY_BASELINE.json and PUBLICATION_RECEIPT.json.
+
+finished=true; pause heartbeat and STOP. No automatic main merge, C development
+or further scope. Await the user's next explicit command.

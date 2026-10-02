@@ -29,13 +29,13 @@
     },
     {
       "path": "CONTEXT_AUTHORITY_CHECKPOINT.json",
-      "bytes": 3095,
-      "sha256": "a952c555918585a46e0bbf08b2a23951d5c0fc19f0aca97dd01eb49caae3f6f7"
+      "bytes": 4419,
+      "sha256": "fcb531a5ff6ae08c587cacee6ab64ee773d1d317754478452a2cff545bc41f2f"
     },
     {
       "path": "CONTEXT_AUTHORITY_FINAL_REPORT.md",
-      "bytes": 6471,
-      "sha256": "3a3144052a1377b5927fe7cfb3b69cea2eabfa2742e9e9f95744746a457331ab"
+      "bytes": 6496,
+      "sha256": "293c5c7d5a3957e530a6c0580768aea71b91f995fbbc290cf18c49c7e7f715fb"
     },
     {
       "path": "CONTEXT_AUTHORITY_FINDINGS.md",
@@ -74,8 +74,8 @@
     },
     {
       "path": "LOCAL_STABLE_ASSET_INVENTORY.md",
-      "bytes": 1427,
-      "sha256": "36137f392443ffdf615c7f70b8e44363b55717b0fc67e739016297baa2bce446"
+      "bytes": 1442,
+      "sha256": "25302a7d0c528cfb8fef267650f4f2f1c04c67d879de946a019c000c08ed2c84"
     },
     {
       "path": "RESUME_STATUS.md",
@@ -84,18 +84,18 @@
     },
     {
       "path": "UNATTENDED_FINAL_REPORT.md",
-      "bytes": 5034,
-      "sha256": "e6e29df2a272f1f44426343a6e56e4073ae8644436528fcc1f58bf571c254af5"
+      "bytes": 5909,
+      "sha256": "0c3b79fdc4e8508b499b54c17c09354cdf74a59f181c91c230daa27a34b1b175"
     },
     {
       "path": "UNATTENDED_RESUME.md",
-      "bytes": 1010,
-      "sha256": "f6e1c05f16dcf4d1e0ff51358db7f72cdd4f09ae819ff3b085b4aded94715e49"
+      "bytes": 1088,
+      "sha256": "a5719800d5dad84a330f3e8d55319ff4303def03bfcc63036b26def487385dda"
     },
     {
       "path": "UPLOAD_CHECKPOINT.json",
-      "bytes": 3095,
-      "sha256": "a952c555918585a46e0bbf08b2a23951d5c0fc19f0aca97dd01eb49caae3f6f7"
+      "bytes": 4419,
+      "sha256": "fcb531a5ff6ae08c587cacee6ab64ee773d1d317754478452a2cff545bc41f2f"
     },
     {
       "path": "docs/standards/CONTEXT_AUTHORITY_SCHEMA.md",
@@ -376,6 +376,11 @@
       "path": "experiments/publication/DRAFT_PR_BODY.md",
       "bytes": 4410,
       "sha256": "24c03c142c7e575cb262fcfd401b6ffff778c154fb18d8d0d33d0d071e6842ca"
+    },
+    {
+      "path": "experiments/publication/PUBLICATION_RECEIPT.json",
+      "bytes": 3005,
+      "sha256": "62d94957c84578f0a57501fc44ae907e272fb88bac8955d3c65c041bf473890d"
     },
     {
       "path": "experiments/publication/SAFETY_BASELINE.json",
