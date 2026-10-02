@@ -1238,6 +1238,12 @@
     "Only recorded reads are auditable; the instructional allowlist is not an OS sandbox.",
     "Core/CA normative working files are allowed evidence but not all were included in a pre-dispatch cryptographic freeze; judge records current reviewed source hashes and does not silently claim immutable matched source state.",
     "Prototype behavior is scoped to PR22 head; formal integration/adoption and current target applicability remain separate consumer checks.",
-    "The original performance research report, current remote state, fresh approval evidence and exact runtime target integration were not retrieved."
-  ]
+    "The original performance research report, current remote state, fresh approval evidence and exact runtime target integration were not retrieved.",
+    "During reporting C_CONSUMABLE_INTERFACE.md was amended for size/provenance caveats and the current_state.registry_hash locator; participant line-number citations can shift. No historical pre-read document snapshot was reconstructed."
+  ],
+  "working_file_reporting_amendment": {
+    "path": "C_CONSUMABLE_INTERFACE.md",
+    "disclosed_by_root": "Size/legacy-source provenance caveats appended and current_state.registry_hash locator corrected during reporting; product operational meaning/source unchanged. Participant line locators may shift.",
+    "historical_snapshot_reconstructed": false
+  }
 }

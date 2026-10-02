@@ -29,8 +29,8 @@
     },
     {
       "path": "CONTEXT_AUTHORITY_CHECKPOINT.json",
-      "bytes": 3252,
-      "sha256": "44d728be895d62540244aba96a8a1b0616cde7d204a42f2580cdba06f85939a1"
+      "bytes": 3095,
+      "sha256": "a952c555918585a46e0bbf08b2a23951d5c0fc19f0aca97dd01eb49caae3f6f7"
     },
     {
       "path": "CONTEXT_AUTHORITY_FINAL_REPORT.md",
@@ -94,8 +94,8 @@
     },
     {
       "path": "UPLOAD_CHECKPOINT.json",
-      "bytes": 3252,
-      "sha256": "44d728be895d62540244aba96a8a1b0616cde7d204a42f2580cdba06f85939a1"
+      "bytes": 3095,
+      "sha256": "a952c555918585a46e0bbf08b2a23951d5c0fc19f0aca97dd01eb49caae3f6f7"
     },
     {
       "path": "docs/standards/CONTEXT_AUTHORITY_SCHEMA.md",
@@ -459,8 +459,13 @@
     },
     {
       "path": "experiments/validation/SUFFICIENCY_INDEPENDENT_REVIEW.json",
-      "bytes": 68676,
-      "sha256": "72994a160617b44f35bfaa2d9f0db42edc487e6b567f33e087eb160ee3ad2a42"
+      "bytes": 69281,
+      "sha256": "1b786d16dfdb135867555e3be3e0d502e82792b6439663c20b4a9b907b8cce9c"
+    },
+    {
+      "path": "experiments/validation/SUFFICIENCY_INDEPENDENT_REVIEW.md",
+      "bytes": 12074,
+      "sha256": "5807160729254c37b6c2417144c13062250742264a17ee73980e73f8ccbc9c36"
     },
     {
       "path": "experiments/validation/VERIFIER_CAPTURE.json",

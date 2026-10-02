@@ -22,11 +22,11 @@
     "pack_build_s": 0.001,
     "status": "HISTORICAL_MVP_MEASUREMENT_NOT_REVALIDATED"
   },
-  "experiment_progress": "Original six formal runs and post-fix three CA runs complete; independent final120 judgments and poisoning review complete; sufficiency A/B/C complete, independent receipt finalizing",
-  "next_action": "Commit reviewed own CA reports/evidence, normal push own branch, create and attach Draft PR, verify remote safety, final receipt/finished=true and pause heartbeat.",
+  "experiment_progress": "All formal/final judgments, poisoning and 45-answer sufficiency independent review complete",
+  "next_action": "Remote ls-remote failed transient TCP connection before push; retry normal own-branch publication, Draft PR, remote safety verification and final receipt",
   "timestamp": "2026-10-03T04:58:02.614038+08:00",
   "phase": "FINAL_REPORTS_READY",
-  "commit": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "commit": "4e4765e",
   "tests": {
     "baseline": 44,
     "final_complete_regressions": [
@@ -65,7 +65,7 @@
       "final_ca": 0
     }
   },
-  "validation_status": "COMPLETE_PENDING_REVIEW_RECEIPT",
+  "validation_status": "COMPLETE",
   "context_authority_status": "C_CONSUMABLE_WITH_LIMITS",
   "C_consumable": "YES_WITH_LIMITS",
   "benchmark_audit": "34 selftests +5 holdout regressions PASS; all frozen fingerprints intact; no credentials; case C no Git repo",
