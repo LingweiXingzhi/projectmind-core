@@ -9,7 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from http import HTTPStatus
 from extension_host import ExtensionHost, ExtensionError
-from extensions.handoff.handoff import build_handoff, HandoffError, render_markdown
+from extensions.handoff.handoff import build_handoff, HandoffError, render_markdown, render_ai_context
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -101,6 +101,25 @@ class HandoffTests(unittest.TestCase):
         with self.assertRaises(ExtensionError) as error:
             host.run('handoff', 'POST', payload)
         self.assertEqual(error.exception.status, HTTPStatus.BAD_REQUEST)
+
+    def test_unmapped_changes_include_only_changes_without_declared_paths(self):
+        comparison = {**self.fixture['comparison'], 'changes': [
+            {'code': 'M', 'path': 'src/entry.py'},
+            {'code': 'A', 'path': 'extensions/new.py'},
+            {'code': 'R100', 'oldPath': 'src/entry.py', 'path': 'renamed.py'},
+            {'code': 'D', 'path': 'unused.py'}]}
+        result = self.build(comparison=comparison)
+        self.assertEqual([c['path'] for c in result['unmappedChanges']], ['extensions/new.py', 'unused.py'])
+        self.assertIn('地图未覆盖的变化', render_markdown(result))
+        self.assertTrue(any('未匹配' in v for v in result['unknowns']))
+        self.assertNotIn('unmappedChanges', self.build(comparison=None, ai_candidates=[]))
+        self.assertEqual(self.build(comparison={**comparison, 'changes': []}, ai_candidates=[])['unmappedChanges'], [])
+
+    def test_ai_context_keeps_versions_limits_and_work_notes(self):
+        context = render_ai_context(self.build(work_notes={'nextSteps': '检查扩展边界'}))
+        for text in ['0' * 40, '1' * 40, 'UNKNOWN', 'src/entry.py',
+                     '不是权限授权', '检查扩展边界', '尚未独立核实']:
+            self.assertIn(text, context)
 
     def test_main_resolves_local_tracking_ref_each_time(self):
         import tempfile

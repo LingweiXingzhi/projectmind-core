@@ -2,7 +2,7 @@
 from http import HTTPStatus
 import subprocess
 from extension_host import ExtensionError
-from extensions.handoff.handoff import HandoffError, SHA, build_handoff, render_markdown
+from extensions.handoff.handoff import HandoffError, SHA, build_handoff, render_markdown, render_ai_context
 
 EXTENSION = {'title': '交接包', 'description': '把同一版本的项目证据整理给下一位队友或 AI。'}
 CORE_SOURCE = 'https://github.com/LingweiXingzhi/projectmind-core'
@@ -53,6 +53,6 @@ def handle(context, method, data):
                                data.get('aiCandidates'), data.get('workNotes'))
         if mode == 'main':
             result['comparisonSource'] = 'refs/remotes/origin/main（本机已取得的版本，生成时解析）'
-        return {'handoff': result, 'markdown': render_markdown(result)}
+        return {'handoff': result, 'markdown': render_markdown(result), 'aiContext': render_ai_context(result)}
     except (HandoffError, KeyError, TypeError, ValueError) as exc:
         raise ExtensionError(HTTPStatus.BAD_REQUEST, str(exc)) from exc
