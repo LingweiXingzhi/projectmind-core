@@ -250,9 +250,11 @@ def main() -> int:
         for label, payload in [
             ("bad-category", {"action": "save", "category": "nope", "date": "2026-10-04",
                               "title": "t", "body": "b", "author": "a"}),
-            ("bad-date", {"action": "save", "category": "progress", "date": "2026-13-99",
+            ("bad-category-type", {"action": "save", "category": [], "date": "2026-10-04",
+                                   "title": "t", "body": "b", "author": "a"}),
+            ("bad-date", {"action": "save", "category": "daily", "date": "2026-13-99",
                           "title": "t", "body": "b", "author": "a"}),
-            ("null-title", {"action": "save", "category": "progress", "date": "2026-10-04",
+            ("null-title", {"action": "save", "category": "daily", "date": "2026-10-04",
                             "title": None, "body": "b", "author": "a"}),
         ]:
             check(f"S3.4-{label}", f"worklog rejects {label}",
@@ -327,10 +329,14 @@ def main() -> int:
                                                  "logIds": []})
         check("S3.15", "continuity followup creates linked child", lambda: require(
             cont_id in json.dumps(follow["record"]), "no parent link"))
-        check("S3.16", "continuity import_chunk rejects garbage chunk", lambda: expect_extension_error(
+        check("S3.16", "continuity import_chunk rejects garbage base64 (reaching decoder)", lambda: expect_extension_error(
             lambda: host.run("continuity", "POST",
-                             {"action": "import_chunk", "uploadId": "nope",
-                              "chunk": "\x00\x01not-base64!!!"})))
+                             {"action": "import_chunk", "uploadId": "0" * 32, "offset": 0,
+                              "base64": "!!!!"})))
+        check("S3.17", "continuity import_chunk rejects unknown upload session", lambda: expect_extension_error(
+            lambda: host.run("continuity", "POST",
+                             {"action": "import_chunk", "uploadId": "f" * 32, "offset": 0,
+                              "base64": "aGVsbG8="})))
 
         # ---------- S13/S14 isolation & pollution ----------
         check("S13.1", "D writes do not change B facts (no pollution)", lambda: require(
@@ -382,8 +388,13 @@ def main() -> int:
             host.loaded["code_facts"] = original
 
         # ---------- S15 API surface ----------
-        check("S15.1", "extension ids unique and route-namespaced", lambda: require(
-            len(host.loaded) == len(set(host.loaded)), "duplicate ids"))
+        def s15_1():
+            ids = [e["id"] for e in host.listing()["extensions"]]
+            dirs = {p.name for p in (ROOT / "extensions").iterdir()
+                    if p.is_dir() and (p / "extension.py").is_file()}
+            return require(len(ids) == len(set(ids)) and dirs <= set(ids),
+                           f"ids={sorted(ids)} match dirs={sorted(dirs)}")
+        check("S15.1", "extension ids unique and cover every extension dir", s15_1)
         check("S15.2", "B accepts only revision/paths keys", lambda: expect_extension_error(
             lambda: b_call(host, "POST", {"revision": c1, "extra": 1})))
         check("S15.3", "B rejects unknown method", lambda: expect_extension_error(
@@ -462,6 +473,40 @@ def main() -> int:
                            and reimp["record"]["state"] == "receiving",
                            f"second import got fresh id={reimp['record']['id']}, no overwrite")
         check("S20.2", "continuity packet re-import never overwrites local records", s20_2)
+
+        # ---------- S21 Codex round-1 fix regression ----------
+        def s21_1():
+            noted = host.run("handoff", "POST", {"expectedRevision": snap["revision"],
+                                                 "comparisonMode": "custom",
+                                                 "sourceLocator": locator,
+                                                 "workNotes": {"completed": "B+D 集成", "pending": "C",
+                                                               "blockers": "", "nextSteps": "开始 C"}})
+            require("status" in noted["handoff"].get("workNotes", {}), "export lacks provenance")
+            imp = host.run("continuity", "POST", {"action": "import_packet",
+                                                  "packet": noted["handoff"]})
+            return require(imp["record"]["state"] == "receiving"
+                           and imp["record"]["task"]["completed"].strip() != "",
+                           f"notes roundtrip OK, imported id={imp['record']['id']}")
+        check("S21.1", "handoff export with work notes -> continuity import succeeds (HIGH fix)", s21_1)
+
+        def s21_2():
+            git(repo, "remote", "add", "origin", "ssh://git@git.example:2222/team/repo.git")
+            got = host.run("continuity", "GET", {"action": "config"})
+            return require(got["defaultSource"]["kind"] == "git_remote"
+                           and got["defaultSource"]["value"] == "ssh://git@git.example:2222/team/repo.git",
+                           f"source preserved: {got['defaultSource']['value']}")
+        check("S21.2", "auto source keeps remote scheme (ssh:// not rewritten to https)", s21_2)
+
+        def s21_3():
+            src = (ROOT / "extensions" / "continuity" / "inspection.py").read_text(encoding="utf-8")
+            return require("--no-lazy-fetch" in src and "GIT_NO_LAZY_FETCH" in src,
+                           "inspection git() pins no-lazy-fetch")
+        check("S21.3", "D evidence reads forbid lazy fetch (partial-clone safe)", s21_3)
+
+        check("S21.4", "worklog non-string category -> 400 not 500", lambda: expect_extension_error(
+            lambda: host.run("worklog", "POST", {"action": "save", "category": [],
+                                                 "date": "2026-10-04", "title": "t",
+                                                 "body": "b", "author": "a"})))
 
     finally:
         shutil.rmtree(base, ignore_errors=True)

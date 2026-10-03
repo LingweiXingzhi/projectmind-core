@@ -9,14 +9,14 @@
 CORE_BASE:        7484d44ddeac3c054ca3ba68f92293d965bb615c  (main,实时核验)
 B_HEAD:           80e091acefd278fda03e188a125147b0aa5eedc5  (PR #31,OPEN draft)
 D_HEAD:           8f00be38532f3f5e9823aec8cbf430038cc9ff4b  (PR #27,OPEN draft;含 #24/#26,ancestry 实证)
-INTEGRATION_HEAD: 0c2a478 (Merge D) ← 2 merge commits + 1 docs commit,历史保留未 squash
-TESTS:            unittest 77 项:75 PASS / 2 ERROR(ENVIRONMENT_LIMITED,PR31 原树预先存在,非集成回归)
-                  集成 harness 57/57 PASS × 3 轮;unittest 3 轮失败集 md5 逐字节一致
+INTEGRATION_HEAD: 见 git log(集成 + Phase 2/4 报告与修复 commits,历史保留未 squash)
+TESTS:            unittest 83 项:81 PASS / 2 ERROR(ENVIRONMENT_LIMITED,PR31 原树预先存在,非集成回归;含 6 项 Codex 审计后新增回归)
+                  集成 harness 63/63 PASS × 3 轮(含 S21 修复回归);unittest 3 轮失败集 md5 逐字节一致
 SECURITY:         路径穿越/绝对路径/UNC/file:// 全部拒绝或按字面匹配 commit 树,零任意读;
                   XSS 静态扫描 0 命中(无 innerHTML/document.write/eval);subprocess 仅固定 git 查询 +
                   which 解析的 DOC 转换器(见 LIMITS);导入不执行任何指令;导入只新增不覆盖
-BLOCKERS:         无
-HIGH:             无
+BLOCKERS:         无(Codex r1 HIGH 带备注交接包导入失败已修复并回归,见 CODEX_BD_REVIEW.md)
+HIGH:             无(r1 全部 1 HIGH + 4 MEDIUM + 1 LOW 已修复/加固)
 LIMITS:           见下节
 ```
 
@@ -36,8 +36,8 @@ LIMITS:           见下节
 
 | 套件 | 结果 | 说明 |
 |---|---|---|
-| `python -m unittest discover -s tests` | 77 项,75 PASS,2 ERROR | 2 个 ERROR:`test_paths_are_exact_not_globs`(需创建字面 `*.py` 文件,Windows 保留字符)、`test_symlink_and_gitlink_are_skipped`(需符号链接特权)。**在 PR31 原始树上实测同样失败** → 分类 ENVIRONMENT_LIMITED(非 PREEXISTING_B 回归,更非 BD_INTEGRATION_REGRESSION),按指令不修 |
-| `verification/verify_bd.py`(自研集成 harness,已入库) | 57/57 PASS × 3 轮 | S1 共载 / S2 B 功能×19 / S3 D 功能×17 / S13 零污染×2 / S14 隔离×4 / S15 API 面×3 / S18 XSS 静态 / S19 命令执行×2 / S20 导入隔离×2 |
+| `python -m unittest discover -s tests` | 83 项,81 PASS,2 ERROR | 2 个 ERROR:`test_paths_are_exact_not_globs`(需创建字面 `*.py` 文件,Windows 保留字符)、`test_symlink_and_gitlink_are_skipped`(需符号链接特权)。**在 PR31 原始树上实测同样失败** → 分类 ENVIRONMENT_LIMITED(非 PREEXISTING_B 回归,更非 BD_INTEGRATION_REGRESSION),按指令不修 |
+| `verification/verify_bd.py`(自研集成 harness,已入库) | 63/63 PASS × 3 轮 | S1 共载 / S2 B 功能×19 / S3 D 功能×17 / S13 零污染×2 / S14 隔离×4 / S15 API 面×3 / S18 XSS 静态 / S19 命令执行×2 / S20 导入隔离×2 |
 
 ## SECURITY 摘要
 

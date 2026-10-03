@@ -139,8 +139,13 @@ def validate_handoff(raw):
     candidates = raw.get('aiCandidates', [])
     if not isinstance(candidates, list) or len(candidates) > 100:
         fail('AI 候选数量无效')
+    notes = raw.get('workNotes')
+    if isinstance(notes, dict):
+        # Handoff export stamps provenance ('status') onto work notes; imports
+        # must keep the roundtrip working and only carry the note fields.
+        notes = {k: notes[k] for k in ('completed', 'pending', 'blockers', 'nextSteps') if k in notes} or None
     try:
-        result = build_handoff(snapshot, source, comparison, candidates, raw.get('workNotes'))
+        result = build_handoff(snapshot, source, comparison, candidates, notes)
     except (HandoffError, KeyError, TypeError, ValueError) as exc:
         fail('交接数据校验失败：' + str(exc))
     # Preserve unknowns without elevating imported assertions to confirmed state.
