@@ -1,0 +1,68 @@
+[PASS] S1.1 all B+D extensions co-load, none unavailable ids=['code_facts', 'continuity', 'handoff', 'project_summary', 'worklog']
+[PASS] S2.1 B revision echoes pinned full SHA 2454bd714a9d1861d54287809e705c77dbb76977
+[PASS] S2.2 B entries: kinds, qualified names, decorator excluded, 1-based lines missing=[] bad_kinds=set()
+[PASS] S2.3 B paths select + skip reasons (txt/syntax/oversize) skip reasons=['文件超过首版 1 MiB 上限', '无法按当前 Python 解析器读取编码或语法', '首版仅支持 .py Python 文件']
+[PASS] S2.4-HEAD B rejects revision=HEAD rejected with status 400
+[PASS] S2.4-short-sha B rejects revision=short-sha rejected with status 400
+[PASS] S2.4-tag-object B rejects revision=tag-object rejected with status 400
+[PASS] S2.4-traversal-revision B rejects revision=traversal-revision rejected with status 400
+[PASS] S2.4-tilde B rejects revision=tilde rejected with status 400
+[PASS] S2.4-missing-key B rejects revision=missing-key rejected with status 400
+[PASS] S2.5-dotdot B path dotdot never leaks files rejected with status 400
+[PASS] S2.5-inner-dotdot B path inner-dotdot never leaks files rejected with status 400
+[PASS] S2.5-backslash B path backslash never leaks files rejected with status 400
+[PASS] S2.5-absolute-win B path absolute-win never leaks files rejected with status 400
+[PASS] S2.5-unc B path unc never leaks files rejected with status 400
+[PASS] S2.5-file-uri B path file-uri never leaks files rejected with status 400
+[PASS] S2.5-empty-part B path empty-part never leaks files rejected with status 400
+[PASS] S2.5-control-char B path control-char never leaks files rejected with status 400
+[PASS] S2.6 B duplicate paths dedup silently dedup ok
+[PASS] S2.7 B rejects >2000 paths rejected with status 400
+[PASS] S2.8 B unknown path at pinned revision -> explicit error rejected with status 400
+[PASS] S2.9 B GET with CRLF paths string works CRLF normalized
+[PASS] S2.10 B result JSON-serializable ok
+[PASS] S2.11 B same input -> same output (determinism) deterministic
+[PASS] S3.0 worklog save with valid category saved
+[PASS] S3.1 worklog save + get roundtrip id=6c5e84891bf349188e442e1f1ad39575
+[PASS] S3.2 worklog list contains saved entry listed
+[PASS] S3.3 worklog backup returns payload backup ok
+[PASS] S3.4-bad-category worklog rejects bad-category rejected with status 400
+[PASS] S3.4-bad-category-type worklog rejects bad-category-type rejected with status 400
+[PASS] S3.4-bad-date worklog rejects bad-date rejected with status 400
+[PASS] S3.4-null-title worklog rejects null-title rejected with status 400
+[PASS] S3.5 handoff builds with expectedRevision + markdown + aiContext handoff ok
+[PASS] S3.6 handoff rejects stale expectedRevision rejected with status 400
+[PASS] S3.7 handoff rejects bad comparisonMode rejected with status 400
+[PASS] S3.8 handoff GET degrades gracefully without origin/main graceful
+[PASS] S3.9 handoff rejects non-SHA baseRevision rejected with status 400
+[PASS] S3.10 continuity create returns record with valid state id=4c7f4ca908d6490b84a30b6d8a27d99b
+[PASS] S3.11 continuity update honors expectedVersion {'record': {'id': '4c7f4ca908d6490b84a30b6d8a27d99b', 'version': 2, 'createdAt': '2026-10-03T18:45:26.120396+00:00', 'state': 'draft', 'task': {'title': '继续集成验证', 'goal': '验证 B+D 集成质量', 'completed': '
+[PASS] S3.12 continuity update rejects stale expectedVersion (409) rejected with status 409
+[PASS] S3.13 continuity event lands in events + history snapshots versions=3 state=ready
+[PASS] S3.14 continuity export -> import roundtrip preserves content imported id=7ec64ec582cc41a181eb239cb8f09820 (new id + receiving state by design)
+[PASS] S3.15 continuity followup creates linked child no parent link
+[PASS] S3.16 continuity import_chunk rejects garbage base64 (reaching decoder) rejected with status 400
+[PASS] S3.17 continuity import_chunk rejects unknown upload session (404) rejected with status 404
+[PASS] S13.1 D writes do not change B facts (no pollution) B output changed
+[PASS] S13.2 B calls do not touch D stores D store changed during B call
+[PASS] S14.1 SystemExit at import isolates one extension, others stay ready unavailable={'boom': '加载失败：SystemExit'}
+[PASS] S14.2 isolated-broken host still serves B and D service broken
+[PASS] S14.3 runtime exception -> 500, host alive status=500
+[PASS] S14.4 D still serves after B runtime failure worklog changed/broken
+[PASS] S15.1 extension ids unique and cover every extension dir ids=['code_facts', 'continuity', 'handoff', 'project_summary', 'worklog'] match dirs=['code_facts', 'continuity', 'handoff', 'project_summary', 'worklog']
+[PASS] S15.2 B accepts only revision/paths keys rejected with status 400
+[PASS] S15.3 B rejects unknown method rejected with status 400
+[PASS] S19.1 shell-looking input stored as data only executed or mutated repo
+[PASS] S18.1 D/B pages: no innerHTML/document.write/eval sinks (static) no raw-HTML sinks (findings=[])
+[PASS] S19.2 extensions: subprocess args never user-controlled (static) only fixed git calls + which-resolved converter=[]
+[PASS] S20.1 worklog file import appends; existing records untouched import appended new id=e15be790be924ec8826f8a2207df0c63, locals intact
+[PASS] S20.2 continuity packet re-import never overwrites local records second import got fresh id=659d42c7d9e243549bc1de5bdac1a22e, no overwrite
+[PASS] S21.1 handoff export with work notes -> continuity import succeeds (HIGH fix) notes roundtrip OK, imported id=898e7f87086e4af5b6bea594c02c837a
+[PASS] S21.2 auto source keeps remote scheme (ssh:// not rewritten to https) source preserved: ssh://git@git.example:2222/team/repo.git
+[PASS] S21.3 D evidence reads pin no-lazy-fetch at process level (behavioral) argv/env/stdin pinned; inherited GIT_ overrides stripped
+[PASS] S21.4 worklog non-string category -> exactly 400 rejected with status 400
+[PASS] S22.1 over-limit work notes import: truncate summary, keep full notes, mark it long notes import OK; full notes kept, summary truncated, marker present
+[PASS] S22.2 core compare/snapshot path forbids lazy fetch via env guard core git() env guard on (preexisting GIT_ leaked: [])
+[PASS] S22.3 malformed imported log category -> 400 not 500 (continuity packet) rejected with status 400
+
+==== SUMMARY: 66/66 checks passed ====

@@ -42,13 +42,12 @@ def require(cond, detail=""):
     return detail
 
 
-def expect_extension_error(fn):
+def expect_extension_error(fn, expected=HTTPStatus.BAD_REQUEST):
     try:
         fn()
     except ExtensionError as exc:
-        assert exc.status in (HTTPStatus.BAD_REQUEST, HTTPStatus.CONFLICT, HTTPStatus.NOT_FOUND,
-                              HTTPStatus.METHOD_NOT_ALLOWED,
-                              HTTPStatus.SERVICE_UNAVAILABLE), f"unexpected status {exc.status}"
+        require(int(exc.status) == int(expected),
+                f"expected {int(expected)}, got {int(exc.status)}: {exc}")
         return f"rejected with status {int(exc.status)}"
     raise AssertionError("expected ExtensionError, got success")
 
@@ -306,7 +305,8 @@ def main() -> int:
             and upd["record"]["checklist"][0]["state"] == "done", str(upd)[:200]))
         check("S3.12", "continuity update rejects stale expectedVersion (409)", lambda: expect_extension_error(
             lambda: host.run("continuity", "POST",
-                             {"action": "update", "id": cont_id, "expectedVersion": 1})))
+                             {"action": "update", "id": cont_id, "expectedVersion": 1}),
+            HTTPStatus.CONFLICT))
         host.run("continuity", "POST", {"action": "event", "id": cont_id,
                                         "expectedVersion": cont["record"]["version"] + 1,
                                         "kind": "ready", "actor": "verifier",
@@ -333,10 +333,10 @@ def main() -> int:
             lambda: host.run("continuity", "POST",
                              {"action": "import_chunk", "uploadId": "0" * 32, "offset": 0,
                               "base64": "!!!!"})))
-        check("S3.17", "continuity import_chunk rejects unknown upload session", lambda: expect_extension_error(
+        check("S3.17", "continuity import_chunk rejects unknown upload session (404)", lambda: expect_extension_error(
             lambda: host.run("continuity", "POST",
                              {"action": "import_chunk", "uploadId": "f" * 32, "offset": 0,
-                              "base64": "aGVsbG8="})))
+                              "base64": "aGVsbG8="}), HTTPStatus.NOT_FOUND))
 
         # ---------- S13/S14 isolation & pollution ----------
         check("S13.1", "D writes do not change B facts (no pollution)", lambda: require(
@@ -498,15 +498,107 @@ def main() -> int:
         check("S21.2", "auto source keeps remote scheme (ssh:// not rewritten to https)", s21_2)
 
         def s21_3():
-            src = (ROOT / "extensions" / "continuity" / "inspection.py").read_text(encoding="utf-8")
-            return require("--no-lazy-fetch" in src and "GIT_NO_LAZY_FETCH" in src,
-                           "inspection git() pins no-lazy-fetch")
-        check("S21.3", "D evidence reads forbid lazy fetch (partial-clone safe)", s21_3)
+            # Behavioral: spy on subprocess.run inside inspection, not a string check.
+            import extensions.continuity.inspection as inspection
+            calls = {}
+            real_run = inspection.subprocess.run
 
-        check("S21.4", "worklog non-string category -> 400 not 500", lambda: expect_extension_error(
+            class FakeResult:
+                returncode = 1
+                stdout = b""
+                stderr = b"fatal: something else"
+
+            def spy(cmd, **kwargs):
+                calls["cmd"], calls["kwargs"] = cmd, kwargs
+                return FakeResult()
+
+            inspection.subprocess.run = spy
+            try:
+                expect_extension_error(lambda: inspection.git(repo, "rev-parse", "--verify", "HEAD"),
+                                       HTTPStatus.BAD_REQUEST)
+            finally:
+                inspection.subprocess.run = real_run
+            argv = " ".join(str(part) for part in calls["cmd"])
+            env = calls["kwargs"].get("env") or {}
+            inherited = [k for k in env if k.startswith("GIT_DIR") or k.startswith("GIT_WORK_TREE")]
+            return require("--no-lazy-fetch" in argv
+                           and env.get("GIT_NO_LAZY_FETCH") == "1"
+                           and not inherited
+                           and calls["kwargs"].get("stdin") == subprocess.DEVNULL,
+                           "argv/env/stdin pinned; inherited GIT_ overrides stripped")
+        check("S21.3", "D evidence reads pin no-lazy-fetch at process level (behavioral)", s21_3)
+
+        check("S21.4", "worklog non-string category -> exactly 400", lambda: expect_extension_error(
             lambda: host.run("worklog", "POST", {"action": "save", "category": [],
                                                  "date": "2026-10-04", "title": "t",
-                                                 "body": "b", "author": "a"})))
+                                                 "body": "b", "author": "a"}), HTTPStatus.BAD_REQUEST))
+
+        # ---------- S22 Codex round-2 fix regression ----------
+        def s22_1():
+            # Export legal 4000-char notes; nextSteps(4000) maps onto task.nextAction(2000).
+            long_notes = {"completed": "c" * 4000, "pending": "", "blockers": "b" * 4000,
+                          "nextSteps": "n" * 4000}
+            exported = host.run("handoff", "POST", {"expectedRevision": snap["revision"],
+                                                    "comparisonMode": "custom",
+                                                    "sourceLocator": locator,
+                                                    "workNotes": long_notes})
+            imp = host.run("continuity", "POST", {"action": "import_packet",
+                                                  "packet": exported["handoff"]})
+            rec = imp["record"]
+            kept = rec["handoff"]["workNotes"]
+            markers = [e for e in rec["importedHistory"] if "截断" in e.get("note", "")]
+            return require(len(kept.get("nextSteps", "")) == 4000
+                           and rec["task"]["nextAction"] == "n" * 2000
+                           and rec["task"]["completed"] == "c" * 4000
+                           and markers,
+                           "long notes import OK; full notes kept, summary truncated, marker present")
+        check("S22.1", "over-limit work notes import: truncate summary, keep full notes, mark it", s22_1)
+
+        def s22_2():
+            import os as _os
+            preexisting = {k for k in _os.environ if k.startswith("GIT_")}
+            calls = {}
+            real_run = core_app.subprocess.run
+
+            class FakeResult:
+                returncode = 1
+                stdout = b""
+                stderr = b"fatal: nope"
+
+            def spy(cmd, **kwargs):
+                calls["cmd"], calls["kwargs"] = cmd, kwargs
+                return FakeResult()
+
+            core_app.subprocess.run = spy
+            try:
+                try:
+                    core_app.git(repo, "rev-parse", "--verify", "HEAD")
+                except Exception:
+                    pass
+            finally:
+                core_app.subprocess.run = real_run
+            env = calls["kwargs"].get("env") or {}
+            leaked = sorted(preexisting & set(env))
+            return require(env.get("GIT_NO_LAZY_FETCH") == "1" and not leaked,
+                           f"core git() env guard on (preexisting GIT_ leaked: {leaked})")
+        check("S22.2", "core compare/snapshot path forbids lazy fetch via env guard", s22_2)
+
+        def s22_3():
+            cont = host.run("continuity", "POST", {
+                "action": "create",
+                "task": {"title": "日志边界", "goal": "g", "completed": "", "stopPoint": "s",
+                         "nextAction": "n", "acceptance": "a"},
+                "checklist": [], "scope": ["functional-map"], "logIds": []})
+            packet = host.run("continuity", "GET", {"action": "export", "id": cont["record"]["id"]})
+            payload = {"format": packet["packet"]["format"], "record": dict(packet["packet"]["record"])}
+            payload["record"]["logs"] = [{"category": [], "origin": "human", "id": "x",
+                                          "title": "t", "body": "b", "author": "a",
+                                          "date": "2026-10-04", "codeRevision": snap["revision"],
+                                          "version": 1}]
+            return expect_extension_error(
+                lambda: host.run("continuity", "POST", {"action": "import_packet", "packet": payload}),
+                HTTPStatus.BAD_REQUEST)
+        check("S22.3", "malformed imported log category -> 400 not 500 (continuity packet)", s22_3)
 
     finally:
         shutil.rmtree(base, ignore_errors=True)

@@ -77,6 +77,64 @@ class WorkNotesRoundtripTests(unittest.TestCase):
                                  {"action": "import_packet", "packet": exported["handoff"]})
         self.assertEqual(imported["record"]["state"], "receiving")
 
+    def test_over_limit_notes_truncate_summary_and_keep_full_notes(self):
+        exported = self.host.run("handoff", "POST", {
+            "expectedRevision": self.revision, "comparisonMode": "custom",
+            "sourceLocator": self.locator,
+            "workNotes": {"completed": "c" * 4000, "pending": "", "blockers": "b" * 4000,
+                          "nextSteps": "n" * 4000}})
+        imported = self.host.run("continuity", "POST",
+                                 {"action": "import_packet", "packet": exported["handoff"]})
+        record = imported["record"]
+        self.assertEqual(len(record["handoff"]["workNotes"]["nextSteps"]), 4000)
+        self.assertEqual(record["task"]["nextAction"], "n" * 2000)
+        self.assertEqual(record["task"]["completed"], "c" * 4000)
+        self.assertTrue(any("截断" in event.get("note", "")
+                            for event in record["importedHistory"]))
+
+    def test_core_git_strips_inherited_git_env_and_forbids_lazy_fetch(self):
+        import os
+        import app as core_app
+        calls = {}
+
+        class FakeResult:
+            returncode = 1
+            stdout = b""
+            stderr = b"fatal: nope"
+
+        def spy(cmd, **kwargs):
+            calls["cmd"], calls["kwargs"] = cmd, kwargs
+            return FakeResult()
+
+        real_run = core_app.subprocess.run
+        core_app.subprocess.run = spy
+        try:
+            with self.assertRaises(core_app.GitError):
+                core_app.git(self.repo, "rev-parse", "--verify", "HEAD")
+        finally:
+            core_app.subprocess.run = real_run
+        env = calls["kwargs"].get("env") or {}
+        self.assertEqual(env.get("GIT_NO_LAZY_FETCH"), "1")
+        self.assertEqual([k for k in env if k in os.environ and k.startswith("GIT_")], [])
+
+    def test_imported_log_bad_category_returns_400(self):
+        created = self.host.run("continuity", "POST", {
+            "action": "create",
+            "task": {"title": "日志边界", "goal": "g", "completed": "", "stopPoint": "s",
+                     "nextAction": "n", "acceptance": "a"},
+            "checklist": [], "scope": ["functional-map"], "logIds": []})
+        packet = self.host.run("continuity", "GET",
+                               {"action": "export", "id": created["record"]["id"]})
+        payload = {"format": packet["packet"]["format"],
+                   "record": dict(packet["packet"]["record"])}
+        payload["record"]["logs"] = [{"category": [], "origin": "human", "id": "x",
+                                      "title": "t", "body": "b", "author": "a",
+                                      "date": "2026-10-04", "codeRevision": self.revision,
+                                      "version": 1}]
+        with self.assertRaises(ExtensionError) as ctx:
+            self.host.run("continuity", "POST", {"action": "import_packet", "packet": payload})
+        self.assertEqual(int(ctx.exception.status), 400)
+
 
 class RemoteSchemeTests(unittest.TestCase):
     def setUp(self):
