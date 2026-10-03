@@ -20,7 +20,10 @@ HIGH:             无(r1 全部 1 HIGH + 4 MEDIUM + 1 LOW 已修复/加固)
 LIMITS:           见下节
 ```
 
-## STATUS: INTEGRATED_SAFE_FOR_REVIEW
+## STATUS: INTEGRATED_WITH_ISSUES_FIXED — GATE PENDING FINAL CODEX ROUND
+
+- Codex r1 FAIL(1H+4M+1L)→ 已修复(`ccc30f0`);r2 FAIL(1H+2M+2L)→ 已修复(`c32d300`)。
+- r3(gate 最终轮)因 Codex 用量额度耗尽未能执行(05:09 AM 重置),见 CODEX_UNAVAILABLE.md;按 §29 STOP BEFORE C。
 
 判定依据:全量回归通过(除 2 项 Windows 环境限制)、57 项集成行为与安全验证 3 轮全过、零 merge 冲突、B/D 隔离与共存实证、无数据丢失/覆盖风险、无 BLOCKER/HIGH。
 

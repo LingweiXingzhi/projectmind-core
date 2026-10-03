@@ -40,3 +40,13 @@
 - `python -m unittest discover -s tests`:**83 项,81 PASS,2 ERROR(仅原 2 项 Windows 环境限制,失败集 md5 与修复前逐字节一致)**。
 - `verification/verify_bd.py`:**63/63 PASS × 3 轮**(S21.1 HIGH 修复直测通过)。
 - 三轮 unittest 失败集 md5:`3a1eda05aaeb2b4a2d1eb73cbd3da698`(×3,与修复前相同)。
+
+---
+
+## 第三轮(gate 最终轮)状态:受阻于 Codex 用量额度
+
+- 时间:2026-10-04 02:53(+0800);`codex exec` 启动后返回 usage limit 错误(05:09 AM 重置),未产生任何审核结论。
+- 26,963 tokens 消耗后中止;raw 日志:`G:\jiagou\overnight-logs\codex-bd-round3-raw.log`(未入库,避免与真实审核混淆)。
+- 请求文件已就绪并推送:`CODEX_BD_REVIEW_ROUND3_REQUEST.md`(基线 `c32d300`)。
+- 处置:按指令 §29 写 `CODEX_UNAVAILABLE.md`,STOP BEFORE C;恢复程序见该文件与 checkpoint。
+- Gate 状态:**PENDING FINAL ROUND**(r1 FAIL→fixed; r2 FAIL→fixed; r3 blocked)。
