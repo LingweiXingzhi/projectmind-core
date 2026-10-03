@@ -1,0 +1,19 @@
+{
+  "reads": [
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/preflight_inputs/cases.json",
+      "purpose": "Read all ten separate task packets, including current fields, contract and human-decision lists, verified facts, provenance references, constraints, and unavailable-verification fields.",
+      "method": "Initial raw read was output-truncated; all ten packets were then read individually as complete compressed JSON.",
+      "case_ids": ["CA-P01", "CA-P02", "CA-P03", "CA-P04", "CA-P05", "CA-P06", "CA-P07", "CA-P08", "CA-P09", "CA-P10"]
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/AGENT_BOOTSTRAP.md",
+      "purpose": "Read the supplied Context Authority usage rules and source-of-truth limitations."
+    }
+  ],
+  "scope": "Only these two input files were read. Evidence paths inside packets were treated as references, not opened. No repository fallback, other studies/runs/truth/product code, or internet was used. Each conclusion uses its own packet only.",
+  "outputs": [
+    "G:/jiagou/projectmind-context-authority/experiments/validation/preflight_baseline_answers.json",
+    "G:/jiagou/projectmind-context-authority/experiments/validation/preflight_baseline_READS.json"
+  ]
+}

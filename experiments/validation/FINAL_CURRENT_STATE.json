@@ -1,0 +1,1513 @@
+{
+  "generated_at_note": "derived view - regenerate rather than hand-edit",
+  "current": {
+    "contract.code_facts_input": {
+      "scope": "PR22 delivery README",
+      "value": {
+        "limits": "max 2000 files; 1 MiB per file; 16 MiB total",
+        "paths": "exact repo-relative paths; directories and wildcards unsupported; duplicates deduped; results sorted",
+        "revision": "full 40/64-character lowercase hexadecimal SHA resolving directly to a commit; HEAD / short SHA / uppercase / tags rejected"
+      },
+      "type": "CONTRACT",
+      "types": [
+        "CONTRACT"
+      ],
+      "claim_ids": [
+        "claim-codefacts-input-units"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-codefacts-input-units",
+          "key": "contract.code_facts_input",
+          "scope": "PR22 delivery README",
+          "value": {
+            "limits": "max 2000 files; 1 MiB per file; 16 MiB total",
+            "paths": "exact repo-relative paths; directories and wildcards unsupported; duplicates deduped; results sorted",
+            "revision": "full 40/64-character lowercase hexadecimal SHA resolving directly to a commit; HEAD / short SHA / uppercase / tags rejected"
+          },
+          "type": "CONTRACT",
+          "source": {
+            "kind": "doc",
+            "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+            "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    "contract.code_facts_shape": {
+      "scope": "PR22 delivery README",
+      "value": {
+        "entries": "def/async def/class declarations",
+        "kinds": [
+          "function",
+          "async_function",
+          "class",
+          "method",
+          "async_method"
+        ],
+        "qualified_names": "lexical dotted names (Class.method, outer.inner)",
+        "line": "1-based line of def/async def/class keyword, not decorator line",
+        "skipped": "existing-but-unparsable/unsupported files, with reason"
+      },
+      "type": "CONTRACT",
+      "types": [
+        "CONTRACT"
+      ],
+      "claim_ids": [
+        "claim-b-shape"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-b-shape",
+          "key": "contract.code_facts_shape",
+          "scope": "PR22 delivery README",
+          "value": {
+            "entries": "def/async def/class declarations",
+            "kinds": [
+              "function",
+              "async_function",
+              "class",
+              "method",
+              "async_method"
+            ],
+            "qualified_names": "lexical dotted names (Class.method, outer.inner)",
+            "line": "1-based line of def/async def/class keyword, not decorator line",
+            "skipped": "existing-but-unparsable/unsupported files, with reason"
+          },
+          "type": "CONTRACT",
+          "source": {
+            "kind": "doc",
+            "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+            "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    "implementation.build_snapshot_line": {
+      "scope": "app.py@ff22b76",
+      "value": 109,
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-code-line-109"
+      ],
+      "source": {
+        "kind": "repo",
+        "ref": "app.py"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-code-line-109",
+          "key": "implementation.build_snapshot_line",
+          "scope": "app.py@ff22b76",
+          "value": 109,
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "repo",
+            "ref": "app.py"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    "implementation.code_facts": {
+      "scope": "projectmind-core",
+      "value": {
+        "status": "PR_OPEN",
+        "pr": 22,
+        "head": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "evaluated": "686 units 0 failures on frozen benchmark v0.1"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-code-facts-pr"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../pulls/22"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-code-facts-pr",
+          "key": "implementation.code_facts",
+          "scope": "projectmind-core",
+          "value": {
+            "status": "PR_OPEN",
+            "pr": 22,
+            "head": "0c46747147f765260bf2033f6eae40189b58ca0c",
+            "evaluated": "686 units 0 failures on frozen benchmark v0.1"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../pulls/22"
+          },
+          "verified_at": "2026-10-02T16:22:41+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "gh_api",
+              "ref": "repos/LingweiXingzhi/projectmind-core/pulls/22"
+            },
+            "verified_at": "2026-10-02T16:22:41+00:00",
+            "verified_fields": [
+              "status",
+              "pr",
+              "head"
+            ]
+          }
+        }
+      ],
+      "freshness": "verified",
+      "verified_at": "2026-10-02T16:22:41+00:00"
+    },
+    "implementation.handoff_snapshot": {
+      "scope": "observed main / PR21 / PR22 snapshots",
+      "value": {
+        "checked_directory": "extensions/handoff/",
+        "checked_revisions": {
+          "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+          "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+        },
+        "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+        "status": "NOT_IMPLEMENTED"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-d-observed-status"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-d-observed-status",
+          "key": "implementation.handoff_snapshot",
+          "scope": "observed main / PR21 / PR22 snapshots",
+          "value": {
+            "checked_directory": "extensions/handoff/",
+            "checked_revisions": {
+              "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+              "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+              "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+            },
+            "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+            "status": "NOT_IMPLEMENTED"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+            "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    "implementation.main_head": {
+      "scope": "projectmind-core",
+      "value": {
+        "sha": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-main-head"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../commits/main",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-main-head",
+          "key": "implementation.main_head",
+          "scope": "projectmind-core",
+          "value": {
+            "sha": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../commits/main",
+            "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "verified_at": "2026-10-02T16:22:38+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "repo",
+              "ref": "G:\\jiagou\\projectmind-context-authority::refs/remotes/origin/main"
+            },
+            "verified_at": "2026-10-02T16:22:38+00:00",
+            "freshness": "local_reference"
+          }
+        }
+      ],
+      "freshness": "local_reference",
+      "verified_at": "2026-10-02T16:22:38+00:00"
+    },
+    "implementation.map_proposal_snapshot": {
+      "scope": "observed main / PR21 / PR22 snapshots",
+      "value": {
+        "checked_directory": "extensions/map_proposal/",
+        "checked_revisions": {
+          "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+          "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+        },
+        "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+        "status": "NOT_IMPLEMENTED"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-c-observed-status"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-c-observed-status",
+          "key": "implementation.map_proposal_snapshot",
+          "scope": "observed main / PR21 / PR22 snapshots",
+          "value": {
+            "checked_directory": "extensions/map_proposal/",
+            "checked_revisions": {
+              "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+              "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+              "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+            },
+            "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+            "status": "NOT_IMPLEMENTED"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+            "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    "implementation.map_version": {
+      "scope": "projectmind-core",
+      "value": {
+        "identity": "none",
+        "detail": "curated map is a local file without digest or commit pin; confirmedForRevision unknown"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-map-version"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "MVP_INTERFACES.md 共同词汇",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-map-version",
+          "key": "implementation.map_version",
+          "scope": "projectmind-core",
+          "value": {
+            "identity": "none",
+            "detail": "curated map is a local file without digest or commit pin; confirmedForRevision unknown"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "doc",
+            "ref": "MVP_INTERFACES.md 共同词汇",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    "implementation.pr_21_contents_snapshot": {
+      "scope": "PR21@ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "value": {
+        "change": "V1 role mapping and current human review boundaries documented",
+        "files": [
+          "README.md",
+          "docs/audits/2026-09-29-mvp-audit.md",
+          "docs/standards/AGENT_STANDARD.md",
+          "docs/standards/COLLABORATION_CONTRACT.md",
+          "docs/standards/EXTENSION_INTERFACE.md",
+          "docs/standards/MVP_INTERFACES.md",
+          "docs/standards/TEAM_SOP.md"
+        ],
+        "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "limit": "Contents at this head, not merger or team approval"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-pr21-contents"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/compare/7484d44ddeac3c054ca3ba68f92293d965bb615c...ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-pr21-contents",
+          "key": "implementation.pr_21_contents_snapshot",
+          "scope": "PR21@ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "value": {
+            "change": "V1 role mapping and current human review boundaries documented",
+            "files": [
+              "README.md",
+              "docs/audits/2026-09-29-mvp-audit.md",
+              "docs/standards/AGENT_STANDARD.md",
+              "docs/standards/COLLABORATION_CONTRACT.md",
+              "docs/standards/EXTENSION_INTERFACE.md",
+              "docs/standards/MVP_INTERFACES.md",
+              "docs/standards/TEAM_SOP.md"
+            ],
+            "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+            "limit": "Contents at this head, not merger or team approval"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/LingweiXingzhi/projectmind-core/compare/7484d44ddeac3c054ca3ba68f92293d965bb615c...ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    "implementation.pr_21_head": {
+      "scope": "projectmind-core",
+      "value": {
+        "status": "PR_OPEN",
+        "pr": 21,
+        "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-pr21-head"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../pulls/21"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-pr21-head",
+          "key": "implementation.pr_21_head",
+          "scope": "projectmind-core",
+          "value": {
+            "status": "PR_OPEN",
+            "pr": 21,
+            "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../pulls/21"
+          },
+          "verified_at": "2026-10-02T16:22:39+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "gh_api",
+              "ref": "repos/LingweiXingzhi/projectmind-core/pulls/21"
+            },
+            "verified_at": "2026-10-02T16:22:39+00:00",
+            "verified_fields": [
+              "status",
+              "pr",
+              "head"
+            ]
+          }
+        }
+      ],
+      "freshness": "verified",
+      "verified_at": "2026-10-02T16:22:39+00:00"
+    },
+    "implementation.pr_22_head": {
+      "scope": "projectmind-core",
+      "value": {
+        "status": "PR_OPEN",
+        "pr": 22,
+        "head": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-pr22-head"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../pulls/22"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-pr22-head",
+          "key": "implementation.pr_22_head",
+          "scope": "projectmind-core",
+          "value": {
+            "status": "PR_OPEN",
+            "pr": 22,
+            "head": "0c46747147f765260bf2033f6eae40189b58ca0c"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../pulls/22"
+          },
+          "verified_at": "2026-10-02T16:22:40+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "gh_api",
+              "ref": "repos/LingweiXingzhi/projectmind-core/pulls/22"
+            },
+            "verified_at": "2026-10-02T16:22:40+00:00",
+            "verified_fields": [
+              "status",
+              "pr",
+              "head"
+            ]
+          }
+        }
+      ],
+      "freshness": "verified",
+      "verified_at": "2026-10-02T16:22:40+00:00"
+    },
+    "implementation.team_approval": {
+      "scope": "projectmind-core",
+      "value": {
+        "main_baseline": "candidate",
+        "team_approved": false
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-team-approval"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "COLLABORATION_CONTRACT.md §开场状态",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-team-approval",
+          "key": "implementation.team_approval",
+          "scope": "projectmind-core",
+          "value": {
+            "main_baseline": "candidate",
+            "team_approved": false
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "doc",
+            "ref": "COLLABORATION_CONTRACT.md §开场状态",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    "team.context_authority": {
+      "scope": "team",
+      "value": {
+        "mandate": "Context Authority MVP is a product capability; build canonical context layer before C/Map Proposal",
+        "source_directive": "user directive 2026-10-02"
+      },
+      "type": "HUMAN_DECISION",
+      "types": [
+        "HUMAN_DECISION"
+      ],
+      "claim_ids": [
+        "claim-ca-mvp"
+      ],
+      "source": {
+        "kind": "human",
+        "ref": "user task directive 2026-10-02"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-ca-mvp",
+          "key": "team.context_authority",
+          "scope": "team",
+          "value": {
+            "mandate": "Context Authority MVP is a product capability; build canonical context layer before C/Map Proposal",
+            "source_directive": "user directive 2026-10-02"
+          },
+          "type": "HUMAN_DECISION",
+          "source": {
+            "kind": "human",
+            "ref": "user task directive 2026-10-02"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    "team.roles.v1": {
+      "scope": "team",
+      "value": {
+        "A": "Core / Integration",
+        "B": "Code Facts",
+        "C": "Map Proposal",
+        "D": "Handoff"
+      },
+      "type": "HUMAN_DECISION",
+      "types": [
+        "HUMAN_DECISION"
+      ],
+      "claim_ids": [
+        "claim-v1-role-map"
+      ],
+      "source": {
+        "kind": "human",
+        "ref": "负责人 2026-09-30 确认 V1；COLLABORATION_CONTRACT.md",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-v1-role-map",
+          "key": "team.roles.v1",
+          "scope": "team",
+          "value": {
+            "A": "Core / Integration",
+            "B": "Code Facts",
+            "C": "Map Proposal",
+            "D": "Handoff"
+          },
+          "type": "HUMAN_DECISION",
+          "source": {
+            "kind": "human",
+            "ref": "负责人 2026-09-30 确认 V1；COLLABORATION_CONTRACT.md",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    }
+  },
+  "current_by_scope": [
+    {
+      "key": "contract.code_facts_input",
+      "scope": "PR22 delivery README",
+      "value": {
+        "limits": "max 2000 files; 1 MiB per file; 16 MiB total",
+        "paths": "exact repo-relative paths; directories and wildcards unsupported; duplicates deduped; results sorted",
+        "revision": "full 40/64-character lowercase hexadecimal SHA resolving directly to a commit; HEAD / short SHA / uppercase / tags rejected"
+      },
+      "type": "CONTRACT",
+      "types": [
+        "CONTRACT"
+      ],
+      "claim_ids": [
+        "claim-codefacts-input-units"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-codefacts-input-units",
+          "key": "contract.code_facts_input",
+          "scope": "PR22 delivery README",
+          "value": {
+            "limits": "max 2000 files; 1 MiB per file; 16 MiB total",
+            "paths": "exact repo-relative paths; directories and wildcards unsupported; duplicates deduped; results sorted",
+            "revision": "full 40/64-character lowercase hexadecimal SHA resolving directly to a commit; HEAD / short SHA / uppercase / tags rejected"
+          },
+          "type": "CONTRACT",
+          "source": {
+            "kind": "doc",
+            "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+            "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    {
+      "key": "contract.code_facts_shape",
+      "scope": "PR22 delivery README",
+      "value": {
+        "entries": "def/async def/class declarations",
+        "kinds": [
+          "function",
+          "async_function",
+          "class",
+          "method",
+          "async_method"
+        ],
+        "qualified_names": "lexical dotted names (Class.method, outer.inner)",
+        "line": "1-based line of def/async def/class keyword, not decorator line",
+        "skipped": "existing-but-unparsable/unsupported files, with reason"
+      },
+      "type": "CONTRACT",
+      "types": [
+        "CONTRACT"
+      ],
+      "claim_ids": [
+        "claim-b-shape"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-b-shape",
+          "key": "contract.code_facts_shape",
+          "scope": "PR22 delivery README",
+          "value": {
+            "entries": "def/async def/class declarations",
+            "kinds": [
+              "function",
+              "async_function",
+              "class",
+              "method",
+              "async_method"
+            ],
+            "qualified_names": "lexical dotted names (Class.method, outer.inner)",
+            "line": "1-based line of def/async def/class keyword, not decorator line",
+            "skipped": "existing-but-unparsable/unsupported files, with reason"
+          },
+          "type": "CONTRACT",
+          "source": {
+            "kind": "doc",
+            "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+            "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    {
+      "key": "implementation.build_snapshot_line",
+      "scope": "app.py@ff22b76",
+      "value": 109,
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-code-line-109"
+      ],
+      "source": {
+        "kind": "repo",
+        "ref": "app.py"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-code-line-109",
+          "key": "implementation.build_snapshot_line",
+          "scope": "app.py@ff22b76",
+          "value": 109,
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "repo",
+            "ref": "app.py"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    {
+      "key": "implementation.code_facts",
+      "scope": "projectmind-core",
+      "value": {
+        "status": "PR_OPEN",
+        "pr": 22,
+        "head": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "evaluated": "686 units 0 failures on frozen benchmark v0.1"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-code-facts-pr"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../pulls/22"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-code-facts-pr",
+          "key": "implementation.code_facts",
+          "scope": "projectmind-core",
+          "value": {
+            "status": "PR_OPEN",
+            "pr": 22,
+            "head": "0c46747147f765260bf2033f6eae40189b58ca0c",
+            "evaluated": "686 units 0 failures on frozen benchmark v0.1"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../pulls/22"
+          },
+          "verified_at": "2026-10-02T16:22:41+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "gh_api",
+              "ref": "repos/LingweiXingzhi/projectmind-core/pulls/22"
+            },
+            "verified_at": "2026-10-02T16:22:41+00:00",
+            "verified_fields": [
+              "status",
+              "pr",
+              "head"
+            ]
+          }
+        }
+      ],
+      "freshness": "verified",
+      "verified_at": "2026-10-02T16:22:41+00:00"
+    },
+    {
+      "key": "implementation.handoff_snapshot",
+      "scope": "observed main / PR21 / PR22 snapshots",
+      "value": {
+        "checked_directory": "extensions/handoff/",
+        "checked_revisions": {
+          "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+          "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+        },
+        "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+        "status": "NOT_IMPLEMENTED"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-d-observed-status"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-d-observed-status",
+          "key": "implementation.handoff_snapshot",
+          "scope": "observed main / PR21 / PR22 snapshots",
+          "value": {
+            "checked_directory": "extensions/handoff/",
+            "checked_revisions": {
+              "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+              "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+              "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+            },
+            "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+            "status": "NOT_IMPLEMENTED"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+            "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    {
+      "key": "implementation.main_head",
+      "scope": "projectmind-core",
+      "value": {
+        "sha": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-main-head"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../commits/main",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-main-head",
+          "key": "implementation.main_head",
+          "scope": "projectmind-core",
+          "value": {
+            "sha": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../commits/main",
+            "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "verified_at": "2026-10-02T16:22:38+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "repo",
+              "ref": "G:\\jiagou\\projectmind-context-authority::refs/remotes/origin/main"
+            },
+            "verified_at": "2026-10-02T16:22:38+00:00",
+            "freshness": "local_reference"
+          }
+        }
+      ],
+      "freshness": "local_reference",
+      "verified_at": "2026-10-02T16:22:38+00:00"
+    },
+    {
+      "key": "implementation.map_proposal_snapshot",
+      "scope": "observed main / PR21 / PR22 snapshots",
+      "value": {
+        "checked_directory": "extensions/map_proposal/",
+        "checked_revisions": {
+          "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+          "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+        },
+        "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+        "status": "NOT_IMPLEMENTED"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-c-observed-status"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-c-observed-status",
+          "key": "implementation.map_proposal_snapshot",
+          "scope": "observed main / PR21 / PR22 snapshots",
+          "value": {
+            "checked_directory": "extensions/map_proposal/",
+            "checked_revisions": {
+              "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+              "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+              "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+            },
+            "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown",
+            "status": "NOT_IMPLEMENTED"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+            "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    {
+      "key": "implementation.map_version",
+      "scope": "projectmind-core",
+      "value": {
+        "identity": "none",
+        "detail": "curated map is a local file without digest or commit pin; confirmedForRevision unknown"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-map-version"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "MVP_INTERFACES.md 共同词汇",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-map-version",
+          "key": "implementation.map_version",
+          "scope": "projectmind-core",
+          "value": {
+            "identity": "none",
+            "detail": "curated map is a local file without digest or commit pin; confirmedForRevision unknown"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "doc",
+            "ref": "MVP_INTERFACES.md 共同词汇",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    {
+      "key": "implementation.pr_21_contents_snapshot",
+      "scope": "PR21@ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "value": {
+        "change": "V1 role mapping and current human review boundaries documented",
+        "files": [
+          "README.md",
+          "docs/audits/2026-09-29-mvp-audit.md",
+          "docs/standards/AGENT_STANDARD.md",
+          "docs/standards/COLLABORATION_CONTRACT.md",
+          "docs/standards/EXTENSION_INTERFACE.md",
+          "docs/standards/MVP_INTERFACES.md",
+          "docs/standards/TEAM_SOP.md"
+        ],
+        "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "limit": "Contents at this head, not merger or team approval"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-pr21-contents"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/compare/7484d44ddeac3c054ca3ba68f92293d965bb615c...ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-pr21-contents",
+          "key": "implementation.pr_21_contents_snapshot",
+          "scope": "PR21@ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "value": {
+            "change": "V1 role mapping and current human review boundaries documented",
+            "files": [
+              "README.md",
+              "docs/audits/2026-09-29-mvp-audit.md",
+              "docs/standards/AGENT_STANDARD.md",
+              "docs/standards/COLLABORATION_CONTRACT.md",
+              "docs/standards/EXTENSION_INTERFACE.md",
+              "docs/standards/MVP_INTERFACES.md",
+              "docs/standards/TEAM_SOP.md"
+            ],
+            "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+            "limit": "Contents at this head, not merger or team approval"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/LingweiXingzhi/projectmind-core/compare/7484d44ddeac3c054ca3ba68f92293d965bb615c...ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02T16:09:53.326768+00:00"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    {
+      "key": "implementation.pr_21_head",
+      "scope": "projectmind-core",
+      "value": {
+        "status": "PR_OPEN",
+        "pr": 21,
+        "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-pr21-head"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../pulls/21"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-pr21-head",
+          "key": "implementation.pr_21_head",
+          "scope": "projectmind-core",
+          "value": {
+            "status": "PR_OPEN",
+            "pr": 21,
+            "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../pulls/21"
+          },
+          "verified_at": "2026-10-02T16:22:39+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "gh_api",
+              "ref": "repos/LingweiXingzhi/projectmind-core/pulls/21"
+            },
+            "verified_at": "2026-10-02T16:22:39+00:00",
+            "verified_fields": [
+              "status",
+              "pr",
+              "head"
+            ]
+          }
+        }
+      ],
+      "freshness": "verified",
+      "verified_at": "2026-10-02T16:22:39+00:00"
+    },
+    {
+      "key": "implementation.pr_22_head",
+      "scope": "projectmind-core",
+      "value": {
+        "status": "PR_OPEN",
+        "pr": 22,
+        "head": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-pr22-head"
+      ],
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/.../pulls/22"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-pr22-head",
+          "key": "implementation.pr_22_head",
+          "scope": "projectmind-core",
+          "value": {
+            "status": "PR_OPEN",
+            "pr": 22,
+            "head": "0c46747147f765260bf2033f6eae40189b58ca0c"
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "gh_api",
+            "ref": "repos/.../pulls/22"
+          },
+          "verified_at": "2026-10-02T16:22:40+00:00",
+          "live_verification": {
+            "source": {
+              "kind": "gh_api",
+              "ref": "repos/LingweiXingzhi/projectmind-core/pulls/22"
+            },
+            "verified_at": "2026-10-02T16:22:40+00:00",
+            "verified_fields": [
+              "status",
+              "pr",
+              "head"
+            ]
+          }
+        }
+      ],
+      "freshness": "verified",
+      "verified_at": "2026-10-02T16:22:40+00:00"
+    },
+    {
+      "key": "implementation.team_approval",
+      "scope": "projectmind-core",
+      "value": {
+        "main_baseline": "candidate",
+        "team_approved": false
+      },
+      "type": "VERIFIED_FACT",
+      "types": [
+        "VERIFIED_FACT"
+      ],
+      "claim_ids": [
+        "claim-team-approval"
+      ],
+      "source": {
+        "kind": "doc",
+        "ref": "COLLABORATION_CONTRACT.md §开场状态",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-team-approval",
+          "key": "implementation.team_approval",
+          "scope": "projectmind-core",
+          "value": {
+            "main_baseline": "candidate",
+            "team_approved": false
+          },
+          "type": "VERIFIED_FACT",
+          "source": {
+            "kind": "doc",
+            "ref": "COLLABORATION_CONTRACT.md §开场状态",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    {
+      "key": "team.context_authority",
+      "scope": "team",
+      "value": {
+        "mandate": "Context Authority MVP is a product capability; build canonical context layer before C/Map Proposal",
+        "source_directive": "user directive 2026-10-02"
+      },
+      "type": "HUMAN_DECISION",
+      "types": [
+        "HUMAN_DECISION"
+      ],
+      "claim_ids": [
+        "claim-ca-mvp"
+      ],
+      "source": {
+        "kind": "human",
+        "ref": "user task directive 2026-10-02"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-ca-mvp",
+          "key": "team.context_authority",
+          "scope": "team",
+          "value": {
+            "mandate": "Context Authority MVP is a product capability; build canonical context layer before C/Map Proposal",
+            "source_directive": "user directive 2026-10-02"
+          },
+          "type": "HUMAN_DECISION",
+          "source": {
+            "kind": "human",
+            "ref": "user task directive 2026-10-02"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    },
+    {
+      "key": "team.roles.v1",
+      "scope": "team",
+      "value": {
+        "A": "Core / Integration",
+        "B": "Code Facts",
+        "C": "Map Proposal",
+        "D": "Handoff"
+      },
+      "type": "HUMAN_DECISION",
+      "types": [
+        "HUMAN_DECISION"
+      ],
+      "claim_ids": [
+        "claim-v1-role-map"
+      ],
+      "source": {
+        "kind": "human",
+        "ref": "负责人 2026-09-30 确认 V1；COLLABORATION_CONTRACT.md",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "evidence": [
+        {
+          "claim_id": "claim-v1-role-map",
+          "key": "team.roles.v1",
+          "scope": "team",
+          "value": {
+            "A": "Core / Integration",
+            "B": "Code Facts",
+            "C": "Map Proposal",
+            "D": "Handoff"
+          },
+          "type": "HUMAN_DECISION",
+          "source": {
+            "kind": "human",
+            "ref": "负责人 2026-09-30 确认 V1；COLLABORATION_CONTRACT.md",
+            "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+          },
+          "verified_at": "2026-10-02"
+        }
+      ],
+      "freshness": "unverified",
+      "verified_at": "2026-10-02"
+    }
+  ],
+  "conflicts": [],
+  "stale": [
+    {
+      "claim_id": "claim-codefacts-input",
+      "key": "contract.code_facts_input",
+      "scope": "PR22 delivery README",
+      "type": "CONTRACT",
+      "state": "SUPERSEDED",
+      "value": {
+        "revision": "full 40/64-bit lowercase SHA resolving directly to a commit; HEAD / short SHA / uppercase / tags rejected",
+        "paths": "exact repo-relative paths; directories and wildcards unsupported; duplicates deduped; results sorted",
+        "limits": "max 2000 files; 1 MiB per file; 16 MiB total"
+      },
+      "source": {
+        "kind": "doc",
+        "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "created_at": "2026-10-01",
+      "verified_at": "2026-10-02",
+      "notes": "input convention per the delivered B contract",
+      "superseded_by": [
+        "claim-codefacts-input-units"
+      ]
+    },
+    {
+      "claim_id": "claim-old-role-map",
+      "key": "team.roles.v1",
+      "scope": "core/main@7484d44",
+      "type": "HISTORICAL",
+      "state": "SUPERSEDED",
+      "value": {
+        "A": "集成与体验",
+        "B": "代码事实",
+        "C": "候选功能结构",
+        "D": "协同交接与验收"
+      },
+      "source": {
+        "kind": "repo",
+        "ref": "docs/standards/COLLABORATION_CONTRACT.md",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "created_at": "2026-09-30",
+      "notes": "main@7484d44 still carries the pre-V1 mapping; historical only",
+      "superseded_by": [
+        "claim-v1-role-map"
+      ]
+    }
+  ],
+  "proposals": [
+    {
+      "claim_id": "claim-biz-functions-proposal",
+      "key": "architecture.business_functions",
+      "scope": "projectmind-core",
+      "type": "PROPOSAL",
+      "state": "ACTIVE",
+      "value": {
+        "proposals": [
+          "suggest_map (C)",
+          "build_handoff (D)",
+          "collect_code_facts (B - delivered as PR #22, awaiting review)"
+        ],
+        "status": "PROPOSED in MVP_INTERFACES"
+      },
+      "source": {
+        "kind": "doc",
+        "ref": "MVP_INTERFACES.md PROPOSED 节",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "created_at": "2026-09-30",
+      "notes": "business functions remain proposals until implemented and accepted"
+    },
+    {
+      "claim_id": "claim-mapsource-proposal",
+      "key": "architecture.map_source_patch",
+      "scope": "projectmind-core",
+      "type": "PROPOSAL",
+      "state": "ACTIVE",
+      "value": {
+        "proposal": "add mapSource {kind, digest, confirmedForRevision:null} identity to Snapshot/Comparison/exports",
+        "status": "PROPOSED in MVP_INTERFACES",
+        "note": "first acceptance: same code SHA + changed map content -> digest changes"
+      },
+      "source": {
+        "kind": "doc",
+        "ref": "MVP_INTERFACES.md 地图来源补丁",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "created_at": "2026-09-30",
+      "notes": "proposal only - not implemented, not accepted architecture"
+    }
+  ],
+  "research": [
+    {
+      "claim_id": "claim-catfile-research",
+      "key": "research.code_facts.performance",
+      "scope": "B_PR22_HOLDOUT",
+      "type": "RESEARCH",
+      "state": "ACTIVE",
+      "value": {
+        "finding": "per-file git cat-file subprocess is the current bottleneck (~26ms/file on Windows; 2000 files ≈ 53s, linear)",
+        "suggestion": "consider git cat-file --batch streaming (est. 53s -> 2-4s)"
+      },
+      "source": {
+        "kind": "research_artifact",
+        "ref": "stress_perf/STRESS_PERF_REPORT.md",
+        "revision": "2026-10-02"
+      },
+      "created_at": "2026-10-02",
+      "notes": "research suggestion only - NOT a requirement and NOT part of any contract"
+    }
+  ],
+  "historical": [
+    {
+      "claim_id": "claim-b-not-implemented",
+      "key": "implementation.code_facts",
+      "scope": "benchmark/FINAL_BENCHMARK_REPORT.md",
+      "type": "HISTORICAL",
+      "state": "ACTIVE",
+      "value": "NOT_IMPLEMENTED",
+      "source": {
+        "kind": "report",
+        "ref": "FINAL_BENCHMARK_REPORT.md §11",
+        "revision": "2026-10-01"
+      },
+      "created_at": "2026-10-01",
+      "notes": "superseded by reality: PR #22 exists and was evaluated (686 units, 0 failures)"
+    },
+    {
+      "claim_id": "claim-docs-line-106",
+      "key": "contract.mvp_interfaces_build_snapshot_line",
+      "scope": "docs/standards/MVP_INTERFACES.md@main",
+      "type": "HISTORICAL",
+      "state": "ACTIVE",
+      "value": 106,
+      "source": {
+        "kind": "doc",
+        "ref": "PROPOSED CodeFacts example",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "created_at": "2026-09-29",
+      "notes": "stale source reference; actual app.py:109 on the working branch"
+    },
+    {
+      "claim_id": "claim-old-b-shape",
+      "key": "contract.code_facts_shape",
+      "scope": "docs/standards/MVP_INTERFACES.md@main",
+      "type": "HISTORICAL",
+      "state": "ACTIVE",
+      "value": {
+        "entries": "bare name + single kind:function + line",
+        "qualified_names": false,
+        "kinds": [
+          "function"
+        ]
+      },
+      "source": {
+        "kind": "doc",
+        "ref": "MVP_INTERFACES.md PROPOSED example",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "created_at": "2026-09-29",
+      "notes": "superseded by the delivered B contract in PR #22"
+    },
+    {
+      "claim_id": "claim-v2-role-map",
+      "key": "team.roles.v2",
+      "scope": "projectmind-model/docs/drafts/MVP_PROPOSAL.md",
+      "type": "HISTORICAL",
+      "state": "ACTIVE",
+      "value": {
+        "A": "仓库与证据",
+        "B": "结构与AI",
+        "C": "交互图与详情",
+        "D": "集成与验收"
+      },
+      "source": {
+        "kind": "doc",
+        "ref": "MVP_PROPOSAL.md (SUPERSEDED banner)",
+        "revision": "2026-09-28"
+      },
+      "created_at": "2026-09-28",
+      "notes": "V2 explicitly superseded; V3 is referenced nowhere with content (dangling)"
+    }
+  ],
+  "verification_unavailable": [],
+  "registry_problems": [],
+  "registry_hash": "sha256:cdc653f68c83d9f6fb3a2c4e9daaad8ed14439e9b1ae015d8dfe2830c4a53a3e",
+  "counts": {
+    "current": 14,
+    "conflicts": 0,
+    "stale": 2,
+    "proposals": 2,
+    "research": 1,
+    "historical": 4
+  }
+}

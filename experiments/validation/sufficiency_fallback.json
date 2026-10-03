@@ -1,0 +1,542 @@
+[
+  {
+    "qid": "S01",
+    "answer": "C may pass only a string containing exactly 40 or 64 lowercase hexadecimal characters that directly resolves to a commit in the supplied repository. These are character counts (SHA-1/SHA-256 spellings), not 40/64-bit hashes. Reject HEAD, short SHA, uppercase SHA, branch/tag names, other rev expressions, intermediate lengths, noncommit objects, and an annotated-tag object's full SHA even if it peels to a commit. A tag name is rejected as an alias; the underlying commit's full lowercase SHA is valid.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "A syntactically valid hash alone does not prove it exists in the selected repository or denotes a commit. Actual SHA-256 repository operation is not established by the pack."
+    ],
+    "fallback_required": false,
+    "fallback_sources": [],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/contract.code_facts_input; /known_stale_sources[claim-codefacts-input]",
+        "supports": "Exact-length lowercase directly-to-commit input and superseded unit typo."
+      }
+    ]
+  },
+  {
+    "qid": "S02",
+    "answer": "Handle exactly these five declaration kinds: function, async_function, class, method, async_method. A declaration's kind is a static lexical classification, not a runtime or architecture assertion.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "The older single-kind bare-name example is historical and must not replace the delivered five-kind shape."
+    ],
+    "fallback_required": false,
+    "fallback_sources": [],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/contract.code_facts_shape; /historical_sources[claim-old-b-shape]",
+        "supports": "Current five-kind shape and historical obsolete example."
+      }
+    ]
+  },
+  {
+    "qid": "S03",
+    "answer": "Yes: names are lexical dotted qualified names such as Class.method and outer.inner; they do not describe dependencies or calls. Preserve the entries as occurrences, including repeated declarations with the same qualified name; do not turn them into a map keyed only by name or deduplicate by name. The frozen prototype appends one entry per AST declaration and retains distinct line numbers. For example, two conditional/top-level def repeat declarations remain two function entries. Direct functions in a class lexical scope are methods; a function nested inside a method is a function with a name such as A.m.inner.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "A qualified name need not be unique. This preservation behavior was observed in the frozen prototype source and in an in-memory AST probe; it is not evidence that B has been formally integrated into main."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/contract.code_facts_shape/value/qualified_names",
+        "supports": "Lexical qualified-name shape."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+        "locator": "lines 48–54",
+        "supports": "Lexical name, direct-method/nested-function semantics and declaration-only limits.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+        "locator": "lines 76–94",
+        "supports": "Append-per-declaration traversal without name deduplication.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      }
+    ]
+  },
+  {
+    "qid": "S04",
+    "answer": "line is one-based and points to the def, async def, or class declaration line, not the first decorator line. It locates the declaration in the exact committed source version represented by CodeFacts.revision.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "A line number from another commit or from uncommitted working-tree content cannot be substituted."
+    ],
+    "fallback_required": false,
+    "fallback_sources": [],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/contract.code_facts_shape/value/line",
+        "supports": "One-based keyword line, not decorator line."
+      }
+    ]
+  },
+  {
+    "qid": "S05",
+    "answer": "Use a local Git repository root, not a subdirectory, and exact repository-relative file paths using '/'. Python paths=None selects every file in that commit; paths=[] selects none. A list must contain no more than 2,000 items before deduplication. Each item must be a nonempty string, with no backslash, ASCII control character (<32) or DEL, and no empty, '.' or '..' path segment: this rejects leading/trailing '/', repeated '//', './' and traversal segments. Paths are checked for exact membership in the selected commit, duplicates are removed, and selected results are sorted. A nonexistent requested path rejects the whole request. Directory and wildcard selection/expansion are unsupported. The lexical helper alone does not specially reject strings such as 'C:/a.py' or '*.py'; exact committed-tree membership still applies, so do not infer absolute-path or glob support. For prototype HTTP GET, paths is a newline-separated string and same-name query keys use the first value. POST uses a JSON list and may omit paths for all files. Observed adapter behavior maps missing or empty GET paths='' to None (all files), whereas POST paths=[] means none. The delivery documentation does not formally promise the empty-GET meaning for the eventual integrated contract; C should use explicit POST [] for no files and avoid relying on blank GET as a stable public promise.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "A formally agreed empty/blank GET paths contract for the integrated B→C interface is not supplied; prototype behavior is observable but not formal acceptance."
+    ],
+    "risks": [
+      "An empty GET field unexpectedly broadens the prototype request to the entire commit.",
+      "Raw list length is checked before deduplication; more than 2,000 duplicate inputs still fail.",
+      "Literal membership is distinct from glob expansion or directory selection."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py",
+      "G:/jiagou/projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+      "G:/jiagou/projectmind-core/app.py"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/contract.code_facts_input/value/paths",
+        "supports": "Exact relative-file, deduplication and ordering summary."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+        "locator": "lines 19–25; 53; 97–104",
+        "supports": "Repository-root, None/[] and HTTP transport documentation.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+        "locator": "lines 39–49; 58–73; 120–127",
+        "supports": "Lexical checks, raw-list bound and exact-tree membership.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py",
+        "locator": "lines 10–23",
+        "supports": "Observed GET empty-string-to-None and POST list forwarding.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "G:/jiagou/projectmind-core/app.py",
+        "locator": "lines 364–373",
+        "supports": "Core query parsing and first-value forwarding."
+      }
+    ]
+  },
+  {
+    "qid": "S06",
+    "answer": "B's delivery prototype advertises at most 2,000 selected files, a 1 MiB (1,048,576 bytes) cap per Python file, and a 16 MiB (16,777,216 bytes) total Python-content budget. It supports Python static def/async def/class declarations in .py files only; unsupported languages enter skipped. It does not extract imports, lambdas, dynamically generated definitions, call graphs or responsibility descriptions. The source counts all selected committed-tree files toward the 2,000 cap, including files later skipped, and separately rejects an input list longer than 2,000 before deduplication. Oversized individual Python files are skipped; exceeding the total counted eligible Python bytes rejects the request. Total bytes are counted before encoding/AST parsing, so a later parse/encoding failure consumes the budget; files skipped before that stage do not. Other advertised prototype limits are 10 seconds per Git command and a 65,536-byte POST body. These are published first-version prototype limits, not evidence of an accepted formal integrated B/C service-level contract; actual SHA-256 repositories remain unaccepted in that delivery note.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Whether the prototype's capacity, language and timeout limits have been formally accepted or changed for actual Core/B/C integration is not established by the allowed evidence."
+    ],
+    "risks": [
+      "Do not convert first-version prototype bounds into permanent cross-module guarantees.",
+      "Byte budgets are not character budgets or output-size limits.",
+      "The 10-second limit applies to each Git command, not the whole request."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/contract.code_facts_input/value/limits",
+        "supports": "Published 2,000-file / 1 MiB / 16 MiB summary."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+        "locator": "lines 118–124; 126–133",
+        "supports": "First-version language/size/timeout/body limits and unresolved integration acceptance.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+        "locator": "lines 12–15; 28–33; 58–62; 120–158",
+        "supports": "Exact units and observed count/skip/total-budget enforcement.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      }
+    ]
+  },
+  {
+    "qid": "S07",
+    "answer": "A supported, decodable, syntactically valid .py file with zero def/async def/class declarations is a successful files row: {path, language:'python', entries:[]}; it is not skipped and is not missing. Existing files with unsupported type/language, unsuitable Git mode (symlink/submodule), non-UTF-8 filename, overlarge individual Python content, or unparseable/undecodable source enter skipped as {path,reason}, while other files continue. Encoding is detected from the source declaration/BOM rather than assuming all source bytes must be UTF-8. In the frozen prototype, SyntaxError, UnicodeError, LookupError, ValueError and RecursionError from decoding/parsing use the same skipped reason ('无法按当前 Python 解析器读取编码或语法'), so C cannot distinguish parse failure from source-encoding failure by a stable machine-readable category. A non-UTF-8 filename has a separate reason. Invalid inputs, missing selected paths, total-budget exhaustion or Git errors fail the request instead; the adapter maps CodeFactsError to HTTP 400 with {error:string}. Do not match exact prose as an error API.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "An empty entries array must not be treated as a parser failure.",
+      "Reason strings are descriptive prose, not formal error codes.",
+      "Successful rows plus skipped rows can represent partial file coverage."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+      "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+      "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py"
+    ],
+    "citations": [
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+        "locator": "lines 78–92",
+        "supports": "Proposed CodeFacts shape allows empty entries; invalid input differs from skipped existing files.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+        "locator": "lines 53; 102; 120–123",
+        "supports": "Continue on existing unsupported/unparseable files, input-error HTTP shape and encoding limits.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+        "locator": "lines 130–158",
+        "supports": "Observed file skip reasons, detected source encoding and successful zero-declaration row.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py",
+        "locator": "lines 20–23",
+        "supports": "CodeFactsError translated into HTTP 400.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      }
+    ]
+  },
+  {
+    "qid": "S08",
+    "answer": "No. CodeFacts supplies committed declaration names/kinds and path/line locations only; it does not contain dependency or call edges, signatures/parameters, function bodies, runtime reachability, validated entry points or responsibility descriptions. Lexical dotted names are not relationships. C can propose interpretations using independently retrieved evidence plus the human map, but those remain candidates with evidence and unknowns; CodeFacts alone cannot confirm architecture or the human map's entryPoint and responsibilities.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Treating declarations or qualified-name nesting as a dependency graph fabricates facts.",
+      "An evidence file's existence does not validate an entry point or functional responsibility."
+    ],
+    "fallback_required": false,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/do_not_assume; /current_state/current/contract.code_facts_shape",
+        "supports": "Declaration-only CodeFacts boundary."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+        "locator": "lines 11; 48–54; 120",
+        "supports": "No responsibilities/runtime reachability, bodies, parameters or calls.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+        "locator": "lines 19–40; 94–109",
+        "supports": "Human-map claims are not code proof; candidate evidence/unknown requirements.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      }
+    ]
+  },
+  {
+    "qid": "S09",
+    "answer": "The proposed business function is suggest_map(snapshot, code_facts) -> MapProposal. Inputs must come from the same repository and exact commit; require CodeFacts.revision == Snapshot.revision and reject a SHA mismatch. Verify repository provenance separately because Snapshot.repository is only a directory name. The minimum proposed output is {status:'ai_candidate', revision:<full SHA>, candidates:[{title:<string>, summary:<string>, evidencePaths:[<real input paths>], unknowns:[...]}], note:<human-review/no-overwrite note>}. Evidence paths must be selected from real input paths. Insufficient evidence yields empty candidates plus a reason. The first version may supplement a few existing human nodes rather than infer a whole repository architecture. If using an LLM, require explicit configuration, bounded input and retained unknowns. ai_candidate is reserved for actual model-generated results; a controlled model response may test the shape, and an unavailable model produces an explicit unconfigured state rather than a rule result mislabeled AI. Pure-rule generation would need a distinct generation label. This is a PROPOSED exchange contract, not an implemented or team-confirmed architecture; no formal long-term Project Model schema is established by it.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Same SHA in different repositories is not sufficient repository identity.",
+      "The candidate shape is a proposed minimum; it is not evidence that suggest_map already exists or has been accepted.",
+      "No evidence authorizes automatically confirming responsibilities, relationships or map applicability."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+      "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+      "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/proposals[claim-biz-functions-proposal]; /current_state/current/implementation.map_proposal_snapshot",
+        "supports": "Map Proposal remains proposed and absence observation is limited to listed trees."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+        "locator": "lines 8–11; 94–109",
+        "supports": "Exact input/output shape, revision rejection, evidence and model-status limits.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+        "locator": "lines 35–46",
+        "supports": "C's isolated candidate role and development/interface boundary.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+        "locator": "line 54",
+        "supports": "Real integration requires same repository and SHA.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      }
+    ]
+  },
+  {
+    "qid": "S10",
+    "answer": "Create extensions/map_proposal/extension.py with EXTENSION={title:<nonempty string>,description:<nonempty string>} and handle(context, method, data) -> JSON-encodable dict. Extension directory IDs begin with a lowercase letter and contain only lowercase letters/digits/underscore, maximum 40 characters. Add an optional self-contained index.html; other extension static files have no route. Place code/helpers/tests in C's own extension/test scope and restart the service for discovery; independent integration requires no edits to app.py or shared web files. Routes are GET /api/extensions (listing), GET /ext/map_proposal (page), GET /api/extensions/map_proposal?... and POST /api/extensions/map_proposal. GET calls handle(context,'GET',data) with first value per query key; POST requires an application/json object and a body no larger than 65,536 bytes and calls handle(context,'POST',data). context exposes repo, map_path, snapshot() and compare(base,target). Without a custom page the generic page only calls GET. Extensions execute in the same Python process and requests are handled by ThreadingHTTPServer, so protect shared mutable state or avoid it. Expected business/input failures use ExtensionError(status,message); unknown extension is 404, unavailable loading is 503, and internal/unencodable output failures are 500. Main-map embedding is separate A-owned shared integration.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Discovery does not automatically put candidate results into the human function map.",
+      "Concurrent requests must not mutate unprotected global state.",
+      "The POST cap constrains requests, not successful response size."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "G:/jiagou/projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+      "G:/jiagou/projectmind-core/extension_host.py",
+      "G:/jiagou/projectmind-core/app.py",
+      "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md"
+    ],
+    "citations": [
+      {
+        "source": "G:/jiagou/projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+        "locator": "lines 7–14; 32–47",
+        "supports": "Extension discovery, route/signature/body/concurrency/context/error rules."
+      },
+      {
+        "source": "G:/jiagou/projectmind-core/extension_host.py",
+        "locator": "lines 14–22; 39–84; 99–124",
+        "supports": "Observed discovery metadata, context and result/error enforcement."
+      },
+      {
+        "source": "G:/jiagou/projectmind-core/app.py",
+        "locator": "lines 328–378; 433–469",
+        "supports": "First-query-value handling, 65,536-byte JSON body limit and threaded server."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+        "locator": "lines 26; 34–46",
+        "supports": "C owns independent extension and A owns main integration.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      }
+    ]
+  },
+  {
+    "qid": "S11",
+    "answer": "No. Snapshot.revision pins code evidence to a commit, while the human curated map is currently read from a mutable local file with no separate commit pin/digest or confirmedForRevision binding. A matching code SHA or existsAtCommit:true cannot prove the map's responsibilities, entry points or relationships apply to that commit. Record map applicability/version as UNKNOWN. The proposed mapSource {kind:'local_curated_file',digest:'sha256:...',confirmedForRevision:null} would identify actual map bytes, but it remains a proposal and a digest would still not establish human confirmation.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Code revision and map content identity are separate axes.",
+      "Map presence in the code repository is not automatic human approval for that code revision."
+    ],
+    "fallback_required": false,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+      "G:/jiagou/projectmind-core/app.py"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/implementation.map_version; /proposals[claim-mapsource-proposal]; /do_not_assume",
+        "supports": "No current map identity; mapSource is proposed, and Snapshot.revision never proves applicability."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+        "locator": "lines 8–11; 40; 74–76",
+        "supports": "Map-version UNKNOWN and proposed digest/confirmedForRevision semantics.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      {
+        "source": "G:/jiagou/projectmind-core/app.py",
+        "locator": "lines 109–136",
+        "supports": "Observed code commit combined with present local-map load."
+      }
+    ]
+  },
+  {
+    "qid": "S12",
+    "answer": "No. C must retain candidate status, actual evidence and unknowns; it may not overwrite data/project-map.json or the formal model repository, or present candidate responsibilities/relations as confirmed architecture. C's role is an isolated Map Proposal extension with its own page/data API; shared main-map integration belongs to A and formal decisions require human confirmation with approver/version provenance. A proposal, checksum, passing test or observed PR content does not supply that authority.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Candidate output is not a confirmed map and cannot silently replace curated evidence.",
+      "CA's consumer-contract freeze is not formal team approval or authorization to merge/change the Project Model."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+      "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+      "AGENT_BOOTSTRAP.md",
+      "C_CONSUMABLE_INTERFACE.md"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/do_not_assume; /proposals",
+        "supports": "Proposal/research authority classes cannot be promoted into accepted architecture."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+        "locator": "lines 94–109",
+        "supports": "Human-review output, explicit prohibition on writing curated/formal map.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+        "locator": "lines 11–17; 34–46; 62; 67",
+        "supports": "Human decision authority, C/A scope and candidate-write prohibition.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      {
+        "source": "AGENT_BOOTSTRAP.md",
+        "locator": "lines 27–32; 40",
+        "supports": "Presence in pack grants no write/architecture authority and no merge."
+      },
+      {
+        "source": "C_CONSUMABLE_INTERFACE.md",
+        "locator": "lines 3–4; 56–58",
+        "supports": "Consumer freeze is review-branch contract; other work remains separate."
+      }
+    ]
+  },
+  {
+    "qid": "S13",
+    "answer": "No. The supplied snapshot reports PR22 OPEN at 0c46747147f765260bf2033f6eae40189b58ca0c, distinct from the locally referenced main SHA 7484d44ddeac3c054ca3ba68f92293d965bb615c. OPEN is not merged; shared PR22 reference code is not evidence of a root/main CodeFacts integration. main is a candidate common baseline, not TEAM APPROVED. IMPLEMENTED, MERGED and TEAM APPROVED are independent facts. Before any current integration decision C must independently check the exact target tree, remote PR/main state and actual human approval; cached origin/main is only a local reference. No fresh remote verification was attempted in this restricted participant run, so the pack's recorded statuses remain snapshot claims rather than today's independently rechecked statuses.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Cached Git refs or a passing prototype cannot establish live remote main, merge or approval.",
+      "The frozen shared prototype states that actual Core/C integration is unfinished."
+    ],
+    "fallback_required": false,
+    "fallback_sources": [
+      "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+      "AGENT_BOOTSTRAP.md"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/current_state/current/implementation.pr_22_head; /current_state/current/implementation.main_head; /current_state/current/implementation.team_approval; /do_not_assume",
+        "supports": "Recorded OPEN PR, local-reference main, candidate baseline and separate approval states."
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+        "locator": "lines 7–9; 60–62; 124; 126–131",
+        "supports": "Prototype is not integrated/approved; merge requires explicit human gates.",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      {
+        "source": "experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+        "locator": "lines 3–5; 21–26",
+        "supports": "V1 contract status and candidate main baseline.",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      {
+        "source": "AGENT_BOOTSTRAP.md",
+        "locator": "lines 20–32",
+        "supports": "Independent exact-source/remote/authority checks required."
+      }
+    ]
+  },
+  {
+    "qid": "S14",
+    "answer": "First validate schema 0.1 and the pack against C's independently pinned expected code revision. A validation failure means reject the pack. Check the relevant (key,scope) in current_by_scope plus known_conflicts, registry_problems, verification_unavailable and known_stale_sources. A relevant conflict or invalid replacement graph requires HUMAN_REQUIRED; never choose a winner by timestamp, global type rank, scope order or apparent equality. Stop only actions depending on unresolved facts and continue unrelated work. An unavailable volatile verifier makes the fact UNKNOWN; retained stale/stored values are not live verification, and missing current rows mean UNKNOWN rather than NOT_IMPLEMENTED. Retrieve the allowed exact source/revision as fallback, compare it with the pack, preserve unknowns and report changed/contradictory facts through CA's review process. If the issue cannot be resolved by evidence, human review is required. This initial pack has empty conflict/registry/unavailable lists, but that emptiness does not remove source/revision preflight duties.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "A structurally valid but coherently forged pack can still pass validation.",
+      "An unavailable or absent current row must not be repurposed as a negative implementation fact.",
+      "A conflict can involve invalid graph diagnostics even if alternatives look equal."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "AGENT_BOOTSTRAP.md",
+      "C_CONSUMABLE_INTERFACE.md",
+      "extensions/context_authority/context_pack.py"
+    ],
+    "citations": [
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/known_conflicts; /registry_problems; /verification_unavailable; /known_stale_sources; /integrity",
+        "supports": "Observed initial lists and structural-only integrity."
+      },
+      {
+        "source": "AGENT_BOOTSTRAP.md",
+        "locator": "lines 6–39",
+        "supports": "Fail-closed validation, scope checks, human/unknown handling, independent fallback."
+      },
+      {
+        "source": "C_CONSUMABLE_INTERFACE.md",
+        "locator": "lines 12–22; 47–54",
+        "supports": "Stable failure boundaries and prohibited automatic winner rules."
+      },
+      {
+        "source": "extensions/context_authority/context_pack.py",
+        "locator": "lines 242–272; 407–437",
+        "supports": "Validator rejection, expected revision, HUMAN_REQUIRED conflict and unavailable invariants."
+      }
+    ]
+  },
+  {
+    "qid": "S15",
+    "answer": "The review branch freezes FROZEN_FOR_C_V0_1 consumption of schema_version='0.1', project_revision, current_state.current_by_scope keyed by (key,scope), the unambiguous current convenience map, typed verified_facts/human_decisions/relevant_contracts, known_conflicts, known_stale_sources, proposals/research_notes/historical_sources, verification_unavailable/registry_problems, do_not_assume semantics, per-claim evidence, current_state.registry_hash/integrity, build_context_pack/validate_context_pack, and POST context/validate_context actions. It is a frozen consumer contract, not formal team approval. Seed keys/claim IDs, keyword routing, warning prose/order, UI, performance promises, default GitHub identity, additional metadata and future review tooling remain provisional. Consume only after validate_context_pack(pack, expected_revision=C_pinned_commit) succeeds; exceptions mean rejection. This initial pack passed that call for 3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6. Its compact UTF-8 size is 71,822 bytes, so use the Python validator rather than upload the full pack to the 65,536-byte host POST route; the small context request and large response are different directions. C still owns exact repository identity, intended task/scope, independently pinned commit, and per-claim retrieval of exact source/revision, including all collapsed evidence IDs. claim_revision is explicit applicability metadata, source_revision is provenance, and revision is the effective evidence locator; a doc's PR source SHA does not prove contract implementation at main or the selected code SHA. Check freshness, verified endpoint/time and verified_fields: unverified has no live check; local_reference is cached origin/main only. Recheck volatile remote state and actual human authority independently. Hashes and validator success establish internal structure/consistency only, not source authentication, semantic truth, map applicability or acceptance. Missing facts need docs/code fallback and explicit UNKNOWN/HUMAN_REQUIRED before dependent work.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Stable field shape is not stable seed contents or business claim IDs.",
+      "Validation success does not authenticate human decisions or prove source truth.",
+      "The supplied expected revision was checked for equality/shape; this participant did not independently resolve Git objects or fetch remote state under the no-Git/no-web restriction.",
+      "The exact-source checks and formal acceptance remain consumer responsibilities outside a structural sufficiency answer."
+    ],
+    "fallback_required": true,
+    "fallback_sources": [
+      "AGENT_BOOTSTRAP.md",
+      "C_CONSUMABLE_INTERFACE.md",
+      "extensions/context_authority/context_pack.py",
+      "extensions/context_authority/extension.py"
+    ],
+    "citations": [
+      {
+        "source": "C_CONSUMABLE_INTERFACE.md",
+        "locator": "lines 3–37; 39–58",
+        "supports": "Frozen field boundaries, revision axes, validation transport constraint and provisional/nondependency rules."
+      },
+      {
+        "source": "AGENT_BOOTSTRAP.md",
+        "locator": "lines 6–39",
+        "supports": "Consumer's exact evidence/revision/human-authority responsibilities."
+      },
+      {
+        "source": "extensions/context_authority/context_pack.py",
+        "locator": "lines 81–119; 242–272; 451–459",
+        "supports": "Evidence axes, freshness, structural validator and digest."
+      },
+      {
+        "source": "extensions/context_authority/extension.py",
+        "locator": "lines 6–16; 67–98",
+        "supports": "Context/validate_context action schema and validator route."
+      },
+      {
+        "source": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "locator": "/schema_version; /project_revision; /current_state; /evidence; /integrity",
+        "supports": "Observed schema/revision/projection/evidence/integrity; Python validation and compact-byte probe passed."
+      }
+    ]
+  }
+]

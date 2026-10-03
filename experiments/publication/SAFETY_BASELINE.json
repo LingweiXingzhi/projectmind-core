@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-10-03T04:59:35.520667+08:00",
+  "branch": "feat/context-authority-mvp",
+  "feature_head_before_evidence_commit": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "origin": "https://github.com/LingweiXingzhi/projectmind-core.git",
+  "upstream_before_push": null,
+  "remote_heads_before_push": {
+    "refs/heads/docs/b-first-version-wang-haining-2026-10-01": "0c46747147f765260bf2033f6eae40189b58ca0c",
+    "refs/heads/docs/team-skills": "8bd8005d6c19d8d834bd8d2c90bb2e95850829b6",
+    "refs/heads/docs/v1-source-of-truth-cleanup": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+    "refs/heads/feat/23-handoff-draft": "731135bd87498db766070183455601247a29fbc6",
+    "refs/heads/feat/25-worklog": "9b3d333dbd75ec7a246de646aa28a9d4b3d0ec80",
+    "refs/heads/feat/handoff-continuity": "8f00be38532f3f5e9823aec8cbf430038cc9ff4b",
+    "refs/heads/main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+  },
+  "protected_prs": {
+    "21": {
+      "baseRefOid": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "headRefOid": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "number": 21,
+      "state": "OPEN",
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/21"
+    },
+    "22": {
+      "baseRefOid": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "headRefOid": "0c46747147f765260bf2033f6eae40189b58ca0c",
+      "number": 22,
+      "state": "OPEN",
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/22"
+    }
+  },
+  "local_main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+  "own_remote_branch_absent": true
+}

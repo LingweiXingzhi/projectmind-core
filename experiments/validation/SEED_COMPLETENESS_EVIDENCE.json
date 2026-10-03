@@ -1,0 +1,217 @@
+{
+  "observed_at": "2026-10-02T16:09:53.326768+00:00",
+  "heads": {
+    "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+    "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+    "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+  },
+  "observed_business_directories": {
+    "PR21": [
+      "extensions/__init__.py",
+      "extensions/project_summary",
+      "extensions/project_summary/__init__.py",
+      "extensions/project_summary/extension.py"
+    ],
+    "PR22": [
+      "collaboration/b/2026-10-01-wang-haining/extensions/__init__.py",
+      "collaboration/b/2026-10-01-wang-haining/extensions/code_facts",
+      "collaboration/b/2026-10-01-wang-haining/extensions/code_facts/__init__.py",
+      "collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py",
+      "collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+      "collaboration/b/2026-10-01-wang-haining/extensions/code_facts/index.html",
+      "extensions/__init__.py",
+      "extensions/project_summary",
+      "extensions/project_summary/__init__.py",
+      "extensions/project_summary/extension.py"
+    ],
+    "main": [
+      "extensions/__init__.py",
+      "extensions/project_summary",
+      "extensions/project_summary/__init__.py",
+      "extensions/project_summary/extension.py"
+    ]
+  },
+  "pr21_files": [
+    {
+      "sha": "bfdd1de8e46e597b21a234fde4382604341da9d1",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/LingweiXingzhi/projectmind-core/blob/ff22b76966e6198b062c60fa9f0f4dbb987b027e/README.md",
+      "raw_url": "https://github.com/LingweiXingzhi/projectmind-core/raw/ff22b76966e6198b062c60fa9f0f4dbb987b027e/README.md",
+      "contents_url": "https://api.github.com/repos/LingweiXingzhi/projectmind-core/contents/README.md?ref=ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "patch": "@@ -33,7 +33,7 @@ python app.py\n \n 新增功能放入 `extensions/<功能名>/extension.py`，定义标题、说明与 `handle(context, method, data)`。重启服务后，主页侧栏自动出现该功能的独立页面入口，数据接口为 `/api/extensions/<功能名>`；不需要为每个人的新功能修改 `app.py` 或共享页面。`extensions/project_summary/` 是可运行的样例。扩展只接入独立功能页，不会自动修改人工功能图；需要在主图展示的内容仍由团队复核并集成。\n \n-具体输入、错误和四人目录分工见 [独立扩展接口](docs/standards/EXTENSION_INTERFACE.md)。\n+具体输入和错误见 [独立扩展接口](docs/standards/EXTENSION_INTERFACE.md)；四人职责与目录分工见 [协作约定](docs/standards/COLLABORATION_CONTRACT.md)。\n \n ## 查看另一个本地 Git 仓库\n "
+    },
+    {
+      "sha": "3871b08bff1469b04c8e2a337649e18d53efb7e5",
+      "filename": "docs/audits/2026-09-29-mvp-audit.md",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 0,
+      "changes": 2,
+      "blob_url": "https://github.com/LingweiXingzhi/projectmind-core/blob/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Faudits%2F2026-09-29-mvp-audit.md",
+      "raw_url": "https://github.com/LingweiXingzhi/projectmind-core/raw/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Faudits%2F2026-09-29-mvp-audit.md",
+      "contents_url": "https://api.github.com/repos/LingweiXingzhi/projectmind-core/contents/docs%2Faudits%2F2026-09-29-mvp-audit.md?ref=ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "patch": "@@ -1,5 +1,7 @@\n # 2026-09-29 比赛版实现与八个 Skill 审计\n \n+> **HISTORICAL POINT-IN-TIME AUDIT（历史时点审计）**：下文保留 2026-09-29 对当时分支与提交的原始判断。其“没有自动 Extension 接入口”的判断已被后来合入 `core/main` 的 PR #20（Extension Host）取代。当前扩展行为以 [扩展技术协议](../standards/EXTENSION_INTERFACE.md) 和实际 `main` 代码为准；本文不得作为当前 Extension Contract，也不代表今天的合并或团队验收状态。\n+\n > 审计是对**今天本地可见状态**的核查，不批准架构，也不把未合并的 PR 说成 `main` 已实现。审计固定点为 `main` (`3b9c8c6`)，目标实现分支为 `feat/15-local-repo-input` (`8a6a19c`)；命令范围 `git diff main...feat/15-local-repo-input`，共 8 个提交、8 个改动文件。最初沙箱环境的 `gh` 返回 HTTP 401；在负责人恢复登录后，已从非沙箱环境核对 [Issue #5](https://github.com/LingweiXingzhi/projectmind-core/issues/5)、[#7](https://github.com/LingweiXingzhi/projectmind-core/issues/7)、[#9](https://github.com/LingweiXingzhi/projectmind-core/issues/9)、[#11](https://github.com/LingweiXingzhi/projectmind-core/issues/11)、[#13](https://github.com/LingweiXingzhi/projectmind-core/issues/13)、[#15](https://github.com/LingweiXingzhi/projectmind-core/issues/15) 和 [#17](https://github.com/LingweiXingzhi/projectmind-core/issues/17) 的原文。\n \n ## 1. 今天实际完成且能从代码核查的部分"
+    },
+    {
+      "sha": "7daa8bef2f1b3abdc5cd6607dde66af7763cd028",
+      "filename": "docs/standards/AGENT_STANDARD.md",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 0,
+      "changes": 4,
+      "blob_url": "https://github.com/LingweiXingzhi/projectmind-core/blob/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FAGENT_STANDARD.md",
+      "raw_url": "https://github.com/LingweiXingzhi/projectmind-core/raw/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FAGENT_STANDARD.md",
+      "contents_url": "https://api.github.com/repos/LingweiXingzhi/projectmind-core/contents/docs%2Fstandards%2FAGENT_STANDARD.md?ref=ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "patch": "@@ -64,6 +64,10 @@ After code changes, classify Project Model impact as exactly one of:\n For `UPDATE` or `UNCERTAIN`, do NOT finalize the Project Model yourself.\n Provide a proposed change and evidence for human approval.\n \n+## MAIN REVIEW GATE\n+\n+Agents may prepare a task branch, commit, push that branch, and open or update a PR. Every PR entering `main` must follow the repository's configured mandatory human review gate. Agents must not bypass human approval or merge into `main` without the project owner's explicit authorization. The required approval count is set by the repository administrator's Ruleset; do not assume a number or claim that protection is configured without checking GitHub. As of 2026-09-30, the gate is not yet configured, so a CLEAN/MERGEABLE PR is still not approved.\n+\n ## AI / TOKEN EFFICIENCY\n \n Prefer deterministic methods before LLM reasoning:"
+    },
+    {
+      "sha": "0c8f2249c4a9a7d4963f24a8fff9b86b9ed6fe2f",
+      "filename": "docs/standards/COLLABORATION_CONTRACT.md",
+      "status": "modified",
+      "additions": 12,
+      "deletions": 10,
+      "changes": 22,
+      "blob_url": "https://github.com/LingweiXingzhi/projectmind-core/blob/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FCOLLABORATION_CONTRACT.md",
+      "raw_url": "https://github.com/LingweiXingzhi/projectmind-core/raw/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FCOLLABORATION_CONTRACT.md",
+      "contents_url": "https://api.github.com/repos/LingweiXingzhi/projectmind-core/contents/docs%2Fstandards%2FCOLLABORATION_CONTRACT.md?ref=ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "patch": "@@ -1,6 +1,8 @@\n # ProjectMind 四人协作约定（比赛版）\n \n-> 状态：2026-09-29 的**实施约定提案**，供团队审查。它约束比赛版协作方式，不批准长期产品架构或正式 Project Model。原有 MVP 的固定点见 [本次审计](../audits/2026-09-29-mvp-audit.md)；其后新增的独立扩展入口见 [接口约定](MVP_INTERFACES.md)。负责人已确认的产品方向优先于本提案；代码是否存在以指定 Git 提交为准。\n+> 状态：负责人于 2026-09-30 **正式确认 V1 为唯一现行四人分工**。本文是 A/B/C/D 职责与修改边界的唯一事实源；V2、V3 等旧映射仅作历史记录。本文不批准长期产品架构或正式 Project Model。模块数据格式见 [MVP 接口](MVP_INTERFACES.md)，扩展技术协议见 [扩展接口](EXTENSION_INTERFACE.md)，团队流程见 [TEAM_SOP](TEAM_SOP.md)。[2026-09-29 审计](../audits/2026-09-29-mvp-audit.md)仅记录当时状态，不是现行接口依据。\n+\n+**三个状态分开看：**当前 Core 功能与 Extension Host 已在代码中实现（IMPLEMENTED），PR #6、#8、#10、#12、#14、#16、#18、#20 已合入 `core/main`（MERGED）；团队尚未完成人工验收，当前 `main` 只可称候选共同基线，不可称 TEAM APPROVED。B/C/D 三个业务扩展目录尚未实现。正式共同基线 SHA 由团队验收后宣布。\n \n ## 1. 共同交付物与信息可信度\n \n@@ -19,22 +21,22 @@\n ## 2. 开工前共同基线\n \n 1. 每人拿到一个 Issue：用户能看到的交付结果、验收步骤、责任人、依赖项、预计改动文件。没有 Issue 号的临时修复可先报告集成人，再补记。优先修复本次审计提出的“地图版本身份缺失”和“AI 结果未进入交接”两处缺口。\n-2. 四人确认相同的**基准提交完整 SHA**和共同运行入口。当前可运行实现位于连续的 PR #6、#8、#10、#12、#14、#16；`main` 目前还没有这些产品代码。接口约定在 `docs/17-mvp-interface-contract`，独立扩展代码在其后的 `feat/19-extension-seams`。**B/C/D 要使用独立扩展口，就从 `feat/19-extension-seams` 的同一提交建分支，PR 暂以该分支为 base**；依赖分支依次合入后，调整 PR base，整条产品 PR 链合入 `main` 后再从 `main` 建新分支。不要把“PR 已打开”说成“main 已有功能”。\n+2. 四人等待团队人工验收并宣布同一个**正式 `core/main` 基准提交完整 SHA**和共同运行入口，然后分别从该 SHA 建任务分支。当前 `main` 已有可运行产品代码和独立扩展入口，但仍是候选基线；不能把 MERGED 当成 TEAM APPROVED。\n 3. 使用同一份 [接口约定](MVP_INTERFACES.md)。各自的 Codex 先读 `AGENTS.md`、相关 Issue、接口约定和任务涉及的文件；不需要每次全仓重新概括。\n-4. 明确会接触的文件。两人要改同一文件时先约定一个集成人。当前分支已有 [独立扩展入口](EXTENSION_INTERFACE.md)：B/C/D 各自提交 `extensions/<功能名>/` 及测试，重启服务后独立页面与数据接口自动出现，无须 A 修改 `app.py` 或共享前端。B/C/D 的业务函数仍只是下文的拟议交接点，必须各自实现；若要把输出嵌进现有功能图，才由 A 改共享主线。\n+4. 明确会接触的文件。两人要改同一文件时先约定一个集成人。`core/main` 已有 [独立扩展入口](EXTENSION_INTERFACE.md)：B/C/D 各自提交自己的扩展目录及测试，重启服务后独立页面与数据接口自动出现，无须 A 修改 `app.py` 或共享前端。B/C/D 的业务函数仍只是下文的拟议交接点，必须各自实现；若要把输出嵌进现有功能图，才由 A 改共享主线。\n \n ## 3. 四人的任务与接口交接\n \n-这里的 A/B/C/D 是**责任位**，不是人员任命。每人可独立用 Codex 开一个任务分支；当天至少交付一个能运行或能用固定样例验证的纵向结果。负责人只需把姓名填到 Issue，不必重新讨论普通技术细节。\n+**V1 正式职责：A = Core / Integration，B = Code Facts，C = Map Proposal，D = Handoff。** 这里的 A/B/C/D 是**责任位**，不是人员任命。每人可独立用 Codex 开一个任务分支；当天至少交付一个能运行或能用固定样例验证的纵向结果。负责人只需把姓名填到 Issue，不必重新讨论普通技术细节。\n \n | 责任位 | 从现在能做的首个交付 | 主改位置 | 交给其他人的输入/输出 | 依赖 |\n |---|---|---|---|---|\n-| A：集成与体验 | 保持现有图、详情、比较、导出同一入口可运行；核查扩展接入和主线体验 | `app.py`、`web/`、`README.md` | 消费 `Snapshot`、`Comparison`；负责现有功能图与公共路由改动 | 当前可运行分支；主图若消费 B/C/D 输出时才依赖它们 |\n-| B：代码事实 | 给选定 Git 提交提取一小组真实入口及路径，输出可核查 JSON，不断言功能职责 | `extensions/code_facts/`、`tests/test_code_facts.py` | `repo + revision + 可选路径` → `CodeFacts`；自己的扩展接口/页面；见接口文档 | 可立即用测试仓库开工；不等 C |\n-| C：候选功能结构 | 用固定样例的代码事实与人工图，提出少量功能节点/关系候选，显示依据和未知；不覆盖人工图 | `extensions/map_proposal/`、`tests/test_map_proposal.py` | `Snapshot + CodeFacts` → `MapProposal`；自己的扩展接口/页面 | 首日不等 B；真实接入等 B 的首个输出 |\n-| D：协同交接与验收 | 用当前 `Snapshot + Comparison` 生成可让另一位 Agent 复核的简短交接包，并由非作者复现演示 | `extensions/handoff/`、`tests/test_handoff.py` | `Snapshot + 来源 + Comparison? + AI 候选?` → `Handoff`；自己的扩展接口/页面 | 可立即用现有接口开工 |\n+| A：Core / Integration | 负责 ProjectMind Core、共享运行入口、共享 UI、Core 公共接口和最终主图集成；保持现有图、详情、比较、导出同一入口可运行；B/C/D 输出进入主图时负责共享接线 | `app.py`、`extension_host.py`、`web/`、`data/project-map.json`、`README.md`、公共测试 | 消费 `Snapshot`、`Comparison` 及需要进入主图的 B/C/D 输出；负责公共路由和主图改动 | 从团队批准的共同基线开工；主图消费 B/C/D 输出时依赖各自已验收结果 |\n+| B：Code Facts | 给选定 Git 提交提取一小组真实入口及路径，输出可核查 JSON，不断言功能职责 | `extensions/code_facts/`、`tests/test_code_facts.py` | `repo + revision + 可选路径` → `CodeFacts`；自己的扩展接口/页面；见接口文档 | 固定样例开发不依赖 C |\n+| C：Map Proposal | 用固定样例的代码事实与人工图，提出少量功能节点/关系候选，显示依据和未知；不覆盖人工图 | `extensions/map_proposal/`、`tests/test_map_proposal.py` | `Snapshot + CodeFacts` → `MapProposal`；自己的扩展接口/页面 | 固定样例开发不依赖 B；真实接入等 B 的首个输出 |\n+| D：Handoff | 用当前 `Snapshot + Comparison` 生成可让另一位 Agent 复核的简短交接包，并由非作者复现演示 | `extensions/handoff/`、`tests/test_handoff.py` | `Snapshot + 来源 + Comparison? + AI 候选?` → `Handoff`；自己的扩展接口/页面 | 固定样例开发可使用现有接口 |\n \n-**禁止把分工误解成四天后集成四个大块。** A 从第一天就保住运行主线；B/C/D 每天提交自己的可运行扩展或固定输入输出样例，A 每天验证新入口及原主线。某项接入失败时保留前一天可运行版本，Issue 写明卡在输入、输出还是运行环境。D 的首项交接功能应当可以只凭现有数据运行，不等新解析器。四人任务是下一步建议，具体 Issue 和姓名由团队填入；不是宣称 B/C/D 业务功能已经实现。\n+**禁止把分工误解成四天后集成四个大块。** 正式基线获批后，A 从第一天就保住运行主线；B/C/D 每天提交自己的可运行扩展或固定输入输出样例，A 每天验证新入口及原主线。某项接入失败时保留前一天可运行版本，Issue 写明卡在输入、输出还是运行环境。D 的首项交接功能应当可以只凭现有数据运行，不等新解析器。下面的任务卡是 V1 职责下的首批工作切片；具体 Issue 和姓名由团队填入，不代表 B/C/D 业务功能已经实现。\n \n **可直接领取的四张任务卡（各自单独 Issue/PR）：**\n \n@@ -51,7 +53,7 @@\n \n 每天固定一次集成检查：记录共同基准 SHA；依次接入已通过验收的 PR；由非作者从运行说明启动、走通上述主线；把实际通过/失败的步骤、提交和阻塞记在 PR。两人共同修改 `app.py`、地图 JSON 或同一前端文件时由 A 决定合并顺序，先在各自分支更新 base 再解决冲突，不能用“保留我的版本”覆盖另一人的功能。PR 在依赖分支合入后重新指定 base，避免叠加 PR 的差异混淆。\n \n-建议给 `main` 启用 PR 审查与最低测试检查；仓库管理员实际设置前，这只是建议，不声称规则已启用。四人短赛程建议至少**一位非作者**审阅涉及共享接口、正式图或演示主线的 PR；单纯文案也需核对实现状态。失败的检查、未核对的 AI 结果和无法复现的演示不能当作已验收。小 PR 便于及时审查和集成。[GitHub 受保护分支](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)、[Google 的小改动评审建议](https://google.github.io/eng-practices/review/developer/small-cls.html)。\n+所有进入 `main` 的 PR 都按 [TEAM_SOP](TEAM_SOP.md) 执行人工审核门禁；Agent 不得自行绕过。当前 GitHub `main` 审批规则尚未配置完成，不能把可合并状态当作批准；规则配置完成和负责人明确授权前不得合并。Required approvals 数量由仓库管理员配置的 Ruleset 决定。失败的检查、未核对的 AI 结果和无法复现的演示不能当作已验收。小 PR 便于及时审查和集成。[GitHub 受保护分支](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)、[Google 的小改动评审建议](https://google.github.io/eng-practices/review/developer/small-cls.html)。\n \n ## 5. 接口变更办法\n "
+    },
+    {
+      "sha": "550db0ae720bedec160889c2cd45b58ddcf1ee86",
+      "filename": "docs/standards/EXTENSION_INTERFACE.md",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 9,
+      "changes": 13,
+      "blob_url": "https://github.com/LingweiXingzhi/projectmind-core/blob/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FEXTENSION_INTERFACE.md",
+      "raw_url": "https://github.com/LingweiXingzhi/projectmind-core/raw/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FEXTENSION_INTERFACE.md",
+      "contents_url": "https://api.github.com/repos/LingweiXingzhi/projectmind-core/contents/docs%2Fstandards%2FEXTENSION_INTERFACE.md?ref=ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "patch": "@@ -1,10 +1,10 @@\n # 比赛版独立扩展接口\n \n-> 状态：`feat/19-extension-seams` 已实现的本地扩展入口。此接口供四人并行接入首版 Demo，不代表正式 Project Model 或长期插件标准。\n+> 状态：本地扩展入口已随 PR #20 合入 `core/main`。本文只定义 Extension 技术协议；A/B/C/D 的现行职责与修改范围以 [四人协作约定](COLLABORATION_CONTRACT.md) 为唯一依据。本接口不代表正式 Project Model 或长期插件标准。\n \n ## 新增一个功能\n \n-1. 在 `extensions/` 下新建自己的目录，例如 `extensions/code_facts/`。目录名以小写字母开头，后面只能用小写字母、数字或下划线，最多 40 个字符。各负责人只改自己的扩展目录和对应测试。\n+1. 在 `extensions/` 下新建自己的目录，例如 `extensions/code_facts/`。目录名以小写字母开头，后面只能用小写字母、数字或下划线，最多 40 个字符。各扩展开发者只改自己的扩展目录和对应测试；职责分配见 [四人协作约定](COLLABORATION_CONTRACT.md)。\n 2. 放入 `extension.py`，定义 `EXTENSION = {\"title\": \"显示名称\", \"description\": \"一句话说明\"}` 和 `handle(context, method, data) -> dict`。`method` 为 `GET` 或 `POST`；`data` 是查询参数或请求 JSON 对象。返回值必须能编码为 JSON 对象。\n 3. 可选放入自包含的 `index.html` 作为功能页面。暂不提供扩展目录内其他静态资源的路由；页面需要的脚本和样式请写在该页面里。不提供页面时使用内置通用结果页，它只调用 GET。\n 4. 重启本地服务。启动时发现扩展，主页侧栏自动显示可用扩展入口；无须修改 `app.py`、`web/index.html` 或 `web/app.js`。可以参考已交付的 `extensions/project_summary/extension.py`。\n@@ -42,11 +42,6 @@ def handle(context, method, data):\n \n 处理可预期的输入错误时抛 `ExtensionError(HTTPStatus.BAD_REQUEST, \"说明\")` 等；返回 `{\"error\": \"说明\"}` 并配合相应 HTTP 状态。未知扩展为 404，加载失败为 503，扩展内部意外异常为不暴露细节的 500。扩展自行决定业务字段，但跨人交换的字段须按 [接口约定](MVP_INTERFACES.md) 固定样例及错误方式。修改已被其他功能使用的字段前，按 [协作约定](COLLABORATION_CONTRACT.md#5-接口变更办法) 通知消费者。\n \n-## 四人接入位置\n+## 接入与协作\n \n-- A 负责现有主图、共同运行入口和公共接口；只有要把结果**嵌进主图**时才需改共享前端或主图数据。\n-- B 可在 `extensions/code_facts/` 实现代码事实页面和数据接口。\n-- C 可在 `extensions/map_proposal/` 实现候选结构页面和数据接口。\n-- D 可在 `extensions/handoff/` 实现交接页面和数据接口。若要独立下载，可在自己的页面实现。\n-\n-各扩展分别开 Issue 和 PR，附固定输入、输出、错误样例及验收步骤。先在同一基线各自开发，再按团队 SOP 集成。扩展路由和入口自动生成并不消除业务依赖：例如 C 真正消费 B 的代码事实时，仍需核对同一个完整 Git SHA、字段含义和错误行为。\n+各扩展分别开 Issue 和 PR，附固定输入、输出、错误样例及验收步骤；从团队批准的同一基线开发，并按 [团队流程](TEAM_SOP.md) 集成。扩展路由和入口自动生成并不消除业务依赖：一个扩展消费另一个扩展的代码事实时，仍需核对同一个完整 Git SHA、字段含义和错误行为。扩展结果若要进入共享主图，按 [四人协作约定](COLLABORATION_CONTRACT.md) 由 Core 集成人接线。"
+    },
+    {
+      "sha": "b3a5ecf67e662b6a3529c33c7026d1e5a229e389",
+      "filename": "docs/standards/MVP_INTERFACES.md",
+      "status": "modified",
+      "additions": 16,
+      "deletions": 16,
+      "changes": 32,
+      "blob_url": "https://github.com/LingweiXingzhi/projectmind-core/blob/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FMVP_INTERFACES.md",
+      "raw_url": "https://github.com/LingweiXingzhi/projectmind-core/raw/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FMVP_INTERFACES.md",
+      "contents_url": "https://api.github.com/repos/LingweiXingzhi/projectmind-core/contents/docs%2Fstandards%2FMVP_INTERFACES.md?ref=ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "patch": "@@ -1,6 +1,6 @@\n # 比赛版最小接口约定\n \n-> 原有 MVP 的核查基线为 `feat/15-local-repo-input` 的 `8a6a19c`；独立扩展入口在后续 `feat/19-extension-seams` 分支实现。**IMPLEMENTED** 表示对应分支已能从代码验证的行为，不表示已合入 `main`；**PROPOSED** 表示业务能力仍待实现。接口不仅是函数名，还包括输入约束、来源版本、错误、调用顺序和结果性质。本文不定义长期 Project Model Schema。\n+> 状态：下文 **IMPLEMENTED** 的 MVP 入口与独立扩展入口已合入 `core/main`；合入不等于团队已批准这个 SHA 作为正式共同开发基线。**PROPOSED** 的业务能力仍待实现。接口不仅是函数名，还包括输入约束、来源版本、错误、调用顺序和结果性质。本文是模块数据 Contract；四人职责只以 [协作约定](COLLABORATION_CONTRACT.md) 为准，不定义长期 Project Model Schema。\n \n ## 共同词汇与不变量\n \n@@ -53,7 +53,7 @@\n \n `POST /api/explain`，`Content-Type: application/json`，JSON `{base:<完整SHA>, target:<完整SHA>, nodeId:<快照节点ID>}`，请求体当前不超过 2,048 字节。成功 → `{status:\"ai_candidate\",model,nodeId,baseRevision,targetRevision,changedEvidencePaths,diffTruncated,explanation,note}`；`explanation` 含 `summary:string, observations:string[], possibleEffects:string[], unknowns:string[], evidencePaths:string[]`。只对节点声明且本次变化的证据路径取差异，发往模型的差异最多 12,000 字符；`evidencePaths` 只能引用这些路径。未配置、模型不可用或返回不合约定时失败，不应显示为已确认结论。当前实现可自动化验证请求形状，尚未在本机真实调用外部模型。\n \n-同一能力在本地 Python 里可调用 `explain_change(repo, map_path, base_ref, target_ref, node_id) -> dict`，有界 Git 差异在函数内部构造。它**不是**可复用的通用 `build_change_context` 模块：若 B/C/D 想复用差异范围，先按当前接口调用或提出小型提取 PR，由 A 负责公共接线，不能各自复制一套 Git 选择规则。\n+同一能力在本地 Python 里可调用 `explain_change(repo, map_path, base_ref, target_ref, node_id) -> dict`，有界 Git 差异在函数内部构造。它**不是**可复用的通用 `build_change_context` 模块：其他功能若想复用差异范围，先按当前接口调用或提出小型提取 PR；公共接线责任以 [协作约定](COLLABORATION_CONTRACT.md) 为准，不能各自复制一套 Git 选择规则。\n \n 前端“保存临时布局”写当前浏览器的 `localStorage`；“导出图草稿 JSON”得到 `{status:\"temporary_unconfirmed_draft\",note,exportedAt,repository,revision,mapOrigin,nodes,edges,comparison?}`。`nodes` 的 `position` 是拖动后位置；它不改变职责、节点或关系，也不自动写入 model 仓库。`comparison` 为 JSON 对象或 `null`。**当前导出不含 AI 解释，也不含独立地图版本**；另一位协同者不能仅凭它复核完整 AI 结论。同名本地仓库当前可能共用布局键，因此多仓库并行使用时需复核导出内容；这是待修缺口，不应把该键当跨仓库身份。\n \n@@ -63,19 +63,19 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404\n \n ### 独立扩展入口\n \n-当前分支已实现 `extensions/<功能名>/extension.py` 的自动发现、独立 HTTP 数据入口和可选独立页面。新增一个扩展只需修改自己的目录及测试；服务重启后主页侧栏自动出现入口。详情、错误行为和样例见 [独立扩展接口](EXTENSION_INTERFACE.md)。这是功能接入方式，B/C/D 的业务能力仍须分别实现和验收；它不会自动修改人工功能图。\n+`core/main` 已实现 `extensions/<功能名>/extension.py` 的自动发现、独立 HTTP 数据入口和可选独立页面。新增一个扩展只需修改自己的目录及测试；服务重启后主页侧栏自动出现入口。详情、错误行为和样例见 [独立扩展接口](EXTENSION_INTERFACE.md)。这是功能接入方式，CodeFacts、MapProposal、Handoff 的业务能力仍须分别实现和验收；它不会自动修改人工功能图。\n \n ## PROPOSED：下一轮新增能力的最小交换约定\n \n-以下字段只为当前四人并行服务，不是 Master Spec 的四层模型或永久 Schema。负责人不必逐字段决定普通工程细节；实现者需要在首个 PR 固定样例和错误行为。B/C/D 分别在自己的扩展目录中实现功能、页面与 HTTP 数据入口；若要把结果嵌入现有主图，再由 A 处理共享界面。\n+以下字段只为当前并行开发提供数据交换边界，不是 Master Spec 的四层模型或永久 Schema。实现者需要在首个 PR 固定样例和错误行为。各扩展在自身目录实现功能、页面与 HTTP 数据入口；输出嵌入现有主图的职责见 [协作约定](COLLABORATION_CONTRACT.md)。\n \n-**接入状态：通用扩展路由与页面入口已经实现，下文 B/C/D 的业务函数仍是提案。** 已实现的 `Snapshot` 和 `Comparison` 是可读取的 JSON 交换面。B/C/D 可以用 [同一份合成合约样例](MVP_CONTRACT_EXAMPLE.json) 独立开发和验证；该文件只用于测试交换形状，不代表仓库里真实存在 `src/entry.py`。各功能自己实现 `handle` 并调用自己的业务函数；现有路由的响应字段须保留，或明确提供兼容过渡。\n+**接入状态：通用扩展路由与页面入口已经实现，下文 CodeFacts、MapProposal、Handoff 的业务函数仍是提案。** 已实现的 `Snapshot` 和 `Comparison` 是可读取的 JSON 交换面。可用 [同一份合成合约样例](MVP_CONTRACT_EXAMPLE.json) 独立开发和验证；该文件只用于测试交换形状，不代表仓库里真实存在 `src/entry.py`。各功能自己实现 `handle` 并调用自己的业务函数；现有路由的响应字段须保留，或明确提供兼容过渡。\n \n-### A：地图来源补丁与跨请求一致性\n+### 地图来源补丁与跨请求一致性\n \n-在 `Snapshot`、`Comparison` 和两种导出中增加同含义的地图身份，例如 `mapSource: {kind:\"local_curated_file\", digest:\"sha256:<64位摘要>\", confirmedForRevision:null}`。`digest` 必须对本次实际读取的地图字节计算；`confirmedForRevision:null` 表示团队尚未核查适用版本，**即使地图文件恰好处在代码仓库中也不能自动改成提交 SHA**。比较基于另一份地图内容时，不可继续显示为同一次快照的“待复核节点”：A 可让服务端返回不匹配错误，或让界面强制刷新并提示，具体由 A 在 PR 固定。`Snapshot.revision` 仍只表示代码提交。此补丁的首个验收是“同一代码 SHA、改地图内容 → digest 改变且用户看到地图状态”。这比提前设计正式 model 仓库格式小得多。\n+在 `Snapshot`、`Comparison` 和两种导出中增加同含义的地图身份，例如 `mapSource: {kind:\"local_curated_file\", digest:\"sha256:<64位摘要>\", confirmedForRevision:null}`。`digest` 必须对本次实际读取的地图字节计算；`confirmedForRevision:null` 表示团队尚未核查适用版本，**即使地图文件恰好处在代码仓库中也不能自动改成提交 SHA**。比较基于另一份地图内容时，不可继续显示为同一次快照的“待复核节点”：实现可让服务端返回不匹配错误，或让界面强制刷新并提示，具体在 PR 固定。`Snapshot.revision` 仍只表示代码提交。此补丁的首个验收是“同一代码 SHA、改地图内容 → digest 改变且用户看到地图状态”。这比提前设计正式 model 仓库格式小得多。\n \n-### B：`collect_code_facts(repo, revision, paths=None) -> CodeFacts`\n+### `collect_code_facts(repo, revision, paths=None) -> CodeFacts`\n \n 输入：已解析的本地 Git 仓库根目录、完整提交 SHA、可选的仓库相对路径列表。输出最少为：\n \n@@ -89,9 +89,9 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404\n }\n ```\n \n-`entries` 是在该提交中能核查的代码事实，允许为空；`line` 是该版本的 1 起始行号。首版可只支持一门在演示仓库实际使用的语言，其他文件进入 `skipped`；不能为满足图而猜造函数。输入路径不存在、提交无效时给明确错误，不在后台偷偷读取当前工作区。此输出不负责判断“功能模块”或建立全量调用图。B 用一个临时 Git 仓库的已知文本作独立验收。\n+`entries` 是在该提交中能核查的代码事实，允许为空；`line` 是该版本的 1 起始行号。首版可只支持一门在演示仓库实际使用的语言，其他文件进入 `skipped`；不能为满足图而猜造函数。输入路径不存在、提交无效时给明确错误，不在后台偷偷读取当前工作区。此输出不负责判断“功能模块”或建立全量调用图。用一个临时 Git 仓库的已知文本作独立验收。\n \n-### C：`suggest_map(snapshot, code_facts) -> MapProposal`\n+### `suggest_map(snapshot, code_facts) -> MapProposal`\n \n 输入：同一提交的 `Snapshot` 和 `CodeFacts`；若 SHA 不一致，拒绝生成。输出最少为：\n \n@@ -104,11 +104,11 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404\n }\n ```\n \n-初版可给一个稳定的“根据当前人工节点和代码事实补充候选说明”的例子，不要求自动构造整仓架构；若调用 LLM，仍需显式配置、限制输入、保留未知项。`evidencePaths` 必须从输入真实路径中选；若没有足够依据，返回空 `candidates` 与原因。C 先用本文固定样例独立测试，B 输出可用后再联调。候选不得写回 `data/project-map.json` 或正式 model 仓库。\n+初版可给一个稳定的“根据当前人工节点和代码事实补充候选说明”的例子，不要求自动构造整仓架构；若调用 LLM，仍需显式配置、限制输入、保留未知项。`evidencePaths` 必须从输入真实路径中选；若没有足够依据，返回空 `candidates` 与原因。先用本文固定样例独立测试，真实 CodeFacts 输出可用后再联调。候选不得写回 `data/project-map.json` 或正式 model 仓库。\n \n-`status:\"ai_candidate\"` 只用于确实经过模型生成的结果。C 首日可用可控模型响应验证接口；无可用模型时返回明确的未配置状态，不用规则结果冒充 AI。以后若增加纯规则候选，另标生成方式。\n+`status:\"ai_candidate\"` 只用于确实经过模型生成的结果。首日可用可控模型响应验证接口；无可用模型时返回明确的未配置状态，不用规则结果冒充 AI。以后若增加纯规则候选，另标生成方式。\n \n-### D：`build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None) -> Handoff`\n+### `build_handoff(snapshot, source_locator, comparison=None, ai_candidates=None) -> Handoff`\n \n 输入：当前 `Snapshot`、明确提供的仓库来源 `source_locator={kind:\"git_remote\"|\"local_path\",value:<非空字符串>}`、可选 `Comparison`，以及可选的 `/api/explain` 原样成功结果列表；比较目标若不是快照 SHA，拒绝或显式返回不匹配。当前 `Snapshot.repository` 只有目录名，不能用它推算可在另一台机器打开的地址。本机路径交给别的电脑时可能不可用，接收者须按 `kind` 判断。最少输出形状：\n \n@@ -129,12 +129,12 @@ HTTP 错误当前通常为 `{error:string}`；400 表示输入不合约定，404\n }\n ```\n \n-没有比较时 `changes`、`reviewCandidates` 为空列表；传入 AI 解释时 `aiCandidates` 中保留原 `status:\"ai_candidate\"`、来源路径和 `explanation.unknowns`，不能凭空生成。A 完成地图身份补丁后，`mapRevision` 应升级为实际 `mapSource`，但未确认适用的状态仍保留。不得加入没有来源的“正式架构已确认”字样。D 用非作者在新会话读包后回答“代码证据对应哪个提交、地图版本是否已核查、哪个节点待复核”作为验收；D 可在自己扩展页面提供独立下载，若要接入现有主图导出按钮才由 A 修改共享界面。\n+没有比较时 `changes`、`reviewCandidates` 为空列表；传入 AI 解释时 `aiCandidates` 中保留原 `status:\"ai_candidate\"`、来源路径和 `explanation.unknowns`，不能凭空生成。地图身份补丁完成后，`mapRevision` 应升级为实际 `mapSource`，但未确认适用的状态仍保留。不得加入没有来源的“正式架构已确认”字样。用非作者在新会话读包后回答“代码证据对应哪个提交、地图版本是否已核查、哪个节点待复核”作为验收；扩展页面可提供独立下载，主图导出按钮的共享改动按 [协作约定](COLLABORATION_CONTRACT.md) 处理。\n \n ### 后续提案：`review_draft(draft, reference_snapshot) -> DraftReviewCandidate`\n \n-仅在团队决定把“导出后交 AI 分析”接入应用内时实施。输入为导出的 `temporary_unconfirmed_draft` 和供对照的当前快照；先检查仓库来源、代码提交与地图状态是否可比。输出仍是 `ai_candidate`，最少列出**可从两份图直接观察的节点/关系差异**、可能后果、证据节点 ID 和不能判断之处；对不一致版本先返回“不可比较”，不能把临时拖动位置当架构依赖改变。它不写正式图。当前没有这个函数、HTTP 路由或任务责任人；不能把此提案交给 C 当首日隐藏任务。\n+仅在团队决定把“导出后交 AI 分析”接入应用内时实施。输入为导出的 `temporary_unconfirmed_draft` 和供对照的当前快照；先检查仓库来源、代码提交与地图状态是否可比。输出仍是 `ai_candidate`，最少列出**可从两份图直接观察的节点/关系差异**、可能后果、证据节点 ID 和不能判断之处；对不一致版本先返回“不可比较”，不能把临时拖动位置当架构依赖改变。它不写正式图。当前没有这个函数、HTTP 路由或任务责任人；不能把此提案当作首日隐藏任务。\n \n ## 改动与验收\n \n-每个新增模块的 PR 附上固定输入、实际输出、错误样例、只针对公共接口的必要测试和接入方式。字段含义或版本约束改变时先按 [协作约定](COLLABORATION_CONTRACT.md#5-接口变更办法)通知使用者；扩展路由按已实现的约定自动接入，B/C/D 的业务接口通过验收后才更新本文件的 `IMPLEMENTED` 状态。当前已实现出口不会因为本提案而自动改变。\n+每个新增模块的 PR 附上固定输入、实际输出、错误样例、只针对公共接口的必要测试和接入方式。字段含义或版本约束改变时先按 [协作约定](COLLABORATION_CONTRACT.md#5-接口变更办法)通知使用者；扩展路由按已实现的约定自动接入，各业务接口通过验收后才更新本文件的 `IMPLEMENTED` 状态。当前已实现出口不会因为本提案而自动改变。"
+    },
+    {
+      "sha": "743c89e5e334992ee29a24d406af3ac31d0379f2",
+      "filename": "docs/standards/TEAM_SOP.md",
+      "status": "modified",
+      "additions": 4,
+      "deletions": 5,
+      "changes": 9,
+      "blob_url": "https://github.com/LingweiXingzhi/projectmind-core/blob/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FTEAM_SOP.md",
+      "raw_url": "https://github.com/LingweiXingzhi/projectmind-core/raw/ff22b76966e6198b062c60fa9f0f4dbb987b027e/docs%2Fstandards%2FTEAM_SOP.md",
+      "contents_url": "https://api.github.com/repos/LingweiXingzhi/projectmind-core/contents/docs%2Fstandards%2FTEAM_SOP.md?ref=ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "patch": "@@ -40,7 +40,7 @@\n - 这次修改会不会改变“项目地图 / Project Model”\n \n ### 5. 提 PR\n-PR 就是“我做完了，请合进正式版本”。(merge)\n+PR 是“这次修改已准备接受检查，请审阅是否可以进入 main”，提出 PR 本身不等于批准合并。\n \n 写清：\n - 做了什么\n@@ -49,10 +49,9 @@ PR 就是“我做完了，请合进正式版本”。(merge)\n - 还有什么没解决\n \n ### 6. 检查后合并\n-另一名队员简单检查。(not must)\n-没问题 → 合并到 `main`。\n+所有进入 `main` 的 PR 必须遵守仓库当前配置的强制人工审核门禁。Agent 不得自行绕过 `main` 的人工审批要求。Required approvals 数量由仓库管理员配置的 Ruleset 决定，不在本文写死。\n \n-合并后临时分支会自动删除。\n+截至 2026-09-30，当前 `main` 的强制审批规则尚未配置完成；GitHub 显示可合并不代表团队已批准。规则配置完成、人工审核通过且负责人明确授权后，才按仓库设置合并。是否删除临时分支按当时仓库设置与团队决定执行。\n \n ---\n \n@@ -71,7 +70,7 @@ PR 就是“我做完了，请合进正式版本”。(merge)\n \n ## 团队统一原则\n \n-1. `main` = 当前正式版本\n+1. `main` 保存已合并代码；是否把某个 SHA 作为四人共同开发的正式基线，另由团队人工验收并宣布。当前 main 是候选基线。\n 2. 一个任务一个分支\n 3. 做完走 PR\n 4. 团队决定正式架构"
+    }
+  ],
+  "appended_claims": [
+    {
+      "id": "claim-c-observed-status",
+      "key": "implementation.map_proposal_snapshot",
+      "value": {
+        "status": "NOT_IMPLEMENTED",
+        "checked_revisions": {
+          "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+          "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+        },
+        "checked_directory": "extensions/map_proposal/",
+        "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown"
+      },
+      "type": "VERIFIED_FACT",
+      "scope": "observed main / PR21 / PR22 snapshots",
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "verified_at": "2026-10-02T16:09:53.326768+00:00",
+      "notes": "Version-bound absence evidence, not a statement about every branch or future commit."
+    },
+    {
+      "id": "claim-d-observed-status",
+      "key": "implementation.handoff_snapshot",
+      "value": {
+        "status": "NOT_IMPLEMENTED",
+        "checked_revisions": {
+          "PR21": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+          "PR22": "0c46747147f765260bf2033f6eae40189b58ca0c",
+          "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+        },
+        "checked_directory": "extensions/handoff/",
+        "limit": "Only the three explicitly observed immutable trees; other branches and future revisions are unknown"
+      },
+      "type": "VERIFIED_FACT",
+      "scope": "observed main / PR21 / PR22 snapshots",
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/git/trees/0c46747147f765260bf2033f6eae40189b58ca0c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/7484d44ddeac3c054ca3ba68f92293d965bb615c?recursive=1; repos/LingweiXingzhi/projectmind-core/git/trees/ff22b76966e6198b062c60fa9f0f4dbb987b027e?recursive=1",
+        "revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+      },
+      "verified_at": "2026-10-02T16:09:53.326768+00:00",
+      "notes": "Version-bound absence evidence, not a statement about every branch or future commit."
+    },
+    {
+      "id": "claim-pr21-contents",
+      "key": "implementation.pr_21_contents_snapshot",
+      "value": {
+        "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "change": "V1 role mapping and current human review boundaries documented",
+        "files": [
+          "README.md",
+          "docs/audits/2026-09-29-mvp-audit.md",
+          "docs/standards/AGENT_STANDARD.md",
+          "docs/standards/COLLABORATION_CONTRACT.md",
+          "docs/standards/EXTENSION_INTERFACE.md",
+          "docs/standards/MVP_INTERFACES.md",
+          "docs/standards/TEAM_SOP.md"
+        ],
+        "limit": "Contents at this head, not merger or team approval"
+      },
+      "type": "VERIFIED_FACT",
+      "scope": "PR21@ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "source": {
+        "kind": "gh_api",
+        "ref": "repos/LingweiXingzhi/projectmind-core/compare/7484d44ddeac3c054ca3ba68f92293d965bb615c...ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e"
+      },
+      "verified_at": "2026-10-02T16:09:53.326768+00:00"
+    },
+    {
+      "id": "claim-codefacts-input-units",
+      "key": "contract.code_facts_input",
+      "value": {
+        "revision": "full 40/64-character lowercase hexadecimal SHA resolving directly to a commit; HEAD / short SHA / uppercase / tags rejected",
+        "paths": "exact repo-relative paths; directories and wildcards unsupported; duplicates deduped; results sorted",
+        "limits": "max 2000 files; 1 MiB per file; 16 MiB total"
+      },
+      "type": "CONTRACT",
+      "scope": "PR22 delivery README",
+      "source": {
+        "kind": "doc",
+        "ref": "collaboration/b/2026-10-01-wang-haining/README.md",
+        "revision": "0c46747147f765260bf2033f6eae40189b58ca0c"
+      },
+      "created_at": "2026-10-01",
+      "verified_at": "2026-10-02T16:09:53.326768+00:00",
+      "notes": "CA transcription correction: 40/64 characters of lowercase hex, not 40/64 bits. Formal B source is unchanged.",
+      "supersedes": [
+        "claim-codefacts-input"
+      ]
+    }
+  ],
+  "reason": "Fresh frozen-pack agents q05/q17 independently reported missing facts; explicit version-bound evidence added rather than inferred from absent fields. q19 contains a CA units transcription error. Existing twenty questions/GT unchanged."
+}

@@ -1,0 +1,30 @@
+{
+  "project_revision": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "registry_hash": "sha256:cdc653f68c83d9f6fb3a2c4e9daaad8ed14439e9b1ae015d8dfe2830c4a53a3e",
+  "resolve_repeats": 100,
+  "reorder_equal": true,
+  "pack_repeats": 20,
+  "determinism_basis": "same registry/task/revision and captured verifier outcomes including timestamps",
+  "complete_regressions": [
+    {
+      "run": 1,
+      "exit_code": 0,
+      "log": "regression_runs/run_1.log",
+      "sha256": "1462e18db2bbc07e64acdb0fb26c84b66f1a30497b89ecb798118cbcace9bd19"
+    },
+    {
+      "run": 2,
+      "exit_code": 0,
+      "log": "regression_runs/run_2.log",
+      "sha256": "c857cea953bb5ab5fe253cd4978042c85713c62c82f31e424a84a39467c81078"
+    },
+    {
+      "run": 3,
+      "exit_code": 0,
+      "log": "regression_runs/run_3.log",
+      "sha256": "1f48bd3fcfda55edc445a0ae433f7b28bbf066cc3c97a1dec27d50eeccdb6418"
+    }
+  ],
+  "pass": true,
+  "pack_bytes_compact": 71822
+}

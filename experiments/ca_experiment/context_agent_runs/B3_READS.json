@@ -1,0 +1,48 @@
+{
+  "run": "B3",
+  "condition": "ca",
+  "reads": [
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/AGENT_BOOTSTRAP.md",
+      "operation": "Get-Content -LiteralPath -Raw",
+      "count": 1,
+      "sequence": 1
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/CONTEXT_PACK.json",
+      "operation": "Get-Content -LiteralPath -Raw",
+      "count": 1,
+      "sequence": 2
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_inputs/questions.jsonl",
+      "operation": "Get-Content -LiteralPath -Raw",
+      "count": 1,
+      "sequence": 2
+    }
+  ],
+  "adherence": {
+    "frozen_pack_only_for_answers": true,
+    "original_bootstrap_read": true,
+    "direct_allowed_input_files_only": true,
+    "raw_inputs_read": false,
+    "repository_or_code_read": false,
+    "truth_read": false,
+    "other_runs_read": false,
+    "internet_accessed": false,
+    "evidence_links_followed": false,
+    "output_files_read": false,
+    "proposals_not_promoted_to_current": true,
+    "research_not_promoted_to_contract": true,
+    "open_prs_not_treated_as_merged": true,
+    "stale_material_not_used_as_current": true,
+    "omitted_information_marked_uncertain": true,
+    "known_conflicts_empty": true,
+    "no_self_score": true
+  },
+  "writes": [
+    "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_agent_runs/B3.jsonl",
+    "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/context_agent_runs/B3_READS.json"
+  ],
+  "notes": "Answered all 20 questions solely from the frozen pack. PR #21 contents, C implementation confirmation, and report-specific FINAL_BENCHMARK_REPORT provenance were omitted and marked uncertain. No other files were read or written."
+}

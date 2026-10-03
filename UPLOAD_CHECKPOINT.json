@@ -1,0 +1,125 @@
+{
+  "checkpoint_time": "2026-10-03T05:06:35.399807+08:00",
+  "task": "Context Authority MVP",
+  "audit_complete": true,
+  "schema_complete": true,
+  "resolver_complete": true,
+  "api_complete": true,
+  "ui_complete": true,
+  "tests_complete": true,
+  "fixtures_complete": true,
+  "experiment_complete": true,
+  "current_failures": [],
+  "human_decisions_required": [
+    "contract.code_facts_shape: MVP_INTERFACES PROPOSED 示例（裸名/单 kind/行号106）需团队更新为交付契约形状（五 kind/限定名）——不自动修改正式文档"
+  ],
+  "branch": "feat/context-authority-mvp",
+  "regression": "172/172 PASS x3 fresh complete processes; same test identities/outcomes; 100 resolve + reorder +20 packs deterministic for captured outcomes",
+  "performance": {
+    "resolve_100_claims_s": 0.001,
+    "resolve_1000_s": 0.007,
+    "resolve_5000_s": 0.034,
+    "pack_build_s": 0.001,
+    "status": "HISTORICAL_MVP_MEASUREMENT_NOT_REVALIDATED"
+  },
+  "experiment_progress": "All formal/final judgments, poisoning and 45-answer sufficiency independent review complete",
+  "next_action": "STOP. All safe validation/publication complete. No project mutation; wait for explicit user command. Benchmark remote owner/visibility/URL and formal decisions remain human-owned.",
+  "timestamp": "2026-10-03T05:06:35.399807+08:00",
+  "phase": "FINISHED",
+  "commit": "bf4c09a75c75f26441ee65adec75711b562dbb69",
+  "tests": {
+    "baseline": 44,
+    "final_complete_regressions": [
+      172,
+      172,
+      172
+    ],
+    "adversarial_resolver": 55,
+    "adversarial_pack": 60,
+    "receipt": "experiments/validation/FINAL_REGRESSION_RECEIPT.json"
+  },
+  "agent_experiment": {
+    "raw": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "original_ca": [
+      "B1",
+      "B2",
+      "B3"
+    ],
+    "final_ca": [
+      "B1",
+      "B2",
+      "B3"
+    ],
+    "initial_metrics": "experiments/ca_experiment/metrics.json",
+    "final_metrics": "experiments/ca_experiment/final_metrics.json",
+    "accuracy": {
+      "raw": 1,
+      "final_ca": 1
+    },
+    "factual_disagreement": {
+      "raw": 0,
+      "final_ca": 0
+    },
+    "sufficiency": {
+      "full_source_sufficient": 15,
+      "pack_only": {
+        "SUFFICIENT": 6,
+        "PARTIAL": 8,
+        "INSUFFICIENT": 1
+      },
+      "pack_fallback_independent_sufficient": 15,
+      "fallback_required": 9
+    },
+    "poisoning": {
+      "baseline_detected": 6,
+      "baseline_questioned": 4,
+      "hardened_corrected": 10,
+      "blindly_trusted": 0,
+      "propagated_error": 0,
+      "clean_controls_correct": 2
+    }
+  },
+  "validation_status": "COMPLETE",
+  "context_authority_status": "C_CONSUMABLE_WITH_LIMITS",
+  "C_consumable": "YES_WITH_LIMITS",
+  "benchmark_audit": "34 selftests +5 holdout regressions PASS; all frozen fingerprints intact; no credentials; case C no Git repo",
+  "benchmark_upload_status": "BENCHMARK_REMOTE_TARGET_REQUIRED",
+  "other_assets": "LOCAL_STABLE_ASSET_INVENTORY.md complete; no other upload target",
+  "github_pushes": [
+    {
+      "branch": "feat/context-authority-mvp",
+      "remote": "origin",
+      "commit": "bf4c09a75c75f26441ee65adec75711b562dbb69",
+      "normal_push": true,
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/tree/feat/context-authority-mvp"
+    }
+  ],
+  "draft_prs": [
+    {
+      "number": 29,
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/29",
+      "is_draft": true,
+      "base": "main",
+      "state": "OPEN"
+    }
+  ],
+  "known_failures": [],
+  "human_decisions": [
+    "Benchmark independent repository ownership/visibility/remote",
+    "Formal team baseline and contract changes",
+    "Main merge requires explicit human approval"
+  ],
+  "finished": true,
+  "scheduler_status": "PAUSED_NATIVE_HEARTBEAT projectmind-context-authority",
+  "historical_failures": [
+    "Original frozen pack53CORRECT+1PARTIAL+6UNCERTAIN; accuracy88.33 vsRaw100. Preserved in originalmetrics/review."
+  ],
+  "commit_semantics": "Observed HEAD when receipt/checkpoint generated; final receipt commit is its child. Disk/Git state takes precedence.",
+  "product_validation_commit": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "evidence_publication_commit": "bf4c09a75c75f26441ee65adec75711b562dbb69",
+  "scheduler_paused_confirmed": true
+}

@@ -1,0 +1,29 @@
+{
+  "validated_product_commit": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "runs": [
+    {
+      "run": 1,
+      "exit_code": 0,
+      "tests": 172,
+      "log": "regression_runs\\final_run_1.log",
+      "sha256": "aa6c8a7e0b1b3e9e0ce10a2336ad8a3ee483871ebddaa974d2f546be1d9f579d"
+    },
+    {
+      "run": 2,
+      "exit_code": 0,
+      "tests": 172,
+      "log": "regression_runs\\final_run_2.log",
+      "sha256": "1c441a74069667cd2b0e8fe642a819b945e4c9a22e074c34fa710b3190c7e4f4"
+    },
+    {
+      "run": 3,
+      "exit_code": 0,
+      "tests": 172,
+      "log": "regression_runs\\final_run_3.log",
+      "sha256": "e156a7228018c087a1c9c1ae5d23ffe2d4112a70aed38521832d586c299bf56e"
+    }
+  ],
+  "semantic_outcomes_equal": true,
+  "pass": true,
+  "note": "After final metrics/harness fixes. Product code unchanged; frozen pack and participant inputs untouched. Initial comparison included HTTP log timestamps; corrected receipt compares test identities plus complete OK results without rerunning or editing logs."
+}

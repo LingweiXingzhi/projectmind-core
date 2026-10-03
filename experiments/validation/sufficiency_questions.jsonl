@@ -1,0 +1,15 @@
+{"qid":"S01","question":"Which CodeFacts revision strings may C pass, and which common aliases must be rejected?"}
+{"qid":"S02","question":"Which five entry kinds must C handle?"}
+{"qid":"S03","question":"Are declaration names lexical qualified names? How should repeated declarations be preserved?"}
+{"qid":"S04","question":"Does an entry line point to decorators or to def/class, and is it one-based?"}
+{"qid":"S05","question":"What path validation rules must C respect when requesting CodeFacts?"}
+{"qid":"S06","question":"What file-count, byte-size and language limits does B advertise?"}
+{"qid":"S07","question":"How do valid zero-declaration files, parsing failures and encoding failures appear in CodeFacts?"}
+{"qid":"S08","question":"Can C infer a dependency graph, signatures, entry points or responsibilities from CodeFacts?"}
+{"qid":"S09","question":"What are C's proposed input/output shapes and confirmation limits?"}
+{"qid":"S10","question":"How does C connect an extension without changing core, including route, handle signature, POST size and concurrency?"}
+{"qid":"S11","question":"Does Snapshot.revision prove the human map applies to that commit?"}
+{"qid":"S12","question":"May C overwrite the curated map or present its proposal as confirmed architecture?"}
+{"qid":"S13","question":"May C assume PR22 code exists in main or that main is team approved?"}
+{"qid":"S14","question":"What must C do when its Context Pack has a relevant conflict, registry problem or unavailable verifier?"}
+{"qid":"S15","question":"Which Context Authority fields are stable enough to consume, and what evidence/revision checks remain C's responsibility?"}

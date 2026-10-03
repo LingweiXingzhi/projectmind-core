@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-10-03T05:05:25.581482+08:00",
+  "product_validation_commit": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "evidence_publication_commit": "bf4c09a75c75f26441ee65adec75711b562dbb69",
+  "branch": "feat/context-authority-mvp",
+  "upstream": "origin/feat/context-authority-mvp",
+  "draft_pr": {
+    "baseRefName": "main",
+    "headRefName": "feat/context-authority-mvp",
+    "headRefOid": "bf4c09a75c75f26441ee65adec75711b562dbb69",
+    "isDraft": true,
+    "number": 29,
+    "state": "OPEN",
+    "statusCheckRollup": [],
+    "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/29"
+  },
+  "remote_heads_after_initial_push": {
+    "refs/heads/docs/b-first-version-wang-haining-2026-10-01": "0c46747147f765260bf2033f6eae40189b58ca0c",
+    "refs/heads/docs/team-skills": "8bd8005d6c19d8d834bd8d2c90bb2e95850829b6",
+    "refs/heads/docs/v1-source-of-truth-cleanup": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+    "refs/heads/feat/23-handoff-draft": "731135bd87498db766070183455601247a29fbc6",
+    "refs/heads/feat/25-worklog": "9b3d333dbd75ec7a246de646aa28a9d4b3d0ec80",
+    "refs/heads/feat/context-authority-mvp": "bf4c09a75c75f26441ee65adec75711b562dbb69",
+    "refs/heads/feat/handoff-continuity": "8f00be38532f3f5e9823aec8cbf430038cc9ff4b",
+    "refs/heads/main": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+  },
+  "other_remote_changes": [],
+  "protected_prs": {
+    "21": {
+      "baseRefOid": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "headRefOid": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "number": 21,
+      "state": "OPEN",
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/21"
+    },
+    "22": {
+      "baseRefOid": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "headRefOid": "0c46747147f765260bf2033f6eae40189b58ca0c",
+      "number": 22,
+      "state": "OPEN",
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/22"
+    }
+  },
+  "protected_worktrees": {
+    "projectmind-core": {
+      "head": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+      "status": ""
+    },
+    "projectmind-model": {
+      "head": "0635b5f8514a73f278be0c1658257d5a075b2b9a",
+      "status": ""
+    }
+  },
+  "local_main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+  "safety": {
+    "MAIN MODIFIED": "NO",
+    "MAIN PUSHED": "NO",
+    "MAIN MERGED": "NO",
+    "FORCE PUSH": "NO",
+    "REMOTE BRANCH DELETED": "NO",
+    "PR #21 MODIFIED": "NO",
+    "PR #22 MODIFIED": "NO",
+    "B BRANCH MODIFIED": "NO",
+    "D BRANCH MODIFIED": "NO",
+    "OTHER TEAM BRANCH MODIFIED": "NO",
+    "PROJECT MODEL FORMAL SOURCE MODIFIED": "NO"
+  },
+  "own_branches_pushed": [
+    "feat/context-authority-mvp"
+  ],
+  "draft_prs_created": [
+    "https://github.com/LingweiXingzhi/projectmind-core/pull/29"
+  ],
+  "note": "Final receipt commit only documents completed publication. Product and frozen study artifacts remain unchanged; resolve branch for latest receipt commit."
+}

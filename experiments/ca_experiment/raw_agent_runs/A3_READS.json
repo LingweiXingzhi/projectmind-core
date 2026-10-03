@@ -1,0 +1,94 @@
+{
+  "run": "A3",
+  "condition": "raw",
+  "source_directory": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs",
+  "sources_read": [
+    {
+      "filename": "questions.jsonl",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/questions.jsonl"
+    },
+    {
+      "filename": "main_head.txt",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_head.txt"
+    },
+    {
+      "filename": "pr21_status.json",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_status.json"
+    },
+    {
+      "filename": "pr22_status.json",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr22_status.json"
+    },
+    {
+      "filename": "main_extensions.txt",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_extensions.txt"
+    },
+    {
+      "filename": "pr21_extensions.txt",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_extensions.txt"
+    },
+    {
+      "filename": "main_COLLABORATION_CONTRACT.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_COLLABORATION_CONTRACT.md"
+    },
+    {
+      "filename": "pr21_COLLABORATION_CONTRACT.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md"
+    },
+    {
+      "filename": "main_MVP_INTERFACES.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_MVP_INTERFACES.md"
+    },
+    {
+      "filename": "pr21_MVP_INTERFACES.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md"
+    },
+    {
+      "filename": "main_TEAM_SOP.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/main_TEAM_SOP.md"
+    },
+    {
+      "filename": "pr21_TEAM_SOP.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_TEAM_SOP.md"
+    },
+    {
+      "filename": "B_DELIVERY_CONTRACT.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md"
+    },
+    {
+      "filename": "B_BOUNDARY_AUDIT.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_BOUNDARY_AUDIT.md"
+    },
+    {
+      "filename": "B_PR22_BENCHMARK_REPORT.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_PR22_BENCHMARK_REPORT.md"
+    },
+    {
+      "filename": "FINAL_BENCHMARK_REPORT.md",
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/FINAL_BENCHMARK_REPORT.md"
+    }
+  ],
+  "read_operations": [
+    "Listed only direct files of raw_inputs with rg --files --maxdepth 1.",
+    "Read questions.jsonl and all 15 other direct files with Get-Content -Raw.",
+    "Re-read pr21_COLLABORATION_CONTRACT.md, B_DELIVERY_CONTRACT.md, pr21_MVP_INTERFACES.md, main_MVP_INTERFACES.md, main_TEAM_SOP.md and pr21_TEAM_SOP.md after combined output truncation.",
+    "Searched all direct raw_inputs files with rg --maxdepth 1 for RESEARCH, PROPOSAL, cat-file, batch, NOT IMPLEMENTED, TEAM APPROVED and V1."
+  ],
+  "adherence": {
+    "only_direct_raw_inputs_sources_read": true,
+    "truth_read": false,
+    "context_authority_code_docs_pack_registry_read": false,
+    "other_runs_read": false,
+    "external_source_paths_read": false,
+    "internet_used": false,
+    "frozen_as_of_material_only": true,
+    "answers_based_on_material_content": true,
+    "scoring_performed": false,
+    "only_requested_outputs_written": true
+  },
+  "notes": [
+    "RESEARCH classification uses the report's explicit evaluation-asset status and described evaluation content.",
+    "No linked source files or URLs inside the raw material were followed.",
+    "Current means the supplied frozen snapshot, not live repository or internet state."
+  ]
+}
