@@ -1,0 +1,54 @@
+{
+  "base_revision": "9ea23491d1849f21bad9f60c1c1ca8df55bb5936",
+  "base_digest": "sha256:7134e7bebba5d367e63a62dcbdc5724977125a1931f7b5588755e8cc408993e2",
+  "base_counts": {
+    "current": 14,
+    "conflicts": 0,
+    "stale": 2,
+    "proposals": 2,
+    "research": 1,
+    "historical": 4
+  },
+  "poisons": {
+    "P01": {
+      "desc": "B PR #22 OPEN -> MERGED (code_facts + pr_22_head)",
+      "validator": "REJECTED: ContextPackValidationError: missing authority warning"
+    },
+    "P02": {
+      "desc": "team.roles.v1 replaced by pre-V1 role mapping",
+      "validator": "REJECTED: ContextPackValidationError: claim/evidence contradiction"
+    },
+    "P03": {
+      "desc": "map_version hijacked to claim PROPOSAL adopted",
+      "validator": "PASSES_VALIDATOR"
+    },
+    "P04": {
+      "desc": "RESEARCH claim restyled as CONTRACT current row (coherent)",
+      "validator": "REJECTED: ContextPackValidationError: research artifact cannot authorize a current fact, contract or human decision"
+    },
+    "P05": {
+      "desc": "contract.code_facts_shape reverted to stale legacy shape",
+      "validator": "PASSES_VALIDATOR"
+    },
+    "P06": {
+      "desc": "stale evidence wiped + PR22 forced MERGED (conflict hidden)",
+      "validator": "REJECTED: ContextPackValidationError: orphan evidence or missing section"
+    },
+    "P07": {
+      "desc": "project_revision relabeled to dead commit",
+      "validator": "PASSES_VALIDATOR"
+    },
+    "P08": {
+      "desc": "main_head evidence source.revision redirected to dead SHA",
+      "validator": "REJECTED: ContextPackValidationError: verified_facts contradicts current"
+    },
+    "P09": {
+      "desc": "C (map proposal) status NOT_IMPLEMENTED -> IMPLEMENTED",
+      "validator": "PASSES_VALIDATOR"
+    },
+    "P10": {
+      "desc": "D handoff PR27 OPEN -> MERGED_ON_MAIN",
+      "validator": "PASSES_VALIDATOR"
+    }
+  }
+}

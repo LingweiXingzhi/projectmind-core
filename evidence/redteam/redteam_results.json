@@ -1,0 +1,118 @@
+[
+  {
+    "id": "RT-A",
+    "name": "multi-scope ACTIVE key vanishes from `current`",
+    "verdict": "CONFIRMED-GAP",
+    "detail": [
+      "current contains key: False",
+      "current_by_scope rows: 2 (both preserved)",
+      "conflicts: 0 (different scopes never conflict)",
+      "do_not_assume rules mentioning the multi-scope key: 0",
+      "=> consumer reading only current_state.current silently loses team.roles.v1"
+    ]
+  },
+  {
+    "id": "RT-B",
+    "name": "do_not_assume counts are whole-registry, sections domain-filtered",
+    "verdict": "CHECK",
+    "detail": [
+      "registry: 0 stale, 0 conflicts; pack stale section: 0",
+      "stale rule text: []"
+    ]
+  },
+  {
+    "id": "RT-I",
+    "name": "coherent forgery with inflated do_not_assume counts",
+    "verdict": "CONFIRMED-GAP",
+    "detail": [
+      "validator accepted inflated count numbers (99 vs 0)",
+      "count text in do_not_assume is NOT cross-checked against sections"
+    ]
+  },
+  {
+    "id": "RT-C",
+    "name": "code_facts extra fields pass through unverified",
+    "verdict": "OK",
+    "detail": [
+      "current value keys: ['head', 'pr', 'status']",
+      "fabricated_field in current value: None",
+      "freshness: verified",
+      "live_verification.verified_fields: None",
+      "=> only status/pr/head are live-verified; remaining fields are registry passthrough"
+    ]
+  },
+  {
+    "id": "RT-D",
+    "name": "5000-node supersedes cycle",
+    "verdict": "OK",
+    "detail": [
+      "time: 0.07s",
+      "problems: ['CYCLIC_SUPERSEDES']",
+      "conflicts: 1, resolution: HUMAN_REQUIRED"
+    ]
+  },
+  {
+    "id": "RT-E",
+    "name": "5000 claims + one conflict",
+    "verdict": "FAIL",
+    "detail": [
+      "time: 0.08s",
+      "counts: {'current': 4999, 'conflicts': 1, 'stale': 0, 'proposals': 0, 'research': 0, 'historical': 0}",
+      "conflict claims preserved: ['claim-x1', 'claim-x2']"
+    ]
+  },
+  {
+    "id": "RT-F",
+    "name": "empty registry end-to-end pack build + validate",
+    "verdict": "OK",
+    "detail": [
+      "current keys: 0",
+      "do_not_assume rules: 4",
+      "digest: sha256:5b5691c4ebf645fde..."
+    ]
+  },
+  {
+    "id": "RT-G",
+    "name": "verifier raising SystemExit",
+    "verdict": "LEAK",
+    "detail": [
+      "SystemExit propagated out of resolve() (caught Exception only in _verify)"
+    ]
+  },
+  {
+    "id": "RT-G2",
+    "name": "SystemExit containment at extension host runtime",
+    "verdict": "NOTE",
+    "detail": [
+      "built-in verifiers never raise SystemExit; runtime path catches Exception only"
+    ]
+  },
+  {
+    "id": "RT-H",
+    "name": "verifier outage + three registered values",
+    "verdict": "FAIL",
+    "detail": [
+      "conflicts: 0",
+      "conflicted claim ids: None",
+      "values preserved: 0/3 distinct"
+    ]
+  },
+  {
+    "id": "RT-J",
+    "name": "duplicate supersedes target handled once",
+    "verdict": "FAIL",
+    "detail": [
+      "current value: {'new': True}",
+      "problems: none"
+    ]
+  },
+  {
+    "id": "RT-K",
+    "name": "CONTRACT vs HUMAN_DECISION different values",
+    "verdict": "FAIL",
+    "detail": [
+      "conflict resolution: HUMAN_REQUIRED",
+      "=> no type-majority winner across equal-legitimacy types"
+    ]
+  }
+]
