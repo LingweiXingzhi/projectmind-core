@@ -115,9 +115,11 @@ def _scan_imports(tree):
 def _dynamic_tag(call_node, api):
     """Dynamic import tag includes the statically visible string target
     (Codex HIGH-2: only diffing API names made `__import__('pkg.b')` →
-    `__import__('pkg.c')` a silent absence, violating C-3). Both positional
-    and `name=` keyword forms are recognized."""
-    candidates = list(call_node.args)
+    `__import__('pkg.c')` a silent absence, violating C-3). Both the first
+    positional and the `name=` keyword form are recognized; later positional
+    args have different meanings per API and are never the module target
+    (Codex round-3 LOW)."""
+    candidates = list(call_node.args[:1])
     candidates.extend(kw.value for kw in call_node.keywords if kw.arg == "name")
     for arg in candidates:
         if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value:
