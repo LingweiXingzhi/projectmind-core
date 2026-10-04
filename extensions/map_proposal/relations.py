@@ -72,14 +72,19 @@ def _parse_blob(repo, revision, source_path):
 
 
 def _scan_imports(tree):
-    """(static module strings, dynamic import tags) from one parsed module.
+    """(static module strings, dynamic import tags, from-alias-derived
+    candidates) from one parsed module.
 
     ImportFrom contributes its package prefix AND each prefix-qualified alias
     so `from pkg import b` (b a submodule) and `from . import b` carry the
     submodule candidate; relative dots are preserved (adversarial 1a/1b/3).
-    Aliased and parenthesized/multiline forms are AST-native. Docstrings,
-    comments and string literals never appear here."""
-    static, dynamic = set(), set()
+    Alias-derived candidates are reported separately (Codex MEDIUM-4):
+    `from pkg import b` may bind an attribute defined in pkg/__init__ rather
+    than the submodule pkg/b.py, and C cannot parse declarations to know
+    (O-1) — such relations must stay explicitly uncertain. Aliased and
+    parenthesized/multiline forms are AST-native. Docstrings, comments and
+    string literals never appear here."""
+    static, dynamic, from_aliases = set(), set(), set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -91,23 +96,35 @@ def _scan_imports(tree):
             for alias in node.names:
                 if not prefix:
                     static.add(alias.name)
-                elif prefix.endswith("."):
-                    static.add(prefix + alias.name)
-                else:
-                    static.add(f"{prefix}.{alias.name}")
+                    continue
+                candidate = prefix + alias.name if prefix.endswith(".") \
+                    else f"{prefix}.{alias.name}"
+                static.add(candidate)
+                from_aliases.add(candidate)
         elif isinstance(node, ast.Call):
             func = node.func
             if isinstance(func, ast.Name) and func.id == "__import__":
-                dynamic.add("__import__")
+                dynamic.add(_dynamic_tag(node, "__import__"))
             elif isinstance(func, ast.Attribute) and func.attr == "import_module":
-                dynamic.add("importlib.import_module")
-    return static, dynamic
+                dynamic.add(_dynamic_tag(node, "importlib.import_module"))
+    return static, dynamic, from_aliases
+
+
+def _dynamic_tag(call_node, api):
+    """Dynamic import tag includes the string target when statically visible
+    (Codex HIGH-2: only diffing API names made `__import__('pkg.b')` →
+    `__import__('pkg.c')` a silent absence, violating C-3)."""
+    if call_node.args:
+        arg = call_node.args[0]
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value:
+            return f"{api}:{arg.value}"
+    return api
 
 
 def imported_paths(repo, revision, source_path):
     """Dotted module strings actually imported by source_path@revision (AST).
     Raises DiffSignalError on read/parse failure."""
-    static, _ = _scan_imports(_parse_blob(repo, revision, source_path))
+    static, _, _ = _scan_imports(_parse_blob(repo, revision, source_path))
     return static
 
 
@@ -137,15 +154,24 @@ def _file_relation_events(repo, base, target, change, known_paths):
         base_dynamic = _scan_imports(_parse_blob(repo, base, base_ref))[1]
     else:
         base_resolved, base_dynamic = {}, set()
-    target_static, target_dynamic = _scan_imports(_parse_blob(repo, target, path))
+    target_static, target_dynamic, target_from_aliases = _scan_imports(
+        _parse_blob(repo, target, path))
     target_resolved = {}
     for module in sorted(target_static):
         resolved = resolve_module(module, path, known_paths)
         if resolved:
             target_resolved.setdefault(resolved, []).append(module)
+    added = {p: mods for p, mods in target_resolved.items() if p not in base_resolved}
     return {
         "path": path,
-        "added": {p: mods for p, mods in target_resolved.items() if p not in base_resolved},
+        "added": added,
+        # Codex MEDIUM-4: a resolved target reached ONLY through from-import
+        # alias expansion may actually be a package-__init__ attribute — the
+        # proposal must carry that ambiguity, never medium confidence.
+        "added_from_derived": {
+            p: all(m in target_from_aliases for m in mods)
+            for p, mods in added.items()
+        },
         "removed": {p: mods for p, mods in base_resolved.items() if p not in target_resolved},
         "dynamic": sorted(target_dynamic - base_dynamic),
     }
@@ -184,11 +210,16 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
                 continue
             emitted_pairs.add(pair)
             modules = "、".join(sorted(event["added"][target_path]))
-            uncertainty, confidence = [], "low"
-            if len(source_owners) > 1 or len(target_owners) > 1:
+            uncertainty = []
+            multi_owner = len(source_owners) > 1 or len(target_owners) > 1
+            if multi_owner:
                 uncertainty.append("multiple candidate nodes on this import edge")
+            if event["added_from_derived"].get(target_path):
+                uncertainty.append(
+                    "from-import 目标可能是包 __init__ 中的同名属性而非子模块，需人工确认")
+                confidence = "low"
             else:
-                confidence = "medium"
+                confidence = "low" if multi_owner else "medium"
             proposals.append(
                 {
                     "kind": "RELATION_ADD",

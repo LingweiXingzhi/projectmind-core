@@ -215,6 +215,21 @@ class RelationChannelTests(unittest.TestCase):
         self.assertTrue(any(u["subject"] == "pkg/a.py" and u["reason"] == "HUMAN_REQUIRED"
                             for u in res["unresolved"]))
 
+    def test_x02_changed_dynamic_target_is_not_silent(self):
+        # Codex HIGH-2 regression guard: changing the dynamically imported
+        # target (same API, new module) must surface UNKNOWN again — API-name
+        # sets alone were silently equal, hiding the changed dependency (C-3).
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS + "import importlib\nimportlib.import_module('pkg.c')\n",
+             "pkg/b.py": B_CLASS},
+            {"pkg/a.py": A_CLASS + "import importlib\nimportlib.import_module('pkg.b')\n",
+             "pkg/b.py": B_CLASS},
+            two_node_map(),
+        )
+        self.assertEqual(res["proposals"], [])
+        self.assertTrue(any(u["subject"] == "pkg/a.py" and u["reason"] == "HUMAN_REQUIRED"
+                            for u in res["unresolved"]))
+
     def test_parse_failure_is_unknown_not_zero(self):
         res = self.run_engine(
             {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS},
@@ -277,6 +292,11 @@ class RelationChannelTests(unittest.TestCase):
         self.assertEqual(len(adds), 1)
         self.assertEqual((adds[0]["proposed_change"]["from"],
                           adds[0]["proposed_change"]["to"]), ("na", "nb"))
+        # Codex MEDIUM-4: the target was reached ONLY through alias expansion
+        # and `b` could be an attribute of pkg/__init__ — the candidate must
+        # stay low-confidence with the ambiguity named, never medium.
+        self.assertEqual(adds[0]["confidence"], "low")
+        self.assertTrue(any("__init__" in u for u in adds[0]["uncertainty"]))
 
     def test_multiline_parenthesized_from_import(self):
         # Adversarial 4 (silent miss at 78c2751), valid form: parenthesized

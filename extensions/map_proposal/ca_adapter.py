@@ -182,9 +182,14 @@ def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
     claims_for_context = _independent_verification(
         ca, target_revision, limits, unresolved)
     pack_trusted = claims_for_context is not None
+    if not pack_trusted:
+        # Invariant 11: a pack contradicted by independent observation is no
+        # longer trusted — its conflict rows stop suppressing proposals too;
+        # the contradiction itself is already routed to human review.
+        limits.append("context pack contradicted; conflict rows not consumed")
 
     kept = list(proposals)
-    for row in ca["conflict_rows"]:
+    for row in (ca["conflict_rows"] if pack_trusted else []):
         if not isinstance(row, dict):
             continue
         row_text = " ".join(
@@ -333,12 +338,13 @@ def _proposal_tokens(proposal):
 
 def _context_line(claim_row, project_revision):
     """Labeled T1/T2 context line: provenance always shown, never evidence."""
-    value = claim_row.get("value")
     verification = field_verification(claim_row)
     if verification:
         detail = "fields [" + "; ".join(f"{k}={v}" for k, v in sorted(verification.items())) + "]"
     else:
-        detail = claim_value_text(value)[:80]
+        # claim_value_text takes the CLAIM row and renders claim["value"]
+        # safely for scalar and dict values alike (Codex HIGH-1).
+        detail = claim_value_text(claim_row)[:80]
     freshness = claim_row.get("freshness", "unverified")
     return (f"CA 上下文[{freshness}] {claim_row.get('key')}@{claim_row.get('scope')}：{detail}"
             f"（人工参考，非事实证据；claim {claim_row.get('claim_id')}，"

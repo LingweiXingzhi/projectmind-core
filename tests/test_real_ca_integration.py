@@ -317,6 +317,10 @@ class RealCAIntegrationTests(unittest.TestCase):
             # Relevant low-impact claim (mentions the touched path) → T1 line.
             claim("claim-t1-relevant", "architecture.pkg_new.note", "HUMAN_DECISION",
                   "path:pkg/new.py", {"note": "owner plans a rename here"}, target),
+            # Scalar-value claim (Codex HIGH-1 regression guard: a string
+            # value once crashed admission with AttributeError).
+            claim("claim-t1-scalar", "team.focus.overnight", "HUMAN_DECISION",
+                  "path:pkg/new.py", "owner plans a rename here", target),
             # Irrelevant claim (mentions nothing touched) → no annotation.
             claim("claim-t1-irrelevant", "architecture.pkg_zzz.note", "HUMAN_DECISION",
                   "global", {"note": "unrelated module note"}, target),
@@ -342,6 +346,8 @@ class RealCAIntegrationTests(unittest.TestCase):
         self.assertIn("architecture.pkg_new.note", uncertainty)
         self.assertIn("人工参考，非事实证据", uncertainty)
         self.assertNotIn("claim-t1-irrelevant", uncertainty)
+        self.assertIn("owner plans a rename here", uncertainty)  # scalar value rendered
+        self.assertNotIn("AttributeError", uncertainty)
         # Context never contaminates evidence or rationale (S-2/E-4).
         self.assertNotIn("context_claim",
                          {e["kind"] for p in res["proposals"] for e in p["evidence"]})
@@ -362,6 +368,12 @@ class RealCAIntegrationTests(unittest.TestCase):
             # Would be T1-eligible if the pack were trusted — it must NOT be.
             claim("claim-t1-muted", "architecture.pkg_new.note", "HUMAN_DECISION",
                   "path:pkg/new.py", {"note": "owner plans a rename here"}, target),
+            # A relevant CONFLICT row in the contradicted pack must also stop
+            # suppressing proposals (Codex HIGH-3: invariant 11 stop-consumption).
+            claim("claim-conf-a", "architecture.pkg_new.role", "HUMAN_DECISION",
+                  "path:pkg/new.py", "role: router", target),
+            claim("claim-conf-b", "architecture.pkg_new.role", "HUMAN_DECISION",
+                  "path:pkg/new.py", "role: adapter", target),
         ]
         pack, real = build_real_pack(self, repo, target, claims)
         request = {
@@ -381,6 +393,8 @@ class RealCAIntegrationTests(unittest.TestCase):
         self.assertTrue(any("pack claims no longer consumed" in l for l in res["limits"]))
         self.assertTrue(any(u["subject"] == "claim:claim-head-wrong"
                             and u["reason"] == "HUMAN_REQUIRED" for u in res["unresolved"]))
+        # The contradicted pack's conflict row must NOT suppress the candidate.
+        self.assertFalse(any(u["subject"].startswith("conflict:") for u in res["unresolved"]))
         node_adds = [p for p in res["proposals"] if p["kind"] == "NODE_ADD"]
         self.assertEqual(len(node_adds), 1)
         self.assertFalse(any("CA 上下文" in u for u in node_adds[0]["uncertainty"]))

@@ -303,8 +303,9 @@ class RealBIntegrationTests(unittest.TestCase):
             "current_map": real_map,
             "prior_decisions": [],
         }
-        map_files = [ROOT / "extensions" / "map_proposal" / name
-                     for name in ("model.py", "engine.py")]
+        # Hash the FORMAL map file (Codex false-green fix: hashing
+        # implementation files did not verify formal-map preservation).
+        map_files = [ROOT / "data" / "project-map.json"]
         before = {p: p.read_bytes() for p in map_files}
         first = engine.suggest_map(repo, request)
         second = engine.suggest_map(repo, request)
