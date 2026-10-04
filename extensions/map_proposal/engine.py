@@ -12,7 +12,7 @@ channels are wired but empty until W2/W3 land. No map write ever happens here.
 """
 from __future__ import annotations
 
-from extensions.map_proposal import analysis, facts_adapter, model, gitio
+from extensions.map_proposal import analysis, facts_adapter, model, relations, gitio
 
 
 def suggest_map(repo, data) -> dict:
@@ -77,6 +77,19 @@ def suggest_map(repo, data) -> dict:
                     change, target, base, indexes, facts, base_facts, proposals, unresolved, no_proposal
                 )
             # removed paths are handled by the stale-map existence channel below.
+
+        # R03: independent import-relation channel — runs regardless of
+        # declaration-channel verdicts (F05); skipped sources never feed it.
+        relation_paths = [
+            c["path"]
+            for c in request["changed_paths"]
+            if c["path"].endswith(".py")
+            and c["path"] not in facts["skipped"]
+            and c["status"] in ("added", "modified", "renamed")
+        ]
+        known_paths = set(facts["files"]) | changed_paths | set(indexes["node_by_path"])
+        relations.handle_relations(repo, base, target, indexes, facts, known_paths,
+                                   relation_paths, proposals, unresolved, limits)
 
         # R05: stale-map target existence, independent of B availability.
         analysis.handle_stale_map(repo, base, target, request["changed_paths"], indexes,

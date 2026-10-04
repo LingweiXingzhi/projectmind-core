@@ -42,6 +42,7 @@ def build_indexes(current_map):
         "node_by_path": node_by_path,
         "entry_lookup": entry_lookup,
         "node_ids": node_ids,
+        "edge_set": {(edge["from"], edge["to"]) for edge in current_map["edges"]},
     }
 
 
