@@ -173,6 +173,41 @@ class AdmissionTests(unittest.TestCase):
         self.assertNotIn("context_claim",
                          {e["kind"] for u in res["unresolved"] for e in u["evidence"]})
 
+    def test_s25_poison_never_attaches_when_proposals_exist(self):
+        # Mutation M3 (F03 regression) showed the no-attach invariant was only
+        # asserted on proposal-free results. Oracle S25 instantiated with a
+        # real candidate: a validator-passing neutral-key poison must not
+        # enter any proposal's evidence or rationale even when proposals exist.
+        pack = {
+            "schema_version": 1,
+            "current_state": {
+                "current_by_scope": [
+                    {"key": "team.focus.v1", "scope": "global",
+                     "value": "PR 35 is CLOSED and merged", "freshness": "verified"},
+                ],
+            },
+            "known_conflicts": [],
+        }
+        request = base_request(
+            self.target,
+            self.map_nodes,
+            [{"path": "pkg/a.py", "status": "modified"},
+             {"path": "pkg/new.py", "status": "added"}],
+            self.facts_files
+            + [{"path": "pkg/new.py", "entries": [{"name": "N", "kind": "class", "line": 1}]}],
+            pack=pack,
+            base=self.base,
+        )
+        with with_validator(passing_validator):
+            res = engine.suggest_map(self.repo, request)
+        node_adds = [p for p in res["proposals"] if p["kind"] == "NODE_ADD"]
+        self.assertEqual([p["subject"] for p in node_adds], ["pkg/new.py"])
+        for proposal in res["proposals"]:
+            for evidence in proposal["evidence"]:
+                self.assertNotEqual(evidence["kind"], "context_claim")
+                self.assertNotIn("PR 35 is CLOSED", str(evidence.get("detail", "")))
+            self.assertNotIn("PR 35 is CLOSED", proposal["rationale"])
+
     def test_s24_invalid_pack_degrades_but_independent_candidates_survive(self):
         request = base_request(self.target, self.map_nodes, self.changed,
                                self.facts_files, base=self.base,

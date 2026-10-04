@@ -306,6 +306,23 @@ class RelationChannelTests(unittest.TestCase):
         self.assertTrue(any("import signal extraction unavailable" in l
                             for l in res["limits"]))
 
+    def test_s03_domain_proof_is_ast_not_text(self):
+        # Mutation M4 (DROP L05 regression) showed no test bound the domain
+        # removal proof to AST: a remaining source file whose only "import"
+        # is docstring text must NOT retain the relation, so the removal
+        # candidate for the source that truly dropped the import still fires.
+        res = self.run_engine(
+            {"pkg/a.py": "from pkg.b import B\n\n" + A_CLASS,
+             "pkg/a2.py": '"""from pkg.b import B"""\n' + A_CLASS, "pkg/b.py": B_CLASS},
+            {"pkg/a.py": A_CLASS,
+             "pkg/a2.py": '"""from pkg.b import B"""\n' + A_CLASS, "pkg/b.py": B_CLASS},
+            two_node_map(extra_na_paths=["pkg/a2.py"]),
+        )
+        removals = [p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"]
+        self.assertEqual(len(removals), 1)
+        self.assertEqual((removals[0]["proposed_change"]["from"],
+                          removals[0]["proposed_change"]["to"]), ("na", "nb"))
+
     def test_relation_add_determinism(self):
         base_files = {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS}
         target_files = {"pkg/a.py": "from pkg.b import B\n\n" + A_CLASS, "pkg/b.py": B_CLASS}
