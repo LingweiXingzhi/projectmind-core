@@ -1,0 +1,13 @@
+{
+  "frozen_at": "2026-10-02T16:24:44.067629+00:00",
+  "product_commit": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "baseline_inputs_retained": true,
+  "raw_runs_reused": true,
+  "reason": "CA completeness q05/q17 and SHA units defect fixed from independent source; complete post-fix B rerun. Frozen20 questions and truth unchanged; observed main/PR heads unchanged. Combined schema/bootstrap/seed intervention, not a causal isolation of individual changes.",
+  "sha256": {
+    "context_final_inputs\\AGENT_BOOTSTRAP.md": "d9beeed0cd812fd89655bb77f7724d883f9a0aafb9a1c4584d27a79cbe60b754",
+    "context_final_inputs\\CONTEXT_PACK.json": "9516b1d560f8d94535d21646bf81491d38b9a9e726794daf1dc1a6e1e8caafba",
+    "context_final_inputs\\questions.jsonl": "be66e998758f370db250c0720b1174aa8f79242d485ad5a2123e2a20a3789d59",
+    "ground_truth.jsonl": "724f53c5dbb3470a24034e34b627a883e5c4951769eafa096342667f7c0f75dd"
+  }
+}

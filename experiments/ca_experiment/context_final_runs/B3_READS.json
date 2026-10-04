@@ -1,0 +1,34 @@
+{
+  "run": "B3",
+  "condition": "ca",
+  "selected_pack_revision": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "read_files": [
+    "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\context_final_inputs\\AGENT_BOOTSTRAP.md",
+    "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\context_final_inputs\\CONTEXT_PACK.json",
+    "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\context_final_inputs\\questions.jsonl"
+  ],
+  "read_counts": {
+    "AGENT_BOOTSTRAP.md": 1,
+    "CONTEXT_PACK.json": 2,
+    "questions.jsonl": 1
+  },
+  "read_events": [
+    {
+      "path": "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\context_final_inputs\\AGENT_BOOTSTRAP.md",
+      "operation": "Get-Content -Raw -Encoding UTF8"
+    },
+    {
+      "path": "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\context_final_inputs\\CONTEXT_PACK.json",
+      "operation": "Get-Content -Raw -Encoding UTF8"
+    },
+    {
+      "path": "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\context_final_inputs\\questions.jsonl",
+      "operation": "Get-Content -Raw -Encoding UTF8"
+    },
+    {
+      "path": "G:\\jiagou\\projectmind-context-authority\\experiments\\ca_experiment\\context_final_inputs\\CONTEXT_PACK.json",
+      "operation": "Get-Content -Raw -Encoding UTF8, parsed and compactly projected because first output was truncated"
+    }
+  ],
+  "note": "Only these three input files were read. No ground truth, other answers, reports, code, raw source documents, git, or browsing were used."
+}

@@ -1,0 +1,46 @@
+{
+  "expected_revision": "ffd8781c2996f3656022133c3269147c18fcc77f",
+  "cases": [
+    {
+      "case_id": "CA-P01",
+      "injection": "PR22 OPEN rewritten MERGED"
+    },
+    {
+      "case_id": "CA-P02",
+      "injection": "Old role map current/ACTIVE"
+    },
+    {
+      "case_id": "CA-P03",
+      "injection": "Proposal inserted into current"
+    },
+    {
+      "case_id": "CA-P04",
+      "injection": "Research relabeled CONTRACT"
+    },
+    {
+      "case_id": "CA-P05",
+      "injection": "Old B interface current"
+    },
+    {
+      "case_id": "CA-P06",
+      "injection": "Hide conflicting synthetic human decisions; choose left"
+    },
+    {
+      "case_id": "CA-P07",
+      "injection": "Wrong project revision"
+    },
+    {
+      "case_id": "CA-P08",
+      "injection": "Evidence reference points at wrong revision"
+    },
+    {
+      "case_id": "CA-P09",
+      "injection": "C NOT_IMPLEMENTED rewritten IMPLEMENTED"
+    },
+    {
+      "case_id": "CA-P10",
+      "injection": "D NOT_IMPLEMENTED rewritten IMPLEMENTED"
+    }
+  ],
+  "protocol": "Baseline frozen legacy pack; fresh participant sees case packets and existing bootstrap only. Hardened study uses final schema validator plus exact evidence fallback. No agent sees this truth."
+}

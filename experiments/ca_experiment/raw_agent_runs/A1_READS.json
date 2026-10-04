@@ -1,0 +1,33 @@
+{
+  "run": "A1",
+  "condition": "raw",
+  "input_directory": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs",
+  "read_files": [
+    "questions.jsonl",
+    "main_head.txt",
+    "pr21_status.json",
+    "pr22_status.json",
+    "B_BOUNDARY_AUDIT.md",
+    "B_DELIVERY_CONTRACT.md",
+    "B_PR22_BENCHMARK_REPORT.md",
+    "FINAL_BENCHMARK_REPORT.md",
+    "main_COLLABORATION_CONTRACT.md",
+    "main_TEAM_SOP.md",
+    "main_extensions.txt",
+    "pr21_COLLABORATION_CONTRACT.md",
+    "pr21_TEAM_SOP.md",
+    "pr21_extensions.txt",
+    "main_MVP_INTERFACES.md",
+    "pr21_MVP_INTERFACES.md"
+  ],
+  "constraints_honored": {
+    "only_frozen_raw_input_files_read": true,
+    "no_ground_truth_files_read": true,
+    "no_context_authority_code_docs_pack_registry_read": true,
+    "no_other_agent_runs_or_parent_reports_read": true,
+    "no_internet_or_newer_state_fetched": true,
+    "no_self_scoring": true,
+    "only_authorized_answer_files_written": true
+  },
+  "notes": "Read original frozen repo documentation, PR status and extension inventories, and benchmark report snapshots directly in raw_inputs. Ground-truth datasets/verdicts were not opened; aggregate benchmark numbers appeared only inside the permitted reports. Referenced links and files outside raw_inputs were not followed. RESEARCH classification is inferred from reports explicitly marked EVALUATION ASSET rather than product source of truth."
+}

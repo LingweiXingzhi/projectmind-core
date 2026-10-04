@@ -1,0 +1,41 @@
+{
+  "run": "A2",
+  "condition": "raw",
+  "input_directory": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs",
+  "read_filenames": [
+    "questions.jsonl",
+    "main_head.txt",
+    "main_extensions.txt",
+    "pr21_status.json",
+    "pr22_status.json",
+    "pr21_extensions.txt",
+    "main_TEAM_SOP.md",
+    "pr21_TEAM_SOP.md",
+    "FINAL_BENCHMARK_REPORT.md",
+    "B_PR22_BENCHMARK_REPORT.md",
+    "B_BOUNDARY_AUDIT.md",
+    "main_COLLABORATION_CONTRACT.md",
+    "main_MVP_INTERFACES.md",
+    "B_DELIVERY_CONTRACT.md",
+    "pr21_COLLABORATION_CONTRACT.md",
+    "pr21_MVP_INTERFACES.md"
+  ],
+  "constraints_honored": {
+    "read_only_files_directly_inside_raw_inputs": true,
+    "no_ca_code_docs_pack_registry_read": true,
+    "no_truth_or_outside_reports_read": true,
+    "no_other_runs_read": true,
+    "no_internet_used": true,
+    "no_prior_answers_provided_or_read": true,
+    "answers_based_only_on_frozen_original_material": true,
+    "all_20_questions_answered": true,
+    "input_filenames_and_available_revisions_cited": true,
+    "no_self_scoring": true,
+    "writes_limited_to_A2_outputs": true
+  },
+  "output_files": [
+    "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_agent_runs/A2.jsonl",
+    "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_agent_runs/A2_READS.json"
+  ],
+  "note": "Listed direct input directory filenames and read each listed input in full. No linked documents, referenced code, external URLs, other experiment artifacts, or run outputs were opened. RESEARCH classification is inferred from the original report's explicit EVALUATION ASSET / NOT PRODUCT SOURCE OF TRUTH label. No scores calculated."
+}

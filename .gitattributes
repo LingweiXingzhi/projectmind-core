@@ -1,0 +1,2 @@
+# Frozen experiment evidence is byte-addressed; preserve exact cross-platform bytes.
+experiments/** -text

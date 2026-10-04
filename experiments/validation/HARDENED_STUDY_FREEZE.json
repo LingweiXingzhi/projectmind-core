@@ -1,0 +1,15 @@
+{
+  "frozen_at": "2026-10-02T16:24:44.118502+00:00",
+  "sha256": {
+    "preflight_hardened_inputs\\consumer_expected_revision.json": "360a206d47e418ad22351ce6a5de4dbbc7d724d510f2ae08a55d11e5b3fcb5a8",
+    "HARDENED_POISON_CHECKS.json": "a931fc138166fdb880f3dbc1fb8676544df03259f270f3a3b1957a68d8a9729c",
+    "preflight_hardened_inputs/cases.json": "fd5ba658bfbb479a191e4f60dcb1cffe061753b8357da76efad0dd8b72fa8f5b"
+  },
+  "prior_hashes_before_clean_controls": {
+    "preflight_hardened_inputs\\cases.json": "ff2355b7daff161501e24cd59208aa93d00bd80e936c2727745c2b033b1350d8",
+    "preflight_hardened_inputs\\consumer_expected_revision.json": "360a206d47e418ad22351ce6a5de4dbbc7d724d510f2ae08a55d11e5b3fcb5a8",
+    "HARDENED_POISON_CHECKS.json": "a931fc138166fdb880f3dbc1fb8676544df03259f270f3a3b1957a68d8a9729c"
+  },
+  "amendment_before_participant_dispatch": "Add2cleancontrolpackets before any hardened-agent answers; ten injection cases unchanged.",
+  "metadata_correction": "After participant completion: removed duplicate Windows-spelling active hash for pre-control packet version. Pre-dispatch control amendment/current hash and prior_hashes remain; no packet, truth or answer bytes modified."
+}

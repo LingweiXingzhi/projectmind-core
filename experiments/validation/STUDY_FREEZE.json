@@ -1,0 +1,9 @@
+{
+  "frozen_at": "2026-10-02T15:57:57.321390+00:00",
+  "sha256": {
+    "preflight_inputs\\cases.json": "b7be599d7f4b6f1dc3b4cf8a6af02d9a5de436db45ee72180bdd8408c8250ef8",
+    "POISONING_TRUTH.json": "0dce81cfc065f9477bad0affb6990c8eb0158ea1211aa50f9cb4ec04a23e04da",
+    "preflight_evidence\\conflict_evidence.json": "185e1513d3bd03f3acca0f7341ff86ee109c7463c8bd8ac1f4df66614bea2319",
+    "sufficiency_questions.jsonl": "e9a52a1f7dfdd2af07ff0e78cc56ccc8c762a93b4d462166eeeb1e09cb3ef753"
+  }
+}

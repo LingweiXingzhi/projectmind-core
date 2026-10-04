@@ -1,0 +1,350 @@
+{
+  "participant": "sufficiency_fallback",
+  "condition": "Fresh Context Pack plus permitted independent evidence fallback",
+  "expected_revision": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6",
+  "classification_basis": "After the allowed fallback: SUFFICIENT means the question has a usable answer within its stated evidence scope. PARTIAL retains unresolved formal integrated-contract semantics despite observed prototype behavior. fallback_required describes whether the initial pack lacked facts needed for this question; fallback_sources can also include corroborating evidence consulted even when fallback_required is false.",
+  "actual_content_reads": [
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_questions.jsonl",
+      "mode": "full text",
+      "purpose": "Read S01–S15 questions."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/FINAL_CONTEXT_PACK.json",
+      "mode": "full programmatic read, printed excerpts and structured projections, Python validation",
+      "purpose": "Initial condition artifact, scoped facts/caveats/evidence and exact-revision structural check."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/AGENT_BOOTSTRAP.md",
+      "mode": "full line-numbered text",
+      "purpose": "Consumer preflight, fallback, conflict/unknown handling and authority boundaries."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/C_CONSUMABLE_INTERFACE.md",
+      "mode": "full line-numbered text",
+      "purpose": "Frozen/provisional interface fields, revision axes and HTTP size limitation."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/B_DELIVERY_CONTRACT.md",
+      "mode": "full line-numbered original-document snapshot",
+      "purpose": "B advertised API, HTTP adapter, prototype bounds and formal integration limits."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_MVP_INTERFACES.md",
+      "mode": "full line-numbered original-document snapshot",
+      "purpose": "Proposed C shapes, zero-declaration files, human-map version and confirmation limits."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs/pr21_COLLABORATION_CONTRACT.md",
+      "mode": "full line-numbered original-document snapshot",
+      "purpose": "V1 C/A responsibility and human approval/map-write boundaries."
+    },
+    {
+      "path": "G:/jiagou/projectmind-core/docs/standards/EXTENSION_INTERFACE.md",
+      "mode": "full line-numbered text",
+      "purpose": "Independent extension routes, handle/context shape, POST bound, concurrency and errors."
+    },
+    {
+      "path": "G:/jiagou/projectmind-core/extension_host.py",
+      "mode": "full line-numbered text",
+      "purpose": "Observed extension discovery, metadata/context, result encoding and error behavior."
+    },
+    {
+      "path": "G:/jiagou/projectmind-core/app.py",
+      "mode": "rg matching lines plus line-numbered excerpts 109–138, 328–378 and 433–469",
+      "purpose": "Observed mutable map load with code revision, query values/body cap and ThreadingHTTPServer."
+    },
+    {
+      "path": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py",
+      "mode": "full line-numbered text; imported read-only with Python -B; in-memory helper probes",
+      "purpose": "Observed revision/path/limit/parser/declaration behavior of the frozen PR22 prototype."
+    },
+    {
+      "path": "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py",
+      "mode": "full line-numbered text; AST read and isolated handle function executed with stub collector",
+      "purpose": "Observed GET empty-path/POST empty-list forwarding without any repository or HTTP read."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/context_pack.py",
+      "mode": "rg lines; line-numbered sections 1–153 and 242–459; imported for validator",
+      "purpose": "Schema/version, evidence/freshness/binding and structural validator implementation."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/extension.py",
+      "mode": "full line-numbered text",
+      "purpose": "Context and validate_context action route semantics and strict accepted keys."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/schema.py",
+      "mode": "rg matches plus imported automatically by validate_context_pack",
+      "purpose": "Validator dependency; no registry contents loaded."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/__init__.py",
+      "mode": "imported automatically by validate_context_pack",
+      "purpose": "Import dependency; no explicit text inspection."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/registry.py",
+      "mode": "imported automatically by validate_context_pack",
+      "purpose": "Import dependency; load_registry not called."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/resolver.py",
+      "mode": "imported automatically by validate_context_pack",
+      "purpose": "Import dependency; resolve not called."
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/context_authority/verifiers.py",
+      "mode": "imported automatically by validate_context_pack",
+      "purpose": "Import dependency; no verifier built or run."
+    }
+  ],
+  "metadata_only_inventories": [
+    {
+      "paths": [
+        "G:/jiagou/projectmind-context-authority/experiments/ca_experiment/raw_inputs",
+        "G:/jiagou/projectmind-context-authority/extensions/context_authority",
+        "G:/jiagou/projectmind-core/docs/standards",
+        "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/"
+      ],
+      "mode": "rg --files; names only",
+      "note": "Report/benchmark/question/claims/index files found in inventories were not opened unless separately listed above."
+    },
+    {
+      "paths": [
+        "G:/jiagou/projectmind-core",
+        "G:/jiagou/projectmind-context-authority"
+      ],
+      "mode": "rg --files filtered to extension_host.py and README.md; names only",
+      "note": "Found root extension_host.py; no README contents read."
+    },
+    {
+      "paths": [
+        "G:/jiagou/projectmind-context-authority/AGENT_BOOTSTRAP.md",
+        "G:/jiagou/projectmind-context-authority/C_CONSUMABLE_INTERFACE.md",
+        "G:/jiagou/projectmind-core/app.py"
+      ],
+      "mode": "Get-Item metadata; no content from this call"
+    }
+  ],
+  "missing_path_attempts": [
+    {
+      "path": "G:/jiagou/projectmind-core/extensions/README.md",
+      "operation": "Get-Item",
+      "result": "does not exist"
+    },
+    {
+      "path": "G:/jiagou/projectmind-core/extensions/extension_host.py",
+      "operation": "Get-Item",
+      "result": "does not exist"
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/README.md",
+      "operation": "Get-Content",
+      "result": "does not exist; no content read"
+    },
+    {
+      "path": "G:/jiagou/projectmind-context-authority/extensions/extension_host.py",
+      "operation": "Get-Content",
+      "result": "does not exist; no content read"
+    }
+  ],
+  "probes": [
+    {
+      "probe": "validate_context_pack",
+      "source_paths": [
+        "G:/jiagou/projectmind-context-authority/experiments/validation/FINAL_CONTEXT_PACK.json",
+        "G:/jiagou/projectmind-context-authority/extensions/context_authority/context_pack.py"
+      ],
+      "arguments": {
+        "expected_revision": "3e12fdfebc507ff1755f9f8bcb01e67a0eac14d6"
+      },
+      "result": {
+        "validation": "PASS",
+        "returned_same_object": true,
+        "compact_utf8_bytes": 71822
+      },
+      "limits": "Structural consistency only. No Git commit resolution, source authentication, remote check or human approval validation."
+    },
+    {
+      "probe": "Frozen B _definitions(ast.parse(in_memory_text))",
+      "source_paths": [
+        "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py"
+      ],
+      "input": "@dec\ndef repeat(): pass\nif flag:\n def repeat(): pass\nclass A:\n @dec\n async def m(self):\n  def inner(): pass\n",
+      "result": [
+        {
+          "name": "repeat",
+          "kind": "function",
+          "line": 2
+        },
+        {
+          "name": "repeat",
+          "kind": "function",
+          "line": 4
+        },
+        {
+          "name": "A",
+          "kind": "class",
+          "line": 5
+        },
+        {
+          "name": "A.m",
+          "kind": "async_method",
+          "line": 7
+        },
+        {
+          "name": "A.m.inner",
+          "kind": "function",
+          "line": 8
+        }
+      ],
+      "limits": "Only helper/AST behavior observed; no analyzed repository code executed."
+    },
+    {
+      "probe": "Frozen B _paths",
+      "source_paths": [
+        "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/facts.py"
+      ],
+      "inputs": [
+        null,
+        [],
+        [
+          "a.py",
+          "a.py"
+        ],
+        [
+          "/a.py"
+        ],
+        [
+          "a\\b.py"
+        ],
+        [
+          "a//b.py"
+        ],
+        [
+          "./a.py"
+        ],
+        [
+          "a/../b.py"
+        ],
+        [
+          "a.py\n"
+        ],
+        [
+          "C:/a.py"
+        ],
+        [
+          "*.py"
+        ],
+        [
+          "src"
+        ]
+      ],
+      "result": "None and [] preserved; duplicate a.py deduplicated; leading slash/backslash/empty-dot-dotdot segments/control newline rejected. C:/a.py, *.py and src pass the lexical helper only; committed-tree membership was not exercised.",
+      "limits": "No Git/tree membership reads. Error prose was not relied on."
+    },
+    {
+      "probe": "Frozen B isolated handle with stub collect_code_facts",
+      "source_paths": [
+        "G:/jiagou/projectmind-benchmark/B_PR22_HOLDOUT/pr22_tree/LingweiXingzhi-projectmind-core-0c46747147f765260bf2033f6eae40189b58ca0c/collaboration/b/2026-10-01-wang-haining/extensions/code_facts/extension.py"
+      ],
+      "inputs": [
+        {
+          "method": "GET",
+          "data": {
+            "revision": "0000000000000000000000000000000000000000",
+            "paths": ""
+          }
+        },
+        {
+          "method": "POST",
+          "data": {
+            "revision": "0000000000000000000000000000000000000000",
+            "paths": []
+          }
+        }
+      ],
+      "result": [
+        {
+          "method": "GET",
+          "forwarded_paths": null
+        },
+        {
+          "method": "POST",
+          "forwarded_paths": []
+        }
+      ],
+      "limits": "Stub collector returns forwarded arguments only; no request execution, revision validation or repo access. Empty GET formal semantics remain unresolved."
+    },
+    {
+      "probe": "python --version",
+      "source_paths": [],
+      "result": "Python 3.12.10"
+    }
+  ],
+  "outputs": [
+    "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_fallback.json",
+    "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_fallback_READS.json"
+  ],
+  "protocol_observations": {
+    "web_used": false,
+    "git_commands_run": false,
+    "verifiers_run": false,
+    "other_condition_answers_read": false,
+    "ground_truth_read": false,
+    "study_reports_read": false,
+    "benchmark_metrics_files_read": false,
+    "registry_data_read": false,
+    "input_or_product_files_edited": false,
+    "python_bytecode_writes_disabled": true
+  },
+  "remaining_limitations": [
+    "Observed prototype behavior does not establish formally accepted integrated B/C contracts.",
+    "Empty GET paths formal meaning and formal integrated limits remain PARTIAL.",
+    "No current remote implementation/PR/main state or human approval was independently verified.",
+    "Expected pack revision equality/structure passed, but this participant did not resolve that commit with Git."
+  ],
+  "output_validation_reads": [
+    {
+      "path": "G:\\jiagou\\projectmind-context-authority\\experiments\\validation\\sufficiency_fallback.json",
+      "mode": "JSON parse for answer schema/qid/count validation"
+    },
+    {
+      "path": "G:\\jiagou\\projectmind-context-authority\\experiments\\validation\\sufficiency_fallback_READS.json",
+      "mode": "JSON parse to add actual completion validation"
+    }
+  ],
+  "completion_validation": {
+    "status": "PASS",
+    "qids": [
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S05",
+      "S06",
+      "S07",
+      "S08",
+      "S09",
+      "S10",
+      "S11",
+      "S12",
+      "S13",
+      "S14",
+      "S15"
+    ],
+    "row_count": 15,
+    "classification_counts": {
+      "SUFFICIENT": 13,
+      "PARTIAL": 2,
+      "INSUFFICIENT": 0
+    },
+    "fallback_required_count": 9,
+    "partial_qids": [
+      "S05",
+      "S06"
+    ]
+  }
+}

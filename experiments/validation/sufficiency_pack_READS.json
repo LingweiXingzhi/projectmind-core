@@ -1,0 +1,81 @@
+{
+  "participant": "fresh_context_pack_only",
+  "scope": "Answers derived solely from the two authorized input files. No bootstrap, source code, source documents, reports, other participant answers, web, ground truth or Git were read.",
+  "allowed_files": [
+    "G:/jiagou/projectmind-context-authority/experiments/validation/FINAL_CONTEXT_PACK.json",
+    "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_questions.jsonl"
+  ],
+  "file_reads": [
+    {
+      "invocation": 1,
+      "parallel_branch": 1,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/FINAL_CONTEXT_PACK.json",
+      "method": "PowerShell Get-Content -LiteralPath -Raw",
+      "extent": "entire file",
+      "presentation": "Raw content returned; combined tool output truncated."
+    },
+    {
+      "invocation": 1,
+      "parallel_branch": 2,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_questions.jsonl",
+      "method": "PowerShell Get-Content -LiteralPath -Raw",
+      "extent": "entire file",
+      "presentation": "All 15 question records returned."
+    },
+    {
+      "invocation": 2,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/FINAL_CONTEXT_PACK.json",
+      "method": "PowerShell Get-Content -LiteralPath -Raw | ConvertFrom-Json",
+      "extent": "entire file",
+      "presentation": "Top-level property names, types and counts."
+    },
+    {
+      "invocation": 3,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/FINAL_CONTEXT_PACK.json",
+      "method": "PowerShell Get-Content -LiteralPath -Raw | ConvertFrom-Json",
+      "extent": "entire file",
+      "presentation": "Top-level metadata/issue/proposal/history/human-decision sections and current_state; display truncated in duplicate current_state section."
+    },
+    {
+      "invocation": 4,
+      "path": "G:/jiagou/projectmind-context-authority/experiments/validation/FINAL_CONTEXT_PACK.json",
+      "method": "PowerShell Get-Content -LiteralPath -Raw; JavaScript JSON.parse",
+      "extent": "entire file",
+      "presentation": "Stored parsed pack in tool memory; projected all distinct current entries, all 23 evidence records, and issue collections without truncation."
+    }
+  ],
+  "subsequent_access": "Subsequent review of current_by_scope, relevant_contracts, do_not_assume, proposals, integrity and schema used the parsed pack already stored in memory; no further file reads.",
+  "total_file_reads": 5,
+  "distinct_files_read": 2,
+  "read_counts": {
+    "experiments/validation/FINAL_CONTEXT_PACK.json": 4,
+    "experiments/validation/sufficiency_questions.jsonl": 1
+  },
+  "outputs_written": [
+    "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_pack.json",
+    "G:/jiagou/projectmind-context-authority/experiments/validation/sufficiency_pack_READS.json"
+  ],
+  "writes_scope": "Only the two requested experiment result artifacts; no product files or Git state modified.",
+  "question_coverage": [
+    "S01",
+    "S02",
+    "S03",
+    "S04",
+    "S05",
+    "S06",
+    "S07",
+    "S08",
+    "S09",
+    "S10",
+    "S11",
+    "S12",
+    "S13",
+    "S14",
+    "S15"
+  ],
+  "classification_counts": {
+    "SUFFICIENT": 6,
+    "PARTIAL": 8,
+    "INSUFFICIENT": 1
+  }
+}
