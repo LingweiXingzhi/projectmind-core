@@ -18,10 +18,16 @@ class FactsMismatch(ValueError):
 
 def _normalize(facts):
     """Tolerate partial per-entry drift: C only reads name/kind/line and never
-    crashes on B evolution, but the outer container must be sound."""
+    crashes on B evolution, but the outer containers must be sound."""
+    files_raw = facts.get("files") or []
+    skipped_raw = facts.get("skipped") or []
+    if not isinstance(files_raw, list) or not isinstance(skipped_raw, list):
+        raise ValueError("code_facts files/skipped 须为列表")
     files = {}
-    for entry in facts.get("files") or []:
+    for entry in files_raw:
         if isinstance(entry, dict) and isinstance(entry.get("path"), str):
+            if not isinstance(entry.get("entries") or [], list):
+                raise ValueError("code_fact entries 须为列表")
             sanitized = []
             for item in (entry.get("entries") or []):
                 if isinstance(item, dict) and isinstance(item.get("name"), str):
@@ -33,7 +39,7 @@ def _normalize(facts):
                         }
                     )
             files[entry["path"]] = sanitized
-    skipped = {s.get("path") for s in (facts.get("skipped") or []) if isinstance(s, dict)}
+    skipped = {s.get("path") for s in skipped_raw if isinstance(s, dict)}
     return files, skipped
 
 
@@ -108,9 +114,15 @@ def load_code_facts(request_facts, repo, target_revision, wanted_paths):
     # empty diffs cannot bypass the gate (S14).
     try:
         _check_revision(raw.get("revision"), target_revision)
+        files, skipped = _normalize(raw)
     except FactsMismatch:
         raise
-    files, skipped = _normalize(raw)
+    except Exception:  # noqa: BLE001 — installed dependency drift → degraded, not crash
+        limits.append("installed code facts shape drifted; treated as unavailable")
+        return (
+            {"files": {}, "skipped": set(), "available": False, "source": "none"},
+            limits,
+        )
     return (
         {"files": files, "skipped": skipped, "available": True, "source": "installed"},
         limits,
