@@ -26,16 +26,21 @@ TOP_LEVEL_KINDS = ("class", "function", "async_function")
 
 
 def build_indexes(current_map):
-    """P02 node/entry indexes over the validated map."""
+    """P02 node/entry indexes over the validated map. Nodes whose entryPoint
+    cannot be parsed are reported (not silently skipped) so the RESPONSIBILITY
+    channel's inactivity is visible (R8/G-3)."""
     node_by_path = {}
     for node in current_map["nodes"]:
         for path in node["evidence_paths"]:
             node_by_path.setdefault(path, []).append(node["id"])
     entry_lookup = {}
+    unparseable_entry_points = []
     for node in current_map["nodes"]:
         path, func = parse_entry_point(node["entry_point"])
         if path:
             entry_lookup[(node["id"], path)] = func
+        else:
+            unparseable_entry_points.append(node["id"])
     node_ids = {node["id"] for node in current_map["nodes"]}
     return {
         "nodes": current_map["nodes"],
@@ -43,6 +48,7 @@ def build_indexes(current_map):
         "entry_lookup": entry_lookup,
         "node_ids": node_ids,
         "edge_set": {(edge["from"], edge["to"]) for edge in current_map["edges"]},
+        "unparseable_entry_points": unparseable_entry_points,
     }
 
 

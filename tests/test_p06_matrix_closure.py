@@ -82,6 +82,8 @@ def two_node_map(extra_na=()):
 
 A = "class A:\n    pass\n"
 B = "class B:\n    pass\n"
+MAIN_FN = "def main():\n    return 1\n"
+RUN_FN = "def run():\n    return 2\n"
 
 
 class S08FormattingOnly(unittest.TestCase):
@@ -278,6 +280,44 @@ class ExtensionSeamBoundary(unittest.TestCase):
         with self.assertRaises(ExtensionError) as caught:
             self.extension.handle(self._ctx(repo), "DELETE", {})
         self.assertEqual(caught.exception.status.value, 405)
+
+
+class P07EntryPointDiagnostics(unittest.TestCase):
+    def test_unparseable_entry_point_is_visible_degradation_not_silence(self):
+        # R8/G-3: a map whose entryPoint strings do not match the contract
+        # format used to kill the RESPONSIBILITY channel silently. The
+        # channel's inactivity must now be visible in limits.
+        repo, base, target, tmp = build_repo(
+            {"pkg/a.py": MAIN_FN, "pkg/b.py": B},
+            {"pkg/a.py": RUN_FN, "pkg/b.py": B},
+        )
+        self.addCleanup(tmp.cleanup)
+        map_data = {
+            "note": "m",
+            "nodes": [node("na", ["pkg/a.py"], entry="主入口"),
+                      node("nb", ["pkg/b.py"])],
+            "edges": [],
+        }
+        res = run_engine(repo, base, target,
+                         [{"path": "pkg/a.py", "status": "modified"}],
+                         map_data,
+                         [{"path": "pkg/a.py", "entries": [{"name": "run", "kind": "function", "line": 1}]}],
+                         )
+        self.assertTrue(any("entryPoint 格式无法解析" in l and "na" in l
+                            for l in res["limits"]))
+        # A properly formatted entryPoint produces no diagnostic.
+        map_data2 = {
+            "note": "m",
+            "nodes": [node("na", ["pkg/a.py"], entry="pkg/a.py · main()"),
+                      node("nb", ["pkg/b.py"])],
+            "edges": [],
+        }
+        res2 = run_engine(repo, base, target,
+                          [{"path": "pkg/a.py", "status": "modified"}],
+                          map_data2,
+                          [{"path": "pkg/a.py", "entries": [{"name": "run", "kind": "function", "line": 1}]}],
+                          )
+        self.assertFalse(any("entryPoint 格式无法解析" in l for l in res2["limits"]))
 
 
 if __name__ == "__main__":

@@ -50,6 +50,11 @@ def suggest_map(repo, data) -> dict:
     limits = _dedupe(limits)
 
     indexes = analysis.build_indexes(current_map)
+    if indexes["unparseable_entry_points"]:
+        limits.append(
+            "map entryPoint 格式无法解析（期望 'path · func()' 或以 .py 结尾的路径）："
+            + ", ".join(sorted(indexes["unparseable_entry_points"]))
+            + "；这些节点的职责变化（RESPONSIBILITY）通道不会触发（诚实降级，G-3）")
 
     # Signal channels run independently (R01); a declaration-channel verdict on
     # one file never ends another channel's analysis of the same file (F05).
