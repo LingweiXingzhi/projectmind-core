@@ -113,7 +113,15 @@ class ExtensionHost:
             result = extension.handle(self.context, method, data)
         except ExtensionError:
             raise
-        except Exception as exc:
+        except BaseException as exc:
+            # A30 isolation policy (D1): extension code runs behind a shared
+            # seam and may never terminate the host process or another
+            # extension's route, so SystemExit / KeyboardInterrupt /
+            # GeneratorExit raised inside extension code are contained as
+            # controlled ExtensionErrors, chained to the original fault.
+            # Genuine operator interrupts are unaffected: the threaded HTTP
+            # server delivers SIGINT to the main serve_forever loop, not to
+            # the worker threads that run extensions.
             raise ExtensionError(HTTPStatus.INTERNAL_SERVER_ERROR, "扩展运行失败") from exc
         if not isinstance(result, dict):
             raise ExtensionError(HTTPStatus.INTERNAL_SERVER_ERROR, "扩展必须返回 JSON 对象")
