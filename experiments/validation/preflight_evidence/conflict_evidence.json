@@ -1,0 +1,19 @@
+{
+  "fixture_only": true,
+  "human_decisions": [
+    {
+      "id": "claim-study-left",
+      "key": "architecture.fixture_choice",
+      "scope": "synthetic-study",
+      "value": "left"
+    },
+    {
+      "id": "claim-study-right",
+      "key": "architecture.fixture_choice",
+      "scope": "synthetic-study",
+      "value": "right"
+    }
+  ],
+  "supersedes": [],
+  "resolution": "HUMAN_REQUIRED"
+}

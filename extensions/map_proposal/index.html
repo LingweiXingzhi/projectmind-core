@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>地图建议 · 调试视图</title>
+<style>
+  body { font-family: Consolas, monospace; margin: 16px; background: #111; color: #ddd; }
+  textarea { width: 100%; height: 180px; background: #1b1b1b; color: #ddd; border: 1px solid #444; }
+  button { margin: 8px 0; padding: 6px 14px; }
+  pre { white-space: pre-wrap; word-break: break-all; background: #1b1b1b; border: 1px solid #444;
+        padding: 10px; max-height: 60vh; overflow: auto; }
+  .note { color: #999; font-size: 12px; }
+</style>
+</head>
+<body>
+<h2>地图建议（Map Proposal）— 调试视图</h2>
+<p class="note">C 只产出 PROPOSED 建议，绝不修改正式地图；接受与否由人决定。示例请求见 GET /api/extensions/map_proposal 的 schema 字段。</p>
+<textarea id="req" spellcheck="false">{
+  "base_revision": "填写 40 位基准 SHA",
+  "target_revision": "填写 40 位目标 SHA",
+  "changed_paths": [{"path": "a.py", "status": "modified"}]
+}</textarea><br>
+<button id="send">POST suggest</button>
+<button id="schema">查看契约</button>
+<pre id="out">（结果将显示在这里；本视图用 textContent 渲染，不解释 HTML。）</pre>
+<script>
+const out = document.getElementById('out');
+function show(value) { out.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2); }
+document.getElementById('schema').onclick = async () => {
+  const response = await fetch('/api/extensions/map_proposal');
+  show(await response.json());
+};
+document.getElementById('send').onclick = async () => {
+  let payload;
+  try { payload = JSON.parse(document.getElementById('req').value); }
+  catch (error) { show('请求不是合法 JSON: ' + String(error)); return; }
+  try {
+    const response = await fetch('/api/extensions/map_proposal', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'suggest', request: payload }) });
+    show(await response.json());
+  } catch (error) { show('调用失败: ' + String(error)); }
+};
+</script>
+</body>
+</html>

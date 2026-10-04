@@ -1,0 +1,584 @@
+[
+  {
+    "qid": "S01",
+    "answer": "C may pass only a full 40- or 64-character lowercase hexadecimal SHA that resolves directly to a commit. Reject HEAD, short SHAs, uppercase hexadecimal strings and tags. The current correction says characters, not the superseded claim's erroneous 'bit' wording.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "The supplied contract is scoped to the PR22 delivery README at 0c46747147f765260bf2033f6eae40189b58ca0c and is marked unverified; it does not establish deployment on main.",
+      "Do not use the superseded units wording."
+    ],
+    "fallback_required": false,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_input",
+        "claim_ids": [
+          "claim-codefacts-input-units"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/known_stale_sources/0",
+        "claim_id": "claim-codefacts-input"
+      }
+    ]
+  },
+  {
+    "qid": "S02",
+    "answer": "Handle function, async_function, class, method and async_method. The historical main-document example with only kind:function is not the current delivered B shape.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Restricting C to the historical single-kind example would drop four supported kinds.",
+      "The delivered contract is a PR22 snapshot, not evidence that main contains the implementation."
+    ],
+    "fallback_required": false,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_shape",
+        "claim_ids": [
+          "claim-b-shape"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/historical_sources/2",
+        "claim_id": "claim-old-b-shape"
+      }
+    ]
+  },
+  {
+    "qid": "S03",
+    "answer": "Yes: names are lexical dotted qualified names, such as Class.method and outer.inner. The pack does not state how repeated declarations with the same qualified name are represented, ordered, keyed or preserved. Name uniqueness and deduplication by name cannot be assumed; a precise preservation rule requires the omitted B contract details.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Repeated-declaration representation and preservation rule.",
+      "Ordering and identity of entries sharing a qualified name."
+    ],
+    "risks": [
+      "A dictionary keyed only by qualified name could silently collapse declarations.",
+      "Path-request deduplication is stated, but it must not be extrapolated into declaration deduplication."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_shape",
+        "claim_ids": [
+          "claim-b-shape"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_input",
+        "claim_ids": [
+          "claim-codefacts-input-units"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      }
+    ]
+  },
+  {
+    "qid": "S04",
+    "answer": "The entry line is one-based and points to the def, async def or class keyword, not the decorator line.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Using decorator locations or zero-based lines would misdirect source links."
+    ],
+    "fallback_required": false,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_shape",
+        "claim_ids": [
+          "claim-b-shape"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      }
+    ]
+  },
+  {
+    "qid": "S05",
+    "answer": "The pack requires exact repository-relative paths, rejects directory and wildcard requests, deduplicates duplicate requested paths and sorts results. It supplies no detailed path-validation contract beyond those rules, so normalization and rejection behavior for malformed or unsafe path forms cannot be specified from this pack.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Rules for absolute paths, traversal components, separators and normalization.",
+      "Rules for empty paths, nonexistent paths, symlinks and non-file Git entries.",
+      "Precise validation-error behavior and request rejection scope."
+    ],
+    "risks": [
+      "Accepting a path because it merely looks relative may diverge from B's validation.",
+      "Inferring normalization or missing-file behavior could change which repository object is queried."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_input",
+        "claim_ids": [
+          "claim-codefacts-input-units"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/relevant_contracts"
+      }
+    ]
+  },
+  {
+    "qid": "S06",
+    "answer": "B advertises a maximum of 2000 files, 1 MiB per file and 16 MiB total. These binary units correspond to 1,048,576 and 16,777,216 bytes. Declaration kinds and def/async def/class syntax are listed, and unsupported files are skipped with a reason, but the pack does not explicitly enumerate supported languages or extensions. A Python-only language contract cannot be confirmed from this text alone.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Explicit supported-language and extension limits.",
+      "Which bytes count toward per-file and total limits and how over-limit requests fail."
+    ],
+    "risks": [
+      "Assuming a supported language set from syntax examples may overpromise support.",
+      "The performance research suggestion is not a contract or an alternative limit."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_input",
+        "claim_ids": [
+          "claim-codefacts-input-units"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_shape",
+        "claim_ids": [
+          "claim-b-shape"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/research_notes/0",
+        "claim_id": "claim-catfile-research"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/3"
+      }
+    ]
+  },
+  {
+    "qid": "S07",
+    "answer": "The pack says existing-but-unparsable or unsupported files appear in skipped with a reason. It does not show the full CodeFacts response schema, the representation of a valid file containing zero declarations, the exact parsing-failure reason, or how encoding failures are classified. C cannot distinguish all three cases reliably from the supplied summary.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Whether a valid zero-declaration file remains in files with an empty entries list or uses another representation.",
+      "Exact skipped record shape and parsing-failure reason values.",
+      "Encoding detection, decoding-failure behavior and reason values."
+    ],
+    "risks": [
+      "Treating an empty declaration result as a failed or omitted file may produce false incompleteness.",
+      "Treating encoding failures as successful empty files could hide missing evidence."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_shape",
+        "claim_ids": [
+          "claim-b-shape"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/relevant_contracts"
+      }
+    ]
+  },
+  {
+    "qid": "S08",
+    "answer": "C cannot treat a dependency graph, signatures, entry points or responsibilities as facts supplied by CodeFacts. The pack explicitly limits CodeFacts to declarations with path and line and excludes graphs, signatures and entry points. Responsibilities are semantic interpretations that declarations alone do not establish; any suggested architecture remains a proposal pending implementation and acceptance.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Semantic guesses from declaration names could be presented as verified responsibilities.",
+      "A proposal's existence does not make its architecture accepted."
+    ],
+    "fallback_required": false,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/7"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/contract.code_facts_shape",
+        "claim_ids": [
+          "claim-b-shape"
+        ],
+        "source_revision": "0c46747147f765260bf2033f6eae40189b58ca0c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/proposals/0",
+        "claim_id": "claim-biz-functions-proposal"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/2"
+      }
+    ]
+  },
+  {
+    "qid": "S09",
+    "answer": "The pack identifies suggest_map as C's proposed business function and says business functions remain proposals until implemented and accepted. It also reports extensions/map_proposal/ as not implemented in the three observed immutable trees. It does not provide suggest_map's parameters, the input object schema, proposal output schema or the detailed human-confirmation limits. The separate mapSource {kind,digest,confirmedForRevision:null} patch is explicitly a proposal and is not a C input/output contract.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Proposed suggest_map function signature and input fields.",
+      "MapProposal/output fields and required types.",
+      "Explicit confirmation, review and acceptance constraints for C output."
+    ],
+    "risks": [
+      "Mistaking the mapSource proposal for an implemented schema.",
+      "Inventing a C payload from function names.",
+      "Extending observed nonimplementation to unobserved branches or future revisions."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/proposals/0",
+        "claim_id": "claim-biz-functions-proposal"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/proposals/1",
+        "claim_id": "claim-mapsource-proposal"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.map_proposal_snapshot",
+        "claim_ids": [
+          "claim-c-observed-status"
+        ],
+        "source_revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/2"
+      }
+    ]
+  },
+  {
+    "qid": "S10",
+    "answer": "The pack provides no extension registration procedure, route contract, handle signature, POST-size limit or concurrency model. The observed extensions/map_proposal/ directory name is not enough to derive those details. C cannot implement the requested connection without consulting an extension-interface source; no route, byte limit, signature or threading behavior can be supplied from this pack.",
+    "classification": "INSUFFICIENT",
+    "missing_facts": [
+      "Extension placement and discovery/registration mechanism.",
+      "Route format and allowed HTTP methods.",
+      "Exact handle signature, arguments and return/error shape.",
+      "POST body-size limit and enforcement behavior.",
+      "Concurrency and handler-state requirements.",
+      "Concrete rule for connecting an extension while leaving core unchanged."
+    ],
+    "risks": [
+      "Guessing transport or handler details would create an incompatible extension.",
+      "CodeFacts byte limits are file-analysis limits and cannot be reused as POST limits."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/relevant_contracts"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/evidence"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.map_proposal_snapshot",
+        "claim_ids": [
+          "claim-c-observed-status"
+        ],
+        "source_revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+        "freshness": "unverified"
+      }
+    ]
+  },
+  {
+    "qid": "S11",
+    "answer": "No. The curated map is a local file with no digest or commit pin, and confirmedForRevision is unknown. Snapshot.revision therefore never proves that the human map applies to that commit. The proposed mapSource identity patch does not change the current fact because it is not implemented or accepted.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Conflating a code revision with map provenance or human confirmation.",
+      "Treating the proposed mapSource fields as current implementation."
+    ],
+    "fallback_required": false,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.map_version",
+        "claim_ids": [
+          "claim-map-version"
+        ],
+        "source_revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/8"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/9"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/proposals/1",
+        "claim_id": "claim-mapsource-proposal"
+      }
+    ]
+  },
+  {
+    "qid": "S12",
+    "answer": "C may not present its proposal as confirmed architecture: the pack explicitly says a proposal is not accepted architecture, and business functions remain proposals until implemented and accepted. The pack gives no explicit curated-map overwrite rule or authorization workflow. It cannot establish permission to overwrite that file; an overwrite implementation must wait for the missing C/human-review contract.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Explicit prohibition or authorization conditions for writing the curated map.",
+      "Who may confirm C output and how confirmation is represented.",
+      "Allowed output persistence and promotion workflow."
+    ],
+    "risks": [
+      "Overwriting a human map without a supplied authority rule.",
+      "Promoting a proposal to confirmed architecture merely because it has been generated."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/2"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/proposals/0",
+        "claim_id": "claim-biz-functions-proposal"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.map_version",
+        "claim_ids": [
+          "claim-map-version"
+        ],
+        "source_revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.pr_21_contents_snapshot",
+        "claim_ids": [
+          "claim-pr21-contents"
+        ],
+        "source_revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "freshness": "unverified"
+      }
+    ]
+  },
+  {
+    "qid": "S13",
+    "answer": "No. At the pack's verification time PR22 is OPEN at 0c46747147f765260bf2033f6eae40189b58ca0c; OPEN does not mean merged and its branch content is not main content. The pack records main as the candidate baseline with team_approved:false. The listed main SHA 7484d44ddeac3c054ca3ba68f92293d965bb615c comes from a local Git reference and is not proof of remote HEAD. PR21 is also OPEN, so its role/review documentation cannot be treated as merged merely because it appears in the pack.",
+    "classification": "SUFFICIENT",
+    "missing_facts": [],
+    "risks": [
+      "Using evaluated PR22 delivery as proof of main integration.",
+      "Confusing main existence with team approval.",
+      "Treating the cached local reference as live remote HEAD or time-stamped PR status as perpetual."
+    ],
+    "fallback_required": false,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.pr_22_head",
+        "claim_ids": [
+          "claim-pr22-head"
+        ],
+        "source_revision": null,
+        "freshness": "verified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.code_facts",
+        "claim_ids": [
+          "claim-code-facts-pr"
+        ],
+        "source_revision": null,
+        "freshness": "verified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.team_approval",
+        "claim_ids": [
+          "claim-team-approval"
+        ],
+        "source_revision": "ff22b76966e6198b062c60fa9f0f4dbb987b027e",
+        "freshness": "unverified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.main_head",
+        "claim_ids": [
+          "claim-main-head"
+        ],
+        "source_revision": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+        "freshness": "local_reference"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state/current/implementation.pr_21_head",
+        "claim_ids": [
+          "claim-pr21-head"
+        ],
+        "source_revision": null,
+        "freshness": "verified"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/0"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/1"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/6"
+      }
+    ]
+  },
+  {
+    "qid": "S14",
+    "answer": "This pack reports no known conflicts, registry problems or unavailable verification. It exposes those three categories but does not define what C must do if one becomes relevant, including any fail-closed rule, fallback procedure or human escalation path. Its warning does establish that structural validation and an unkeyed digest cannot settle semantic truth or human authority; source review remains necessary. A consumer must not invent a resolution policy or treat an unresolved item as verified, but the exact mandated handling requires an omitted consumer contract.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Required behavior for a relevant known_conflicts entry.",
+      "Required behavior for registry_problems and verification_unavailable entries.",
+      "Blocking/fallback conditions, verifier invocation and human escalation procedure."
+    ],
+    "risks": [
+      "Treating empty buckets as proof that future packs or unlisted facts have no issues.",
+      "Using integrity validation as resolution of a semantic conflict.",
+      "Proceeding under an unavailable verifier without an explicit uncertainty policy."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/known_conflicts"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/registry_problems"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/verification_unavailable"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/10"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/integrity"
+      }
+    ]
+  },
+  {
+    "qid": "S15",
+    "answer": "This artifact labels itself schema_version 0.1 and exposes task/task_domains, project_revision, current_state, typed claim collections, issue collections, evidence, do_not_assume and integrity. Those are observable fields of this pack, but it contains no field-stability or compatibility guarantee and no canonical consumer/API specification, so I cannot certify which fields are stable enough for long-term consumption. Its explicit remaining checks are that project_revision pins the requested code context while source revisions record provenance rather than applicability, cached local references do not prove remote HEAD, and structural validation plus an unkeyed digest do not establish human authority or semantic truth. C therefore still needs source review for authority/meaning and must preserve the distinctions among current, proposal, research, historical and superseded claims. Inspecting type, scope, freshness, verified_at, claim/source revisions and live_verification is supported by the fields shown here, but the exact required consumer checks are not specified.",
+    "classification": "PARTIAL",
+    "missing_facts": [
+      "Documented stable field set, required/optional types and schema compatibility policy.",
+      "Canonical Context Authority consumer functions and validation contract.",
+      "Exact evidence/revision applicability and freshness checks required of C.",
+      "Handling of null claim_revision/source_revision and granular verified_fields."
+    ],
+    "risks": [
+      "Treating presence in current_state or a VERIFIED_FACT label as complete proof.",
+      "Equating source_revision to applicability at project_revision.",
+      "Assuming the registry hash or pack digest authenticates a human decision.",
+      "Assuming live_verification verified every value: PR22's verified_fields list covers status/pr/head, not the evaluation statement."
+    ],
+    "fallback_required": true,
+    "citations": [
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/schema_version"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/project_revision"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/current_state"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/evidence/6",
+        "claim_id": "claim-code-facts-pr"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/2"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/3"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/4"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/5"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/6"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/9"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/do_not_assume/10"
+      },
+      {
+        "file": "experiments/validation/FINAL_CONTEXT_PACK.json",
+        "json_pointer": "/integrity"
+      }
+    ]
+  }
+]

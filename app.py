@@ -35,11 +35,15 @@ class AIError(Exception):
 
 
 def git(repo: Path, *args: str) -> bytes:
+    # Strip inherited GIT_* overrides and forbid lazy fetch: repo and args are explicit.
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0", "GIT_NO_LAZY_FETCH": "1"})
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
+        env=env,
     )
     if result.returncode:
         message = result.stderr.decode("utf-8", errors="replace").strip()
