@@ -109,10 +109,12 @@ def suggest_map(repo, data) -> dict:
             proposals, request["prior_decisions"], limits
         )
 
-        # R04: CA admission — conflict routing and evidence trust boundary.
+        # R04: CA admission — conflict routing, evidence trust boundary, and
+        # P05B typed consumption (T1/T2 context, T3 independent verification
+        # of implementation head claims against C's own pin).
         proposals, limits, unresolved = ca_adapter.apply_context_admission(
-            proposals, ca, ca_mode, changed_paths, indexes["node_ids"], limits, unresolved
-        )
+            proposals, ca, ca_mode, changed_paths, indexes["node_ids"], limits,
+            unresolved, target_revision=target)
 
         # Single publication exit (invariant 2): every candidate goes through the
         # canonical proposal constructor with its invariants.

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Context Authority consumption for C (P01 port + R04 admission, W4).
+"""Context Authority consumption for C (P01 port + R04 admission, W4+P05B).
 
 Protocol:
 - PIN: C validates with its own expected_revision (= target_revision).
@@ -9,11 +9,21 @@ Protocol:
 - SELECT: only current_state.current_by_scope is read; stale/proposal/
   research/history partitions are never consumed (S20); conflict and
   verification-unavailable keys never become evidence (S23).
-- EVIDENCE: no claim is attached to any proposal automatically (DROP L01/L02 —
-  no keyword trust heuristics, no first-survivor supplement). C has no
-  independent git/gh verifier in this build, so pack claims support nothing;
-  they exist in the selection layer for typed consumers and conflict routing
-  (S21/S22/S25).
+- EVIDENCE: no claim is ever attached to proposal evidence automatically
+  (DROP L01/L02 — no keyword trust heuristics, no first-survivor supplement).
+  Typed consumption is the only channel (P05B):
+  - T1 context enrichment: a relevant LOW-IMPACT claim (team.*/architecture.*)
+    whose key/scope/value mentions a touched path or node adds a labeled
+    context line to the proposal's uncertainty — provenance always shown
+    (freshness, claim id, pack revision); never enters evidence/rationale.
+  - T2 field support: for dict values the per-field verification map is shown
+    (field=verified / field=UNVERIFIED, S22); unverified fields are labelled
+    and support nothing.
+  - T3 independent verification: implementation.* head claims are checked
+    against C's own pinned target. Confirmed → the pin speaks for itself;
+    unverifiable locally (semantic status, no pin) → UNKNOWN limit, claim not
+    consumed; contradicted → claim_id + both values recorded, the pack's
+    claims stop being consumed entirely (invariant 11).
 - CONFLICTS: structural routing over key/scope and word-boundary path/node
   association (P08). A related conflict moves touching proposals to
   unresolved HUMAN_REQUIRED; unrelated candidates keep their valid proposals
@@ -28,6 +38,9 @@ from extensions.map_proposal.model import make_evidence
 
 DEGRADED = "DEGRADED_NO_CONTEXT"
 FULL = "FULL"
+
+# Domains whose claims are low-impact enough for T1 context enrichment.
+_T1_DOMAINS = ("team.", "architecture.")
 
 _EMPTY = {
     "claims": [],
@@ -146,10 +159,12 @@ def mentions(text, token):
 
 
 def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
-                            limits, unresolved):
-    """R04 admission over the canonical proposal list. Returns
-    (proposals, limits, unresolved). Claims are never attached as evidence;
-    conflicts are routed structurally; related proposals move to unresolved."""
+                            limits, unresolved, target_revision=None):
+    """R04 admission + P05B typed consumption over the canonical proposal
+    list. Returns (proposals, limits, unresolved). Claims never become
+    proposal evidence; conflicts are routed structurally; T1/T2 add labeled
+    context to uncertainty; T3 verifies implementation head claims against
+    the pin and marks the pack untrusted on contradiction."""
     if ca_mode != FULL:
         return proposals, limits, unresolved
 
@@ -163,6 +178,10 @@ def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
             "context claims excluded (known conflicts): "
             + ", ".join(sorted(str(k) for k in ca["conflict_keys"]))
         )
+
+    claims_for_context = _independent_verification(
+        ca, target_revision, limits, unresolved)
+    pack_trusted = claims_for_context is not None
 
     kept = list(proposals)
     for row in ca["conflict_rows"]:
@@ -224,4 +243,103 @@ def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
             else:
                 still_kept.append(proposal)
         kept = still_kept
+
+    if pack_trusted and claims_for_context:
+        annotated = 0
+        for proposal in kept:
+            tokens = _proposal_tokens(proposal)
+            if not tokens:
+                continue
+            for claim_row in claims_for_context:
+                key = str(claim_row.get("key") or "")
+                if not key.startswith(_T1_DOMAINS):
+                    continue
+                text = " ".join([key, str(claim_row.get("scope") or ""),
+                                 claim_value_text(claim_row)])
+                if not any(mentions(text, token) for token in tokens):
+                    continue
+                proposal.setdefault("uncertainty", []).append(
+                    _context_line(claim_row, ca.get("project_revision")))
+                annotated += 1
+        if annotated:
+            limits.append(f"CA context enrichment: {annotated} labeled context line(s) "
+                          "added to proposal uncertainty (never evidence)")
     return kept, limits, unresolved
+
+
+def _independent_verification(ca, target_revision, limits, unresolved):
+    """T3: check implementation.* head claims against C's own pin. Returns
+    the claims that may still be consumed as context (None = pack
+    contradicted, nothing may be consumed)."""
+    claims = list(ca["claims"])
+    contradicted = False
+    for claim_row in claims:
+        key = str(claim_row.get("key") or "")
+        value = claim_row.get("value")
+        if not key.startswith("implementation."):
+            continue
+        if not isinstance(value, dict) or not isinstance(value.get("head"), str) or not value["head"]:
+            limits.append(f"context implementation claim unverifiable locally (UNKNOWN): "
+                          f"{claim_row.get('claim_id')} ({key}); semantic external status "
+                          "needs an independent verifier C does not run")
+            continue
+        head = value["head"]
+        if not target_revision:
+            limits.append(f"context head claim unverifiable without a pin (UNKNOWN): "
+                          f"{claim_row.get('claim_id')} ({key})")
+            continue
+        if head == target_revision:
+            limits.append(f"context head claim independently confirmed against the pinned "
+                          f"target: {claim_row.get('claim_id')} ({key})")
+            continue
+        contradicted = True
+        limits.append(
+            f"context contradiction (independent observation differs): claim "
+            f"{claim_row.get('claim_id')} ({key}) claims head {head}, pinned target is "
+            f"{target_revision}; pack claims no longer consumed")
+        unresolved.append(
+            {
+                "subject": f"claim:{claim_row.get('claim_id')}",
+                "reason": "HUMAN_REQUIRED",
+                "evidence": [
+                    make_evidence("context_claim", detail=key, claim_id=claim_row.get("claim_id"),
+                                  claim_scope=claim_row.get("scope"), unverified=True)
+                ],
+                "note": f"CA 主张与 C 的独立观察矛盾（主张 head {head}，pinned target "
+                        f"{target_revision}）；以独立证据为准，pack 不再可信",
+            }
+        )
+    if contradicted:
+        return None
+    return claims
+
+
+def _proposal_tokens(proposal):
+    """Paths and node ids a proposal touches (relevance tokens for T1)."""
+    tokens = set()
+    subject = proposal.get("subject")
+    if isinstance(subject, str) and subject:
+        tokens.add(subject)
+    change = proposal.get("proposed_change") or {}
+    for key in ("node_id", "from", "to"):
+        value = change.get(key)
+        if isinstance(value, str) and value:
+            tokens.add(value)
+    for item in proposal.get("evidence", []):
+        if isinstance(item, dict) and isinstance(item.get("path"), str) and item["path"]:
+            tokens.add(item["path"])
+    return tokens
+
+
+def _context_line(claim_row, project_revision):
+    """Labeled T1/T2 context line: provenance always shown, never evidence."""
+    value = claim_row.get("value")
+    verification = field_verification(claim_row)
+    if verification:
+        detail = "fields [" + "; ".join(f"{k}={v}" for k, v in sorted(verification.items())) + "]"
+    else:
+        detail = claim_value_text(value)[:80]
+    freshness = claim_row.get("freshness", "unverified")
+    return (f"CA 上下文[{freshness}] {claim_row.get('key')}@{claim_row.get('scope')}：{detail}"
+            f"（人工参考，非事实证据；claim {claim_row.get('claim_id')}，"
+            f"pack {str(project_revision)[:8]}）")
