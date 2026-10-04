@@ -555,8 +555,6 @@ def main() -> int:
         check("S22.1", "over-limit work notes import: truncate summary, keep full notes, mark it", s22_1)
 
         def s22_2():
-            import os as _os
-            preexisting = {k for k in _os.environ if k.startswith("GIT_")}
             calls = {}
             real_run = core_app.subprocess.run
 
@@ -578,9 +576,11 @@ def main() -> int:
             finally:
                 core_app.subprocess.run = real_run
             env = calls["kwargs"].get("env") or {}
-            leaked = sorted(preexisting & set(env))
-            return require(env.get("GIT_NO_LAZY_FETCH") == "1" and not leaked,
-                           f"core git() env guard on (preexisting GIT_ leaked: {leaked})")
+            allowed = {"GIT_NO_LAZY_FETCH", "GIT_OPTIONAL_LOCKS", "GIT_TERMINAL_PROMPT",
+                       "GIT_NO_REPLACE_OBJECTS"}
+            unsafe = sorted(k for k in env if k.startswith("GIT_") and k not in allowed)
+            return require(env.get("GIT_NO_LAZY_FETCH") == "1" and not unsafe,
+                           f"core git() env guard on (unsafe GIT_ vars: {unsafe})")
         check("S22.2", "core compare/snapshot path forbids lazy fetch via env guard", s22_2)
 
         def s22_3():

@@ -115,7 +115,9 @@ class WorkNotesRoundtripTests(unittest.TestCase):
             core_app.subprocess.run = real_run
         env = calls["kwargs"].get("env") or {}
         self.assertEqual(env.get("GIT_NO_LAZY_FETCH"), "1")
-        self.assertEqual([k for k in env if k in os.environ and k.startswith("GIT_")], [])
+        allowed = {"GIT_NO_LAZY_FETCH", "GIT_OPTIONAL_LOCKS", "GIT_TERMINAL_PROMPT",
+                   "GIT_NO_REPLACE_OBJECTS"}
+        self.assertEqual([k for k in env if k.startswith("GIT_") and k not in allowed], [])
 
     def test_imported_log_bad_category_returns_400(self):
         created = self.host.run("continuity", "POST", {
@@ -157,10 +159,34 @@ class RemoteSchemeTests(unittest.TestCase):
 
 
 class LazyFetchGuardTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.repo = build_repo(Path(self._tmp.name))
+
     def test_inspection_git_pins_no_lazy_fetch(self):
-        source = (ROOT / "extensions" / "continuity" / "inspection.py").read_text(encoding="utf-8")
-        self.assertIn("--no-lazy-fetch", source)
-        self.assertIn("GIT_NO_LAZY_FETCH", source)
+        import extensions.continuity.inspection as inspection
+        calls = {}
+
+        class FakeResult:
+            returncode = 1
+            stdout = b""
+            stderr = b"fatal: nope"
+
+        def spy(cmd, **kwargs):
+            calls["cmd"], calls["kwargs"] = cmd, kwargs
+            return FakeResult()
+
+        real_run = inspection.subprocess.run
+        inspection.subprocess.run = spy
+        try:
+            with self.assertRaises(ExtensionError):
+                inspection.git(self.repo, "rev-parse", "--verify", "HEAD")
+        finally:
+            inspection.subprocess.run = real_run
+        self.assertIn("--no-lazy-fetch", calls["cmd"])
+        self.assertEqual(calls["kwargs"]["env"].get("GIT_NO_LAZY_FETCH"), "1")
+        self.assertIs(calls["kwargs"].get("stdin"), subprocess.DEVNULL)
 
 
 class WorklogCategoryTypeTests(unittest.TestCase):

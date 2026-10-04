@@ -50,3 +50,29 @@
 - 请求文件已就绪并推送:`CODEX_BD_REVIEW_ROUND3_REQUEST.md`(基线 `c32d300`)。
 - 处置:按指令 §29 写 `CODEX_UNAVAILABLE.md`,STOP BEFORE C;恢复程序见该文件与 checkpoint。
 - Gate 状态:**PENDING FINAL ROUND**(r1 FAIL→fixed; r2 FAIL→fixed; r3 blocked)。
+
+---
+
+## 第二轮审核记录(Codex,READ ONLY)
+
+- 基线 `ccc30f0`;执行 `codex exec -s read-only`(123,551 tokens)
+- raw:`G:\jiagou\overnight-logs\codex-bd-round2-raw.log`;**CODEX_VERDICT: FAIL**
+- Findings → 修复映射(commit `c32d300`):
+
+| # | 级别 | Finding | ZCode 核验 | 修复 |
+|---|---|---|---|---|
+| 1 | **HIGH** | 合法长备注仍无法导入:handoff 允许 workNotes 4000 字符,continuity 导入映射到 task 上限 2000 → 2001/4000 字符导入 400 | 已复现(2000 OK;2001/4000 → 400"nextAction须为文本，最多 2000 字符") | model.py validate_packet:任务摘要字段按上限显式截断,完整备注保留在 record.handoff.workNotes,importedHistory 追加结构化截断标记 |
+| 2 | MEDIUM | 公共比较路径绕过懒抓取防护:capture/inspect→context.compare→app.py git diff 无防护 | 源码核实(内存截获确认 argv 无防护) | app.py git():剥离继承 GIT_* + GIT_NO_LAZY_FETCH=1(env-only,无 CLI flag,旧版 git 零兼容风险) |
+| 3 | MEDIUM | 惰性取件测试仅源码字符串匹配,mutation 下仍通过 | 核实 | tests 与 harness S21.3 改为 subprocess spy 行为断言(argv/env/stdin/GIT_* 剥离) |
+| 4 | LOW | harness expect_extension_error 状态断言过宽 | 核实 | 各 reject 检查精确到具体状态码(S3.12=409、S3.17=404、其余=400) |
+| 5 | LOW | continuity 导入 logs category=[] → 500 | 已复现 | model.py validate_logs isinstance(str) → 400 |
+| 6 | (r2#6) | 历史结果不可独立核验 | 核实 | verification/logs/ 入库:3 轮 unittest + 3 轮 harness 原始日志 + RUNLOG.md md5 清单 |
+
+- 回归:86 项 unittest(84 PASS + 2 env-limited);harness 66/66 ×3 轮。
+
+## 第三轮(gate 最终轮)结果:PASS_WITH_LIMITS
+
+- 基线 `c32d300`(报告时 head `57ec5de`);compact 输入 `CODEX_BD_REVIEW_ROUND3_COMPACT.md`;
+  raw:`G:\jiagou\overnight-logs\codex-bd-round3-compact.log`(63,746 tokens)。
+- **CODEX_VERDICT: PASS_WITH_LIMITS;BLOCKER=0,HIGH=0 → gate 放行 C(57ec5de 可作 C development base)。**
+- 遗留 LOW(不阻塞,已在本分支清偿):LOW-1 core env 断言误报(改白名单断言)、LOW-2 D unittest 改 spy 行为断言、LOW-3 报告计数同步 + 本节映射补齐。
