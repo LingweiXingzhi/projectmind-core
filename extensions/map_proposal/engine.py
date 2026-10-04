@@ -12,7 +12,7 @@ channels are wired but empty until W2/W3 land. No map write ever happens here.
 """
 from __future__ import annotations
 
-from extensions.map_proposal import facts_adapter, model
+from extensions.map_proposal import analysis, facts_adapter, model, gitio
 
 
 def suggest_map(repo, data) -> dict:
@@ -43,9 +43,66 @@ def suggest_map(repo, data) -> dict:
     no_proposal = []
     limits = _dedupe(limits)
 
-    # Signal channels (declaration / import / map mapping / target existence)
-    # run independently here in W2/W3; any single channel must not end the
-    # whole file analysis because "declarations did not change" (DROP L03).
+    indexes = analysis.build_indexes(current_map)
+
+    # Signal channels run independently (R01); a declaration-channel verdict on
+    # one file never ends another channel's analysis of the same file (F05).
+    # A changed path B skipped never feeds any strong candidate channel (F04);
+    # its HUMAN_REQUIRED unresolved entry is already emitted above.
+    # base==target: gates above already ran; every channel stays silent and the
+    # zero-proposal same-revision branch below applies (invariant 13).
+    modified_py_paths = [
+        c["path"]
+        for c in request["changed_paths"]
+        if c["status"] == "modified" and c["path"].endswith(".py")
+        and c["path"] not in facts["skipped"]
+    ]
+    base_facts = {"files": {}, "skipped": set(), "available": False}
+    if base != target and modified_py_paths:
+        base_facts, base_limits = facts_adapter.load_code_facts(None, repo, base, modified_py_paths)
+        limits.extend(base_limits)
+
+    if base != target:
+        for change in request["changed_paths"]:
+            path = change["path"]
+            old_path = change.get("old_path")
+            if path in facts["skipped"] or (old_path and old_path in facts["skipped"]):
+                continue
+            if change["status"] == "renamed":
+                analysis.handle_renamed(change, base, target, indexes, facts, proposals, no_proposal)
+            elif change["status"] == "added":
+                analysis.handle_added(change, target, indexes, facts, proposals, unresolved, no_proposal)
+            elif change["status"] == "modified":
+                analysis.handle_modified(
+                    change, target, base, indexes, facts, base_facts, proposals, unresolved, no_proposal
+                )
+            # removed paths are handled by the stale-map existence channel below.
+
+        # R05: stale-map target existence, independent of B availability.
+        analysis.handle_stale_map(repo, base, target, request["changed_paths"], indexes,
+                                  proposals, limits)
+        limits = _dedupe(limits)
+
+        # F20: human REJECTED subject/kind pairs stay suppressed.
+        proposals, limits = analysis.apply_prior_decisions(
+            proposals, request["prior_decisions"], limits
+        )
+
+        # Single publication exit (invariant 2): every candidate goes through the
+        # canonical proposal constructor with its invariants.
+        proposals = [
+            model.make_proposal(
+                target,
+                item["kind"],
+                item["subject"],
+                item["proposed_change"],
+                item["rationale"],
+                item["evidence"],
+                item["confidence"],
+                item["uncertainty"],
+            )
+            for item in proposals
+        ]
 
     if base == target:
         # Invariant 13: gates above already ran; zero proposals, and map drift
