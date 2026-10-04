@@ -1,5 +1,6 @@
 """Read-only checks against the selected repository, never imported paths."""
 import hashlib
+import os
 import re
 import subprocess
 from urllib.parse import urlsplit
@@ -9,11 +10,18 @@ from extensions.continuity.model import path, strings, fail, validate_logs
 
 
 def git(repo, *args):
+    # Never let a partial clone fetch missing objects: repo and revision are explicit.
+    env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    env.update({'GIT_TERMINAL_PROMPT': '0', 'GIT_OPTIONAL_LOCKS': '0',
+                'GIT_NO_REPLACE_OBJECTS': '1', 'GIT_NO_LAZY_FETCH': '1', 'LC_ALL': 'C'})
     try:
-        r = subprocess.run(['git', '-C', str(repo), *args], capture_output=True, timeout=10)
+        r = subprocess.run(['git', '--no-lazy-fetch', '-C', str(repo), *args],
+                           capture_output=True, timeout=10, env=env, stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired):
         fail('Git 读取失败或超时，请检查本机仓库')
     if r.returncode:
+        if r.returncode == 129 and b'no-lazy-fetch' in (r.stderr or b''):
+            fail('Git 版本需支持 --no-lazy-fetch，请升级 Git 后重试')
         fail('当前仓库无法读取所需 Git 资料')
     return r.stdout
 
@@ -54,7 +62,9 @@ def remotes(repo):
         for value in git(repo, 'remote', 'get-url', '--all', name).decode(errors='replace').splitlines():
             canonical = canonical_remote(value)
             if canonical:
-                result.append({'name': name, 'address': canonical})
+                # 'address' is the scheme-less canonical clue for equality;
+                # 'url' preserves the remote's own scheme for handoff recipients.
+                result.append({'name': name, 'address': canonical, 'url': value})
     return result
 
 
@@ -97,7 +107,12 @@ def capture(context, data):
     request = {k: data[k] for k in ('sourceLocator', 'comparisonMode', 'baseRevision', 'aiCandidates', 'workNotes') if k in data}
     if 'sourceLocator' not in request:
         remote = remotes(context.repo)
-        request['sourceLocator'] = {'kind': 'git_remote', 'value': 'https://' + remote[0]['address']} if remote else {'kind': 'local_path', 'value': str(context.repo)}
+        if remote:
+            # Prefer the remote's own URL; never reconstruct a different scheme.
+            request['sourceLocator'] = {'kind': 'git_remote',
+                                        'value': remote[0].get('url') or 'https://' + remote[0]['address']}
+        else:
+            request['sourceLocator'] = {'kind': 'local_path', 'value': str(context.repo)}
     request['expectedRevision'] = snap['revision']
     h = legacy_generate(context, 'POST', request)['handoff']
     logs = []

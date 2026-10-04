@@ -35,11 +35,15 @@ class AIError(Exception):
 
 
 def git(repo: Path, *args: str) -> bytes:
+    # Strip inherited GIT_* overrides and forbid lazy fetch: repo and args are explicit.
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0", "GIT_NO_LAZY_FETCH": "1"})
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
+        env=env,
     )
     if result.returncode:
         message = result.stderr.decode("utf-8", errors="replace").strip()
@@ -412,6 +416,8 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 assets = {
                     "/": ("index.html", "text/html; charset=utf-8"),
                     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                    "/view.js": ("view.js", "text/javascript; charset=utf-8"),
+                    "/review.js": ("review.js", "text/javascript; charset=utf-8"),
                     "/extensions.js": ("extensions.js", "text/javascript; charset=utf-8"),
                     "/extension.js": ("extension.js", "text/javascript; charset=utf-8"),
                     "/styles.css": ("styles.css", "text/css; charset=utf-8"),

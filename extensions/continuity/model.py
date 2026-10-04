@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import PurePosixPath
 from extensions.handoff.handoff import SHA, HandoffError, build_handoff, render_markdown
-from extensions.worklog.store import CATEGORIES, fail, text
+from extensions.worklog.store import CATEGORIES, fail, now, text
 
 FORMAT = 'projectmind-continuity-v1'
 MAX_PACKAGE = 12 * 1024 * 1024
@@ -139,8 +139,13 @@ def validate_handoff(raw):
     candidates = raw.get('aiCandidates', [])
     if not isinstance(candidates, list) or len(candidates) > 100:
         fail('AI 候选数量无效')
+    notes = raw.get('workNotes')
+    if isinstance(notes, dict):
+        # Handoff export stamps provenance ('status') onto work notes; imports
+        # must keep the roundtrip working and only carry the note fields.
+        notes = {k: notes[k] for k in ('completed', 'pending', 'blockers', 'nextSteps') if k in notes} or None
     try:
-        result = build_handoff(snapshot, source, comparison, candidates, raw.get('workNotes'))
+        result = build_handoff(snapshot, source, comparison, candidates, notes)
     except (HandoffError, KeyError, TypeError, ValueError) as exc:
         fail('交接数据校验失败：' + str(exc))
     # Preserve unknowns without elevating imported assertions to confirmed state.
@@ -157,7 +162,8 @@ def validate_logs(values):
         fail('关联日志最多 30 项')
     result = []
     for item in values:
-        if not isinstance(item, dict) or item.get('category') not in CATEGORIES or item.get('origin') not in ('human', 'ai'):
+        if not isinstance(item, dict) or not isinstance(item.get('category'), str) \
+                or item['category'] not in CATEGORIES or item.get('origin') not in ('human', 'ai'):
             fail('关联日志格式无效')
         if type(item.get('version')) is not int or item['version'] < 1:
             fail('日志版本无效')
@@ -194,10 +200,28 @@ def validate_packet(packet):
     if packet.get('status') == 'handoff_draft':
         handoff = validate_handoff(packet)
         notes = handoff.get('workNotes', {})
-        return {'task': task({'title': '导入交接 · ' + handoff['repository'], 'completed': notes.get('completed', ''),
-                              'stopPoint': notes.get('blockers', ''), 'nextAction': notes.get('nextSteps', '')}),
-                'handoff': handoff, 'scope': [], 'checklist': [], 'logs': [], 'workspace': None,
-                'mapCapture': None, 'importedHistory': [], 'transferId': ''}
+        # Task fields are bounded summaries; the full notes stay in handoff.workNotes.
+        derived, truncated = {}, []
+        for field, source in (('completed', 'completed'), ('stopPoint', 'blockers'),
+                              ('nextAction', 'nextSteps')):
+            value = notes.get(source, '')
+            limit = TASK_FIELDS[field]
+            if len(value) > limit:
+                value = value[:limit]
+                truncated.append(field)
+            derived[field] = value
+        summary = task({'title': '导入交接 · ' + handoff['repository'],
+                        'completed': derived['completed'], 'stopPoint': derived['stopPoint'],
+                        'nextAction': derived['nextAction']})
+        history = []
+        if truncated:
+            history.append({'kind': 'note', 'actor': 'continuity import', 'origin': 'human',
+                            'at': now(), 'evidence': '',
+                            'note': '交接备注超过任务字段上限，导入时已截断为摘要；'
+                                    '完整备注保留在 handoff.workNotes（截断字段：' + '、'.join(truncated) + '）'})
+        return {'task': summary, 'handoff': handoff, 'scope': [], 'checklist': [], 'logs': [],
+                'workspace': None, 'mapCapture': None, 'importedHistory': history,
+                'transferId': ''}
     if packet.get('format') != FORMAT or not isinstance(packet.get('record'), dict):
         fail('不支持此文件格式，请选择接续 JSON 或原交接 JSON')
     rec = packet['record']

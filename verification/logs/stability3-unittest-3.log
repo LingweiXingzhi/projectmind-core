@@ -1,0 +1,77 @@
+..............................E.....E..................127.0.0.1 - - [04/Oct/2026 02:45:12] "GET /ext/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:12] "GET /ext/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:12] "GET /ext/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:13] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:13] "GET /api/extensions/continuity?action=export&id=7a319197399d4419853f182db071c7d2 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:13] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:13] "POST /api/extensions/continuity HTTP/1.1" 409 -
+127.0.0.1 - - [04/Oct/2026 02:45:13] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:13] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:13] "GET /api/extensions/continuity?action=inspect&id=74d739f53d6a4de2976fb44807abc883 HTTP/1.1" 200 -
+...127.0.0.1 - - [04/Oct/2026 02:45:16] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:16] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:16] "GET /api/extensions/broken HTTP/1.1" 503 -
+.127.0.0.1 - - [04/Oct/2026 02:45:17] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:17] "GET /ext/team_facts HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:17] "GET /api/extensions/team_facts?value=from-get HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:17] "POST /api/extensions/team_facts HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:17] "POST /api/extensions/team_facts HTTP/1.1" 400 -
+.127.0.0.1 - - [04/Oct/2026 02:45:17] "GET /api/extensions/runtime_failure HTTP/1.1" 500 -
+127.0.0.1 - - [04/Oct/2026 02:45:17] "GET /api/snapshot HTTP/1.1" 200 -
+.127.0.0.1 - - [04/Oct/2026 02:45:18] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:18] "GET /extensions.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:18] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:18] "GET /api/extensions/project_summary HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:18] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:18] "GET /ext/project_summary HTTP/1.1" 200 -
+.127.0.0.1 - - [04/Oct/2026 02:45:19] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:19] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:19] "GET /api/extensions/healthy HTTP/1.1" 200 -
+.....127.0.0.1 - - [04/Oct/2026 02:45:19] "GET /ext/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:19] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:19] "POST /api/extensions/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:19] "POST /api/extensions/handoff HTTP/1.1" 400 -
+.................127.0.0.1 - - [04/Oct/2026 02:45:21] "GET /ext/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 409 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "GET /api/extensions/worklog?action=file&id=6ae11c416eaa4780a995e28270bde5de HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 02:45:21] "GET /api/extensions/worklog?action=list HTTP/1.1" 200 -
+..
+======================================================================
+ERROR: test_paths_are_exact_not_globs (test_code_facts.CollectorAcceptanceTests.test_paths_are_exact_not_globs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\jiagou\projectmind-integration-bd\tests\test_code_facts.py", line 144, in test_paths_are_exact_not_globs
+    self.write("*.py", "def literal_name():\n    pass\n")
+  File "G:\jiagou\projectmind-integration-bd\tests\test_code_facts.py", line 85, in write
+    target.write_text(content, encoding="utf-8")
+  File "C:\Program Files\Python312\Lib\pathlib.py", line 1047, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument: 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\code-facts-test-lpvc8nj8\\repo\\*.py'
+
+======================================================================
+ERROR: test_symlink_and_gitlink_are_skipped (test_code_facts.CollectorAcceptanceTests.test_symlink_and_gitlink_are_skipped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\jiagou\projectmind-integration-bd\tests\test_code_facts.py", line 230, in test_symlink_and_gitlink_are_skipped
+    (self.repo / "linked.py").symlink_to(outside)
+  File "C:\Program Files\Python312\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] 客户端没有所需的特权。: 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\code-facts-test-b1t1_ypx\\outside.py' -> 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\code-facts-test-b1t1_ypx\\repo\\linked.py'
+
+----------------------------------------------------------------------
+Ran 86 tests in 43.634s
+
+FAILED (errors=2)

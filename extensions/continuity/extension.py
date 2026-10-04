@@ -16,8 +16,14 @@ def handle(context, method, data):
         if action == 'config':
             addresses = remotes(context.repo)
             snap = context.snapshot()
+            if addresses:
+                # Prefer the remote's own URL; never reconstruct a different scheme.
+                default_source = {'kind': 'git_remote',
+                                  'value': addresses[0].get('url') or 'https://' + addresses[0]['address']}
+            else:
+                default_source = {'kind': 'local_path', 'value': str(context.repo)}
             return {'revision': snap['revision'], 'nodes': snap['nodes'], 'states': STATES,
-                    'defaultSource': {'kind': 'git_remote', 'value': 'https://' + addresses[0]['address']} if addresses else {'kind': 'local_path', 'value': str(context.repo)},
+                    'defaultSource': default_source,
                     'note': '本机接续记录与文件交换，不是在线聊天或身份认证。'}
         if action == 'logs':
             return {'entries': logs_store(context.repo).listing()}

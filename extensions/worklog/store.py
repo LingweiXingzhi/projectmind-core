@@ -39,7 +39,7 @@ def text(value, limit, label, required=False):
 
 
 def metadata(data):
-    if data.get('category') not in CATEGORIES:
+    if not isinstance(data.get('category'), str) or data['category'] not in CATEGORIES:
         fail('请选择有效的日志分类')
     try:
         day = date.fromisoformat(data.get('date', ''))
