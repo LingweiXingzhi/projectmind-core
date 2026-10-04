@@ -17,8 +17,15 @@ def _normalize(facts):
     files = {}
     for entry in facts.get("files") or []:
         if isinstance(entry, dict) and isinstance(entry.get("path"), str):
-            files[entry["path"]] = [d for d in (entry.get("entries") or [])
-                                    if isinstance(d, dict) and isinstance(d.get("name"), str)]
+            # Partial shape drift (an entry missing kind/line) is tolerated:
+            # C only reads name/kind/line and never crashes on B evolution (C-A28).
+            sanitized = []
+            for item in (entry.get("entries") or []):
+                if isinstance(item, dict) and isinstance(item.get("name"), str):
+                    sanitized.append({"name": item["name"],
+                                      "kind": item.get("kind") if isinstance(item.get("kind"), str) else "unknown",
+                                      "line": item.get("line") if isinstance(item.get("line"), int) else None})
+            files[entry["path"]] = sanitized
     skipped = {s.get("path") for s in (facts.get("skipped") or []) if isinstance(s, dict)}
     return files, skipped
 

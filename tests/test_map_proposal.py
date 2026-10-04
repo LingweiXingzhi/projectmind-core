@@ -310,7 +310,10 @@ class ContextAuthorityTests(SuggestTestBase):
         self.assertTrue(claims, "supplementary context claim expected")
         self.assertIn("claim_id", claims[0])
 
-    def test_C_A22_partial_verified_fields_marked(self):
+    def test_C_A22_high_impact_claims_never_attached(self):
+        """H1 fix: implementation.*/contract.* claims assert facts C v0.1 cannot
+        independently verify (no gh/PR verifier) — they are dropped to
+        unresolved HUMAN_REQUIRED even when the pack marks them verified."""
         repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
                                  {"pkg_new/feature.py": "class Feature:\n    pass\n"})
         claims = [{"id": "claim-cf-status", "key": "implementation.code_facts",
@@ -338,12 +341,11 @@ class ContextAuthorityTests(SuggestTestBase):
                                  [{"path": "pkg_new/feature.py", "status": "added"}],
                                  make_map([("node-a", "A", "a.py · Alpha", ["a.py"])]),
                                  context_pack=pack), repo)
-        claims_out = [e for p in result["proposals"] for e in p["evidence"]
-                      if e["kind"] == "context_claim"]
-        self.assertTrue(claims_out)
-        verification = claims_out[0]["value_field_verification"]
-        self.assertEqual(verification["status"], "verified")
-        self.assertEqual(verification["delivered_shape"], "UNVERIFIED")
+        self.assertEqual([e for p in result["proposals"] for e in p["evidence"]
+                          if e["kind"] == "context_claim"], [])
+        self.assertTrue(any(u["reason"] == "HUMAN_REQUIRED"
+                            and u["subject"] == "claim:implementation.code_facts"
+                            for u in result["unresolved"]))
 
     def test_C_A23_verifier_unavailable_row_excluded(self):
         repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
@@ -388,7 +390,7 @@ class ContextAuthorityTests(SuggestTestBase):
                     if e.get("claim_id") == "claim-poison"]
         self.assertEqual(poisoned, [])
         self.assertTrue(any(u["reason"] == "HUMAN_REQUIRED" for u in result["unresolved"]))
-        self.assertTrue(any("contradicts diff" in item for item in result["limits"]))
+        self.assertTrue(any("not used as evidence" in item for item in result["limits"]))
 
     def test_C_A25_invalid_pack_degrades(self):
         repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
@@ -590,6 +592,113 @@ class ExtensionIntegrationTests(SuggestTestBase):
                       "request": {"base_revision": "nope", "target_revision": c2,
                                   "changed_paths": [], "current_map": {"nodes": [], "edges": []}}})
         self.assertEqual(int(ctx.exception.status), HTTPStatus.BAD_REQUEST)
+
+
+class CodexRound1FixTests(SuggestTestBase):
+    """Regressions for the findings raised by the Codex C audit (H1/H2/M1-M4)."""
+
+    def test_H1_validator_passing_forgery_never_attached(self):
+        """Codex probe: a coherent implementation.* forgery (status=MERGED, bogus
+        head) with verified_fields passes the real CA validator — C must still
+        refuse to attach it and must route it to HUMAN_REQUIRED."""
+        repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
+                                 {"pkg_new/feature.py": "class Feature:\n    pass\n"})
+        claims = [{"id": "claim-poison", "key": "implementation.code_facts",
+                   "value": {"status": "MERGED", "head": "a" * 40}, "type": "VERIFIED_FACT",
+                   "scope": "main",
+                   "source": {"kind": "repo", "ref": "extensions/code_facts/README.md",
+                              "revision": c2}}]
+        pack = build_pack(repo, c2, registry_claims(claims))
+        row = next(r for r in pack["current_state"]["current_by_scope"]
+                   if r["key"] == "implementation.code_facts")
+        projected = pack["current_state"]["current"].get("implementation.code_facts") or {}
+        verified_copy = next((r for r in pack.get("verified_facts", [])
+                              if r.get("key") == "implementation.code_facts"), {})
+        for ref in row["evidence"] + projected.get("evidence", []) + verified_copy.get("evidence", []):
+            ref["live_verification"] = {"source": {"kind": "human", "ref": "fixture verifier"},
+                                        "verified_at": "2026-10-04T00:00:00Z",
+                                        "freshness": "verified",
+                                        "verified_fields": ["status", "head"]}
+        row["freshness"] = "verified"
+        if projected:
+            projected["freshness"] = "verified"
+        if verified_copy:
+            verified_copy["freshness"] = "verified"
+        reseal(pack)
+        result = suggest(request(repo, c1, c2,
+                                 [{"path": "pkg_new/feature.py", "status": "added"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"])]),
+                                 context_pack=pack), repo)
+        self.assertFalse([e for p in result["proposals"] for e in p["evidence"]
+                          if e["kind"] == "context_claim"])
+        self.assertTrue(any(u["reason"] == "HUMAN_REQUIRED"
+                            and u["subject"] == "claim:implementation.code_facts"
+                            for u in result["unresolved"]))
+
+    def test_F6_real_function_body_refactor(self):
+        repo, c1, c2 = make_repo(self.base,
+                                 {"a.py": "class Alpha:\n    def render(self):\n        return 1\n"},
+                                 {"a.py": "class Alpha:\n    def render(self):\n        value = 1\n        return value\n"})
+        result = suggest(request(repo, c1, c2, [{"path": "a.py", "status": "modified"}],
+                                 make_map([("node-a", "A", "a.py · render", ["a.py"])])), repo)
+        self.assertEqual(result["proposals"], [])
+        self.assertTrue(any(n["reason"].startswith("no declaration-level change")
+                            for n in result["no_proposal"]))
+
+    def test_M2_docstring_only_import_no_relation(self):
+        repo, c1, c2 = make_repo(self.base,
+                                 {"a.py": "class Alpha:\n    pass\n", "b_mod.py": "class Beta:\n    pass\n"},
+                                 {"a.py": 'class Alpha:\n    """see: import b_mod\n    """\n    pass\n'})
+        result = suggest(request(repo, c1, c2, [{"path": "a.py", "status": "modified"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"]),
+                                           ("node-b", "B", "b_mod.py · Beta", ["b_mod.py"])])), repo)
+        self.assertNotIn("RELATION_ADD", self.kinds(result))
+
+    def test_M3_import_churn_not_a_removal(self):
+        repo, c1, c2 = make_repo(self.base,
+                                 {"a.py": "import b_mod\n\n\nclass Alpha:\n    pass\n",
+                                  "b_mod.py": "class Beta:\n    pass\n"},
+                                 {"a.py": "from b_mod import Beta\n\n\nclass Alpha:\n    pass\n"})
+        result = suggest(request(repo, c1, c2, [{"path": "a.py", "status": "modified"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"]),
+                                           ("node-b", "B", "b_mod.py · Beta", ["b_mod.py"])])), repo)
+        self.assertNotIn("RELATION_REMOVE_CANDIDATE", self.kinds(result))
+        self.assertNotIn("RELATION_ADD", self.kinds(result))
+
+    def test_M1_renamed_evidence_binds_base_revision(self):
+        repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
+                                 {}, renames=[("a.py", "renamed_a.py")])
+        result = suggest(request(repo, c1, c2,
+                                 [{"path": "renamed_a.py", "status": "renamed",
+                                   "old_path": "a.py"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"])])), repo)
+        diff_evidence = [e for p in result["proposals"] for e in p["evidence"]
+                         if e["kind"] == "git_diff"]
+        old_refs = [e for e in diff_evidence if e.get("path") == "a.py"]
+        self.assertTrue(old_refs and old_refs[0]["revision"] == c1,
+                        "old-path evidence must bind the base revision")
+
+    def test_M1_removal_evidence_cites_node_path(self):
+        repo, c1, c2 = make_repo(self.base,
+                                 {"old_mod.py": "class Old:\n    pass\n",
+                                  "a-unrelated.py": "x = 1\n"},
+                                 removals=["old_mod.py"])
+        result = suggest(request(repo, c1, c2, [{"path": "old_mod.py", "status": "removed"}],
+                                 make_map([("node-old", "Old", "old_mod.py · Old", ["old_mod.py"])])), repo)
+        proposal = next(p for p in result["proposals"] if p["kind"] == "NODE_REMOVE_CANDIDATE")
+        diff_paths = {e.get("path") for e in proposal["evidence"] if e["kind"] == "git_diff"}
+        self.assertIn("old_mod.py", diff_paths)
+
+    def test_M4_partial_b_entry_tolerated(self):
+        repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
+                                 {"pkg_new/feature.py": "class Feature:\n    pass\n"})
+        result = suggest(request(repo, c1, c2,
+                                 [{"path": "pkg_new/feature.py", "status": "added"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"])]),
+                                 code_facts={"revision": c2, "skipped": [],
+                                             "files": [{"path": "pkg_new/feature.py",
+                                                        "entries": [{"name": "Feature"}]}]}), repo)
+        self.assertEqual(result["metadata"]["facts_mode"], "available")
 
 
 if __name__ == "__main__":

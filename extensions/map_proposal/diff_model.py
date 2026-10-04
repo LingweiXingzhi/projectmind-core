@@ -12,6 +12,7 @@ import subprocess
 _ADDED_STATIC = re.compile(r"^\+\s*(?:from\s+([A-Za-z_][\w.]*)\s+import\b|import\s+([\w.,\s]+))")
 _ADDED_DYNAMIC = re.compile(r"^\+\s*.*(?:importlib\.import_module|__import__)\s*\(")
 _REMOVED_STATIC = re.compile(r"^-\s*(?:from\s+([A-Za-z_][\w.]*)\s+import\b|import\s+([\w.,\s]+))")
+_LINE_STATIC = re.compile(r"^\s*(?:from\s+([A-Za-z_][\w.]*)\s+import\b|import\s+([\w.,\s]+))")
 
 
 class DiffSignalError(ValueError):
@@ -75,6 +76,19 @@ def import_signals(repo, base_revision, target_revision, changed_py_paths):
                 signals["removed"].append({"path": path, "module": module,
                                            "line": line.lstrip("+- ").strip()[:200]})
     return signals
+
+
+def static_import_count(repo, revision, source_path, target_path):
+    """M3: count the file's imports resolving to target_path at a pinned revision."""
+    raw = _git(repo, "show", f"{revision}:{source_path}").decode("utf-8", errors="replace")
+    count = 0
+    for line in raw.splitlines():
+        match = _LINE_STATIC.match(line)
+        if match:
+            for module in _modules(match):
+                if resolve_module(module, {target_path}) == target_path:
+                    count += 1
+    return count
 
 
 def resolve_module(module, known_paths):

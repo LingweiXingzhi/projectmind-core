@@ -17,7 +17,7 @@ TOP_LEVEL_KINDS = {"class", "function", "async_function"}
 
 
 def _fact_evidence(target, path, entries, detail=None):
-    names = ", ".join(f"{e['name']}({e['kind']}@{e['line']})" for e in entries[:3])
+    names = ", ".join(f"{e['name']}({e.get('kind')}@{e.get('line')})" for e in entries[:3])
     return make_evidence("code_fact", revision=target, path=path,
                          detail=detail or f"declarations: {names}")
 
@@ -28,6 +28,22 @@ def _map_node_evidence(node_id, detail):
 
 def _diff_evidence(target, path, detail):
     return make_evidence("git_diff", revision=target, path=path, detail=detail)
+
+
+def _is_high_impact_claim(claim):
+    """RULE-6: claims asserting revision/PR-status/contract-shape/implementation
+    state cannot be independently verified by C v0.1 (no gh access, no PR
+    verifier) — they never back a proposal, verified_fields or not. They are
+    dropped to unresolved HUMAN_REQUIRED instead (C_V0_1_RESOLVED_SEMANTICS)."""
+    key = claim.get("key") or ""
+    if key.startswith(("implementation.", "contract.")):
+        return True
+    value = claim.get("value")
+    if isinstance(value, dict):
+        return any(field in {"status", "head", "revision", "merged", "pr", "state",
+                             "shape", "delivered", "approval"} for field in value)
+    text = ca_adapter.claim_value_text(claim).lower()
+    return any(token in text for token in ("merged", "approved", "delivered", "released"))
 
 
 def _context_evidence(claim):
@@ -94,6 +110,7 @@ def suggest(request, repo):
         base_facts, base_limits = facts_adapter.load_code_facts(None, repo, base, modified_paths)
         limits.extend(base_limits)
 
+    declaration_unchanged = set()
     for change in changes:
         path = change["path"]
         if path in skipped and path.endswith(".py"):
@@ -104,7 +121,7 @@ def suggest(request, repo):
                                "note": "skipped files are never facts; no proposal from guesses"})
             continue
         if change["status"] == "renamed":
-            _handle_renamed(change, target, node_by_path, files, proposals, no_proposal)
+            _handle_renamed(change, base, target, node_by_path, files, proposals, no_proposal)
         elif change["status"] == "removed":
             continue
         elif change["status"] == "added":
@@ -112,14 +129,19 @@ def suggest(request, repo):
                           proposals, unresolved, no_proposal)
         else:
             _handle_modified(change, target, base, node_by_path, files, entry_lookup,
-                             base_facts, proposals, unresolved, no_proposal)
+                             base_facts, proposals, unresolved, no_proposal,
+                             declaration_unchanged)
 
-    _handle_removals(changes, target, nodes, node_by_path, facts, proposals)
-    _handle_relations(repo, base, target, changes, node_by_path, known_paths, limits,
-                      unresolved, proposals)
+    _handle_removals(changes, base, target, nodes, node_by_path, facts, proposals)
+    relation_paths = [c["path"] for c in changes
+                      if c["path"].endswith(".py") and c["path"] not in declaration_unchanged
+                      and c["status"] in ("added", "modified", "renamed")]
+    _handle_relations(repo, base, target, changes, relation_paths, node_by_path, known_paths,
+                      limits, unresolved, proposals)
     proposals, limits = _apply_prior_decisions(proposals, cleaned["prior_decisions"], limits)
     proposals, limits, unresolved = _apply_context_claims(
-        proposals, ca, ca_mode, changed_paths, limits, unresolved, target)
+        proposals, ca, ca_mode, changed_paths, {node["id"] for node in nodes},
+        limits, unresolved, target)
 
     proposals.sort(key=lambda item: (item["subject"], item["kind"]))
     final = []
@@ -142,12 +164,14 @@ def suggest(request, repo):
             "limits": limits, "metadata": metadata}
 
 
-def _handle_renamed(change, target, node_by_path, files, proposals, no_proposal):
+def _handle_renamed(change, base, target, node_by_path, files, proposals, no_proposal):
     old_path, path = change["old_path"], change["path"]
     owners = node_by_path.get(old_path, [])
     if owners and not node_by_path.get(path, []):
         entries = files.get(path) or []
-        evidence = [_diff_evidence(target, old_path, f"renamed → {path}"),
+        # M1: the old path only exists at base; the new path only at target.
+        evidence = [_diff_evidence(base, old_path, f"renamed → {path} (old path absent at target)"),
+                    _diff_evidence(target, path, "new path appears at target"),
                     _map_node_evidence(owners[0], "evidence path renamed")]
         if entries:
             evidence.append(_fact_evidence(target, path, entries))
@@ -219,7 +243,8 @@ def _handle_added(change, target, node_by_path, files, facts,
 
 
 def _handle_modified(change, target, base, node_by_path, files, entry_lookup,
-                     base_facts, proposals, unresolved, no_proposal):
+                     base_facts, proposals, unresolved, no_proposal,
+                     declaration_unchanged):
     path = change["path"]
     if not path.endswith(".py"):
         no_proposal.append({"paths": [path], "reason": "non-python change"})
@@ -229,6 +254,7 @@ def _handle_modified(change, target, base, node_by_path, files, entry_lookup,
     base_entries = base_facts["files"].get(path) if base_facts["available"] else None
     if base_entries is not None and target_entries is not None:
         if sorted(map(json.dumps, base_entries)) == sorted(map(json.dumps, target_entries)):
+            declaration_unchanged.add(path)
             no_proposal.append({"paths": [path],
                                 "reason": "no declaration-level change "
                                           "(comments/formatting/internal body)"})
@@ -276,7 +302,7 @@ def _handle_modified(change, target, base, node_by_path, files, entry_lookup,
                        "note": "no code facts to characterize the change"})
 
 
-def _handle_removals(changes, target, nodes, node_by_path, facts, proposals):
+def _handle_removals(changes, base, target, nodes, node_by_path, facts, proposals):
     if not facts["available"]:
         return
     removed = {c["path"] for c in changes if c["status"] == "removed"}
@@ -285,26 +311,35 @@ def _handle_removals(changes, target, nodes, node_by_path, facts, proposals):
     for node in nodes:
         evidence_paths = set(node["evidence_paths"])
         if evidence_paths and evidence_paths <= removed:
+            # M1: cite the node's own paths; the old path exists at base, not target.
+            own = sorted(evidence_paths)[0]
             proposals.append({
                 "kind": "NODE_REMOVE_CANDIDATE", "subject": node["id"], "node_ids": [node["id"]],
                 "proposed_change": {"node_id": node["id"]},
                 "rationale": "节点的全部证据路径在 target 提交中已删除;地图可能过期 — 候选,不武断",
-                "evidence": [_diff_evidence(target, sorted(removed)[0],
+                "evidence": [_diff_evidence(base, own, "evidence path present at base"),
+                             _diff_evidence(target, own,
                                             f"all evidence paths removed: {sorted(evidence_paths)}"),
                              _map_node_evidence(node["id"], "every evidence path absent at target")],
                 "confidence": "low",
                 "uncertainty": ["map may be stale rather than the node meaningless — human decides"]})
 
 
-def _handle_relations(repo, base, target, changes, node_by_path, known_paths, limits,
-                      unresolved, proposals):
-    py_changed = [c["path"] for c in changes if c["path"].endswith(".py")
-                  and c["status"] in ("added", "modified", "renamed")]
+def _handle_relations(repo, base, target, changes, relation_paths, node_by_path, known_paths,
+                      limits, unresolved, proposals):
     try:
-        signals = diff_model.import_signals(repo, base, target, py_changed)
+        signals = diff_model.import_signals(repo, base, target, relation_paths)
     except diff_model.DiffSignalError as exc:
         limits.append(f"import signal extraction failed: {exc}")
         return
+    # M2 churn guard: the same (file, module) gaining and losing an import in one
+    # diff is reformatting, not a relation change.
+    added_keys = {(s["path"], s["module"]) for s in signals["added"]}
+    signals["removed"] = [s for s in signals["removed"]
+                          if (s["path"], s["module"]) not in added_keys]
+    signals["added"] = [s for s in signals["added"]
+                        if (s["path"], s["module"]) not in
+                        {(r["path"], r["module"]) for r in signals["removed"]}]
     emitted_pairs = set()
     for signal in signals["added"]:
         target_path = diff_model.resolve_module(signal["module"], known_paths)
@@ -341,13 +376,31 @@ def _handle_relations(repo, base, target, changes, node_by_path, known_paths, li
         target_owners = node_by_path.get(target_path, [])
         if not source_owners or not target_owners or set(source_owners) == set(target_owners):
             continue
+        pair = (tuple(sorted(source_owners)), tuple(sorted(target_owners)))
+        if pair in emitted_pairs:
+            continue
+        # M3: "all imports between the two sides are gone" is verified on the
+        # involved source file — the import must exist at base and be gone at
+        # target; any added signal for the same pair already suppressed above.
+        try:
+            at_base = diff_model.static_import_count(repo, base, signal["path"], target_path)
+            at_target = diff_model.static_import_count(repo, target, signal["path"], target_path)
+        except diff_model.DiffSignalError as exc:
+            limits.append(f"import recheck failed: {exc}")
+            continue
+        if at_base == 0 or at_target > 0:
+            continue
+        emitted_pairs.add(pair)
         proposals.append({
             "kind": "RELATION_REMOVE_CANDIDATE", "subject": f"{source_owners[0]}→{target_owners[0]}",
             "node_ids": None,
             "proposed_change": {"from": source_owners[0], "to": target_owners[0],
                                 "label": f"import 移除(候选):{signal['path']} → {target_path}"},
-            "rationale": "两侧节点之间的 import 在 diff 中被移除;是否意味关系消失由人判断",
-            "evidence": [_diff_evidence(target, signal["path"], f"import removed: {signal['line']}"),
+            "rationale": f"该文件在 target 中已无指向此节点的 import(base {at_base} 条→target 0 条);"
+                         "是否意味关系消失由人判断",
+            "evidence": [_diff_evidence(base, signal["path"],
+                                        f"import present at base: {at_base} → {target_path}"),
+                         _diff_evidence(target, signal["path"], "import removed at target"),
                          _map_node_evidence(source_owners[0], f"covers {signal['path']}"),
                          _map_node_evidence(target_owners[0], f"covers {target_path}")],
             "confidence": "low", "uncertainty": []})
@@ -376,52 +429,101 @@ def _apply_prior_decisions(proposals, prior_decisions, limits):
     return kept, limits
 
 
-def _apply_context_claims(proposals, ca, ca_mode, changed_paths, limits, unresolved, target):
-    """RULE-6/7: conflicts never become evidence; claims contradicting independent
-    signals are dropped; a claim only ever supplements a proposal that already
+def _apply_context_claims(proposals, ca, ca_mode, changed_paths, node_ids, limits,
+                          unresolved, target):
+    """RULE-6/7 enforcement (H1/H2 fixes):
+    - high-impact claims (implementation./contract. or status/head/merged-style
+      values) are NEVER attached — C v0.1 cannot independently verify them; they
+      go to unresolved HUMAN_REQUIRED (a coherent forgery passes the validator,
+      so the only safe posture is not to背书 what C cannot check);
+    - claims whose value text mentions changed-away paths contradict the diff
+      and are dropped the same way;
+    - known conflicts related to this difference (mentioning changed paths or
+      map node ids) land in unresolved HUMAN_REQUIRED and any proposal touching
+      those paths/nodes is moved out of proposals until a human resolves.
+    A surviving low-impact claim may only SUPPLEMENT a proposal that already
     stands on git/fact/map evidence."""
     if ca_mode == ca_adapter.DEGRADED:
         return proposals, limits, unresolved
-    conflict_keys = ca["conflict_keys"]
-    usable = [c for c in ca["claims"] if c["key"] not in conflict_keys]
-    contradictions = []
-    for claim in usable:
-        text = ca_adapter.claim_value_text(claim)
-        mentioned = sorted(path for path in changed_paths if path and path in text)
-        if mentioned:
-            contradictions.append((claim, mentioned))
-    contradiction_ids = {claim["claim_id"] for claim, _ in contradictions}
-    usable = [c for c in usable if c["claim_id"] not in contradiction_ids]
-    for claim, mentioned in contradictions:
-        limits.append(f"context claim dropped (contradicts diff): {claim['key']}@{claim['scope']} "
-                      f"mentions changed-away path {mentioned[0]}")
+
+    def drop_to_unresolved(claim, note):
+        limits.append(f"context claim not used as evidence ({note}): "
+                      f"{claim['key']}@{claim['scope']}")
         unresolved.append({"subject": f"claim:{claim['key']}", "reason": "HUMAN_REQUIRED",
                            "kind": "UNKNOWN",
                            "evidence": [make_evidence("context_claim",
                                                       detail=ca_adapter.claim_value_text(claim)[:300],
                                                       claim_id=claim["claim_id"],
-                                                      claim_scope=claim["scope"], unverified=True),
-                                        _diff_evidence(target, mentioned[0],
-                                                       "path changed/removed at target")],
-                           "note": "pack contradicts independent git evidence; human decides "
-                                   "(coherent-poison defense)"})
+                                                      claim_scope=claim["scope"], unverified=True)],
+                           "note": note})
+
+    conflict_keys = ca["conflict_keys"]
+    for claim in ca["claims"]:
+        if claim["key"] in conflict_keys:
+            continue
+        mentioned = sorted(path for path in changed_paths if path and path
+                           in ca_adapter.claim_value_text(claim))
+        if mentioned:
+            drop_to_unresolved(claim, "pack contradicts independent git evidence "
+                                      f"(mentions changed path {mentioned[0]}); human decides")
+        elif _is_high_impact_claim(claim):
+            drop_to_unresolved(claim, "high-impact assertion (revision/PR status/contract/"
+                                      "implementation) — C v0.1 has no independent verifier "
+                                      "for it and must not背书 it")
     if conflict_keys:
         limits.append(f"context claims excluded (known conflicts): {', '.join(sorted(conflict_keys))}")
         for row in ca.get("conflict_rows", []):
             row_text = " ".join(ca_adapter.claim_value_text(claim)
                                 for claim in row.get("claims", []) if isinstance(claim, dict))
-            related = sorted(path for path in changed_paths if path and path in row_text)
-            if related:
-                unresolved.append({"subject": f"conflict:{row.get('key')}",
-                                   "reason": "HUMAN_REQUIRED", "kind": "UNKNOWN",
-                                   "evidence": [make_evidence("context_claim", detail=row_text[:300],
-                                                              claim_id=None,
-                                                              claim_scope=row.get("scope"),
-                                                              unverified=True)],
-                                   "note": "known CA conflict related to this difference; "
-                                           "C must not pick a side"})
-    if usable and proposals:
-        proposals[0].setdefault("evidence", []).append(_context_evidence(usable[0]))
-        limits.append(f"context claim attached as supplementary evidence: "
-                      f"{usable[0]['key']}@{usable[0]['scope']}")
+            mentioned_paths = sorted(path for path in changed_paths if path and path in row_text)
+            mentioned_nodes = sorted(node_id for node_id in node_ids
+                                     if node_id and node_id in row_text)
+            if not mentioned_paths and not mentioned_nodes:
+                continue
+            unresolved.append({"subject": f"conflict:{row.get('key')}",
+                               "reason": "HUMAN_REQUIRED", "kind": "UNKNOWN",
+                               "evidence": [make_evidence("context_claim", detail=row_text[:300],
+                                                          claim_id=None,
+                                                          claim_scope=row.get("scope"),
+                                                          unverified=True)],
+                               "note": "known CA conflict related to this difference "
+                                       "(paths: " + ", ".join(mentioned_paths) +
+                                       "; nodes: " + ", ".join(mentioned_nodes) +
+                                       "); C must not pick a side"})
+            kept = []
+            for proposal in proposals:
+                touched_nodes = set(proposal.get("node_ids") or [])
+                change = proposal.get("proposed_change") or {}
+                if change.get("node_id"):
+                    touched_nodes.add(change["node_id"])
+                touches = proposal["subject"] in mentioned_paths \
+                    or proposal["subject"] in mentioned_nodes \
+                    or bool(touched_nodes & set(mentioned_nodes)) \
+                    or any(path in row_text for path in [proposal["subject"]]
+                           if path in changed_paths)
+                if touches:
+                    unresolved.append({"subject": proposal["subject"],
+                                       "reason": "HUMAN_REQUIRED", "kind": "UNKNOWN",
+                                       "evidence": proposal["evidence"][:1],
+                                       "note": "proposal suppressed pending human resolution of "
+                                               f"known conflict {row.get('key')}"})
+                    limits.append(f"proposal moved to unresolved (related known conflict): "
+                                  f"{proposal['kind']}:{proposal['subject']}")
+                else:
+                    kept.append(proposal)
+            proposals[:] = kept
+    if ca["claims"] and proposals:
+        supplementable = [c for c in ca["claims"]
+                          if c["key"] not in conflict_keys
+                          and c["claim_id"] not in {u.get("claim_id") for u in unresolved}
+                          and not _is_high_impact_claim(c)
+                          and not any(path and path in ca_adapter.claim_value_text(c)
+                                      for path in changed_paths)]
+        if supplementable:
+            proposals[0].setdefault("evidence", []).append(_context_evidence(supplementable[0]))
+            limits.append(f"context claim attached as supplementary evidence: "
+                          f"{supplementable[0]['key']}@{supplementable[0]['scope']}")
+        else:
+            limits.append("no low-impact verifiable context claim available; "
+                          "no context_claim attached to proposals")
     return proposals, limits, unresolved
