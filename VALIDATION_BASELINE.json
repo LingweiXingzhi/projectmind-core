@@ -1,0 +1,54 @@
+{
+  "context_authority_pr": 29,
+  "context_authority_branch": "feat/context-authority-mvp",
+  "validated_head": "9ea23491d1849f21bad9f60c1c1ca8df55bb5936",
+  "validated_head_confirmed_at": "2026-10-03",
+  "base_main_head": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+  "validation_status": "C_CONSUMABLE_WITH_LIMITS",
+  "c_can_start": "YES_WITH_LIMITS",
+  "validation_date": "2026-10-03",
+  "validator": "independent agent session (overnight-2026-10-03), no shared context with CA author",
+  "test_count": 172,
+  "test_command": "python -m unittest discover -s tests (in projectmind-context-authority @ validated_head)",
+  "known_findings": 8,
+  "known_findings_blocking_c": 0,
+  "independent_experiments": {
+    "red_team_probes": 11,
+    "poison_packs": 10,
+    "poison_validator_rejected": 5,
+    "poison_agent_runs": 13,
+    "poison_pack_only_blind_trust": "2/5 coherent poisons",
+    "poison_evidence_fallback_corrected": "4/4 tested coherent poisons",
+    "hidden_holdout_questions": 24,
+    "hidden_holdout_agents": {"raw": 3, "context_pack_evidence": 3, "pack_only": 1},
+    "hidden_holdout_result": "CONTEXT 72/72 correct, 0 disagreement; RAW 71/72, 2 agent-pair disagreements",
+    "pack_only_sufficiency": {"sufficient": 6, "partial": 5, "not_in_pack": 13, "hallucinations": 0}
+  },
+  "reports": {
+    "verdict": "validation/OVERNIGHT_CONTEXT_AUTHORITY_VERDICT.md",
+    "independent_audit": "validation/INDEPENDENT_CA_AUDIT.md",
+    "poisoning_study": "validation/CONTEXT_POISONING_STUDY.md",
+    "holdout_and_sufficiency": "validation/HIDDEN_HOLDOUT_AND_SUFFICIENCY_REPORT.md",
+    "known_limitations": "validation/findings/CONTEXT_AUTHORITY_KNOWN_LIMITATIONS_FOR_C.md",
+    "c_entry": "c-readiness/C_START_HERE.md",
+    "c_safety_rules": "c-readiness/C_CONTEXT_SAFETY_RULES.md",
+    "c_interface_freeze": "c-readiness/C_CONSUMABLE_INTERFACE.md",
+    "integration_risk": "integration/V1_INTEGRATION_RISK_REPORT.md",
+    "benchmark_readiness": "benchmark/BENCHMARK_PUBLICATION_READINESS.md",
+    "publication_report": "VALIDATION_PACKAGE_PUBLICATION_REPORT.md"
+  },
+  "evidence": {
+    "ground_truth": "evidence/holdout/GROUND_TRUTH_FROZEN.jsonl",
+    "holdout_questions": "evidence/holdout/QUESTIONS.jsonl",
+    "poison_manifest": "evidence/poisoning/POISON_MANIFEST.json",
+    "poison_builder": "evidence/poisoning/build_poison_packs.py",
+    "redteam_probes": "evidence/redteam/redteam_resolver.py",
+    "redteam_results": "evidence/redteam/redteam_results.json",
+    "note": "poison pack JSONs (CLEAN + P01-P10) are excluded as derived artifacts; regenerate with build_poison_packs.py against the validated head"
+  },
+  "human_decisions_still_required": [
+    "merge/no-merge of PR #29 to main (NOT authorized by this package)",
+    "CA maintenance task for the 5 suggested non-blocking fixes",
+    "benchmark remote repository owner/visibility"
+  ]
+}

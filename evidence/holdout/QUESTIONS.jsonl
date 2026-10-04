@@ -1,0 +1,24 @@
+{"qid": "h01", "question": "main 当前 HEAD 的完整 SHA 是什么?它的父提交(第一个 parent)SHA 前缀是什么?"}
+{"qid": "h02", "question": "PR #22 除了 OPEN/MERGED 之外,还有一个重要的 GitHub 状态属性,是什么?"}
+{"qid": "h03", "question": "PR #21 的标题是什么?"}
+{"qid": "h04", "question": "PR #22 的变更文件主要落在哪个目录前缀下?"}
+{"qid": "h05", "question": "B collect_code_facts 单次请求最多接受多少个文件?"}
+{"qid": "h06", "question": "B collect_code_facts 单个文件的大小上限和单次解析的总大小上限分别是多少?"}
+{"qid": "h07", "question": "B collect_code_facts 对请求中不存在的指定路径如何处理?对存在但无法解析的文件又如何处理?"}
+{"qid": "h08", "question": "B collect_code_facts 的 Git 命令超时和 HTTP POST 请求体上限各是多少?"}
+{"qid": "h09", "question": "app.py 在 ff22b76 这个提交中,def build_snapshot 位于第几行?"}
+{"qid": "h10", "question": "MVP_INTERFACES.md@ff22b76 中 suggest_map 的完整函数签名是什么?"}
+{"qid": "h11", "question": "PR #27 的标题是什么?它合并进 main 了吗?"}
+{"qid": "h12", "question": "PR #26 是什么功能?当前状态?"}
+{"qid": "h13", "question": "PR #31 是什么内容?属于哪个角色的工作?"}
+{"qid": "h14", "question": "B 的基准评测里 686 个评测单元是怎么构成的?"}
+{"qid": "h15", "question": "COLLABORATION_CONTRACT.md 在 main@7484d44 上(未合并 PR21 之前)写的 A 角色职责是什么?"}
+{"qid": "h16", "question": "V2 角色映射记载在什么文件里?它还有效吗?"}
+{"qid": "h17", "question": "扩展(extensions)HTTP 接口对 POST 请求体有什么限制?超限会怎样?"}
+{"qid": "h18", "question": "CodeFacts.revision 和 Snapshot.revision 在真实联调时必须满足什么关系?"}
+{"qid": "h19", "question": "collect_code_facts 支持 64 位 SHA 输入吗?有什么保留?"}
+{"qid": "h20", "question": "feat/context-authority-mvp 分支当前的 head SHA 是什么?它和 main 是什么关系?"}
+{"qid": "h21", "question": "PR #24 是什么内容?它和 PR #27 是什么关系?"}
+{"qid": "h22", "question": "MVP_INTERFACES.md@ff22b76 的 PROPOSED 节里,地图来源(mapSource)身份补丁的三个字段是什么?首个验收标准是什么?"}
+{"qid": "h23", "question": "extensions/context_authority 这个扩展在 9ea2349 树上提供哪几个 GET action?"}
+{"qid": "h24", "question": "tests/ 目录在 9ea2349 树上有多少个测试文件?最大的一个叫什么?"}
