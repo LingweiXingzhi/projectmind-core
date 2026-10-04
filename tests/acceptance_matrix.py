@@ -147,15 +147,22 @@ import os  # noqa: E402
 
 
 def run_a30_fix_tests():
-    """S30 evidence: the formal A30 regression on the fix-branch worktree."""
-    if not A30_WORKTREE.is_dir():
-        return None, "A30 fix worktree not present"
+    """S30 evidence: the formal A30 regression. On an integration base that
+    carries the A30 fix the tests run in-runtime; otherwise the fix-branch
+    worktree is used as the owner-delivery evidence."""
     proc = subprocess.run([sys.executable, "-m", "unittest", "tests.test_extensions"],
-                          cwd=str(A30_WORKTREE), capture_output=True, text=True, timeout=300)
+                          cwd=str(ROOT), capture_output=True, text=True, timeout=300)
     if proc.returncode == 0:
-        return True, ("fix/core-extension-runtime-isolation: 9/9 extension tests "
+        return True, ("in-runtime on this checkout: 9/9 extension tests "
                       "incl. 4 A30 formal tests (fail on pre-fix host)")
-    return False, (proc.stderr or "")[-300:]
+    if A30_WORKTREE.is_dir():
+        proc = subprocess.run([sys.executable, "-m", "unittest", "tests.test_extensions"],
+                              cwd=str(A30_WORKTREE), capture_output=True, text=True,
+                              timeout=300)
+        if proc.returncode == 0:
+            return True, ("fix/core-extension-runtime-isolation worktree: 9/9 extension "
+                          "tests incl. 4 A30 formal tests (fail on pre-fix host)")
+    return False, "A30 formal regression failed in-runtime and no fix worktree present"
 
 
 def main():

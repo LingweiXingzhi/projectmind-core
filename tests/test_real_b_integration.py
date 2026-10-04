@@ -231,8 +231,10 @@ class RealBIntegrationTests(unittest.TestCase):
         self.assertEqual(res["request"]["facts_source"], "installed")
 
     def test_s15_real_collector_unavailable_and_exception(self):
-        # Unavailable: without the real module C degrades honestly and the
-        # B-free channels (rename link) still fire.
+        # Unavailable: with the installed real module hidden, C degrades
+        # honestly and the B-free channels (rename link) still fire. On the
+        # BCD integration base the real extension IS installed, so absence
+        # is simulated explicitly (module set to None -> ImportError).
         repo, base, target, tmp = build_repo(
             {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS},
             {"pkg/a.py": None, "pkg/a2.py": A_CLASS, "pkg/b.py": B_CLASS},
@@ -246,7 +248,9 @@ class RealBIntegrationTests(unittest.TestCase):
             "current_map": two_node_map(),
             "prior_decisions": [],
         }
-        res = engine.suggest_map(repo, request)
+        with mock.patch.dict(sys.modules, {"extensions.code_facts.facts": None,
+                                           "extensions.code_facts": None}):
+            res = engine.suggest_map(repo, request)
         self.assertEqual(res["request"]["facts_source"], "none")
         self.assertEqual(res["status"], "degraded")
         links = [p for p in res["proposals"] if p["kind"] == "IMPLEMENTATION_LINK_CHANGE"]

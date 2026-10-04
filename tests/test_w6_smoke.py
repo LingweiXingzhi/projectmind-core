@@ -83,7 +83,13 @@ def test_side_facts(target, paths):
 
 class RealDiffSmokeTests(unittest.TestCase):
     def setUp(self):
-        self.base = rev_of("HEAD~5")
+        # Use the deepest history that exists on this checkout (integration
+        # branches may be younger than 5 commits).
+        count = int(git("rev-list", "--count", "HEAD").decode().strip())
+        depth = min(5, max(1, count - 1))
+        if depth < 1:
+            self.skipTest("no parent commit available")
+        self.base = rev_of(f"HEAD~{depth}")
         self.target = rev_of("HEAD")
         self.changed = name_status(self.base, self.target)
         map_text = (REPO / "data" / "project-map.json").read_text(encoding="utf-8")
@@ -123,8 +129,14 @@ class RealDiffSmokeTests(unittest.TestCase):
         map_text_after = (REPO / "data" / "project-map.json").read_text(encoding="utf-8")
         self.assertEqual(self.map_before_hash,
                          hashlib.sha256(map_text_after.encode("utf-8")).hexdigest())
-        # honest degradation note when B is absent
-        res_degraded = engine.suggest_map(REPO, {**request, "code_facts": None})
+        # honest degradation when B is unavailable. On the integration base
+        # the real B extension IS installed, so absence is simulated
+        # explicitly (module set to None -> ImportError); either way C must
+        # degrade with zero fabricated candidates.
+        import unittest.mock as _mock
+        with _mock.patch.dict(sys.modules, {"extensions.code_facts.facts": None,
+                                            "extensions.code_facts": None}):
+            res_degraded = engine.suggest_map(REPO, {**request, "code_facts": None})
         self.assertEqual(res_degraded["status"], "degraded")
         self.assertEqual(res_degraded["proposals"], [])
 
