@@ -72,50 +72,54 @@ def _parse_blob(repo, revision, source_path):
 
 
 def _scan_imports(tree):
-    """(static module strings, dynamic import tags, from-alias-derived
-    candidates) from one parsed module.
+    """(static module strings, dynamic import tags, plain-provenance strings)
+    from one parsed module.
 
     ImportFrom contributes its package prefix AND each prefix-qualified alias
     so `from pkg import b` (b a submodule) and `from . import b` carry the
     submodule candidate; relative dots are preserved (adversarial 1a/1b/3).
-    Alias-derived candidates are reported separately (Codex MEDIUM-4):
-    `from pkg import b` may bind an attribute defined in pkg/__init__ rather
-    than the submodule pkg/b.py, and C cannot parse declarations to know
-    (O-1) — such relations must stay explicitly uncertain. Aliased and
-    parenthesized/multiline forms are AST-native. Docstrings, comments and
-    string literals never appear here."""
-    static, dynamic, from_aliases = set(), set(), set()
+    `plain` carries every string introduced OUTSIDE alias expansion (Import
+    names and ImportFrom prefixes); a candidate that also has plain
+    provenance must NOT be alias-downgraded, because the same string can
+    arise from an explicit import in another statement (Codex round-2
+    MEDIUM). Aliased and parenthesized/multiline forms are AST-native.
+    Docstrings, comments and string literals never appear here."""
+    static, dynamic, plain = set(), set(), set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 static.add(alias.name)
+                plain.add(alias.name)
         elif isinstance(node, ast.ImportFrom):
             prefix = "." * (node.level or 0) + (node.module or "")
             if prefix:
                 static.add(prefix)
+                plain.add(prefix)
             for alias in node.names:
                 if not prefix:
                     static.add(alias.name)
+                    plain.add(alias.name)
                     continue
                 candidate = prefix + alias.name if prefix.endswith(".") \
                     else f"{prefix}.{alias.name}"
                 static.add(candidate)
-                from_aliases.add(candidate)
         elif isinstance(node, ast.Call):
             func = node.func
             if isinstance(func, ast.Name) and func.id == "__import__":
                 dynamic.add(_dynamic_tag(node, "__import__"))
             elif isinstance(func, ast.Attribute) and func.attr == "import_module":
                 dynamic.add(_dynamic_tag(node, "importlib.import_module"))
-    return static, dynamic, from_aliases
+    return static, dynamic, plain
 
 
 def _dynamic_tag(call_node, api):
-    """Dynamic import tag includes the string target when statically visible
+    """Dynamic import tag includes the statically visible string target
     (Codex HIGH-2: only diffing API names made `__import__('pkg.b')` →
-    `__import__('pkg.c')` a silent absence, violating C-3)."""
-    if call_node.args:
-        arg = call_node.args[0]
+    `__import__('pkg.c')` a silent absence, violating C-3). Both positional
+    and `name=` keyword forms are recognized."""
+    candidates = list(call_node.args)
+    candidates.extend(kw.value for kw in call_node.keywords if kw.arg == "name")
+    for arg in candidates:
         if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value:
             return f"{api}:{arg.value}"
     return api
@@ -154,7 +158,7 @@ def _file_relation_events(repo, base, target, change, known_paths):
         base_dynamic = _scan_imports(_parse_blob(repo, base, base_ref))[1]
     else:
         base_resolved, base_dynamic = {}, set()
-    target_static, target_dynamic, target_from_aliases = _scan_imports(
+    target_static, target_dynamic, target_plain = _scan_imports(
         _parse_blob(repo, target, path))
     target_resolved = {}
     for module in sorted(target_static):
@@ -167,9 +171,12 @@ def _file_relation_events(repo, base, target, change, known_paths):
         "added": added,
         # Codex MEDIUM-4: a resolved target reached ONLY through from-import
         # alias expansion may actually be a package-__init__ attribute — the
-        # proposal must carry that ambiguity, never medium confidence.
+        # proposal must carry that ambiguity, never medium confidence. A
+        # candidate string with plain provenance (an Import name or an
+        # ImportFrom prefix anywhere in the file) is NOT downgraded (Codex
+        # round-2 MEDIUM: same string, different import forms).
         "added_from_derived": {
-            p: all(m in target_from_aliases for m in mods)
+            p: all(m not in target_plain for m in mods)
             for p, mods in added.items()
         },
         "removed": {p: mods for p, mods in base_resolved.items() if p not in target_resolved},

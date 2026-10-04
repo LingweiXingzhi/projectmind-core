@@ -230,6 +230,20 @@ class RelationChannelTests(unittest.TestCase):
         self.assertTrue(any(u["subject"] == "pkg/a.py" and u["reason"] == "HUMAN_REQUIRED"
                             for u in res["unresolved"]))
 
+    def test_x02_changed_dynamic_keyword_target_is_not_silent(self):
+        # Codex round-2 HIGH residual: `importlib.import_module(name=...)`
+        # keyword form must be tracked like the positional form.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS + "import importlib\nimportlib.import_module(name='pkg.c')\n",
+             "pkg/b.py": B_CLASS},
+            {"pkg/a.py": A_CLASS + "import importlib\nimportlib.import_module(name='pkg.b')\n",
+             "pkg/b.py": B_CLASS},
+            two_node_map(),
+        )
+        self.assertEqual(res["proposals"], [])
+        self.assertTrue(any(u["subject"] == "pkg/a.py" and u["reason"] == "HUMAN_REQUIRED"
+                            for u in res["unresolved"]))
+
     def test_parse_failure_is_unknown_not_zero(self):
         res = self.run_engine(
             {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS},
@@ -297,6 +311,20 @@ class RelationChannelTests(unittest.TestCase):
         # stay low-confidence with the ambiguity named, never medium.
         self.assertEqual(adds[0]["confidence"], "low")
         self.assertTrue(any("__init__" in u for u in adds[0]["uncertainty"]))
+
+    def test_mixed_provenance_from_and_explicit_import_keeps_medium(self):
+        # Codex round-2 MEDIUM regression guard: when the same module string
+        # also has plain provenance (`import pkg.b` or the `from pkg.b`
+        # prefix), the alias-only downgrade must NOT apply.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS},
+            {"pkg/a.py": A_CLASS + "from pkg import b\nimport pkg.b\n", "pkg/b.py": B_CLASS},
+            two_node_map(),
+        )
+        adds = [p for p in res["proposals"] if p["kind"] == "RELATION_ADD"]
+        self.assertEqual(len(adds), 1)
+        self.assertEqual(adds[0]["confidence"], "medium")
+        self.assertFalse(any("__init__" in u for u in adds[0]["uncertainty"]))
 
     def test_multiline_parenthesized_from_import(self):
         # Adversarial 4 (silent miss at 78c2751), valid form: parenthesized
