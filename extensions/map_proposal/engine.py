@@ -12,7 +12,7 @@ channels are wired but empty until W2/W3 land. No map write ever happens here.
 """
 from __future__ import annotations
 
-from extensions.map_proposal import analysis, facts_adapter, model, relations, gitio
+from extensions.map_proposal import analysis, ca_adapter, facts_adapter, model, relations, gitio
 
 
 def suggest_map(repo, data) -> dict:
@@ -31,6 +31,12 @@ def suggest_map(repo, data) -> dict:
         if c["status"] in ("added", "modified", "renamed")
     ]
     facts, limits = facts_adapter.load_code_facts(request["code_facts"], repo, target, wanted)
+
+    # W4: the pack is validated (real validator) before anything else and
+    # consumed only through the admission layer; no claim is attached to
+    # proposal evidence in this build (R04).
+    ca, ca_mode, ca_limits = ca_adapter.load_context(request["context_pack"], target)
+    limits.extend(ca_limits)
 
     changed_paths = set()
     for change in request["changed_paths"]:
@@ -101,6 +107,11 @@ def suggest_map(repo, data) -> dict:
             proposals, request["prior_decisions"], limits
         )
 
+        # R04: CA admission — conflict routing and evidence trust boundary.
+        proposals, limits, unresolved = ca_adapter.apply_context_admission(
+            proposals, ca, ca_mode, changed_paths, indexes["node_ids"], limits, unresolved
+        )
+
         # Single publication exit (invariant 2): every candidate goes through the
         # canonical proposal constructor with its invariants.
         proposals = [
@@ -143,6 +154,8 @@ def suggest_map(repo, data) -> dict:
         unresolved=unresolved,
         no_proposal=no_proposal,
         limits=limits,
+        ca=ca,
+        ca_mode=ca_mode,
     )
 
 
@@ -154,7 +167,7 @@ def _dedupe(values):
 
 
 def _canonical_result(base, target, facts, current_map, proposals, unresolved,
-                      no_proposal, limits):
+                      no_proposal, limits, ca=None, ca_mode=ca_adapter.DEGRADED):
     proposals = sorted(proposals, key=lambda p: (p["kind"], p["subject"], p["proposal_id"]))
     unresolved = sorted(unresolved, key=lambda u: str(u.get("subject", "")))
     no_proposal = sorted(no_proposal, key=lambda n: str(n.get("reason", "")))
@@ -175,7 +188,7 @@ def _canonical_result(base, target, facts, current_map, proposals, unresolved,
     note_bits.append(f"规则生成 {len(proposals)} 个候选")
     note = "；".join(note_bits)
 
-    return {
+    result = {
         "status": status,
         "revision": target,
         "candidates": _legacy_candidates(proposals),
@@ -185,12 +198,20 @@ def _canonical_result(base, target, facts, current_map, proposals, unresolved,
             "target_revision": target,
             "facts_source": facts["source"],
             "map_has_version_identity": current_map["has_version_identity"],
+            "context_mode": ca_mode,
         },
         "proposals": proposals,
         "unresolved": unresolved,
         "no_proposal": no_proposal,
         "limits": limits,
     }
+    if ca_mode == ca_adapter.FULL and ca is not None:
+        result["context_authority"] = {
+            "schema_version": ca["schema_version"],
+            "project_revision": ca["project_revision"],
+            "registry_hash": ca["registry_hash"],
+        }
+    return result
 
 
 def _legacy_candidates(proposals):
