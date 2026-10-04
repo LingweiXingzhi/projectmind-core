@@ -1,6 +1,7 @@
 """Exercise the public HTTP seam used by independently owned extensions."""
 
 import json
+import shutil
 import tempfile
 import threading
 import unittest
@@ -130,6 +131,118 @@ class ExtensionHttpTests(unittest.TestCase):
         self.assertNotIn("private detail", failed.exception.read().decode("utf-8"))
         with urlopen(base + "/api/snapshot") as response:
             self.assertTrue(json.load(response)["nodes"])
+
+    def test_a30_runtime_system_exit_is_contained_as_extension_error(self) -> None:
+        # A30/D1 oracle: an extension raising SystemExit at RUNTIME must not
+        # escape the host. In-process: run() converts it to ExtensionError.
+        folder = self.extensions_root / "exiting_runtime"
+        folder.mkdir()
+        (folder / "extension.py").write_text(
+            "EXTENSION = {'title': '运行期退出', 'description': 'A30'}\n"
+            "def handle(context, method, data):\n"
+            "    raise SystemExit(7)\n",
+            encoding="utf-8",
+        )
+        healthy = self.extensions_root / "healthy"
+        healthy.mkdir()
+        (healthy / "extension.py").write_text(
+            "EXTENSION = {'title': '正常扩展', 'description': '仍可运行'}\n"
+            "def handle(context, method, data):\n"
+            "    return {'ok': True}\n",
+            encoding="utf-8",
+        )
+        base = self.start_server()
+        # Controlled HTTP failure (pre-fix this escaped run() and the request
+        # worker thread died without an HTTP response).
+        with self.assertRaises(HTTPError) as failed:
+            urlopen(base + "/api/extensions/exiting_runtime")
+        self.assertEqual(failed.exception.code, 500)
+        self.assertNotIn("扩展目录", failed.exception.read().decode("utf-8"))
+        # The healthy extension, the core route and the listing all survive.
+        with urlopen(base + "/api/extensions/healthy") as response:
+            self.assertEqual(json.load(response), {"ok": True})
+        with urlopen(base + "/api/snapshot") as response:
+            self.assertTrue(json.load(response)["nodes"])
+        with urlopen(base + "/api/extensions") as response:
+            listing = {item["id"]: item for item in json.load(response)["extensions"]}
+        self.assertEqual(listing["exiting_runtime"]["status"], "ready")
+
+    def test_a30_runtime_base_exception_family_is_contained(self) -> None:
+        # KeyboardInterrupt and GeneratorExit raised inside extension code are
+        # contained with the same policy; multiple failing extensions coexist.
+        cases = {
+            "raises_ki": "raise KeyboardInterrupt('extension-local interrupt')\n",
+            "raises_ge": "raise GeneratorExit('extension-local close')\n",
+        }
+        for name, body in cases.items():
+            folder = self.extensions_root / name
+            folder.mkdir()
+            (folder / "extension.py").write_text(
+                f"EXTENSION = {{'title': '{name}', 'description': 'A30'}}\n"
+                f"def handle(context, method, data):\n"
+                f"    {body}",
+                encoding="utf-8",
+            )
+        base = self.start_server()
+        for name in cases:
+            with self.assertRaises(HTTPError) as failed:
+                urlopen(base + "/api/extensions/" + name)
+            self.assertEqual(failed.exception.code, 500, name)
+        # After every failure the same routes still answer.
+        with urlopen(base + "/api/snapshot") as response:
+            self.assertTrue(json.load(response)["nodes"])
+
+    def test_a30_d_extension_routes_survive_runtime_system_exit(self) -> None:
+        # Coexistence on the real shipped set: inject a runtime-SystemExit
+        # extension next to the shipped D extensions; every other extension
+        # route (worklog / handoff / continuity / project_summary) and the
+        # core routes must remain reachable.
+        shipped = Path(self.temp.name) / "shipped"
+        shipped.mkdir()
+        for source in (ROOT / "extensions").iterdir():
+            if source.is_dir() and not source.name.startswith("."):
+                shutil.copytree(source, shipped / source.name,
+                                ignore=shutil.ignore_patterns("__pycache__"))
+        (shipped / "exiting_runtime").mkdir()
+        (shipped / "exiting_runtime" / "extension.py").write_text(
+            "EXTENSION = {'title': '运行期退出', 'description': 'A30'}\n"
+            "def handle(context, method, data):\n"
+            "    raise SystemExit(7)\n",
+            encoding="utf-8",
+        )
+        base = self.start_server(shipped)
+        with self.assertRaises(HTTPError) as failed:
+            urlopen(base + "/api/extensions/exiting_runtime")
+        self.assertEqual(failed.exception.code, 500)
+        with urlopen(base + "/api/extensions") as response:
+            listing = {item["id"]: item["status"]
+                       for item in json.load(response)["extensions"]}
+        for identifier in ("worklog", "handoff", "continuity", "project_summary"):
+            self.assertEqual(listing[identifier], "ready", identifier)
+            with urlopen(base + "/api/extensions/" + identifier) as response:
+                self.assertTrue(json.load(response))
+        with urlopen(base + "/api/snapshot") as response:
+            self.assertTrue(json.load(response)["nodes"])
+
+    def test_a30_host_run_contract_direct(self) -> None:
+        # Direct probe of the seam (mirrors the A30 audit probe): SystemExit
+        # never escapes run(); it surfaces chained as ExtensionError.
+        from extension_host import ExtensionContext, ExtensionError, ExtensionHost
+
+        context = ExtensionContext(repo=ROOT, map_path=MAP_PATH,
+                                   snapshot=lambda: {}, compare=lambda base, target: {})
+        folder = self.extensions_root / "exiting_runtime"
+        folder.mkdir()
+        (folder / "extension.py").write_text(
+            "EXTENSION = {'title': 'x', 'description': 'y'}\n"
+            "def handle(context, method, data):\n"
+            "    raise SystemExit(7)\n",
+            encoding="utf-8",
+        )
+        host = ExtensionHost(self.extensions_root, context)
+        with self.assertRaises(ExtensionError) as contained:
+            host.run("exiting_runtime", "GET", {})
+        self.assertIsInstance(contained.exception.__cause__, SystemExit)
 
     def test_shipped_example_is_discovered_and_has_a_default_page(self) -> None:
         base = self.start_server(ROOT / "extensions")
