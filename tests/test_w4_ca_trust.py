@@ -30,9 +30,13 @@ def node(node_id, paths):
     }
 
 
-def base_request(target, map_nodes, changed, facts_files, pack=None, prior=None):
+def base_request(target, map_nodes, changed, facts_files, pack=None, prior=None,
+                 base="c" * 40):
+    # `base` defaults to a syntactically-valid-but-nonexistent revision for
+    # pure ca_adapter-level tests; repo-backed AdmissionTests pass the real
+    # base so the (honest) import channel is not degraded by the fixture.
     return {
-        "base_revision": "c" * 40,
+        "base_revision": base,
         "target_revision": target,
         "changed_paths": changed,
         "code_facts": {"revision": target, "files": facts_files, "skipped": []},
@@ -145,7 +149,7 @@ class AdmissionTests(unittest.TestCase):
 
     def run_engine(self, pack):
         request = base_request(self.target, self.map_nodes, self.changed,
-                               self.facts_files, pack=pack)
+                               self.facts_files, pack=pack, base=self.base)
         with with_validator(passing_validator):
             return engine.suggest_map(self.repo, request)
 
@@ -171,7 +175,7 @@ class AdmissionTests(unittest.TestCase):
 
     def test_s24_invalid_pack_degrades_but_independent_candidates_survive(self):
         request = base_request(self.target, self.map_nodes, self.changed,
-                               self.facts_files,
+                               self.facts_files, base=self.base,
                                pack={"schema_version": 1, "nodes": "broken"})
         with with_validator(rejecting_validator):
             res = engine.suggest_map(self.repo, request)
@@ -198,6 +202,7 @@ class AdmissionTests(unittest.TestCase):
             self.facts_files
             + [{"path": "pkg/new.py", "entries": [{"name": "N", "kind": "class", "line": 1}]}],
             pack=pack,
+            base=self.base,
         )
         with with_validator(passing_validator):
             res = engine.suggest_map(self.repo, request)
@@ -217,7 +222,8 @@ class AdmissionTests(unittest.TestCase):
             ],
         }
         request = base_request(self.target, [node("node-a", ["pkg/a.py"])],
-                               self.changed, self.facts_files, pack=pack)
+                               self.changed, self.facts_files, pack=pack,
+                               base=self.base)
         with with_validator(passing_validator):
             res = engine.suggest_map(self.repo, request)
         # node-a must not be suppressed by node-api conflict text

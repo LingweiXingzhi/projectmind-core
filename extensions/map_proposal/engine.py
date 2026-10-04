@@ -86,8 +86,10 @@ def suggest_map(repo, data) -> dict:
 
         # R03: independent import-relation channel — runs regardless of
         # declaration-channel verdicts (F05); skipped sources never feed it.
-        relation_paths = [
-            c["path"]
+        # Full change dicts are passed so the channel can anchor the base
+        # side of a rename at old_path and treat added files as empty bases.
+        relation_changes = [
+            c
             for c in request["changed_paths"]
             if c["path"].endswith(".py")
             and c["path"] not in facts["skipped"]
@@ -95,7 +97,7 @@ def suggest_map(repo, data) -> dict:
         ]
         known_paths = set(facts["files"]) | changed_paths | set(indexes["node_by_path"])
         relations.handle_relations(repo, base, target, indexes, facts, known_paths,
-                                   relation_paths, proposals, unresolved, limits)
+                                   relation_changes, proposals, unresolved, limits)
 
         # R05: stale-map target existence, independent of B availability.
         analysis.handle_stale_map(repo, base, target, request["changed_paths"], indexes,

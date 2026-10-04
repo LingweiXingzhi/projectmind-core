@@ -191,13 +191,18 @@ class RelationChannelTests(unittest.TestCase):
         self.assertEqual([p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"], [])
 
     def test_x13_import_rewrite_churn_no_relation(self):
+        # F06 contract: "同一规范化目标的写法变换不产生关系变化". The AST
+        # channel diffs RESOLVED import-target sets, so `import os` →
+        # `from os import path` (no repo-internal relation change) yields no
+        # signal at all — stronger than the old signal-then-suppress churn
+        # guard, whose "churn" limit diagnostic no longer exists.
         res = self.run_engine(
             {"pkg/a.py": "import os\n\n" + A_CLASS, "pkg/b.py": B_CLASS},
             {"pkg/a.py": "from os import path\n\n" + A_CLASS, "pkg/b.py": B_CLASS},
             two_node_map(),
         )
         self.assertEqual(res["proposals"], [])
-        self.assertTrue(any("churn" in l for l in res["limits"]))
+        self.assertEqual([l for l in res["limits"] if "import" in l], [])
 
     def test_x02_dynamic_import_unknown_unresolved(self):
         res = self.run_engine(
@@ -231,6 +236,75 @@ class RelationChannelTests(unittest.TestCase):
             [p for p in res["proposals"]
              if p["kind"] in ("RELATION_ADD", "RELATION_REMOVE_CANDIDATE")], [])
         self.assertTrue(any(u["subject"] == "pkg/a.py" for u in res["unresolved"]))
+
+    def test_adversarial_1a_relative_from_dot_import_submodule(self):
+        # Adversarial 1a (silent miss at 78c2751): `from . import b` must
+        # resolve .b against the source package and yield RELATION_ADD.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS, "pkg/__init__.py": ""},
+            {"pkg/a.py": A_CLASS + "from . import b\n", "pkg/b.py": B_CLASS,
+             "pkg/__init__.py": ""},
+            two_node_map(),
+        )
+        adds = [p for p in res["proposals"] if p["kind"] == "RELATION_ADD"]
+        self.assertEqual(len(adds), 1)
+        self.assertEqual((adds[0]["proposed_change"]["from"],
+                          adds[0]["proposed_change"]["to"]), ("na", "nb"))
+
+    def test_adversarial_1b_relative_from_dot_module_import(self):
+        # Adversarial 1b (silent miss at 78c2751): `from .b import B`.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS, "pkg/__init__.py": ""},
+            {"pkg/a.py": A_CLASS + "from .b import B\n", "pkg/b.py": B_CLASS,
+             "pkg/__init__.py": ""},
+            two_node_map(),
+        )
+        adds = [p for p in res["proposals"] if p["kind"] == "RELATION_ADD"]
+        self.assertEqual(len(adds), 1)
+        self.assertEqual((adds[0]["proposed_change"]["from"],
+                          adds[0]["proposed_change"]["to"]), ("na", "nb"))
+
+    def test_adversarial_3_from_package_import_submodule(self):
+        # Adversarial 3 (silent miss at 78c2751): `from pkg import b` where
+        # b is the submodule pkg/b.py — alias expansion must propose pkg.b.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS, "pkg/__init__.py": ""},
+            {"pkg/a.py": A_CLASS + "from pkg import b\n", "pkg/b.py": B_CLASS,
+             "pkg/__init__.py": ""},
+            two_node_map(),
+        )
+        adds = [p for p in res["proposals"] if p["kind"] == "RELATION_ADD"]
+        self.assertEqual(len(adds), 1)
+        self.assertEqual((adds[0]["proposed_change"]["from"],
+                          adds[0]["proposed_change"]["to"]), ("na", "nb"))
+
+    def test_multiline_parenthesized_from_import(self):
+        # Adversarial 4 (silent miss at 78c2751), valid form: parenthesized
+        # multiline from-imports are AST-native, no line-based extractor.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS},
+            {"pkg/a.py": A_CLASS + "from pkg.b import (\n    B,\n)\n", "pkg/b.py": B_CLASS},
+            two_node_map(),
+        )
+        adds = [p for p in res["proposals"] if p["kind"] == "RELATION_ADD"]
+        self.assertEqual(len(adds), 1)
+        self.assertEqual((adds[0]["proposed_change"]["from"],
+                          adds[0]["proposed_change"]["to"]), ("na", "nb"))
+
+    def test_invalid_multiline_import_is_unknown_not_silent(self):
+        # Adversarial 4 original form was a SyntaxError (`import (\n...`):
+        # unsupported/invalid syntax must surface as UNKNOWN (unresolved +
+        # limits), never as silent no-change (C-3).
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS},
+            {"pkg/a.py": A_CLASS + "import (\n    pkg.b,\n)\n", "pkg/b.py": B_CLASS},
+            two_node_map(),
+        )
+        self.assertEqual(res["proposals"], [])
+        self.assertTrue(any(u["subject"] == "pkg/a.py" and u["reason"] == "HUMAN_REQUIRED"
+                            for u in res["unresolved"]))
+        self.assertTrue(any("import signal extraction unavailable" in l
+                            for l in res["limits"]))
 
     def test_relation_add_determinism(self):
         base_files = {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS}
