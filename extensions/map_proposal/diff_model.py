@@ -79,15 +79,24 @@ def import_signals(repo, base_revision, target_revision, changed_py_paths):
 
 
 def static_import_count(repo, revision, source_path, target_path):
-    """M3: count the file's imports resolving to target_path at a pinned revision."""
+    """M3: count the file's real imports resolving to target_path at a pinned
+    revision. AST-based so an `import x` line inside a docstring or comment
+    is never counted."""
+    import ast
     raw = _git(repo, "show", f"{revision}:{source_path}").decode("utf-8", errors="replace")
+    try:
+        tree = ast.parse(raw)
+    except SyntaxError:
+        return 0
     count = 0
-    for line in raw.splitlines():
-        match = _LINE_STATIC.match(line)
-        if match:
-            for module in _modules(match):
-                if resolve_module(module, {target_path}) == target_path:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if resolve_module(alias.name, {target_path}) == target_path:
                     count += 1
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            if resolve_module(node.module, {target_path}) == target_path:
+                count += 1
     return count
 
 

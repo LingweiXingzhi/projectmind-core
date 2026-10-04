@@ -5,11 +5,11 @@
 ## 第一屏
 
 ```
-STATUS:        IMPLEMENTED_SELF_VALIDATED(C 自验全绿;Codex 集中审计见下)
+STATUS:        IMPLEMENTED_SELF_VALIDATED;C_CODEX_REVIEW = FAIL→FIXED,PENDING_RE-REVIEW(两轮审计 findings 全部修复并固化为回归;§12 复审上限已用,未再审计)
 C_HEAD:        见 git log feat/map-proposal-mvp
 BD_BASE:       integration/bd-ca-c-base @ f43dcaf(BD gate = Codex PASS_WITH_LIMITS @ a71c508 + CA merge)
 CA_BASE:       PR #29 @ 9ea2349(实时复核仍为 validated head;merge 零冲突)
-TESTS:         C 专项 38/38 PASS;全仓 284 项 = 282 PASS + 2 项 PR31 既有 Windows 环境限制错误(失败集 md5 不变)
+TESTS:         C 专项 51/51 PASS(含 8 项审计探针回归);全仓 297 项 = 295 PASS + 2 项 PR31 既有 Windows 环境限制错误(失败集 md5 不变)
 ACCEPTANCE:    F1-F20 全部落地 + C-A21..A30 补齐(multi-scope/partial-verified/verifier-unavailable/
                coherent-poison/invalid-pack-degraded/B-revision-mismatch/B-skipped/contract-drift/
                conflict-HUMAN_REQUIRED/map-version-unknown)
@@ -59,7 +59,18 @@ LIMITS:        见下
 | 全仓 `python -m unittest discover -s tests` | 284 项:282 PASS + 2 env-limited(PR31 既有,md5 不变) |
 | 确定性 | 同输入双跑 JSON 字节一致;proposal_id 稳定(mp-<target8>-NN) |
 
-## Codex C 审计
+## Codex C 审计(两轮,全部真实调用)
 
-- 形态:compact 输入(冻结契约 + C 源 + 测试 + 报告),`codex exec -s read-only -m gpt-6.1-sol -c model_reasoning_effort=medium`
-- 结果:见 `CODEX_C_REVIEW.md`(若为 PENDING,以 checkpoint 为准)
+- R1(compact,dea111f,~64k tokens):**FAIL,2 HIGH + 5 MEDIUM**——H1 相干伪造可穿透(探针实证书过 validator)、
+  H2 conflict 路由不完整、M1 证据版本绑定、M2/M3 关系误报、M4 B 部分漂移崩溃、M5 测试名实不符。
+- 修复(5286697):高影响 claim(implementation./contract. 前缀、status/head/merged 类字段、SHA 形文本)一律
+  不入 evidence→unresolved HUMAN_REQUIRED;conflict 相关候选按路径+节点 id(词边界)移入 unresolved;
+  改名/删除证据绑定正确 revision;声明未变文件排除关系抽取;churn 过滤;git show 复核改 AST 精确计数;
+  B 部分漂移容忍;测试强化(真实函数体重构/文档字符串 import/churn/证据绑定/部分漂移)。
+- 复审(compact,仅 findings+修复 diff+测试):**FAIL,2 HIGH + 3 MEDIUM 残留**——H1 绕过形态
+  (值文本含 MERGED/SHA 但键名 innocuous)、H2 关系候选未路由+node-api 子串误伤、churn 过滤顺序、
+  AST 前 docstring 误计、M5 部分测试仍弱。
+- 二次修复(当前 HEAD):H1 改为默认怀疑的全文本扫描(token+SHA 正则);H2 词边界匹配 + from/to/证据路径
+  路由;churn 交集先算;static_import_count 改 AST 计数;新增 8 项探针回归(Codex 全部探针固化为测试)。
+- **状态:C_CODEX_REVIEW = FAIL(2 轮)→ 修复已落地并自验(51/51 + 全仓 297 = 295+2 env-limited),
+  复审未再执行(§12 一次 follow-up 上限已用)。C 未获 Codex PASS;是否追加审计轮由用户决定。**

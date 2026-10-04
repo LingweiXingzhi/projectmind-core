@@ -8,6 +8,7 @@ fact. Inference never poses as FACT: rationale/uncertainty say so explicitly.
 from __future__ import annotations
 
 import json
+import re
 
 from extensions.map_proposal import ca_adapter, diff_model, facts_adapter
 from extensions.map_proposal.model import (RequestError, make_evidence, make_proposal,
@@ -31,19 +32,34 @@ def _diff_evidence(target, path, detail):
 
 
 def _is_high_impact_claim(claim):
-    """RULE-6: claims asserting revision/PR-status/contract-shape/implementation
-    state cannot be independently verified by C v0.1 (no gh access, no PR
-    verifier) — they never back a proposal, verified_fields or not. They are
-    dropped to unresolved HUMAN_REQUIRED instead (C_V0_1_RESOLVED_SEMANTICS)."""
+    """RULE-6 (H1): claims asserting revision/PR-status/contract-shape/
+    implementation state cannot be independently verified by C v0.1 (no gh
+    access, no PR verifier) — they never back a proposal, verified_fields or
+    not. Detection is a deny-scan over key prefix, dict field names AND the
+    full value text (SHA-like strings count as head assertions), so wrap-around
+    shapes ({"summary": "MERGED", "commit": "<sha>"}, "build.head": "<sha>")
+    are still caught. Dropped to unresolved HUMAN_REQUIRED."""
     key = claim.get("key") or ""
     if key.startswith(("implementation.", "contract.")):
         return True
     value = claim.get("value")
-    if isinstance(value, dict):
-        return any(field in {"status", "head", "revision", "merged", "pr", "state",
-                             "shape", "delivered", "approval"} for field in value)
+    if isinstance(value, dict) and any(field in {"status", "head", "revision", "merged",
+                                                 "pr", "state", "shape", "delivered",
+                                                 "approval", "commit"} for field in value):
+        return True
     text = ca_adapter.claim_value_text(claim).lower()
-    return any(token in text for token in ("merged", "approved", "delivered", "released"))
+    if re.search(r"\b[0-9a-f]{40,64}\b", text):
+        return True
+    return any(token in text for token in ("merged", "approved", "delivered", "released",
+                                           "shipped", "deployed"))
+
+
+def _mentions(text, token):
+    """Word-boundary occurrence check; avoids node-a/node-api substring
+    false positives (H2)."""
+    if not token:
+        return False
+    return re.search(r"(?<![\w-])" + re.escape(token) + r"(?![\w-])", text) is not None
 
 
 def _context_evidence(claim):
@@ -333,13 +349,13 @@ def _handle_relations(repo, base, target, changes, relation_paths, node_by_path,
         limits.append(f"import signal extraction failed: {exc}")
         return
     # M2 churn guard: the same (file, module) gaining and losing an import in one
-    # diff is reformatting, not a relation change.
+    # diff is reformatting, not a relation change. Intersection computed first so
+    # both sides are dropped regardless of filter order.
     added_keys = {(s["path"], s["module"]) for s in signals["added"]}
-    signals["removed"] = [s for s in signals["removed"]
-                          if (s["path"], s["module"]) not in added_keys]
-    signals["added"] = [s for s in signals["added"]
-                        if (s["path"], s["module"]) not in
-                        {(r["path"], r["module"]) for r in signals["removed"]}]
+    removed_keys = {(s["path"], s["module"]) for s in signals["removed"]}
+    churn = added_keys & removed_keys
+    signals["added"] = [s for s in signals["added"] if (s["path"], s["module"]) not in churn]
+    signals["removed"] = [s for s in signals["removed"] if (s["path"], s["module"]) not in churn]
     emitted_pairs = set()
     for signal in signals["added"]:
         target_path = diff_model.resolve_module(signal["module"], known_paths)
@@ -475,9 +491,10 @@ def _apply_context_claims(proposals, ca, ca_mode, changed_paths, node_ids, limit
         for row in ca.get("conflict_rows", []):
             row_text = " ".join(ca_adapter.claim_value_text(claim)
                                 for claim in row.get("claims", []) if isinstance(claim, dict))
-            mentioned_paths = sorted(path for path in changed_paths if path and path in row_text)
+            mentioned_paths = sorted(path for path in changed_paths
+                                     if path and _mentions(row_text, path))
             mentioned_nodes = sorted(node_id for node_id in node_ids
-                                     if node_id and node_id in row_text)
+                                     if node_id and _mentions(row_text, node_id))
             if not mentioned_paths and not mentioned_nodes:
                 continue
             unresolved.append({"subject": f"conflict:{row.get('key')}",
@@ -494,13 +511,14 @@ def _apply_context_claims(proposals, ca, ca_mode, changed_paths, node_ids, limit
             for proposal in proposals:
                 touched_nodes = set(proposal.get("node_ids") or [])
                 change = proposal.get("proposed_change") or {}
-                if change.get("node_id"):
-                    touched_nodes.add(change["node_id"])
-                touches = proposal["subject"] in mentioned_paths \
-                    or proposal["subject"] in mentioned_nodes \
-                    or bool(touched_nodes & set(mentioned_nodes)) \
-                    or any(path in row_text for path in [proposal["subject"]]
-                           if path in changed_paths)
+                for key in ("node_id", "from", "to"):
+                    if change.get(key):
+                        touched_nodes.add(change[key])
+                evidence_paths = [e.get("path") for e in proposal.get("evidence", [])
+                                  if e.get("path")]
+                touches = (_mentions(row_text, proposal["subject"])
+                           or any(_mentions(row_text, node_id) for node_id in touched_nodes)
+                           or any(_mentions(row_text, path) for path in evidence_paths))
                 if touches:
                     unresolved.append({"subject": proposal["subject"],
                                        "reason": "HUMAN_REQUIRED", "kind": "UNKNOWN",

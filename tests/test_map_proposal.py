@@ -701,5 +701,117 @@ class CodexRound1FixTests(SuggestTestBase):
         self.assertEqual(result["metadata"]["facts_mode"], "available")
 
 
+    def test_H1_wraparound_claim_shapes_also_dropped(self):
+        """Codex follow-up probes: high-impact assertions hidden in value text
+        (MERGED token, SHA-like head) under innocuous keys must be dropped."""
+        repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
+                                 {"pkg_new/feature.py": "class Feature:\n    pass\n"})
+        claims = [
+            {"id": "claim-note", "key": "architecture.note.v1",
+             "value": {"summary": "MERGED", "commit": "a" * 40},
+             "type": "HUMAN_DECISION", "scope": "team", "source": HUMAN},
+            {"id": "claim-head", "key": "architecture.head.v1",
+             "value": "a" * 40, "type": "HUMAN_DECISION", "scope": "team",
+             "source": HUMAN},
+            {"id": "claim-shape", "key": "contract.legacy_shape.v1",
+             "value": {"shape": "legacy"}, "type": "CONTRACT", "scope": "main",
+             "source": {"kind": "repo", "ref": "docs/x.md", "revision": c2}},
+        ]
+        pack = build_pack(repo, c2, registry_claims(claims))
+        result = suggest(request(repo, c1, c2,
+                                 [{"path": "pkg_new/feature.py", "status": "added"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"])]),
+                                 context_pack=pack), repo)
+        self.assertFalse([e for p in result["proposals"] for e in p["evidence"]
+                          if e["kind"] == "context_claim"])
+        dropped = {u["subject"] for u in result["unresolved"]}
+        self.assertTrue({"claim:architecture.note.v1", "claim:architecture.head.v1",
+                         "claim:contract.legacy_shape.v1"} <= dropped)
+
+    def test_H2_conflict_suppresses_relation_candidate(self):
+        repo, c1, c2 = make_repo(self.base,
+                                 {"a.py": "class Alpha:\n    pass\n",
+                                  "b_mod.py": "class Beta:\n    pass\n"},
+                                 {"a.py": "import b_mod\n\n\nclass Alpha:\n    pass\n"})
+        claims = [{"id": "claim-conflict-a", "key": "team.focus.v1",
+                   "value": {"focus": "node-a owns the relation"}, "type": "HUMAN_DECISION",
+                   "scope": "team", "source": HUMAN},
+                  {"id": "claim-conflict-b", "key": "team.focus.v1",
+                   "value": {"focus": "node-b owns the relation"}, "type": "HUMAN_DECISION",
+                   "scope": "team", "source": HUMAN}]
+        pack = build_pack(repo, c2, registry_claims(claims))
+        result = suggest(request(repo, c1, c2, [{"path": "a.py", "status": "modified"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"]),
+                                           ("node-b", "B", "b_mod.py · Beta", ["b_mod.py"])]),
+                                 context_pack=pack), repo)
+        self.assertEqual([p for p in result["proposals"] if p["kind"] == "RELATION_ADD"], [])
+        self.assertTrue(any(u["reason"] == "HUMAN_REQUIRED"
+                            and u["note"].startswith("proposal suppressed")
+                            for u in result["unresolved"]))
+
+    def test_H2_node_api_not_matched_as_node_a(self):
+        """H2: substring guard — a conflict mentioning node-api must not suppress
+        proposals that only touch node-a."""
+        repo, c1, c2 = make_repo(self.base, {"a.py": "class Alpha:\n    pass\n"},
+                                 {"pkg_new/feature.py": "class Feature:\n    pass\n"})
+        claims = [{"id": "claim-conflict-a", "key": "team.focus.v1",
+                   "value": {"focus": "node-api scope unresolved"}, "type": "HUMAN_DECISION",
+                   "scope": "team", "source": HUMAN},
+                  {"id": "claim-conflict-b", "key": "team.focus.v1",
+                   "value": {"focus": "node-api alternative"}, "type": "HUMAN_DECISION",
+                   "scope": "team", "source": HUMAN}]
+        pack = build_pack(repo, c2, registry_claims(claims))
+        result = suggest(request(repo, c1, c2,
+                                 [{"path": "pkg_new/feature.py", "status": "added"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"])]),
+                                 context_pack=pack), repo)
+        self.assertEqual(self.kinds(result), ["NODE_ADD"])
+        self.assertFalse([u for u in result["unresolved"]
+                          if u["note"].startswith("proposal suppressed")])
+
+    def test_M3_docstring_removal_not_a_relation(self):
+        """Codex probe: base has `import b_mod` inside a docstring (not a real
+        import) and the target removes the docstring AND changes declarations —
+        line-regex counting saw it; AST counting must not."""
+        repo, c1, c2 = make_repo(self.base,
+                                 {"a.py": '"""\nimport b_mod\n"""\n\n\nclass Alpha:\n    pass\n',
+                                  "b_mod.py": "class Beta:\n    pass\n"},
+                                 {"a.py": "class AlphaRenamed:\n    pass\n"})
+        result = suggest(request(repo, c1, c2, [{"path": "a.py", "status": "modified"}],
+                                 make_map([("node-a", "A", "a.py · Alpha", ["a.py"]),
+                                           ("node-b", "B", "b_mod.py · Beta", ["b_mod.py"])])), repo)
+        self.assertNotIn("RELATION_REMOVE_CANDIDATE", self.kinds(result))
+
+    def test_M5_churn_with_declaration_change(self):
+        """Codex probe: import churn in a file whose declarations ALSO changed —
+        the churn filter (not the early exclusion) must suppress both signals."""
+        repo, c1, c2 = make_repo(self.base,
+                                 {"a.py": "import b_mod\n\n\nclass Alpha:\n    def render(self):\n        return 1\n",
+                                  "b_mod.py": "class Beta:\n    pass\n"},
+                                 {"a.py": "from b_mod import Beta\n\n\nclass Alpha:\n    def render(self):\n        value = 1\n        return value\n    def size(self):\n        return 2\n"})
+        result = suggest(request(repo, c1, c2, [{"path": "a.py", "status": "modified"}],
+                                 make_map([("node-a", "A", "a.py · render", ["a.py"]),
+                                           ("node-b", "B", "b_mod.py · Beta", ["b_mod.py"])])), repo)
+        self.assertNotIn("RELATION_ADD", self.kinds(result))
+        self.assertNotIn("RELATION_REMOVE_CANDIDATE", self.kinds(result))
+
+    def test_M5_removal_evidence_revisions(self):
+        repo, c1, c2 = make_repo(self.base,
+                                 {"own.py": "class Own:\n    pass\n",
+                                  "aaa.py": "x = 1\n",
+                                  "a.py": "class Alpha:\n    pass\n"},
+                                 removals=["own.py", "aaa.py"])
+        result = suggest(request(repo, c1, c2,
+                                 [{"path": "own.py", "status": "removed"},
+                                  {"path": "aaa.py", "status": "removed"}],
+                                 make_map([("node-old", "Old", "own.py · Old", ["own.py"])])), repo)
+        proposal = next(p for p in result["proposals"] if p["kind"] == "NODE_REMOVE_CANDIDATE")
+        diff_refs = [(e["path"], e["revision"]) for e in proposal["evidence"]
+                     if e["kind"] == "git_diff"]
+        self.assertIn(("own.py", c1), diff_refs)
+        self.assertIn(("own.py", c2), diff_refs)
+        self.assertFalse([ref for ref in diff_refs if ref[0] == "aaa.py"])
+
+
 if __name__ == "__main__":
     unittest.main()
