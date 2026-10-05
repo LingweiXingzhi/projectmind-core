@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
 from extension_host import ExtensionContext, ExtensionError, ExtensionHost
+from repo_index import gitio
 from repo_index.explorer import ExplorerError, ExplorerRegistry
 
 
@@ -109,6 +110,28 @@ def resolve_sources(repo_path: Path | None, map_path: Path | None) -> tuple[Path
     selected_map = (map_path or MAP_PATH).expanduser().resolve()
     load_map(selected_map)
     return root, selected_map
+
+
+def resolve_runtime(repo_arg: Path | None, map_arg: Path | None) -> tuple[Path, Path | None, bool]:
+    """Startup mode split (design gate Q2):
+
+    - --map given: legacy map mode, unchanged, explorer off;
+    - --repo without --map: explorer mode on that repository, no map
+      context, legacy map endpoints answer MAP_REQUIRED;
+    - neither: demo map on this checkout plus its explorer.
+    """
+    if map_arg is not None:
+        repo, map_path = resolve_sources(repo_arg, map_arg)
+        return repo, map_path, False
+    if repo_arg is not None:
+        candidate = repo_arg.expanduser()
+        if not candidate.is_dir():
+            raise ValueError(f"Repository directory does not exist: {candidate}")
+        try:
+            return gitio.repository_root(candidate), None, True
+        except gitio.GitIoError as exc:
+            raise ValueError(str(exc)) from exc
+    return ROOT, MAP_PATH, True
 
 
 def build_snapshot(repo: Path, map_path: Path, revision: str = "HEAD") -> dict:
@@ -345,6 +368,14 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
     def explorer_error_payload(exc: ExplorerError) -> dict:
         return {"error": {"code": exc.code, "message": exc.message}}
 
+    def map_required_payload() -> dict:
+        return {"error": {"code": "MAP_REQUIRED",
+                          "message": "本实例未配置人工地图；请用 --map 提供人工地图，或使用仓库浏览接口 /api/repo-explorer/"}}
+
+    def extensions_unavailable_payload() -> dict:
+        return {"error": {"code": "EXTENSIONS_UNAVAILABLE",
+                          "message": "扩展仅在人工地图模式提供"}}
+
     class Handler(BaseHTTPRequestHandler):
         def send_bytes(self, status: HTTPStatus, data: bytes, content_type: str, filename: str | None = None) -> None:
             self.send_response(status)
@@ -372,6 +403,14 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
 
         def do_GET(self) -> None:
             request = urlparse(self.path)
+            if map_path is None:
+                if request.path == "/api/extensions" or request.path.startswith("/api/extensions/") \
+                        or request.path.startswith("/ext/"):
+                    self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, extensions_unavailable_payload())
+                    return
+                if request.path in ("/api/snapshot", "/api/evidence", "/api/compare", "/api/export"):
+                    self.send_json(HTTPStatus.BAD_REQUEST, map_required_payload())
+                    return
             try:
                 if request.path == "/api/extensions":
                     self.send_json(HTTPStatus.OK, extensions.listing())
@@ -502,6 +541,12 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             if path != "/api/explain" and not path.startswith("/api/extensions/"):
                 self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
                 return
+            if map_path is None:
+                if path == "/api/explain":
+                    self.send_json(HTTPStatus.BAD_REQUEST, map_required_payload())
+                    return
+                self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, extensions_unavailable_payload())
+                return
             try:
                 request = self.read_json_body(65536 if path.startswith("/api/extensions/") else 2048)
                 if path.startswith("/api/extensions/"):
@@ -530,11 +575,16 @@ def main() -> None:
     parser.add_argument("--map", type=Path, help="Curated map JSON for the chosen repository")
     args = parser.parse_args()
     try:
-        repo, map_path = resolve_sources(args.repo, args.map)
+        repo, map_path, explorer_enabled = resolve_runtime(args.repo, args.map)
     except (ValueError, GitError, OSError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(repo, map_path))
-    print(f"ProjectMind demo: http://127.0.0.1:{server.server_port}", flush=True)
+    registry = ExplorerRegistry() if explorer_enabled else None
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(repo, map_path, explorer_registry=registry))
+    if explorer_enabled:
+        print(f"ProjectMind demo: http://127.0.0.1:{server.server_port} "
+              f"(仓库浏览: http://127.0.0.1:{server.server_port}/#explorer)", flush=True)
+    else:
+        print(f"ProjectMind demo: http://127.0.0.1:{server.server_port}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
