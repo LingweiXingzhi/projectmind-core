@@ -103,11 +103,13 @@ async function detectModeAndInitExplorer() {
   }
   if (mapConfirmed) {
     document.body.dataset.mapMode = "true";
-    // 探测期间用户可能已进入协作视图：确认地图模式后立即补加载（B1-b-06）。
+    // 探测期间用户可能已进入协作视图并切换了页签：补加载读取当前活动
+    // 页签的 data-page，而不是固定的 dataset.src（B1-b-06，r14）。
     const frame = document.getElementById("collab-frame");
     if (frame && !frame.getAttribute("src")
         && document.querySelector("#view-collab:not([hidden])")) {
-      frame.src = frame.dataset.src || "";
+      const active = document.querySelector(".collab-tab.active");
+      frame.src = (active && active.dataset.page) || frame.dataset.src || "";
     }
     return;
   }
