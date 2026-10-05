@@ -42,9 +42,12 @@ async function explorerFetch(path, options) {
 }
 
 function resetFilePane(message) {
-  // 换仓库/换版本/打开失败都必须丢弃旧正文、游标与在途请求（B1-b-01）。
+  // 换仓库/换版本/打开失败都必须丢弃旧正文、游标、目录状态与在途请求
+  // （B1-b-01：等待新目录期间不得显示旧仓库目录，失败后搜索不得复活旧条目）。
   explorerState.fileCursor = null;
   explorerState.fileElements = null;
+  explorerState.treeEntries = [];
+  explorerState.expanded = new Set();
   explorerState.fileToken += 1;
   explorerState.symbolToken += 1;
   explorerState.relationToken += 1;
@@ -58,6 +61,10 @@ function resetFilePane(message) {
   document.getElementById("explorer-file-range").textContent = "";
   document.getElementById("explorer-symbols").replaceChildren();
   document.getElementById("explorer-relations").replaceChildren();
+  document.getElementById("explorer-tree").replaceChildren(
+    explorerElement("div", "explorer-empty", "正在读取目录…"));
+  const search = document.getElementById("explorer-search");
+  if (search.value) search.value = "";
 }
 
 function splitPhysicalLines(text) {
@@ -71,14 +78,30 @@ function splitPhysicalLines(text) {
 // ---------- 模式探测：无地图时仓库浏览成为主视图 ----------
 async function detectModeAndInitExplorer() {
   let noMap = false;
+  let mapConfirmed = false;
   try {
     const response = await fetch("/api/snapshot");
     if (response.status === 400) {
       const body = await response.json().catch(() => ({}));
       noMap = body?.error?.code === "MAP_REQUIRED";
+    } else if (response.ok) {
+      mapConfirmed = true; // 只有显式成功才算确认地图模式（B1-b-06 残留）
     }
-  } catch (error) { noMap = false; }
-  if (!noMap) {
+  } catch (error) {
+    // 探测失败 = 模式未知：绝不加载扩展 iframe，也不冒认任一模式。
+  }
+  if (noMap) {
+    document.body.dataset.mapMode = "false";
+    document.body.classList.add("no-map");
+    for (const note of document.querySelectorAll(".needs-map-note")) note.hidden = false;
+    const pill = document.querySelector(".demo-pill");
+    if (pill) pill.innerHTML = "<span></span> 仓库浏览 · 无人工地图";
+    const frame = document.getElementById("collab-frame");
+    if (frame) frame.remove(); // R2-Q1：无地图模式不创建扩展 iframe
+    activateView("explorer");
+    return;
+  }
+  if (mapConfirmed) {
     document.body.dataset.mapMode = "true";
     // 探测期间用户可能已进入协作视图：确认地图模式后立即补加载（B1-b-06）。
     const frame = document.getElementById("collab-frame");
@@ -88,14 +111,8 @@ async function detectModeAndInitExplorer() {
     }
     return;
   }
-  document.body.dataset.mapMode = "false";
-  document.body.classList.add("no-map");
-  for (const note of document.querySelectorAll(".needs-map-note")) note.hidden = false;
-  const pill = document.querySelector(".demo-pill");
-  if (pill) pill.innerHTML = "<span></span> 仓库浏览 · 无人工地图";
-  const frame = document.getElementById("collab-frame");
-  if (frame) frame.remove(); // R2-Q1：无地图模式不创建扩展 iframe
-  activateView("explorer");
+  // 模式未知：两种模式都不冒认；iframe 保持不加载。
+  document.body.dataset.mapMode = "unknown";
 }
 
 // ---------- 打开仓库 ----------

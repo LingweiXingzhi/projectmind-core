@@ -38,15 +38,18 @@ for (const item of document.querySelectorAll(".top-nav .nav-item")) {
 }
 
 // 协作交接 view: tab composition over the D extensions' own pages — their
-// semantics stay exactly as D published them. The frame loads lazily on the
-// first tab activation (and explorer.js removes it entirely in no-map mode),
-// so a no-map instance never fetches an extension page.
+// semantics stay exactly as D published them. Every iframe load entry (nav
+// activation and tab clicks alike) is gated on the confirmed map mode
+// (B1-b-06); the frame loads lazily and explorer.js removes it entirely in
+// no-map mode.
 for (const tab of document.querySelectorAll(".collab-tab")) {
   tab.addEventListener("click", () => {
     for (const other of document.querySelectorAll(".collab-tab")) {
       other.classList.toggle("active", other === tab);
     }
     const frame = document.getElementById("collab-frame");
-    if (frame) frame.src = tab.dataset.page;
+    if (frame && document.body.dataset.mapMode === "true") {
+      frame.src = tab.dataset.page;
+    }
   });
 }
