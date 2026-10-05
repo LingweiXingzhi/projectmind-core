@@ -53,6 +53,18 @@ class RegistryLruTests(unittest.TestCase):
         kept = self.registry.get(newest["projectId"], newest["revision"])
         self.assertEqual(kept.revision, newest["revision"])
 
+    def test_access_refreshes_recency_true_lru(self):
+        # B1-a-03: opening A,B,C,D then re-accessing A must make B the
+        # eviction victim when E arrives — not A.
+        opened = [self.open_at(sha) for sha in self.shas[:4]]
+        self.registry.get(opened[0]["projectId"], opened[0]["revision"])  # touch A
+        self.open_at(self.shas[4])  # E evicts B under LRU
+        with self.assertRaises(ExplorerError) as evicted:
+            self.registry.get(opened[1]["projectId"], opened[1]["revision"])
+        self.assertEqual(evicted.exception.code, "CONTEXT_EVICTED")
+        kept = self.registry.get(opened[0]["projectId"], opened[0]["revision"])
+        self.assertEqual(kept.revision, opened[0]["revision"])
+
     def test_second_newest_stays_within_capacity(self):
         opened = [self.open_at(sha) for sha in self.shas]
         second_newest = opened[-2]

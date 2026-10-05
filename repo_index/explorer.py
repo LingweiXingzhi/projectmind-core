@@ -91,7 +91,10 @@ def _read_manifest(repo_root: Path, revision: str) -> list[dict]:
         if not record:
             continue
         metadata, raw_path = record.split(b"\t", 1)
-        mode, object_type, oid, size = metadata.split()
+        mode, object_type, oid, size_raw = metadata.split()
+        # Git reports "-" as the size for non-blob entries (gitlinks); parse
+        # sizes only where they exist and classify before any arithmetic.
+        size = None if size_raw == b"-" else int(size_raw)
         try:
             path = raw_path.decode("utf-8")
         except UnicodeError:
@@ -102,7 +105,7 @@ def _read_manifest(repo_root: Path, revision: str) -> list[dict]:
             "mode": mode,
             "object_type": object_type,
             "oid": oid.decode("ascii"),
-            "size": int(size),
+            "size": size,
         })
     return entries
 
@@ -119,8 +122,24 @@ def _decode_source(raw: bytes) -> str:
     try:
         encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
         return raw.decode(encoding)
-    except (UnicodeError, LookupError, ValueError) as exc:
+    except (SyntaxError, UnicodeError, LookupError, ValueError) as exc:
+        # tokenize.detect_encoding raises SyntaxError for unknown or
+        # contradictory encoding declarations (B1-a-02).
         raise _Unreadable(REASON_ENCODING) from exc
+
+
+def _split_source_lines(source: str) -> list[str]:
+    """Split on physical line terminators only (\\r\\n, \\r, \\n).
+
+    str.splitlines would also break at U+2028/U+2025-style characters and
+    desynchronize file lines from Python AST line numbers (B1-a-05).
+    """
+    if source == "":
+        return []
+    lines = re.findall(r"[^\r\n]*(?:\r\n|\r|\n|$)", source)
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
 
 
 def _classify_and_read(repo_root: Path, entries: list[dict]) -> tuple[dict[str, dict], tuple[dict[str, str], ...], dict[str, str]]:
@@ -146,6 +165,9 @@ def _classify_and_read(repo_root: Path, entries: list[dict]) -> tuple[dict[str, 
             skipped.append({"path": entry["path"], "reason": REASON_SYMLINK})
             continue
         if entry["object_type"] != b"blob" or entry["mode"] not in (b"100644", b"100755"):
+            skipped.append({"path": entry["path"], "reason": REASON_SPECIAL_MODE})
+            continue
+        if entry["size"] is None:
             skipped.append({"path": entry["path"], "reason": REASON_SPECIAL_MODE})
             continue
         if entry["size"] > MAX_FILE_BYTES:
@@ -202,9 +224,11 @@ class ExplorerRegistry:
             sha = _resolve_revision(repo_root, revision)
             key = (str(repo_root), sha)
             context = self._by_key.get(key)
-            if context is None:
-                context = self._build_context(repo_root, sha)
-                self._store(context)
+            if context is not None:
+                self._by_key.move_to_end(key)
+                return self._open_response(context)
+            context = self._build_context(repo_root, sha)
+            self._store(context)
             return self._open_response(context)
 
     def _store(self, context: RepoContext) -> None:
@@ -252,14 +276,18 @@ class ExplorerRegistry:
 
     # -- lookup (tree/file slices build on this) ----------------------------
     def get(self, project_id: str, revision: str) -> RepoContext:
-        context = self._by_id.get(project_id)
-        if context is None:
-            raise ExplorerError(HTTPStatus.GONE, "CONTEXT_EVICTED",
-                                "上下文不存在或已被淘汰，请重新 open")
-        if revision != context.revision:
-            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_MISMATCH",
-                                "revision 与该 projectId 绑定的提交不一致")
-        return context
+        with self._lock:
+            context = self._by_id.get(project_id)
+            if context is None:
+                raise ExplorerError(HTTPStatus.GONE, "CONTEXT_EVICTED",
+                                    "上下文不存在或已被淘汰，请重新 open")
+            if revision != context.revision:
+                raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_MISMATCH",
+                                    "revision 与该 projectId 绑定的提交不一致")
+            # True LRU: any access refreshes recency under the same lock
+            # (B1-a-03); in-flight holders keep their immutable reference.
+            self._by_key.move_to_end((str(context.repo_root), context.revision))
+            return context
 
     # -- file -----------------------------------------------------------------
     def file(self, project_id: str, revision: str, path: str,
@@ -273,7 +301,7 @@ class ExplorerRegistry:
             reason = next((item["reason"] for item in context.skipped
                            if item["path"] == path), "该文件在本次索引中被跳过")
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
-        lines = context.sources[path].splitlines(keepends=True)
+        lines = _split_source_lines(context.sources[path])
         total_lines = len(lines)
         if total_lines == 0:
             return self._file_response(context, path, 0, 0, 0, "", False)
@@ -285,8 +313,12 @@ class ExplorerRegistry:
                                 f"单次最多返回 {MAX_LINES_PER_REQUEST} 行")
         clipped_end = min(end_line, total_lines)
         content = "".join(lines[start_line - 1:clipped_end])
+        returned = clipped_end - start_line + 1
+        # Accepted Q5 definition: true while any line of the file remains
+        # unreturned by this response — including lines before the window
+        # (B1-a-04).
         return self._file_response(context, path, start_line, clipped_end,
-                                   total_lines, content, clipped_end < total_lines)
+                                   total_lines, content, returned < total_lines)
 
     @staticmethod
     def _file_response(context: RepoContext, path: str, start_line: int, end_line: int,

@@ -120,6 +120,36 @@ class OpenEndpointTests(ExplorerServerHarness):
             self.assertEqual(status, 400, repr(bad))
             self.assertEqual(body["error"]["code"], "REPO_INVALID", repr(bad))
 
+    def test_open_survives_gitlink_entries(self):
+        # B1-a-01: gitlinks report "-" as size in ls-tree --long; open must
+        # classify the submodule instead of failing on int("-").
+        run_git(self.repo, "update-index", "--add", "--cacheinfo",
+                f"160000,{self.head[:40]},vendor/lib")
+        run_git(self.repo, "commit", "-qm", "add gitlink")
+        head2 = run_git(self.repo, "rev-parse", "HEAD")
+        status, body = self.request("POST", "/api/repo-explorer/open", {"repoPath": str(self.repo)})
+        self.assertEqual(status, 200)
+        coverage = body["coverage"]
+        reasons = {item["path"]: item["reason"] for item in coverage["skipped"]}
+        self.assertEqual(reasons.get("vendor/lib"), "子模块，首版不读取")
+        self.assertNotIn("vendor/lib", str(coverage["trackedFileCount"]))
+        self.assertEqual(coverage["trackedFileCount"], 4)  # plain blobs only
+        _ = head2
+
+    def test_open_reports_encoding_declaration_failures_as_skips(self):
+        # B1-a-02: tokenize.detect_encoding raises SyntaxError for unknown
+        # encoding declarations; the failure must be an explicit skip that
+        # leaves other files indexed.
+        (self.repo / "badcode.py").write_text(
+            "# -*- coding: nonexistent-charset -*-\nvalue = 1\n", encoding="utf-8")
+        run_git(self.repo, "add", "badcode.py")
+        run_git(self.repo, "commit", "-qm", "bad coding cookie")
+        status, body = self.request("POST", "/api/repo-explorer/open", {"repoPath": str(self.repo)})
+        self.assertEqual(status, 200)
+        reasons = {item["path"]: item["reason"] for item in body["coverage"]["skipped"]}
+        self.assertEqual(reasons.get("badcode.py"), "编码不支持或解码失败")
+        self.assertEqual(body["coverage"]["indexedFileCount"], 2)
+
     def test_open_rejects_non_commit_revisions(self):
         run_git(self.repo, "tag", "v1")
         for bad in ("main", "v1", self.head[:8]):
