@@ -178,26 +178,22 @@ def evaluate(mid, desc, invariant, rel_file, old, new, guards, clone_parent, res
         return
     target_file.write_text(mutated, encoding="utf-8")
 
-    caught, failing = run_guards(clone, guards)
-    if caught:
-        # Semantic proof: did the guards fail because of the invariant, or is
-        # the whole tree broken? A full-suite run distinguishes a genuine
-        # caught from collateral damage: if the FULL suite only fails in the
-        # guard modules, the mutation is scoped as intended.
+    # V-02 review fix: run_guards returns (all_green, failing). The previous
+    # revision named the green flag 'caught' and judged SEMANTIC_CAUGHT from
+    # it — an inverted classification that also 'caught' nothing-behavior
+    # changes, while real kills only fell through the full-suite fallback.
+    # The declared guards are the binding: green -> SEMANTIC_MISSED, red ->
+    # SEMANTIC_CAUGHT. No full-suite fallback: a red full suite can mean
+    # environment, not semantics, and un-declared catches are a mapping gap,
+    # not evidence.
+    green, failing = run_guards(clone, guards)
+    if not green:
         record.update(status="SEMANTIC_CAUGHT", failing=failing)
     else:
-        full = run([sys.executable, "-m", "unittest", "discover", "-s", "tests",
-                    "-p", "test_*.py"], clone, timeout=1200)
-        if full.returncode != 0:
-            record.update(status="SEMANTIC_CAUGHT",
-                          failing=[{"module": "full suite (not the declared guards)",
-                                    "tail": (full.stderr or full.stdout)[-500:]}],
-                          note="caught only by the full suite — declared guards "
-                               "are not bound to the invariant")
-        else:
-            record.update(status="SEMANTIC_MISSED",
-                          detail="mutation applied, valid, and no guard failed — "
-                                 "the suite is not bound to this invariant")
+        record.update(status="SEMANTIC_MISSED",
+                      detail="mutation applied, valid, and every declared guard "
+                             "stayed green — the suite is not bound to this "
+                             "invariant")
     results.append(record)
 
 
