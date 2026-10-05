@@ -1,0 +1,245 @@
+"""Repo-explorer contexts: open a repository at one fixed commit and
+serve its committed tree and file contents.
+
+Contract highlights (accepted in the A-20261006-0007 design gate):
+- one context binds (repo root realpath, full commit SHA) and the
+  commit's tracked manifest; contents are read by manifest OID only;
+- budgets run at open: 2000 indexed files, 1 MiB per blob, 16 MiB total;
+  everything else stays visible in the tree with a skip reason;
+- the registry is an LRU of 4 immutable contexts guarded by one lock;
+  opens of the same (repo, SHA) are idempotent.
+"""
+from __future__ import annotations
+
+import io
+import re
+import threading
+import tokenize
+import uuid
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from http import HTTPStatus
+from pathlib import Path
+
+from repo_index import gitio
+
+SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
+MAX_FILES = 2000
+MAX_FILE_BYTES = 1_048_576
+MAX_TOTAL_BYTES = 16_777_216
+MAX_CONTEXTS = 4
+BINARY_SNIFF_BYTES = 8192
+
+REASON_BINARY = "二进制内容，首版不提供源码视图"
+REASON_OVERSIZE = "文件超过 1 MiB 上限"
+REASON_NAME_ENCODING = "文件名不是 UTF-8，首版不支持"
+REASON_SPECIAL_MODE = "首版不读取符号链接或子模块"
+REASON_COUNT = "一次索引最多 2000 个文件"
+REASON_TOTAL_BUDGET = "解析源码总量超限"
+REASON_ENCODING = "编码不支持或解码失败"
+
+
+class ExplorerError(Exception):
+    def __init__(self, status: HTTPStatus, code: str, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
+
+
+@dataclass(frozen=True)
+class RepoContext:
+    project_id: str
+    repo_root: Path
+    revision: str
+    entries: tuple[dict, ...]          # manifest records, tree order input
+    manifest: dict[str, dict]          # utf-8 path -> record
+    allowed: frozenset[str]
+    skipped: tuple[dict[str, str], ...]
+    sources: dict[str, str]            # allowed path -> decoded source
+    coverage: dict = field(default_factory=dict)
+
+
+def _resolve_revision(repo_root: Path, revision: str) -> str:
+    if revision != "HEAD" and not SHA_PATTERN.fullmatch(revision):
+        raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID",
+                            "revision 仅接受 HEAD 或完整 40/64 位提交 SHA")
+    try:
+        raw = gitio.git(repo_root, "rev-parse", "--verify", f"{revision}^{{commit}}")
+    except gitio.GitIoError as exc:
+        raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID",
+                            "revision 无法解析为提交") from exc
+    resolved = raw.decode("ascii", errors="replace").strip()
+    if revision != "HEAD" and resolved != revision:
+        raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID",
+                            "revision 必须直接指向提交")
+    return resolved
+
+
+def _read_manifest(repo_root: Path, revision: str) -> list[dict]:
+    try:
+        raw = gitio.git(repo_root, "ls-tree", "-r", "-z", "--long", revision)
+    except gitio.GitIoError as exc:
+        raise ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "REPO_UNREADABLE",
+                            "无法读取指定提交的清单") from exc
+    entries: list[dict] = []
+    for record in raw.split(b"\0"):
+        if not record:
+            continue
+        metadata, raw_path = record.split(b"\t", 1)
+        mode, object_type, oid, size = metadata.split()
+        try:
+            path = raw_path.decode("utf-8")
+        except UnicodeError:
+            path = None
+        entries.append({
+            "path": path,
+            "raw_path": raw_path,
+            "mode": mode,
+            "object_type": object_type,
+            "oid": oid.decode("ascii"),
+            "size": int(size),
+        })
+    return entries
+
+
+class _Unreadable(Exception):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+def _decode_source(raw: bytes) -> str:
+    if b"\0" in raw[:BINARY_SNIFF_BYTES]:
+        raise _Unreadable(REASON_BINARY)
+    try:
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
+        return raw.decode(encoding)
+    except (UnicodeError, LookupError, ValueError) as exc:
+        raise _Unreadable(REASON_ENCODING) from exc
+
+
+def _classify_and_read(repo_root: Path, entries: list[dict]) -> tuple[dict[str, dict], tuple[dict[str, str], ...], dict[str, str]]:
+    """Classify every tracked file; read blobs only within the budget.
+
+    Fixed order: per-file 1 MiB cap first, then stable path order for
+    the cumulative 16 MiB parse budget and the 2000-file cap; binary
+    content and encoding failures surface as explicit skip reasons.
+    """
+    manifest: dict[str, dict] = {}
+    skipped: list[dict[str, str]] = []
+    candidates: list[tuple[str, dict]] = []
+    for entry in entries:
+        if entry["path"] is None:
+            skipped.append({"path": entry["raw_path"].decode("utf-8", "backslashreplace"),
+                            "reason": REASON_NAME_ENCODING})
+            continue
+        manifest[entry["path"]] = entry
+        if entry["object_type"] != b"blob" or entry["mode"] not in (b"100644", b"100755"):
+            skipped.append({"path": entry["path"], "reason": REASON_SPECIAL_MODE})
+            continue
+        if entry["size"] > MAX_FILE_BYTES:
+            skipped.append({"path": entry["path"], "reason": REASON_OVERSIZE})
+            continue
+        candidates.append((entry["path"], entry))
+
+    sources: dict[str, str] = {}
+    indexed = 0
+    total_bytes = 0
+    for path, entry in sorted(candidates, key=lambda item: item[0]):
+        if indexed >= MAX_FILES:
+            skipped.append({"path": path, "reason": REASON_COUNT})
+            continue
+        if total_bytes + entry["size"] > MAX_TOTAL_BYTES:
+            skipped.append({"path": path, "reason": REASON_TOTAL_BUDGET})
+            continue
+        try:
+            raw = gitio.git(repo_root, "cat-file", "blob", entry["oid"])
+        except gitio.GitIoError as exc:
+            raise ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "OBJECT_MISSING",
+                                "指定提交的对象在本地不可用") from exc
+        total_bytes += len(raw)
+        indexed += 1
+        try:
+            sources[path] = _decode_source(raw)
+        except _Unreadable as exc:
+            skipped.append({"path": path, "reason": exc.reason})
+    return manifest, tuple(skipped), sources
+
+
+class ExplorerRegistry:
+    """Thread-safe LRU of opened repo contexts (capacity 4)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_key: "OrderedDict[tuple[str, str], RepoContext]" = OrderedDict()
+        self._by_id: dict[str, RepoContext] = {}
+
+    # -- open ---------------------------------------------------------------
+    def open(self, repo_path: str, revision: str = "HEAD") -> dict:
+        try:
+            repo_root = gitio.repository_root(Path(repo_path))
+        except gitio.GitIoError as exc:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REPO_INVALID", str(exc)) from exc
+        with self._lock:
+            sha = _resolve_revision(repo_root, revision)
+            key = (str(repo_root), sha)
+            context = self._by_key.get(key)
+            if context is None:
+                context = self._build_context(repo_root, sha)
+                self._store(context)
+            return self._open_response(context)
+
+    def _store(self, context: RepoContext) -> None:
+        while len(self._by_key) >= MAX_CONTEXTS:
+            _, evicted = self._by_key.popitem(last=False)
+            self._by_id.pop(evicted.project_id, None)
+        self._by_key[(str(context.repo_root), context.revision)] = context
+        self._by_id[context.project_id] = context
+
+    def _build_context(self, repo_root: Path, sha: str) -> RepoContext:
+        entries = _read_manifest(repo_root, sha)
+        manifest, skipped, sources = _classify_and_read(repo_root, entries)
+        allowed = frozenset(sources)
+        coverage = {
+            "trackedFileCount": sum(
+                1 for entry in manifest.values()
+                if entry["object_type"] == b"blob" and entry["mode"] in (b"100644", b"100755")
+            ),
+            "indexedFileCount": len(allowed),
+            "skipped": list(skipped),
+            "partial": bool(skipped),
+        }
+        return RepoContext(
+            project_id=uuid.uuid4().hex,
+            repo_root=repo_root,
+            revision=sha,
+            entries=tuple(entries),
+            manifest=manifest,
+            allowed=allowed,
+            skipped=skipped,
+            sources=sources,
+            coverage=coverage,
+        )
+
+    def _open_response(self, context: RepoContext) -> dict:
+        return {
+            "schemaVersion": 1,
+            "projectId": context.project_id,
+            "repositoryName": context.repo_root.name,
+            "revision": context.revision,
+            "capabilities": {"files": True, "symbols": False,
+                             "imports": False, "changes": False},
+            "coverage": context.coverage,
+        }
+
+    # -- lookup (tree/file slices build on this) ----------------------------
+    def get(self, project_id: str, revision: str) -> RepoContext:
+        context = self._by_id.get(project_id)
+        if context is None:
+            raise ExplorerError(HTTPStatus.GONE, "CONTEXT_EVICTED",
+                                "上下文不存在或已被淘汰，请重新 open")
+        if revision != context.revision:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_MISMATCH",
+                                "revision 与该 projectId 绑定的提交不一致")
+        return context

@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
 from extension_host import ExtensionContext, ExtensionError, ExtensionHost
+from repo_index.explorer import ExplorerError, ExplorerRegistry
 
 
 ROOT = Path(__file__).resolve().parent
@@ -329,7 +330,8 @@ def read_evidence(repo: Path, map_path: Path, path: str, revision: str) -> dict:
     }
 
 
-def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None):
+def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None,
+                 explorer_registry: ExplorerRegistry | None = None):
     extensions = ExtensionHost(
         extensions_root or EXTENSIONS_PATH,
         ExtensionContext(
@@ -339,6 +341,9 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             compare=lambda base, target: compare_commits(repo, map_path, base, target),
         ),
     )
+
+    def explorer_error_payload(exc: ExplorerError) -> dict:
+        return {"error": {"code": exc.code, "message": exc.message}}
 
     class Handler(BaseHTTPRequestHandler):
         def send_bytes(self, status: HTTPStatus, data: bytes, content_type: str, filename: str | None = None) -> None:
@@ -439,6 +444,21 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
 
         def do_POST(self) -> None:
             path = urlparse(self.path).path
+            if path == "/api/repo-explorer/open":
+                if explorer_registry is None:
+                    self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+                    return
+                try:
+                    request = self.read_json_body(2048)
+                    revision = request.get("revision") or "HEAD"
+                    result = explorer_registry.open(request.get("repoPath", ""), revision)
+                    self.send_json(HTTPStatus.OK, result)
+                except ExplorerError as exc:
+                    self.send_json(exc.status, explorer_error_payload(exc))
+                except (ValueError, TypeError, json.JSONDecodeError) as exc:
+                    self.send_json(HTTPStatus.BAD_REQUEST,
+                                   {"error": {"code": "BAD_REQUEST", "message": str(exc)}})
+                return
             if path != "/api/explain" and not path.startswith("/api/extensions/"):
                 self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
                 return
