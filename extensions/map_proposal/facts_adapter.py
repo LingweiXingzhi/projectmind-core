@@ -9,6 +9,8 @@ signatures / responsibility from B.
 """
 from __future__ import annotations
 
+from extensions.map_proposal.model import validate_path
+
 FACTS_LIMITS = "code facts unavailable"
 
 
@@ -26,6 +28,9 @@ def _normalize(facts):
     files = {}
     for entry in files_raw:
         if isinstance(entry, dict) and isinstance(entry.get("path"), str):
+            # C-08: facts paths are a path source like every other (S28);
+            # traversal-shaped declarations are a controlled input rejection.
+            validate_path(entry["path"], "code fact path")
             if not isinstance(entry.get("entries") or [], list):
                 raise ValueError("code_fact entries 须为列表")
             sanitized = []
@@ -39,8 +44,14 @@ def _normalize(facts):
                         }
                     )
             files[entry["path"]] = sanitized
-    skipped = {s.get("path") for s in skipped_raw if isinstance(s, dict)}
-    return files, skipped
+    skipped = set()
+    skipped_reasons = {}
+    for row in skipped_raw:
+        if isinstance(row, dict) and isinstance(row.get("path"), str):
+            skipped.add(row["path"])
+            if isinstance(row.get("reason"), str):
+                skipped_reasons[row["path"]] = row["reason"]
+    return files, skipped, skipped_reasons
 
 
 def _check_revision(raw_revision, target_revision):
@@ -64,11 +75,12 @@ def load_code_facts(request_facts, repo, target_revision, wanted_paths):
             raise FactsMismatch("code_facts 须为对象")
         _check_revision(request_facts.get("revision"), target_revision)
         try:
-            files, skipped = _normalize(request_facts)
+            files, skipped, skipped_reasons = _normalize(request_facts)
         except Exception:  # noqa: BLE001 — supplied shape drift is a controlled reject
             raise FactsMismatch("code_facts 形状异常")
         return (
-            {"files": files, "skipped": skipped, "available": True, "source": "supplied"},
+            {"files": files, "skipped": skipped, "skipped_reasons": skipped_reasons,
+             "available": True, "source": "supplied"},
             limits,
         )
 
@@ -77,7 +89,8 @@ def load_code_facts(request_facts, repo, target_revision, wanted_paths):
     except Exception:  # noqa: BLE001 — B not installed on this base
         limits.append(FACTS_LIMITS)
         return (
-            {"files": {}, "skipped": set(), "available": False, "source": "none"},
+            {"files": {}, "skipped": set(), "skipped_reasons": {},
+                    "available": False, "source": "none"},
             limits,
         )
 
@@ -93,20 +106,23 @@ def load_code_facts(request_facts, repo, target_revision, wanted_paths):
             except Exception:  # noqa: BLE001 — B rejects invalid inputs → degraded
                 limits.append(FACTS_LIMITS)
                 return (
-                    {"files": {}, "skipped": set(), "available": False, "source": "none"},
+                    {"files": {}, "skipped": set(), "skipped_reasons": {},
+                    "available": False, "source": "none"},
                     limits,
                 )
         else:
             limits.append(FACTS_LIMITS)
             return (
-                {"files": {}, "skipped": set(), "available": False, "source": "none"},
+                {"files": {}, "skipped": set(), "skipped_reasons": {},
+                    "available": False, "source": "none"},
                 limits,
             )
 
     if not isinstance(raw, dict):
         limits.append("installed code facts shape drifted; treated as unavailable")
         return (
-            {"files": {}, "skipped": set(), "available": False, "source": "none"},
+            {"files": {}, "skipped": set(), "skipped_reasons": {},
+                    "available": False, "source": "none"},
             limits,
         )
 
@@ -114,17 +130,19 @@ def load_code_facts(request_facts, repo, target_revision, wanted_paths):
     # empty diffs cannot bypass the gate (S14).
     try:
         _check_revision(raw.get("revision"), target_revision)
-        files, skipped = _normalize(raw)
+        files, skipped, skipped_reasons = _normalize(raw)
     except FactsMismatch:
         raise
     except Exception:  # noqa: BLE001 — installed dependency drift → degraded, not crash
         limits.append("installed code facts shape drifted; treated as unavailable")
         return (
-            {"files": {}, "skipped": set(), "available": False, "source": "none"},
+            {"files": {}, "skipped": set(), "skipped_reasons": {},
+                    "available": False, "source": "none"},
             limits,
         )
     return (
-        {"files": files, "skipped": skipped, "available": True, "source": "installed"},
+        {"files": files, "skipped": skipped, "skipped_reasons": skipped_reasons,
+         "available": True, "source": "installed"},
         limits,
     )
 
@@ -160,6 +178,29 @@ def path_eligibility(path, facts):
     if path in facts["files"]:
         return "eligible"
     return "missing"
+
+
+def domain_gate(paths, facts):
+    """C-02 centralized evidence-domain eligibility gate (A4/E-3): a strong
+    proposal may only publish when EVERY member path it relies on is
+    positively eligible in B facts — present AND not skipped. 'missing'
+    (not collected: partial wanted_paths, stale map member) blocks exactly
+    like 'skipped': a partial collection must never support a stronger
+    conclusion than a full one. Every channel that turns file evidence into
+    a strong candidate must pass its full relied-upon domain through this
+    gate; violations surface as visible HUMAN_REQUIRED, never as a silent
+    cancel.
+
+    Returns (ok, violations); violations list (path, state, reason) with the
+    B skip reason when available."""
+    violations = []
+    for path in sorted(set(paths)):
+        state = path_eligibility(path, facts)
+        if state == "eligible":
+            continue
+        violations.append(
+            (path, state, facts.get("skipped_reasons", {}).get(path)))
+    return (not violations, violations)
 
 
 def domain_eligibility(paths, facts):

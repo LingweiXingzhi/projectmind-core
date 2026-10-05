@@ -24,13 +24,37 @@ def suggest_map(repo, data) -> dict:
     target = request["target_revision"]
     base = request["base_revision"]
 
-    # Installed-B collection focuses on paths that can exist at target.
-    wanted = [
+    indexes = analysis.build_indexes(current_map)
+    limits = []
+    if indexes["unparseable_entry_points"]:
+        limits.append(
+            "map entryPoint 格式无法解析（期望 'path · func()' 或以 .py 结尾的路径）："
+            + ", ".join(sorted(indexes["unparseable_entry_points"]))
+            + "；这些节点的职责变化（RESPONSIBILITY）通道不会触发（诚实降级，G-3）")
+
+    # C-02: installed-B collection covers every path a relation proposal could
+    # rely on — changed sources plus ALL .py map evidence paths — so the
+    # eligibility of unchanged domain members is knowable, never assumed.
+    # Paths absent from the pinned target tree are excluded from the request
+    # (B rejects unknown wanted paths); they stay 'missing' for the gate.
+    wanted = {
         c["path"]
         for c in request["changed_paths"]
         if c["status"] in ("added", "modified", "renamed")
-    ]
-    facts, limits = facts_adapter.load_code_facts(request["code_facts"], repo, target, wanted)
+    }
+    wanted.update(
+        p for node in indexes["nodes"] for p in node["evidence_paths"]
+        if p.endswith(".py")
+    )
+    try:
+        target_tree = gitio.ls_tree_names(repo, target)
+        wanted = sorted(p for p in wanted if p in target_tree)
+    except gitio.DiffSignalError as exc:
+        limits.append(f"target tree listing unavailable; facts scoping degraded: {exc}")
+        wanted = sorted(wanted)
+    facts, facts_limits = facts_adapter.load_code_facts(
+        request["code_facts"], repo, target, wanted)
+    limits.extend(facts_limits)
 
     # W4: the pack is validated (real validator) before anything else and
     # consumed only through the admission layer; no claim is attached to
@@ -48,13 +72,6 @@ def suggest_map(repo, data) -> dict:
     unresolved = facts_adapter.skipped_unresolved(changed_paths & facts["skipped"], target)
     no_proposal = []
     limits = _dedupe(limits)
-
-    indexes = analysis.build_indexes(current_map)
-    if indexes["unparseable_entry_points"]:
-        limits.append(
-            "map entryPoint 格式无法解析（期望 'path · func()' 或以 .py 结尾的路径）："
-            + ", ".join(sorted(indexes["unparseable_entry_points"]))
-            + "；这些节点的职责变化（RESPONSIBILITY）通道不会触发（诚实降级，G-3）")
 
     # Signal channels run independently (R01); a declaration-channel verdict on
     # one file never ends another channel's analysis of the same file (F05).
@@ -119,7 +136,7 @@ def suggest_map(repo, data) -> dict:
         # of implementation head claims against C's own pin).
         proposals, limits, unresolved = ca_adapter.apply_context_admission(
             proposals, ca, ca_mode, changed_paths, indexes["node_ids"], limits,
-            unresolved, target_revision=target)
+            unresolved, target_revision=target, base_revision=base)
 
         # Single publication exit (invariant 2): every candidate goes through the
         # canonical proposal constructor with its invariants.
