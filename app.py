@@ -376,7 +376,23 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
         return {"error": {"code": "EXTENSIONS_UNAVAILABLE",
                           "message": "扩展仅在人工地图模式提供"}}
 
+    def origin_rejected_payload() -> dict:
+        return {"error": {"code": "FORBIDDEN_ORIGIN",
+                          "message": "仅接受本服务来源的请求"}}
+
     class Handler(BaseHTTPRequestHandler):
+        def _explorer_access_allowed(self) -> tuple[bool, dict | None]:
+            """Loopback Host + same-service Origin only (accepted R2-Q4)."""
+            port = self.server.server_address[1]
+            host = self.headers.get("Host", "")
+            if host not in (f"127.0.0.1:{port}", f"localhost:{port}"):
+                return False, {"error": {"code": "FORBIDDEN_HOST",
+                                         "message": "仅接受本服务的 Host 头"}}
+            origin = self.headers.get("Origin")
+            if origin is not None and origin not in (f"http://127.0.0.1:{port}",
+                                                     f"http://localhost:{port}"):
+                return False, origin_rejected_payload()
+            return True, None
         def send_bytes(self, status: HTTPStatus, data: bytes, content_type: str, filename: str | None = None) -> None:
             self.send_response(status)
             self.send_header("Content-Type", content_type)
@@ -432,6 +448,10 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     if explorer_registry is None:
                         self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
                         return
+                    allowed, payload = self._explorer_access_allowed()
+                    if not allowed:
+                        self.send_json(HTTPStatus.FORBIDDEN, payload)
+                        return
                     query = parse_qs(request.query)
                     project_id = query.get("projectId", [""])[0]
                     revision = query.get("revision", [""])[0]
@@ -455,6 +475,10 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if request.path == "/api/repo-explorer/tree":
                     if explorer_registry is None:
                         self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+                        return
+                    allowed, payload = self._explorer_access_allowed()
+                    if not allowed:
+                        self.send_json(HTTPStatus.FORBIDDEN, payload)
                         return
                     query = parse_qs(request.query)
                     project_id = query.get("projectId", [""])[0]
@@ -526,6 +550,10 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             if path == "/api/repo-explorer/open":
                 if explorer_registry is None:
                     self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+                    return
+                allowed, payload = self._explorer_access_allowed()
+                if not allowed:
+                    self.send_json(HTTPStatus.FORBIDDEN, payload)
                     return
                 try:
                     request = self.read_json_body(2048)
