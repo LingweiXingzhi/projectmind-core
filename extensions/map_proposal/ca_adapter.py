@@ -159,7 +159,8 @@ def mentions(text, token):
 
 
 def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
-                            limits, unresolved, target_revision=None):
+                            limits, unresolved, target_revision=None,
+                            base_revision=None):
     """R04 admission + P05B typed consumption over the canonical proposal
     list. Returns (proposals, limits, unresolved). Claims never become
     proposal evidence; conflicts are routed structurally; T1/T2 add labeled
@@ -180,7 +181,7 @@ def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
         )
 
     claims_for_context = _independent_verification(
-        ca, target_revision, limits, unresolved)
+        ca, target_revision, limits, unresolved, base_revision=base_revision)
     pack_trusted = claims_for_context is not None
     if not pack_trusted:
         # Invariant 11: a pack contradicted by independent observation is no
@@ -272,10 +273,36 @@ def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
     return kept, limits, unresolved
 
 
-def _independent_verification(ca, target_revision, limits, unresolved):
-    """T3: check implementation.* head claims against C's own pin. Returns
-    the claims that may still be consumed as context (None = pack
-    contradicted, nothing may be consumed)."""
+def _head_subject(key):
+    """Typed head-claim subject (C-03, A9): the KEY names the subject a head
+    claim is about. Independent verification requires the same claim type,
+    same subject and same scope — a field that happens to be named 'head'
+    about a DIFFERENT subject (baseline, component, PR) is a different fact
+    and must never verify or contradict C's own pin. The pre-C-03 code
+    compared every implementation.* head against the target and treated a
+    legitimate implementation.baseline.head pointing at the base as a pack
+    contradiction, releasing related conflict candidates."""
+    if key.startswith("implementation.target_head"):
+        return "target"
+    if key.startswith("implementation.baseline"):
+        return "baseline"
+    return "foreign"
+
+
+def _independent_verification(ca, target_revision, limits, unresolved,
+                              base_revision=None):
+    """T3: check implementation.* head claims against C's own pins,
+    subject-aware (C-03). Returns the claims that may still be consumed as
+    context (None = pack contradicted, nothing may be consumed).
+
+    - subject 'target' (implementation.target_head*) is verified against the
+      pinned target revision: equal -> confirmed, different -> contradiction.
+    - subject 'baseline' (implementation.baseline*) is verified against the
+      pinned base revision: equal -> confirmed, different -> contradiction of
+      the same-subject claim. It never interacts with the target pin.
+    - any other subject (component heads, PR heads, ...) is not locally
+      verifiable -> UNKNOWN limit, claim not consumed, and NEVER a pack
+      contradiction."""
     claims = list(ca["claims"])
     contradicted = False
     for claim_row in claims:
@@ -289,19 +316,28 @@ def _independent_verification(ca, target_revision, limits, unresolved):
                           "needs an independent verifier C does not run")
             continue
         head = value["head"]
-        if not target_revision:
+        subject = _head_subject(key)
+        if subject == "foreign":
+            limits.append(
+                f"context implementation head claim belongs to a different subject "
+                f"(UNKNOWN, not verified against C's pins): "
+                f"{claim_row.get('claim_id')} ({key}) claims head {head}")
+            continue
+        pin = target_revision if subject == "target" else base_revision
+        role = "pinned target" if subject == "target" else "pinned base"
+        if not pin:
             limits.append(f"context head claim unverifiable without a pin (UNKNOWN): "
                           f"{claim_row.get('claim_id')} ({key})")
             continue
-        if head == target_revision:
-            limits.append(f"context head claim independently confirmed against the pinned "
-                          f"target: {claim_row.get('claim_id')} ({key})")
+        if head == pin:
+            limits.append(f"context head claim independently confirmed against the "
+                          f"{role}: {claim_row.get('claim_id')} ({key})")
             continue
         contradicted = True
         limits.append(
             f"context contradiction (independent observation differs): claim "
-            f"{claim_row.get('claim_id')} ({key}) claims head {head}, pinned target is "
-            f"{target_revision}; pack claims no longer consumed")
+            f"{claim_row.get('claim_id')} ({key}) claims head {head}, {role} is "
+            f"{pin}; pack claims no longer consumed")
         unresolved.append(
             {
                 "subject": f"claim:{claim_row.get('claim_id')}",
@@ -310,8 +346,8 @@ def _independent_verification(ca, target_revision, limits, unresolved):
                     make_evidence("context_claim", detail=key, claim_id=claim_row.get("claim_id"),
                                   claim_scope=claim_row.get("scope"), unverified=True)
                 ],
-                "note": f"CA 主张与 C 的独立观察矛盾（主张 head {head}，pinned target "
-                        f"{target_revision}）；以独立证据为准，pack 不再可信",
+                "note": f"CA 主张与 C 的独立观察矛盾（{key} 主张 head {head}，{role} "
+                        f"{pin}）；同一主体的事实冲突，以独立证据为准，pack 不再可信",
             }
         )
     if contradicted:

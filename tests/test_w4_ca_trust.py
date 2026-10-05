@@ -281,5 +281,116 @@ class AdmissionTests(unittest.TestCase):
         self.assertFalse(any("rejected" in l for l in res["limits"]))
 
 
+class C03SubjectAwareT3Tests(unittest.TestCase):
+    """C-03 (HIGH): T3 head verification is subject-aware (A9). Only a head
+    claim about the SAME subject may verify or contradict C's own pin;
+    baseline, component and PR heads are different facts and never release a
+    related conflict candidate."""
+
+    def setUp(self):
+        self.repo, self.base, self.target, self.tmp = build_repo(
+            {"pkg/a.py": "class A:\n    pass\n"},
+            {"pkg/a.py": "class A:\n    pass\n# touched\n",
+             "pkg/new.py": "class N:\n    pass\n"},
+        )
+        self.addCleanup(self.tmp.cleanup)
+        self.map_nodes = [node("na", ["pkg/a.py"])]
+        self.changed = [{"path": "pkg/a.py", "status": "modified"},
+                        {"path": "pkg/new.py", "status": "added"}]
+        self.facts_files = [
+            {"path": "pkg/a.py", "entries": [{"name": "A", "kind": "class", "line": 1}]},
+            {"path": "pkg/new.py", "entries": [{"name": "N", "kind": "class", "line": 1}]},
+        ]
+
+    def head_claim(self, claim_id, key, head):
+        return {"key": key, "scope": "global", "value": {"head": head},
+                "freshness": "verified", "claim_ids": [claim_id]}
+
+    def pack_with(self, claims):
+        return {
+            "schema_version": 1,
+            "current_state": {"current_by_scope": claims},
+            "known_conflicts": [
+                {"key": "architecture.pkg_new.role", "scope": "path:pkg/new.py",
+                 "claims": [{"key": "architecture.pkg_new.role",
+                             "value": "role of pkg/new.py disputed"}]},
+            ],
+        }
+
+    def run_engine(self, pack):
+        request = base_request(self.target, self.map_nodes, self.changed,
+                               self.facts_files, pack=pack, base=self.base)
+        with with_validator(passing_validator):
+            return engine.suggest_map(self.repo, request)
+
+    def node_add_subjects(self, res):
+        return [p["subject"] for p in res["proposals"] if p["kind"] == "NODE_ADD"]
+
+    def test_c03_baseline_head_at_base_does_not_release_conflict(self):
+        # The audit repro: a legitimate implementation.baseline.head pointing
+        # at the BASE was compared against the target and treated as a pack
+        # contradiction, releasing the suppressed NODE_ADD. Subject-aware T3
+        # confirms it against the pinned base instead; the conflict still
+        # routes the candidate to human review.
+        pack = self.pack_with(
+            [self.head_claim("c-base", "implementation.baseline.head", self.base)])
+        res = self.run_engine(pack)
+        self.assertFalse(any("context contradiction" in l for l in res["limits"]))
+        self.assertTrue(any("independently confirmed" in l and "pinned base" in l
+                            for l in res["limits"]))
+        self.assertEqual(self.node_add_subjects(res), [])
+        self.assertTrue(any(u["subject"].startswith("conflict:") for u in res["unresolved"]))
+
+    def test_c03_wrong_baseline_head_is_same_subject_contradiction(self):
+        # A baseline head matching NEITHER pin contradicts the same-subject
+        # claim: the pack asserts a different baseline than C pinned. That is
+        # a genuine A9 contradiction (same type, same subject, same scope).
+        pack = self.pack_with(
+            [self.head_claim("c-base-wrong", "implementation.baseline.head", "e" * 40)])
+        res = self.run_engine(pack)
+        self.assertTrue(any("context contradiction" in l and "pinned base" in l
+                            for l in res["limits"]))
+        self.assertTrue(any(u["subject"] == "claim:c-base-wrong" for u in res["unresolved"]))
+        # contradicted pack: its conflict rows stop suppressing (invariant 11)
+        self.assertEqual(self.node_add_subjects(res), ["pkg/new.py"])
+
+    def test_c03_foreign_component_head_unknown_never_contradiction(self):
+        # Component and PR heads are claims about OTHER subjects: locally
+        # unverifiable (UNKNOWN), never a pack contradiction, and the pack
+        # stays trusted so conflict routing keeps working.
+        pack = self.pack_with(
+            [self.head_claim("c-comp", "implementation.component_router.head", "d" * 40),
+             self.head_claim("c-pr", "implementation.pr_42.head", "f" * 40)])
+        res = self.run_engine(pack)
+        self.assertFalse(any("context contradiction" in l for l in res["limits"]))
+        self.assertTrue(any("different subject" in l
+                            and "implementation.component_router.head" in l
+                            for l in res["limits"]))
+        self.assertTrue(any("different subject" in l and "implementation.pr_42.head" in l
+                            for l in res["limits"]))
+        self.assertEqual(self.node_add_subjects(res), [])
+        self.assertTrue(any(u["subject"].startswith("conflict:") for u in res["unresolved"]))
+
+    def test_c03_multiple_legitimate_heads_coexist(self):
+        # baseline + component + PR heads with different subjects: no
+        # contradiction fires, conflict routing intact.
+        pack = self.pack_with(
+            [self.head_claim("c-base", "implementation.baseline.head", self.base),
+             self.head_claim("c-comp", "implementation.component_router.head", "d" * 40),
+             self.head_claim("c-pr", "implementation.pr_42.head", "f" * 40)])
+        res = self.run_engine(pack)
+        self.assertFalse(any("context contradiction" in l for l in res["limits"]))
+        self.assertEqual(self.node_add_subjects(res), [])
+
+    def test_c03_target_head_wrong_still_contradicts(self):
+        # regression guard: the same-subject target check is unchanged.
+        pack = self.pack_with(
+            [self.head_claim("c-target", "implementation.target_head", "b" * 40)])
+        res = self.run_engine(pack)
+        self.assertTrue(any("context contradiction" in l and "pinned target" in l
+                            for l in res["limits"]))
+        self.assertEqual(self.node_add_subjects(res), ["pkg/new.py"])
+
+
 if __name__ == "__main__":
     unittest.main()

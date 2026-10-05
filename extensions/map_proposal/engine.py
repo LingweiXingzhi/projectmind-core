@@ -136,7 +136,7 @@ def suggest_map(repo, data) -> dict:
         # of implementation head claims against C's own pin).
         proposals, limits, unresolved = ca_adapter.apply_context_admission(
             proposals, ca, ca_mode, changed_paths, indexes["node_ids"], limits,
-            unresolved, target_revision=target)
+            unresolved, target_revision=target, base_revision=base)
 
         # Single publication exit (invariant 2): every candidate goes through the
         # canonical proposal constructor with its invariants.
