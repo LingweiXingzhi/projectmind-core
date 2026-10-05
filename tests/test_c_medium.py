@@ -209,6 +209,42 @@ class C06UnsupportedImportSemantics(unittest.TestCase):
                             and u["reason"] == "HUMAN_REQUIRED"
                             for u in res["unresolved"]))
 
+    def test_c06_namespace_package_import_is_visible(self):
+        # Codex final-review MEDIUM: a namespace package has no
+        # __init__.py, so `import pkg` matches neither pkg.py nor
+        # pkg/__init__.py in the known paths — the pre-fix detector missed it
+        # and the import stayed silent. Directory-segment matching makes it
+        # visible UNKNOWN.
+        base_code = "class A:\n    pass\n"
+        target_code = base_code + "import pkg\n"
+        repo, base, target, tmp = build_repo(
+            {"src/entry.py": base_code, "src/pkg/b.py": B_CLASS},
+            {"src/entry.py": target_code, "src/pkg/b.py": B_CLASS})
+        self.addCleanup(tmp.cleanup)
+        facts = {
+            "revision": target,
+            "files": [
+                {"path": "src/entry.py",
+                 "entries": [{"name": "A", "kind": "class", "line": 1}]},
+                {"path": "src/pkg/b.py",
+                 "entries": [{"name": "B", "kind": "class", "line": 1}]},
+            ],
+            "skipped": [],
+        }
+        request = make_request(base, target, two_node_map(), facts=facts)
+        request["changed_paths"] = [{"path": "src/entry.py", "status": "modified"}]
+        request["current_map"] = {
+            "note": "m",
+            "nodes": [node("na", ["src/entry.py"]), node("nb", ["src/pkg/b.py"])],
+            "edges": [{"from": "na", "to": "nb"}],
+        }
+        res = engine.suggest_map(repo, request)
+        self.assertTrue(any("import resolution incomplete" in l
+                            and "pkg" in l for l in res["limits"]))
+        self.assertTrue(any(u["subject"] == "src/entry.py"
+                            and u["reason"] == "HUMAN_REQUIRED"
+                            for u in res["unresolved"]))
+
 
 class C07DegradedComparison(unittest.TestCase):
     def test_c07_missing_base_comparison_is_visible_degradation(self):

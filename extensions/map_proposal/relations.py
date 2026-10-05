@@ -170,9 +170,11 @@ def _repo_internal_unresolved(module, source_path, known_paths):
     """C-06: is an unresolvable module still repo-internal? A relative import
     that fails to resolve is repo-internal by construction; an absolute one
     is repo-internal when a known path ends with the module's path shape
-    (src-layout: 'pkg.b' vs known 'src/pkg/b.py'). External/stdlib modules
-    match nothing and stay out of architecture relations — recorded limit,
-    never a fabricated relation."""
+    (src-layout: 'pkg.b' vs known 'src/pkg/b.py') or when the module names a
+    directory that contains known repo files — including namespace packages
+    with no __init__.py ('import pkg' vs known 'src/pkg/b.py'). External/
+    stdlib modules match nothing and stay out of architecture relations —
+    recorded limit, never a fabricated relation."""
     if not module:
         return False
     if module.startswith("."):
@@ -183,6 +185,12 @@ def _repo_internal_unresolved(module, source_path, known_paths):
         for known in known_paths:
             if known == candidate or known.endswith(suffix):
                 return True
+    # Namespace package: the module names a directory segment that holds
+    # known repo files (no __init__.py required).
+    segment = "/" + base + "/"
+    for known in known_paths:
+        if known.startswith(base + "/") or segment in "/" + known:
+            return True
     return False
 
 
