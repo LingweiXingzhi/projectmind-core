@@ -220,6 +220,19 @@ class S30PathMetaTests(unittest.TestCase):
         patcher = mock.patch.object(acceptance_matrix, "A30_WORKTREE", root)
         patcher.start()
         self.addCleanup(patcher.stop)
+        # The in-runtime candidate must deterministically find NO a30 tests
+        # so the helper falls through to the fake worktree: on the BCD base
+        # this checkout legitimately carries the real A30 tests in-runtime.
+        stub_root = Path(tmp.name) / "stub-runtime"
+        (stub_root / "tests").mkdir(parents=True)
+        (stub_root / "tests" / "__init__.py").write_text("", encoding="utf-8")
+        (stub_root / "tests" / "test_extensions.py").write_text(
+            "import unittest\n\nclass UnrelatedTests(unittest.TestCase):\n"
+            "    def test_unrelated(self):\n        self.assertTrue(True)\n",
+            encoding="utf-8")
+        runtime_patcher = mock.patch.object(acceptance_matrix, "ROOT", stub_root)
+        runtime_patcher.start()
+        self.addCleanup(runtime_patcher.stop)
         return root
 
     def test_s30_all_green_a30_tests_are_pass(self):

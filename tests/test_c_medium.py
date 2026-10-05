@@ -212,10 +212,13 @@ class C06UnsupportedImportSemantics(unittest.TestCase):
 
 class C07DegradedComparison(unittest.TestCase):
     def test_c07_missing_base_comparison_is_visible_degradation(self):
-        # The path belongs to a map node but no base comparison is available
-        # (no installed B on this base, no supplied base entries): the
-        # responsibility channel must surface UNKNOWN, not an ordinary
-        # no_proposal.
+        # The path belongs to a map node but the base comparison is
+        # unavailable: the installed B collector fails for the base call
+        # (faithful to the audit's "base B skipped / 无比较" degradation),
+        # while the target facts are supplied. The responsibility channel
+        # must surface UNKNOWN, not an ordinary no_proposal.
+        import sys as _sys
+        from unittest import mock
         repo, base, target, tmp = build_repo(
             {"pkg/a.py": "def main():\n    return 1\n"},
             {"pkg/a.py": "def run():\n    return 2\n"})
@@ -230,7 +233,12 @@ class C07DegradedComparison(unittest.TestCase):
         request["current_map"]["nodes"] = [
             node("na", ["pkg/a.py"], entry="pkg/a.py · main()")]
         request["current_map"]["edges"] = []
-        res = engine.suggest_map(repo, request)
+        fake = mock.Mock()
+        fake.collect_code_facts = mock.Mock(
+            side_effect=RuntimeError("B unavailable at base"))
+        with mock.patch.dict(_sys.modules,
+                             {"extensions.code_facts.facts": fake}):
+            res = engine.suggest_map(repo, request)
         self.assertTrue(any(u["subject"] == "pkg/a.py"
                             and u["reason"] == "HUMAN_REQUIRED"
                             and "声明比较不可用" in u["note"]
