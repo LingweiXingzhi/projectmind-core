@@ -81,7 +81,10 @@ MUTATIONS = [
         '    (UNKNOWN, never silent zero)."""\n'
         '    try:\n'
         '        raw = gitio.read_blob(repo, revision, source_path)\n'
-        '        return ast.parse(raw)',
+        '        return ast.parse(raw)\n'
+        '    except (gitio.DiffSignalError, SyntaxError, ValueError) as exc:\n'
+        '        raise gitio.DiffSignalError(f"cannot verify imports of {source_path}@{revision[:8]}: "\n'
+        '                                    f"{type(exc).__name__}") from exc',
         'def _parse_blob(repo, revision, source_path):\n'
         '    """MUTATION M4: text-only import extraction — valid Python, wrong\n'
         '    semantics: multiline/unsupported forms degrade instead of raising."""\n'
@@ -154,6 +157,16 @@ def evaluate(mid, desc, invariant, rel_file, old, new, guards, clone_parent, res
         results.append(record)
         return
 
+    # Baseline sanity on the CLEAN clone: an already-red guard suite can
+    # never count as a kill, and a red "mutated" run would be meaningless.
+    baseline_green, baseline_failing = run_guards(clone, guards)
+    if not baseline_green:
+        record.update(status="ENVIRONMENT_ERROR",
+                      detail="baseline guard suite is red on the UNMUTATED clone",
+                      baseline_failing=baseline_failing)
+        results.append(record)
+        return
+
     mutated = content.replace(old, new, 1)
     try:
         ast.parse(mutated)
@@ -164,15 +177,6 @@ def evaluate(mid, desc, invariant, rel_file, old, new, guards, clone_parent, res
         results.append(record)
         return
     target_file.write_text(mutated, encoding="utf-8")
-
-    # Baseline sanity: an already-red guard suite can never count as a kill.
-    baseline_green, baseline_failing = run_guards(clone, guards)
-    if not baseline_green:
-        record.update(status="ENVIRONMENT_ERROR",
-                      detail="baseline guard suite is red on the UNMUTATED clone",
-                      baseline_failing=baseline_failing)
-        results.append(record)
-        return
 
     caught, failing = run_guards(clone, guards)
     if caught:
