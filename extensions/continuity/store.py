@@ -5,7 +5,7 @@ from copy import deepcopy
 import json
 import sqlite3
 import uuid
-from extensions.worklog.store import now, identifier, repository_store as worklog_store, text, fail
+from extensions.worklog.store import now, identifier, repository_storage_folder, text, fail
 from extensions.continuity.model import MAX_PACKAGE, STATES, REVIEW_FIELDS, task, checklist, scope, ready_missing, validate_packet
 
 EVENT_STATES = {'ready': 'ready', 'receive': 'receiving', 'start': 'active', 'block': 'blocked',
@@ -209,5 +209,8 @@ class Store:
 
 def repository_store(repo):
     # Same common Git directory, separate DB; original worklog records untouched.
-    folder = worklog_store(repo).path.parent.parent
-    return Store(folder / 'projectmind-continuity' / 'records.sqlite3')
+    # D-02: the path derives from the shared side-effect-free storage context.
+    # Continuity no longer constructs the Worklog Store (mkdir + SQLite schema
+    # side effects) just to read a path, so a corrupted Worklog database can
+    # no longer break Continuity functionality that never needed Worklog data.
+    return Store(repository_storage_folder(repo) / 'projectmind-continuity' / 'records.sqlite3')

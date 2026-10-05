@@ -262,6 +262,16 @@ class ContinuityTests(unittest.TestCase):
                 self.assertEqual(json.load(response)['sourceState'], 'address_match')
         finally:
             server.shutdown();thread.join(2);server.server_close()
+    def test_d02_continuity_storage_survives_corrupted_worklog_db(self):
+        # D-02 (MEDIUM): Continuity used to construct the Worklog Store just
+        # to obtain a storage path, coupling healthy Continuity to Worklog
+        # SQLite side effects. Corrupting the Worklog DB must not break
+        # Continuity storage resolution or its own functionality.
+        logs = log_store(self.repo)
+        logs.path.write_bytes(b'definitely not a sqlite database')
+        store = repository_store(self.repo)
+        self.assertIn('projectmind-continuity', str(store.path))
+        self.assertEqual(store.listing(), [])
 
 
 if __name__ == '__main__': unittest.main()
