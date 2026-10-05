@@ -9,10 +9,11 @@ const explorerState = {
   coverage: null,
   treeEntries: [],
   expanded: new Set(),
-  fileCursor: null, // { path, nextLine, totalLines }
+  fileCursor: null, // { path, nextLine, totalLines, renderedLines }
   openToken: 0,
   treeToken: 0,
   fileToken: 0,
+  symbolToken: 0,
 };
 
 function explorerElement(tag, className, text) {
@@ -247,7 +248,10 @@ function renderFile(result, replace) {
     lineNode.textContent = text.length ? text : " ";
     body.appendChild(lineNode);
   });
-  if (replace) view.replaceChildren();
+  if (replace) {
+    view.replaceChildren();
+    loadSymbols(result.path);
+  }
   view.appendChild(gutter);
   view.appendChild(body);
   const renderedLines = (replace ? 0 : explorerState.fileCursor.renderedLines) + lines.length;
@@ -268,6 +272,58 @@ async function loadMoreFile() {
   const cursor = explorerState.fileCursor;
   if (!cursor || cursor.nextLine > cursor.totalLines) return;
   await openExplorerFile(cursor.path, cursor.nextLine);
+}
+
+// ---------- 符号（legacy_code_facts 过渡：只有定义行，无结束行） ----------
+async function loadSymbols(path) {
+  const panel = document.getElementById("explorer-symbols");
+  const token = ++explorerState.symbolToken;
+  panel.replaceChildren(explorerElement("span", "explorer-symbols-note", "正在读取符号…"));
+  const query = new URLSearchParams({
+    projectId: explorerState.projectId, revision: explorerState.revision, path,
+  });
+  try {
+    const result = await explorerFetch(`/api/repo-explorer/symbols?${query}`);
+    if (token !== explorerState.symbolToken) return;
+    panel.replaceChildren();
+    if (result.status === "ok" && result.symbols.length) {
+      panel.appendChild(explorerElement("span", "explorer-symbols-note",
+        `符号（${result.parser}，仅定义行）：`));
+      for (const symbol of result.symbols) {
+        const chip = explorerElement("button", "explorer-symbol-chip",
+          `${symbol.kind} ${symbol.name} · 行 ${symbol.start_line}`);
+        chip.type = "button";
+        chip.addEventListener("click", () => scrollToLine(symbol.start_line));
+        panel.appendChild(chip);
+      }
+    } else if (result.status === "ok") {
+      panel.appendChild(explorerElement("span", "explorer-symbols-note",
+        "该文件没有可识别的定义。"));
+    } else {
+      const detail = result.warnings && result.warnings.length
+        ? `${result.status}：${result.warnings.join("；")}` : result.status;
+      panel.appendChild(explorerElement("span", "explorer-symbols-note", `符号解析 ${detail}`));
+    }
+  } catch (error) {
+    if (token !== explorerState.symbolToken) return;
+    panel.replaceChildren(explorerElement("span", "explorer-symbols-note",
+      `符号读取失败：${error.message}`));
+  }
+}
+
+async function scrollToLine(line) {
+  const cursor = explorerState.fileCursor;
+  if (!cursor || line < 1 || line > cursor.totalLines) return;
+  while (cursor.renderedLines < line && cursor.nextLine <= cursor.totalLines) {
+    await openExplorerFile(cursor.path, cursor.nextLine);
+  }
+  const lines = document.querySelectorAll(".explorer-line");
+  const index = line - 1;
+  if (index < lines.length) {
+    lines[index].scrollIntoView({ block: "center" });
+    lines[index].classList.add("explorer-line-target");
+    setTimeout(() => lines[index] && lines[index].classList.remove("explorer-line-target"), 1500);
+  }
 }
 
 // ---------- 初始化 ----------

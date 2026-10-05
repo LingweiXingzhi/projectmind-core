@@ -22,6 +22,7 @@ from http import HTTPStatus
 from pathlib import Path
 
 from repo_index import gitio
+from extensions.code_facts.facts import CodeFactsError, collect_code_facts
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
 MAX_FILES = 2000
@@ -244,7 +245,7 @@ class ExplorerRegistry:
             "projectId": context.project_id,
             "repositoryName": context.repo_root.name,
             "revision": context.revision,
-            "capabilities": {"files": True, "symbols": False,
+            "capabilities": {"files": True, "symbols": True,
                              "imports": False, "changes": False},
             "coverage": context.coverage,
         }
@@ -313,6 +314,65 @@ class ExplorerRegistry:
         if invalid:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "PATH_INVALID",
                                 "路径须为仓库内相对文件路径，使用 /，不能含 .. 或控制字符")
+
+    # -- symbols --------------------------------------------------------------
+    def symbols(self, project_id: str, revision: str, path: str) -> dict:
+        """Legacy parser transition (task book §6.4, accepted R2-Q6):
+        collect_code_facts entries mapped as-is, end_line always null with
+        an explicit range-incomplete warning; no fabricated ranges."""
+        context = self.get(project_id, revision)
+        self._validate_path(path)
+        if path not in context.manifest:
+            raise ExplorerError(HTTPStatus.NOT_FOUND, "PATH_NOT_IN_REVISION",
+                                "路径不在该提交的清单中")
+        if path not in context.allowed:
+            reason = next((item["reason"] for item in context.skipped
+                           if item["path"] == path), "该文件在本次索引中被跳过")
+            raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
+        try:
+            result = collect_code_facts(context.repo_root, context.revision, paths=[path])
+        except CodeFactsError as exc:
+            raise self._code_facts_error(exc) from exc
+        file_entry = next((item for item in result["files"] if item["path"] == path), None)
+        skipped_entry = next((item for item in result["skipped"] if item["path"] == path), None)
+        warnings = ["legacy_code_facts 不提供结束行，源码范围不完整"]
+        if file_entry is not None:
+            symbols = [{
+                "name": entry["name"],
+                "qualified_name": entry["name"],
+                "kind": entry["kind"],
+                "start_line": entry["line"],
+                "end_line": None,
+                "docstring": None,
+            } for entry in file_entry["entries"]]
+            status = "ok"
+        elif skipped_entry is not None:
+            reason = skipped_entry["reason"]
+            status = "parse_error" if ("编码" in reason or "语法" in reason) else "unsupported"
+            symbols = []
+            warnings.append(reason)
+        else:
+            raise ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+                                "解析器未返回该文件的任何记录")
+        return {
+            "schemaVersion": 1,
+            "projectId": context.project_id,
+            "revision": context.revision,
+            "path": path,
+            "status": status,
+            "symbols": symbols,
+            "warnings": warnings,
+            "parser": "legacy_code_facts",
+        }
+
+    @staticmethod
+    def _code_facts_error(exc: CodeFactsError) -> ExplorerError:
+        message = str(exc)
+        if "revision" in message:
+            return ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID", message)
+        if "2000" in message or "16 MiB" in message or "1 MiB" in message:
+            return ExplorerError(HTTPStatus.BAD_REQUEST, "BUDGET_EXCEEDED", message)
+        return ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "REPO_UNREADABLE", message)
 
     # -- tree ----------------------------------------------------------------
     def tree(self, project_id: str, revision: str) -> dict:

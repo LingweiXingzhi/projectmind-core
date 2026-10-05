@@ -103,7 +103,7 @@ class OpenEndpointTests(ExplorerServerHarness):
         self.assertEqual(reasons.get("data.bin"), "二进制内容，首版不提供源码视图")
         self.assertEqual(reasons.get("big.txt"), "文件超过 1 MiB 上限")
         capabilities = body["capabilities"]
-        self.assertEqual(capabilities, {"files": True, "symbols": False,
+        self.assertEqual(capabilities, {"files": True, "symbols": True,
                                         "imports": False, "changes": False})
 
     def test_open_rejects_missing_directory(self):

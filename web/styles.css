@@ -216,3 +216,8 @@ h1 { margin: 10px 0 8px; color: #f0f5f7; font-size: clamp(24px, 2.2vw, 32px); le
 .explorer-gutter { padding: 12px 10px 16px; text-align: right; color: #a49b8c; background: rgba(0, 0, 0, 0.03); user-select: none; min-width: 46px; }
 .explorer-body { padding: 12px 16px 16px; white-space: pre; }
 .explorer-line { min-height: 1.55em; }
+.explorer-symbols { padding: 8px 14px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.explorer-symbols-note { font-size: 12px; color: #8a8377; }
+.explorer-symbol-chip { border: 1px solid var(--line, #ddd6c8); background: transparent; color: inherit; font: inherit; font-size: 12px; padding: 2px 9px; border-radius: 999px; cursor: pointer; }
+.explorer-symbol-chip:hover { background: rgba(47, 108, 184, 0.14); }
+.explorer-line-target { background: rgba(255, 214, 102, 0.28); }

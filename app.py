@@ -444,6 +444,27 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if request.path == "/api/snapshot":
                     self.send_json(HTTPStatus.OK, build_snapshot(repo, map_path))
                     return
+                if request.path == "/api/repo-explorer/symbols":
+                    if explorer_registry is None:
+                        self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+                        return
+                    allowed, payload = self._explorer_access_allowed()
+                    if not allowed:
+                        self.send_json(HTTPStatus.FORBIDDEN, payload)
+                        return
+                    query = parse_qs(request.query)
+                    project_id = query.get("projectId", [""])[0]
+                    revision = query.get("revision", [""])[0]
+                    file_path = query.get("path", [""])[0]
+                    try:
+                        if not project_id or not revision or not file_path:
+                            raise ExplorerError(HTTPStatus.BAD_REQUEST, "BAD_REQUEST",
+                                                "projectId、revision、path 为必填参数")
+                        self.send_json(HTTPStatus.OK,
+                                       explorer_registry.symbols(project_id, revision, file_path))
+                    except ExplorerError as exc:
+                        self.send_json(exc.status, explorer_error_payload(exc))
+                    return
                 if request.path == "/api/repo-explorer/file":
                     if explorer_registry is None:
                         self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
