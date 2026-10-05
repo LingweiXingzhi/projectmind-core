@@ -28,6 +28,7 @@ MAX_FILES = 2000
 MAX_FILE_BYTES = 1_048_576
 MAX_TOTAL_BYTES = 16_777_216
 MAX_CONTEXTS = 4
+MAX_LINES_PER_REQUEST = 500
 BINARY_SNIFF_BYTES = 8192
 
 REASON_BINARY = "二进制内容，首版不提供源码视图"
@@ -251,6 +252,60 @@ class ExplorerRegistry:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_MISMATCH",
                                 "revision 与该 projectId 绑定的提交不一致")
         return context
+
+    # -- file -----------------------------------------------------------------
+    def file(self, project_id: str, revision: str, path: str,
+             start_line: int, end_line: int) -> dict:
+        context = self.get(project_id, revision)
+        self._validate_path(path)
+        if path not in context.manifest:
+            raise ExplorerError(HTTPStatus.NOT_FOUND, "PATH_NOT_IN_REVISION",
+                                "路径不在该提交的清单中")
+        if path not in context.allowed:
+            reason = next((item["reason"] for item in context.skipped
+                           if item["path"] == path), "该文件在本次索引中被跳过")
+            raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
+        lines = context.sources[path].splitlines(keepends=True)
+        total_lines = len(lines)
+        if total_lines == 0:
+            return self._file_response(context, path, 0, 0, 0, "", False)
+        if start_line < 1 or end_line < start_line or start_line > total_lines:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "LINE_RANGE_INVALID",
+                                "行号范围无效")
+        if end_line - start_line + 1 > MAX_LINES_PER_REQUEST:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "LINE_RANGE_TOO_LARGE",
+                                f"单次最多返回 {MAX_LINES_PER_REQUEST} 行")
+        clipped_end = min(end_line, total_lines)
+        content = "".join(lines[start_line - 1:clipped_end])
+        return self._file_response(context, path, start_line, clipped_end,
+                                   total_lines, content, clipped_end < total_lines)
+
+    @staticmethod
+    def _file_response(context: RepoContext, path: str, start_line: int, end_line: int,
+                       total_lines: int, content: str, truncated: bool) -> dict:
+        return {
+            "schemaVersion": 1,
+            "projectId": context.project_id,
+            "revision": context.revision,
+            "path": path,
+            "startLine": start_line,
+            "endLine": end_line,
+            "totalLines": total_lines,
+            "content": content,
+            "truncated": truncated,
+        }
+
+    @staticmethod
+    def _validate_path(path: str) -> None:
+        invalid = (
+            not isinstance(path, str) or not path
+            or ":" in path or "\\" in path or path.startswith("/")
+            or any(ord(char) < 32 or ord(char) == 127 for char in path)
+            or any(segment in ("", ".", "..") for segment in path.split("/"))
+        )
+        if invalid:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "PATH_INVALID",
+                                "路径须为仓库内相对文件路径，使用 /，不能含 .. 或控制字符")
 
     # -- tree ----------------------------------------------------------------
     def tree(self, project_id: str, revision: str) -> dict:

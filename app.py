@@ -389,6 +389,30 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if request.path == "/api/snapshot":
                     self.send_json(HTTPStatus.OK, build_snapshot(repo, map_path))
                     return
+                if request.path == "/api/repo-explorer/file":
+                    if explorer_registry is None:
+                        self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+                        return
+                    query = parse_qs(request.query)
+                    project_id = query.get("projectId", [""])[0]
+                    revision = query.get("revision", [""])[0]
+                    file_path = query.get("path", [""])[0]
+                    try:
+                        if not project_id or not revision or not file_path:
+                            raise ExplorerError(HTTPStatus.BAD_REQUEST, "BAD_REQUEST",
+                                                "projectId、revision、path 为必填参数")
+                        try:
+                            start_line = int(query.get("startLine", ["1"])[0])
+                            end_line = int(query.get("endLine", ["200"])[0])
+                        except ValueError as exc:
+                            raise ExplorerError(HTTPStatus.BAD_REQUEST, "BAD_REQUEST",
+                                                "startLine/endLine 必须是整数") from exc
+                        result = explorer_registry.file(project_id, revision, file_path,
+                                                        start_line, end_line)
+                        self.send_json(HTTPStatus.OK, result)
+                    except ExplorerError as exc:
+                        self.send_json(exc.status, explorer_error_payload(exc))
+                    return
                 if request.path == "/api/repo-explorer/tree":
                     if explorer_registry is None:
                         self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
