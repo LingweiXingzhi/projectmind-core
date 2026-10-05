@@ -117,17 +117,26 @@ MUTATIONS = [
 ]
 
 
+class EnvironmentFault(RuntimeError):
+    """A subprocess could not be launched or timed out — an environment
+    fault, never a semantic outcome. V-02 review #2: run() used to fold
+    these into a fake nonzero exit, which run_guards counted as a red guard
+    and evaluate classified SEMANTIC_CAUGHT — inflating the kill count with
+    environment failures even on a green baseline."""
+
+
 def run(cmd, cwd, timeout=600):
     try:
         return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True,
                               timeout=timeout, shell=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return subprocess.CompletedProcess(cmd, 1,
-                                           stderr=f"ENVIRONMENT_ERROR: {exc}")
+        raise EnvironmentFault(f"{type(exc).__name__}: {exc}") from exc
 
 
 def run_guards(clone, guards):
-    """(all_green, failing_details) for the guard modules on the clone."""
+    """(all_green, failing_details) for the guard modules on the clone.
+    Raises EnvironmentFault when a guard subprocess cannot run at all —
+    that is never a red guard, never a kill."""
     failing = []
     for module in guards:
         proc = run([sys.executable, "-m", "unittest", module], clone)
@@ -142,8 +151,13 @@ def evaluate(mid, desc, invariant, rel_file, old, new, guards, clone_parent, res
               "file": rel_file, "guards": guards}
 
     clone = clone_parent / mid
-    cloned = run(["git", "clone", "--quiet", "--no-hardlinks", str(SOURCE_REPO), str(clone)],
-                 clone_parent)
+    try:
+        cloned = run(["git", "clone", "--quiet", "--no-hardlinks", str(SOURCE_REPO), str(clone)],
+                     clone_parent)
+    except EnvironmentFault as exc:
+        record.update(status="ENVIRONMENT_ERROR", detail=str(exc))
+        results.append(record)
+        return
     if cloned.returncode:
         record.update(status="ENVIRONMENT_ERROR", detail=cloned.stderr[-500:])
         results.append(record)
@@ -159,7 +173,13 @@ def evaluate(mid, desc, invariant, rel_file, old, new, guards, clone_parent, res
 
     # Baseline sanity on the CLEAN clone: an already-red guard suite can
     # never count as a kill, and a red "mutated" run would be meaningless.
-    baseline_green, baseline_failing = run_guards(clone, guards)
+    try:
+        baseline_green, baseline_failing = run_guards(clone, guards)
+    except EnvironmentFault as exc:
+        record.update(status="ENVIRONMENT_ERROR",
+                      detail=f"baseline guard run failed in the environment: {exc}")
+        results.append(record)
+        return
     if not baseline_green:
         record.update(status="ENVIRONMENT_ERROR",
                       detail="baseline guard suite is red on the UNMUTATED clone",
@@ -185,8 +205,17 @@ def evaluate(mid, desc, invariant, rel_file, old, new, guards, clone_parent, res
     # The declared guards are the binding: green -> SEMANTIC_MISSED, red ->
     # SEMANTIC_CAUGHT. No full-suite fallback: a red full suite can mean
     # environment, not semantics, and un-declared catches are a mapping gap,
-    # not evidence.
-    green, failing = run_guards(clone, guards)
+    # not evidence. V-02 review #2 fix: a guard subprocess that cannot run
+    # (spawn failure / timeout) raises EnvironmentFault and classifies
+    # ENVIRONMENT_ERROR — never SEMANTIC_CAUGHT, even on a green baseline.
+    try:
+        green, failing = run_guards(clone, guards)
+    except EnvironmentFault as exc:
+        record.update(status="ENVIRONMENT_ERROR",
+                      detail=f"post-mutation guard run failed in the environment, "
+                             f"not semantics: {exc}")
+        results.append(record)
+        return
     if not green:
         record.update(status="SEMANTIC_CAUGHT", failing=failing)
     else:

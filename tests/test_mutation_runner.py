@@ -47,6 +47,51 @@ class MutationRunnerMetaTests(unittest.TestCase):
         self.assertEqual(record["status"], "SEMANTIC_CAUGHT")
         self.assertTrue(record["failing"])
 
+    def test_environment_fault_in_post_mutation_guards_is_not_a_kill(self):
+        # V-02 review #2 HIGH: a spawn failure/timeout in the POST-mutation
+        # guard run used to fold into a fake nonzero exit and count as
+        # SEMANTIC_CAUGHT even on a green baseline. The real run() must
+        # surface EnvironmentFault and evaluate must classify
+        # ENVIRONMENT_ERROR — never SEMANTIC_CAUGHT.
+        real_run = mutation_runner.subprocess.run
+        calls = {"n": 0}
+
+        def flaky(cmd, **kwargs):
+            calls["n"] += 1
+            # 1 = git clone; 2-3 = baseline guard subprocesses (green);
+            # 4+ = post-mutation guard subprocesses -> environment fault.
+            if cmd[0] == "git" or calls["n"] <= 3:
+                return real_run(cmd, **kwargs)
+            raise OSError(2, "spawn failed")
+
+        mid, desc, invariant, rel_file, old, new, guards = M_FAST
+        with tempfile.TemporaryDirectory() as parent:
+            results = []
+            with mock.patch.object(mutation_runner.subprocess, "run",
+                                   side_effect=flaky):
+                mutation_runner.evaluate(mid, desc, invariant, rel_file, old,
+                                         new, guards, Path(parent), results)
+            self.assertEqual(len(results), 1)
+            self.assertEqual(results[0]["status"], "ENVIRONMENT_ERROR")
+            self.assertNotIn("SEMANTIC_CAUGHT", results[0]["status"])
+
+    def test_environment_fault_in_baseline_is_not_a_kill(self):
+        real_run = mutation_runner.subprocess.run
+
+        def flaky(cmd, **kwargs):
+            if cmd[0] == "git":
+                return real_run(cmd, **kwargs)
+            raise OSError(2, "spawn failed")
+
+        mid, desc, invariant, rel_file, old, new, guards = M_FAST
+        with tempfile.TemporaryDirectory() as parent:
+            results = []
+            with mock.patch.object(mutation_runner.subprocess, "run",
+                                   side_effect=flaky):
+                mutation_runner.evaluate(mid, desc, invariant, rel_file, old,
+                                         new, guards, Path(parent), results)
+            self.assertEqual(results[0]["status"], "ENVIRONMENT_ERROR")
+
     def test_drifted_anchor_is_anchor_not_found(self):
         mid, desc, invariant, rel_file, _old, _new, guards = M_FAST
         drifted = (mid, desc, invariant, rel_file,
