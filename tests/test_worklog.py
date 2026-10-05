@@ -37,6 +37,13 @@ class WorklogTests(unittest.TestCase):
                               'base64': base64.b64encode(raw[offset:offset + 24576]).decode()})
         return start
 
+    def test_d03_unhashable_category_is_controlled_400(self):
+        # D-03 same defect class: an unhashable category value must produce a
+        # controlled 400 validation error, never a raw TypeError/500.
+        with self.assertRaises(ExtensionError) as caught:
+            self.store.save({**self.meta, 'category': []}, '1' * 40)
+        self.assertEqual(caught.exception.status, 400)
+
     def test_d01_explicit_repo_wins_over_inherited_git_env(self):
         # D-01 (MEDIUM): an inherited GIT_DIR pointing at another repository
         # used to redirect D storage there (repo identity isolation broken).

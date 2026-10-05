@@ -272,6 +272,14 @@ class ContinuityTests(unittest.TestCase):
         store = repository_store(self.repo)
         self.assertIn('projectmind-continuity', str(store.path))
         self.assertEqual(store.listing(), [])
+    def test_d03_malformed_checklist_state_is_controlled_400(self):
+        # D-03 (LOW): an unhashable checklist state (e.g. []) used to escape
+        # as a raw TypeError (HTTP 500); it must be a controlled 400.
+        from extensions.continuity.model import checklist
+        for bad in ([], {'a': 1}, 3, None):
+            with self.assertRaises(ExtensionError) as caught:
+                checklist([{'id': 'c1', 'text': 't', 'state': bad}])
+            self.assertEqual(caught.exception.status, 400)
 
 
 if __name__ == '__main__': unittest.main()

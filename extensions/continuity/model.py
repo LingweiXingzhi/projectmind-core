@@ -48,7 +48,13 @@ def checklist(values):
         if not isinstance(value, dict):
             fail('清单项须为对象')
         item_id = text(value.get('id', f'check-{i + 1}'), 100, '清单项 ID', True)
-        if item_id in ids or value.get('state', 'pending') not in CHECK_STATES:
+        # D-03: the state must be validated as a string BEFORE set membership —
+        # an unhashable value (e.g. a JSON-decoded list) used to escape as a
+        # raw TypeError (HTTP 500) instead of a controlled 400.
+        state = value.get('state', 'pending')
+        if not isinstance(state, str) or state not in CHECK_STATES:
+            fail('清单 ID 重复或状态无效')
+        if item_id in ids:
             fail('清单 ID 重复或状态无效')
         ids.add(item_id)
         result.append({'id': item_id, 'text': text(value.get('text'), 1000, '清单说明', True),

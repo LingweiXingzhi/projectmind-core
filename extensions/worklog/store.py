@@ -40,7 +40,9 @@ def text(value, limit, label, required=False):
 
 
 def metadata(data):
-    if data.get('category') not in CATEGORIES:
+    # D-03 same class: an unhashable category value must fail as a controlled
+    # 400, not as a raw TypeError from dict-key hashing.
+    if not isinstance(data.get('category'), str) or data.get('category') not in CATEGORIES:
         fail('请选择有效的日志分类')
     try:
         day = date.fromisoformat(data.get('date', ''))
