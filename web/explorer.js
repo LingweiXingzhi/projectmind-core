@@ -12,6 +12,7 @@ const explorerState = {
   treeEntries: [],
   expanded: new Set(),
   fileCursor: null, // { path, nextLine, totalLines, renderedLines }
+  fileElements: null, // { gutter, body } — 分页向同一对列追加（B1-b-03）
   openToken: 0,
   treeToken: 0,
   fileToken: 0,
@@ -38,6 +39,30 @@ async function explorerFetch(path, options) {
     throw new Error(detail);
   }
   return body;
+}
+
+function resetFilePane(message) {
+  // 换仓库/换版本/打开失败都必须丢弃旧正文、游标与在途请求（B1-b-01）。
+  explorerState.fileCursor = null;
+  explorerState.fileElements = null;
+  explorerState.fileToken += 1;
+  explorerState.symbolToken += 1;
+  explorerState.relationToken += 1;
+  explorerState.compareToken += 1;
+  const view = document.getElementById("explorer-file-view");
+  view.replaceChildren(explorerElement("div", "explorer-empty", message || "从左侧选择一个文件。"));
+  document.getElementById("explorer-file-head").hidden = true;
+  document.getElementById("explorer-more").hidden = true;
+  document.getElementById("explorer-symbols").replaceChildren();
+  document.getElementById("explorer-relations").replaceChildren();
+}
+
+function splitPhysicalLines(text) {
+  // 与接口一致：仅按 CRLF/CR/LF 物理换行切分（B1-b-04），U+2028 不算换行。
+  if (text === "") return [];
+  const lines = text.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g);
+  if (lines && lines[lines.length - 1] === "") lines.pop();
+  return lines.map((line) => line.replace(/[\r\n]+$/, ""));
 }
 
 // ---------- 模式探测：无地图时仓库浏览成为主视图 ----------
@@ -86,6 +111,10 @@ async function openRepository(event) {
     document.getElementById("explorer-compare-form").hidden = false;
     const targetInput = document.getElementById("explorer-target");
     if (!targetInput.value) targetInput.value = result.revision;
+    document.getElementById("explorer-changes-result").replaceChildren();
+    document.getElementById("explorer-changes-status").textContent =
+      "打开仓库后可用；两个版本都必须是完整 SHA。";
+    resetFilePane();
     await refreshTree();
     status.textContent = "";
   } catch (error) {
@@ -93,6 +122,8 @@ async function openRepository(event) {
     status.textContent = `打开失败：${error.message}`;
     document.getElementById("explorer-header").hidden = true;
     document.getElementById("explorer-workspace").hidden = true;
+    document.getElementById("explorer-compare-form").hidden = true;
+    resetFilePane();
   }
 }
 
@@ -333,11 +364,15 @@ function renderFile(result, replace) {
   document.getElementById("explorer-file-range").textContent =
     (result.totalLines === 0 ? "空文件" : `第 ${result.startLine}–${result.endLine} 行 / 共 ${result.totalLines} 行`) + versionTag;
   const view = document.getElementById("explorer-file-view");
-  const code = explorerElement("code", "explorer-code");
-  const lines = result.content.split("\n");
-  if (lines.length && lines[lines.length - 1] === "") lines.pop();
-  const gutter = explorerElement("div", "explorer-gutter");
-  const body = explorerElement("div", "explorer-body");
+  if (replace || !explorerState.fileElements) {
+    view.replaceChildren();
+    const gutter = explorerElement("div", "explorer-gutter");
+    const body = explorerElement("div", "explorer-body");
+    view.append(gutter, body);
+    explorerState.fileElements = { gutter, body };
+  }
+  const { gutter, body } = explorerState.fileElements;
+  const lines = splitPhysicalLines(result.content);
   const first = replace ? result.startLine : explorerState.fileCursor.renderedLines + 1;
   lines.forEach((text, index) => {
     gutter.appendChild(explorerElement("div", "explorer-line-no", String(first + index)));
@@ -345,24 +380,22 @@ function renderFile(result, replace) {
     lineNode.textContent = text.length ? text : " ";
     body.appendChild(lineNode);
   });
-  if (replace) {
-    view.replaceChildren();
-    loadSymbols(result.path, result.versionContext || null);
-    loadRelations(result.path, result.versionContext || null);
-  }
-  view.appendChild(gutter);
-  view.appendChild(body);
   const renderedLines = (replace ? 0 : explorerState.fileCursor.renderedLines) + lines.length;
   explorerState.fileCursor = {
     path: result.path, nextLine: result.endLine + 1,
     totalLines: result.totalLines, renderedLines,
   };
   const more = document.getElementById("explorer-more");
-  if (result.truncated && result.totalLines > 0) {
+  // 继续按钮看“文件还有没有下一页”，与 truncated（任一行未返回）区分（B1-b-03）。
+  if (result.endLine < result.totalLines) {
     more.hidden = false;
     more.textContent = `继续读取（第 ${result.endLine + 1} 行起）`;
   } else {
     more.hidden = true;
+  }
+  if (replace) {
+    loadSymbols(result.path, result.versionContext || null);
+    loadRelations(result.path, result.versionContext || null);
   }
 }
 

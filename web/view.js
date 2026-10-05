@@ -13,6 +13,14 @@ function activateView(name) {
   }
   const crumb = document.getElementById("breadcrumb-current");
   if (crumb) crumb.textContent = VIEW_TITLES[name] || name;
+  if (name === "collab") {
+    // 首次进入协作视图即加载当前页签（B1-b-06）；无地图模式下 iframe 已被移除。
+    const frame = document.getElementById("collab-frame");
+    if (frame && !frame.getAttribute("src") && frame.dataset.src) {
+      const active = document.querySelector(".collab-tab.active");
+      frame.src = (active && active.dataset.page) || frame.dataset.src;
+    }
+  }
 }
 
 for (const item of document.querySelectorAll(".top-nav .nav-item")) {

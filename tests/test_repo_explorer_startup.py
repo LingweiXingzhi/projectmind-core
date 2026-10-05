@@ -158,6 +158,25 @@ class NoMapModeTests(StartupHarness):
         self.assertFalse((git_dir / "projectmind-continuity").exists(),
                          "continuity store must not be created in the browsed repo")
 
+    def test_no_map_mode_does_not_even_import_extension_modules(self):
+        # B1-b-02: blocking the routes is not enough — ExtensionHost
+        # construction exec_module()s every extension, so a no-map instance
+        # must load none at all.
+        marker = Path(self._tmp.name) / "import-marker.txt"
+        extensions_root = Path(self._tmp.name) / "exts"
+        folder = extensions_root / "marker_ext"
+        folder.mkdir(parents=True)
+        (folder / "extension.py").write_text(
+            "import pathlib\n"
+            f"pathlib.Path(r'{marker}').write_text('imported', encoding='utf-8')\n"
+            "EXTENSION = {'title': 'm', 'description': 'm'}\n"
+            "def handle(context, method, data):\n    return {}\n",
+            encoding="utf-8")
+        make_handler(self.repo, None, extensions_root=extensions_root, explorer_registry=ExplorerRegistry())
+        self.assertFalse(marker.exists(), "no-map mode must not import extension modules")
+        make_handler(self.repo, minimal_map(Path(self._tmp.name) / "m3.json"), extensions_root=extensions_root)
+        self.assertTrue(marker.exists(), "map mode keeps loading extensions normally")
+
     def test_explorer_still_serves_in_no_map_mode(self):
         status, body = self.request("POST", "/api/repo-explorer/open",
                                     {"repoPath": str(self.repo)})

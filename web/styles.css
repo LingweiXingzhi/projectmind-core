@@ -196,6 +196,7 @@ h1 { margin: 10px 0 8px; color: #f0f5f7; font-size: clamp(24px, 2.2vw, 32px); le
 /* ===== 仓库浏览视图（explorer） ===== */
 .needs-map-note { margin: 12px 0; padding: 10px 14px; border: 1px solid var(--line, #ddd6c8); border-radius: 10px; background: #fff8e6; color: #6b5417; }
 .explorer-grid { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 16px; align-items: start; }
+.explorer-grid[hidden] { display: none; }
 .explorer-search-wrap { padding: 10px 14px 0; }
 .explorer-search-wrap input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line, #ddd6c8); border-radius: 8px; font: inherit; }
 .explorer-tree { max-height: 62vh; overflow: auto; padding: 10px 8px 14px; }

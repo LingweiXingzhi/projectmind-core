@@ -39,11 +39,11 @@ class _LoadedExtension:
 class ExtensionHost:
     """Load once at server creation; each extension owns its API and optional page."""
 
-    def __init__(self, root: Path, context: ExtensionContext) -> None:
+    def __init__(self, root: Path | None, context: ExtensionContext) -> None:
         self.context = context
         self.loaded: dict[str, _LoadedExtension] = {}
         self.unavailable: dict[str, str] = {}
-        if not root.exists():
+        if root is None or not root.exists():
             return
         for folder in sorted(root.iterdir()):
             if not folder.is_dir() or folder.name.startswith(".") or folder.name == "__pycache__":

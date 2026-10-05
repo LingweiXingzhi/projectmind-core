@@ -355,8 +355,12 @@ def read_evidence(repo: Path, map_path: Path, path: str, revision: str) -> dict:
 
 def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None,
                  explorer_registry: ExplorerRegistry | None = None):
+    # R2-Q1 (B1-b-02): in no-map mode no extension module may even be
+    # imported — ExtensionHost construction exec_module()s every extension,
+    # so the no-map instance loads none at all instead of blocking later.
+    effective_extensions_root = (extensions_root or EXTENSIONS_PATH) if map_path is not None else None
     extensions = ExtensionHost(
-        extensions_root or EXTENSIONS_PATH,
+        effective_extensions_root,
         ExtensionContext(
             repo=repo,
             map_path=map_path,
