@@ -16,10 +16,12 @@ relations. Known resolution limits (namespace packages, src-layout) mean an
 unresolved repo-internal import can stay invisible — recorded limit, does
 not fabricate a relation.
 
-Removal proof domain is the whole map-node evidence domain (R03): a relation
-removal candidate requires an existing map edge and ALL .py files of the
-source node's evidence domain free of imports into the target domain at
-target, with at least one such import at base (S03, X12 multi-source).
+Removal proof domain is BOTH endpoint map-node evidence domains (R03, C-01
+fix): a relation removal candidate requires an existing map edge, at least
+one import from the source node's evidence domain into ANY member of the
+target node's evidence domain at base, and NO such import at target — the
+proof is node-level, so a signal naming one target file never bounds the
+proof domain (S03, X12 multi-source, C-01 multi-target residual).
 
 Known edge: a rewrite between from-import shapes can add/drop the bare
 package-prefix candidate (e.g. `from . import b` → `from .b import B`), so
@@ -205,6 +207,7 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
             )
 
     emitted_pairs = set()
+    proof_cache = {}
     for event in events:
         source_path = event["path"]
         for target_path in sorted(event["added"]):
@@ -272,12 +275,29 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
             pair = (tuple(sorted(source_owners)), tuple(sorted(target_owners)))
             if pair in emitted_pairs:
                 continue
-            verdict = _domain_import_gone(repo, base, target, indexes, source_path,
-                                          source_owners, target_path, known_paths, limits)
+            # C-01: the removal claim is node-level (source domain -> target
+            # domain), so every target_path inside one target domain shares a
+            # single verdict — compute the proof once per node pair.
+            if pair in proof_cache:
+                verdict, base_signals = proof_cache[pair]
+            else:
+                verdict, base_signals = _domain_import_gone(
+                    repo, base, target, indexes, source_path, source_owners,
+                    target_path, target_owners, known_paths, limits)
+                proof_cache[pair] = (verdict, base_signals)
             if verdict != "gone":
                 continue
             emitted_pairs.add(pair)
-            modules = "、".join(sorted(event["removed"][target_path]))
+            evidence = [
+                diff_evidence(target, source_path, "import removed at target"),
+                map_node_evidence(source_owners[0], f"covers {source_path}"),
+                map_node_evidence(target_owners[0], f"covers {target_path}"),
+            ]
+            for base_path, base_modules, base_target in base_signals[:4]:
+                evidence.insert(0, diff_evidence(
+                    base, base_path,
+                    "import present at base (AST): "
+                    + "、".join(base_modules) + " -> " + base_target))
             proposals.append(
                 {
                     "kind": "RELATION_REMOVE_CANDIDATE",
@@ -288,15 +308,9 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
                         "to": target_owners[0],
                         "label": f"import 移除(候选): {source_path} -> {target_path}",
                     },
-                    "rationale": "源节点证据域内全部 .py 文件对目标域的静态 import 已消失（AST 证实）；"
-                                 "是否意味架构关系消失由人判断",
-                    "evidence": [
-                        diff_evidence(base, source_path,
-                                      f"import present at base (AST): {modules} -> {target_path}"),
-                        diff_evidence(target, source_path, "import removed at target"),
-                        map_node_evidence(source_owners[0], f"covers {source_path}"),
-                        map_node_evidence(target_owners[0], f"covers {target_path}"),
-                    ],
+                    "rationale": "源节点证据域内全部 .py 文件对目标节点证据域（全部成员）的"
+                                 "静态 import 已消失（AST 证实）；是否意味架构关系消失由人判断",
+                    "evidence": evidence,
                     "confidence": "low",
                     "uncertainty": [],
                 }
@@ -317,44 +331,56 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
             )
 
 
-def _domain_import_gone(repo, base, target, indexes, signal_path, source_owners,
-                        target_path, known_paths, limits):
-    """Removal proof over the FULL source node evidence domain: every .py
-    file's imports into target_path must exist at base (somewhere in the
-    domain) and be gone at target everywhere. Any read/parse failure →
-    'unknown' (never treated as zero, DROP L05)."""
-    domain_paths = []
-    for owner in source_owners:
+def _node_domain_paths(indexes, owners, signal_path):
+    """Every .py evidence path of the given map nodes, plus the signal path
+    itself (it stays in the proof domain even if map coverage drifts)."""
+    domain = set()
+    for owner in owners:
         for node in indexes["nodes"]:
             if node["id"] == owner:
-                domain_paths.extend(p for p in node["evidence_paths"] if p.endswith(".py"))
-    domain_paths = sorted(set(domain_paths))
-    if signal_path not in domain_paths:
-        domain_paths.append(signal_path)
-    if not domain_paths:
-        return "insufficient"
+                domain.update(p for p in node["evidence_paths"] if p.endswith(".py"))
+    domain.add(signal_path)
+    return sorted(domain)
 
+
+def _domain_import_gone(repo, base, target, indexes, signal_path, source_owners,
+                        target_path, target_owners, known_paths, limits):
+    """C-01 removal proof over the FULL source node evidence domain AND the
+    FULL target node evidence domain: the claim is the node-level relation
+    source domain -> target domain, so 'gone' requires that at target NO file
+    of the source domain imports ANY member of the target domain, while at
+    base at least one such import existed (A6/R03). A single-file signal only
+    triggers the proof; it never bounds the proof domain — the pre-C-01 proof
+    checked only the one signal target file and wrongly released relations
+    whose target domain kept other imported members (b.py gone, b2.py kept).
+    Any read/parse failure -> ('unknown', []), never treated as zero
+    (DROP L05).
+
+    Returns (verdict, base_signals): verdict in {'gone', 'retained',
+    'unknown', 'insufficient'}; base_signals lists
+    (source_path, modules, target_path) importing the target domain at base,
+    for proposal evidence."""
+    source_domain = _node_domain_paths(indexes, source_owners, signal_path)
+    target_domain = _node_domain_paths(indexes, target_owners, target_path)
+    if not source_domain or not target_domain:
+        return "insufficient", []
+
+    target_domain_set = set(target_domain)
     had_import_at_base = False
-    for path in domain_paths:
+    base_signals = []
+    for path in source_domain:
         try:
-            at_base = _imports_target_loose(repo, base, path, target_path, known_paths)
-            at_target = _imports_target_loose(repo, target, path, target_path, known_paths)
+            base_resolved = _resolved_imports(repo, base, path, known_paths)
+            target_resolved = _resolved_imports(repo, target, path, known_paths)
         except gitio.DiffSignalError as exc:
             limits.append(f"import removal proof unavailable: {exc}")
-            return "unknown"
-        if at_base:
+            return "unknown", []
+        if set(target_resolved) & target_domain_set:
+            return "retained", []
+        for target_file in sorted(set(base_resolved) & target_domain_set):
+            base_signals.append(
+                (path, sorted(base_resolved[target_file]), target_file))
             had_import_at_base = True
-        if at_target:
-            return "retained"
-    return "gone" if had_import_at_base else "insufficient"
-
-
-def _imports_target_loose(repo, revision, source_path, target_path, known_paths):
-    """Does any AST import of source_path@revision resolve to target_path?
-    Relative candidates keep their leading dots so resolve_module anchors
-    them to the source package."""
-    imported = imported_paths(repo, revision, source_path)
-    for candidate in imported:
-        if resolve_module(candidate, source_path, known_paths) == target_path:
-            return True
-    return False
+    if not had_import_at_base:
+        return "insufficient", []
+    return "gone", base_signals

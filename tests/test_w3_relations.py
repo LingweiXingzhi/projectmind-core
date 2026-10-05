@@ -67,11 +67,11 @@ def node(node_id, paths, entry=None):
     }
 
 
-def two_node_map(edges=(("na", "nb"),), extra_na_paths=()):
+def two_node_map(edges=(("na", "nb"),), extra_na_paths=(), nb_paths=("pkg/b.py",)):
     na_paths = ["pkg/a.py", *extra_na_paths]
     return {
         "note": "m",
-        "nodes": [node("na", na_paths), node("nb", ["pkg/b.py"])],
+        "nodes": [node("na", na_paths), node("nb", list(nb_paths))],
         "edges": [{"from": f, "to": t} for f, t in edges],
     }
 
@@ -117,13 +117,16 @@ def with_installed_b(entries_by_path):
 
 A_CLASS = "class A:\n    pass\n"
 B_CLASS = "class B:\n    pass\n"
+B2_CLASS = "class B2:\n    pass\n"
 
 
 class RelationChannelTests(unittest.TestCase):
     def run_engine(self, base_files, target_files, map_data, facts=None, skipped=None,
-                   base_entries=None):
+                   base_entries=None, fact_paths=None):
         repo, base, target, tmp = build_repo(base_files, target_files)
         self.addCleanup(tmp.cleanup)
+        if facts is None:
+            facts = facts_for(target, fact_paths or ["pkg/a.py", "pkg/b.py"])
         request = make_request(base, target, map_data, facts=facts, skipped=skipped)
         if base_entries is None:
             return engine.suggest_map(repo, request)
@@ -181,6 +184,76 @@ class RelationChannelTests(unittest.TestCase):
             two_node_map(extra_na_paths=["pkg/a2.py"]),
         )
         self.assertEqual([p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"], [])
+
+    def test_c01_residual_import_to_other_target_member_blocks_removal(self):
+        # C-01 (HIGH): nb covers b.py AND b2.py; the source drops
+        # `import pkg.b` but keeps pkg.b2. The pre-C-01 proof only checked the
+        # single signal target file (b.py) and wrongly released the node-level
+        # relation na->nb. The proof is node-level: a residual import into ANY
+        # member of the target domain retains the relation -> no candidate.
+        res = self.run_engine(
+            {"pkg/a.py": "from pkg.b import B\nfrom pkg.b2 import B2\n\n" + A_CLASS,
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            {"pkg/a.py": "from pkg.b2 import B2\n\n" + A_CLASS,
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            two_node_map(nb_paths=["pkg/b.py", "pkg/b2.py"]),
+            fact_paths=["pkg/a.py", "pkg/b.py", "pkg/b2.py"],
+        )
+        self.assertEqual(
+            [p for p in res["proposals"]
+             if p["kind"] in ("RELATION_REMOVE_CANDIDATE", "RELATION_ADD")], [])
+
+    def test_c01_signal_and_residual_on_different_members(self):
+        # C-01: the removal signal names b2.py, but the residual import into
+        # the OTHER target member (b.py) retains the relation just the same.
+        res = self.run_engine(
+            {"pkg/a.py": "from pkg.b import B\nfrom pkg.b2 import B2\n\n" + A_CLASS,
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            {"pkg/a.py": "from pkg.b import B\n\n" + A_CLASS,
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            two_node_map(nb_paths=["pkg/b.py", "pkg/b2.py"]),
+            fact_paths=["pkg/a.py", "pkg/b.py", "pkg/b2.py"],
+        )
+        self.assertEqual(
+            [p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"], [])
+
+    def test_c01_removal_allowed_when_full_target_domain_dropped(self):
+        # C-01 positive: imports into EVERY member of the target domain are
+        # gone at target -> the node-level candidate is allowed, and its
+        # base-side evidence cites the imports that existed at base.
+        res = self.run_engine(
+            {"pkg/a.py": "from pkg.b import B\nfrom pkg.b2 import B2\n\n" + A_CLASS,
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            two_node_map(nb_paths=["pkg/b.py", "pkg/b2.py"]),
+            fact_paths=["pkg/a.py", "pkg/b.py", "pkg/b2.py"],
+        )
+        removals = [p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"]
+        self.assertEqual(len(removals), 1)
+        self.assertEqual((removals[0]["proposed_change"]["from"],
+                          removals[0]["proposed_change"]["to"]), ("na", "nb"))
+        base_evidence = [e for e in removals[0]["evidence"]
+                         if e.get("revision") and e["revision"] != removals[0]["evidence"][0]["revision"]
+                         or "base" in e.get("detail", "")]
+        self.assertTrue(any("pkg.b" in e.get("detail", "") for e in base_evidence))
+
+    def test_c01_residual_import_via_auxiliary_source_member(self):
+        # C-01 x multi-source: the changed source dropped every import, but an
+        # unchanged auxiliary member of the SOURCE domain still imports a
+        # target-domain member -> retained, no candidate.
+        res = self.run_engine(
+            {"pkg/a.py": "from pkg.b import B\nfrom pkg.b2 import B2\n\n" + A_CLASS,
+             "pkg/a2.py": "from pkg.b2 import B2\n",
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            {"pkg/a.py": A_CLASS,
+             "pkg/a2.py": "from pkg.b2 import B2\n",
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            two_node_map(extra_na_paths=["pkg/a2.py"],
+                         nb_paths=["pkg/b.py", "pkg/b2.py"]),
+            fact_paths=["pkg/a.py", "pkg/a2.py", "pkg/b.py", "pkg/b2.py"],
+        )
+        self.assertEqual(
+            [p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"], [])
 
     def test_removal_requires_existing_map_edge(self):
         res = self.run_engine(
