@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import hashlib
 import io
 import json
+import os
 import re
 import shutil
 import sqlite3
@@ -39,7 +40,9 @@ def text(value, limit, label, required=False):
 
 
 def metadata(data):
-    if not isinstance(data.get('category'), str) or data['category'] not in CATEGORIES:
+    # D-03 same class: an unhashable category value must fail as a controlled
+    # 400, not as a raw TypeError from dict-key hashing.
+    if not isinstance(data.get('category'), str) or data.get('category') not in CATEGORIES:
         fail('请选择有效的日志分类')
     try:
         day = date.fromisoformat(data.get('date', ''))
@@ -252,11 +255,23 @@ class Store:
         return {'format': 'projectmind-worklog-backup-v1', 'exportedAt': now(), 'entries': entries, 'history': history, 'files': files}
 
 
-def repository_store(repo):
-    result = subprocess.run(['git', '-C', str(repo), 'rev-parse', '--git-common-dir'], capture_output=True, text=True, timeout=5)
+def repository_storage_folder(repo):
+    """Resolve the repository's common Git directory — the shared D
+    storage context. D-01: the explicit repo argument always wins; inherited
+    GIT_* environment (GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR, ...) is
+    stripped from the subprocess so it can never silently redirect D storage
+    into another repository. Side-effect-free (D-02): no Store is
+    constructed, no directory created, no SQLite file touched."""
+    env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    result = subprocess.run(['git', '-C', str(repo), 'rev-parse', '--git-common-dir'],
+                            capture_output=True, text=True, timeout=5, env=env)
     if result.returncode:
         fail('无法定位项目日志存储目录')
     folder = Path(result.stdout.strip())
     if not folder.is_absolute():
         folder = Path(repo) / folder
-    return Store(folder.resolve() / 'projectmind-worklog' / 'records.sqlite3')
+    return folder.resolve()
+
+
+def repository_store(repo):
+    return Store(repository_storage_folder(repo) / 'projectmind-worklog' / 'records.sqlite3')

@@ -1,5 +1,6 @@
 import base64
 import io
+import os
 import json
 import subprocess
 import tempfile
@@ -35,6 +36,29 @@ class WorklogTests(unittest.TestCase):
             self.store.chunk({'uploadId': start['uploadId'], 'offset': offset,
                               'base64': base64.b64encode(raw[offset:offset + 24576]).decode()})
         return start
+
+    def test_d03_unhashable_category_is_controlled_400(self):
+        # D-03 same defect class: an unhashable category value must produce a
+        # controlled 400 validation error, never a raw TypeError/500.
+        with self.assertRaises(ExtensionError) as caught:
+            self.store.save({**self.meta, 'category': []}, '1' * 40)
+        self.assertEqual(caught.exception.status, 400)
+
+    def test_d01_explicit_repo_wins_over_inherited_git_env(self):
+        # D-01 (MEDIUM): an inherited GIT_DIR pointing at another repository
+        # used to redirect D storage there (repo identity isolation broken).
+        # The explicit repo argument must always win.
+        repo_a = Path(self.folder.name) / 'repo-a'
+        repo_b = Path(self.folder.name) / 'repo-b'
+        for repo in (repo_a, repo_b):
+            repo.mkdir()
+            subprocess.run(['git', 'init', '-q', str(repo)], check=True,
+                           capture_output=True)
+        with patch.dict(os.environ, {'GIT_DIR': str(repo_b / '.git')}):
+            store = repository_store(repo_a)
+        self.assertIn('repo-a', str(store.path))
+        self.assertNotIn('repo-b', str(store.path))
+        self.assertIn('projectmind-worklog', str(store.path))
 
     def test_persistence_history_conflict_and_ai_state(self):
         e = self.store.save(self.meta, '1' * 40)
