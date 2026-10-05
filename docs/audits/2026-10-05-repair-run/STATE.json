@@ -1,0 +1,109 @@
+{
+  "run_status": "COMPLETED",
+  "phase": "DONE",
+  "c_verdict": "PASS_WITH_LIMITS",
+  "b_verdict": "PASS_WITH_LIMITS",
+  "d_verdict": "PASS_WITH_LIMITS",
+  "bcd_verdict": "PASS_WITH_LIMITS",
+  "ui_verdict": "PASS_WITH_LIMITS",
+  "open_blocker": 0,
+  "open_high": 0,
+  "codex_status": "AVAILABLE",
+  "codex_quota_reset": null,
+  "review_backlog": [],
+  "finished": true,
+  "audit_baseline": "VALID",
+  "audit_artifacts": {
+    "md": "G:\\jiagou\\PROJECTMIND_FINAL_INDEPENDENT_VERIFICATION.md",
+    "json": "G:\\jiagou\\PROJECTMIND_FINAL_INDEPENDENT_VERIFICATION.json"
+  },
+  "remote_freshness": "UNAVAILABLE",
+  "remote_freshness_note": "git fetch origin failed (connection reset, 2026-10-05); proceeding on frozen/local refs",
+  "head_drift": "NONE",
+  "head_verification": {
+    "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+    "c": "4d1b3fc162f96be14d9aafc1f867880dd0a485cc",
+    "b": "80e091acefd278fda03e188a125147b0aa5eedc5 (object exists locally; branch origin/feat/30-code-facts-integration)",
+    "d": "8f00be38532f3f5e9823aec8cbf430038cc9ff4b",
+    "ca": "9ea23491d1849f21bad9f60c1c1ca8df55bb5936",
+    "a30": "13c7ca8c7f64fce4c57fd49a48bb5c1b0b023a5e",
+    "bcd": "deb9b9ff9339c7bb204b111bd748c3dc369d1d27",
+    "ui": "674c70fce7c2000183c9ff45322184760386dde6"
+  },
+  "grilling": {
+    "session_id": "01a10b2e-280a-7ff0-9601-2e632b4876af",
+    "status": "ACTIVE",
+    "current_round": 0,
+    "continuity_verified": true
+  },
+  "codex_review_1": {
+    "track": "C",
+    "base": "4d1b3fc162f96be14d9aafc1f867880dd0a485cc",
+    "target": "db4349ff08961adbf882f6e56962554159dd70d6",
+    "verdict": "FAIL",
+    "record": "reviews/codex_review1_c_track.VERDICT.md"
+  },
+  "final_state": {
+    "finding_disposition": {
+      "closed_by_codex": 14,
+      "deferred_with_reason": 1,
+      "host_01": "DEFERRED_WITH_REASON"
+    },
+    "ready": {
+      "c_ready_for_human_review": true,
+      "b_ready_with_limits": true,
+      "d_ready_with_limits": true,
+      "bcd_ready_for_human_review": true,
+      "ui_pass_with_limits": true
+    },
+    "final_heads": {
+      "c": "65a7c480e7fa2656e55771c3cc001cf8117f59ad",
+      "d": "2ed56da28403d5703cb6e3ec3af20bbc1e7360eb",
+      "ui": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "bcd": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "main_unchanged": "7484d44ddeac3c054ca3ba68f92293d965bb615c"
+    },
+    "evidence": {
+      "bcd_full_suite": "265 tests: 263 pass + 2 audit-known Windows fixture environment errors",
+      "matrix": "30/30 PASS two-round stable at 1cc2fd8 (artifacts/matrix_bcd_r3.md, r4.md)",
+      "mutations": "SEMANTIC_CAUGHT 6/6 (artifacts/mutations_bcd_v2.json)",
+      "codex_final_verdict": "PASS_WITH_LIMITS (reviews/codex_final_review2.last.md)"
+    },
+    "review_rounds_summary": "5 independent Codex sessions: FAIL, FAIL, PASS_WITH_LIMITS, FAIL(1 MEDIUM), PASS_WITH_LIMITS"
+  },
+  "review_rounds": [
+    {
+      "round": "review#1",
+      "track": "C",
+      "target": "db4349ff08961adbf882f6e56962554159dd70d6",
+      "verdict": "FAIL",
+      "record": "reviews/codex_review1_c_track.VERDICT.md"
+    },
+    {
+      "round": "review#2",
+      "track": "C",
+      "target": "8c0c096ccb1593ff4fa6a4f366f25686271b1ccc",
+      "verdict": "FAIL",
+      "record": "reviews/codex_review2_c_track.last.md"
+    },
+    {
+      "round": "review#3",
+      "track": "C",
+      "target": "acd81bc3c43491cd14199cef11cf89e16668ba82",
+      "verdict": "PASS_WITH_LIMITS",
+      "record": "reviews/codex_review3_c_track.VERDICT.md"
+    },
+    {
+      "round": "final-review",
+      "target": "c17771c6366962e48928e4ac75dc2b2ed52dbd7a",
+      "verdict": "FAIL",
+      "record": "reviews/codex_final_review.last.md"
+    },
+    {
+      "round": "final-re-verification",
+      "target": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "verdict": "PASS_WITH_LIMITS",
+      "record": "reviews/codex_final_review2.last.md"
+    }
+  ]
+}

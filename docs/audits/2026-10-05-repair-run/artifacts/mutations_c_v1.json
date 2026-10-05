@@ -1,0 +1,121 @@
+{
+  "summary": {
+    "semantic_caught": 6,
+    "total": 6,
+    "claim": "SEMANTIC_CAUGHT 6/6 — only valid semantic mutations caught by their guard suites count (V-02)",
+    "statuses": {
+      "M1_revision_gate_off": "SEMANTIC_CAUGHT",
+      "M2_eligibility_gate_neutralized": "SEMANTIC_CAUGHT",
+      "M3_head_subject_collapsed": "SEMANTIC_CAUGHT",
+      "M4_text_only_import": "SEMANTIC_CAUGHT",
+      "M5_position_allowed": "SEMANTIC_CAUGHT",
+      "M6_lifecycle_auto_accept": "SEMANTIC_CAUGHT"
+    }
+  },
+  "results": [
+    {
+      "id": "M1_revision_gate_off",
+      "description": "disable B revision gate: any facts revision accepted",
+      "invariant": "B revision gate (F06/L06/S14)",
+      "file": "extensions/map_proposal/facts_adapter.py",
+      "guards": [
+        "tests.test_map_proposal"
+      ],
+      "status": "SEMANTIC_CAUGHT",
+      "failing": [
+        {
+          "module": "full suite (not the declared guards)",
+          "tail": "--\nTraceback (most recent call last):\n  File \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-hr9np50c\\M1_revision_gate_off\\tests\\test_real_b_integration.py\", line 193, in test_s14_real_revision_mismatch_rejected_same_revision_safe\n    with self.assertRaises(facts_adapter.FactsMismatch):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: FactsMismatch not raised\n\n----------------------------------------------------------------------\nRan 157 tests in 74.956s\n\nFAILED (failures=5)\n"
+        }
+      ],
+      "note": "caught only by the full suite — declared guards are not bound to the invariant"
+    },
+    {
+      "id": "M2_eligibility_gate_neutralized",
+      "description": "neutralize the centralized evidence-domain eligibility gate: skipped/uncollected members stop blocking strong relation proposals",
+      "invariant": "B skipped eligibility across the full evidence domain (A4/E-3, C-02)",
+      "file": "extensions/map_proposal/facts_adapter.py",
+      "guards": [
+        "tests.test_w3_relations"
+      ],
+      "status": "SEMANTIC_CAUGHT",
+      "failing": [
+        {
+          "module": "full suite (not the declared guards)",
+          "tail": "ff', 'detail': 'imported by pkg/a.py', 'revision': '6ae846dfba8dd806c10393eb9b6a0f5e3c08c867', 'path': 'pkg/b.py'}, {'kind': 'map_node', 'detail': 'na: covers pkg/a.py'}, {'kind': 'map_node', 'detail': 'nb: covers pkg/b.py'}], 'confidence': 'medium', 'uncertainty': [], 'status': 'PROPOSED', 'human_required': True}\n\nDiff is 983 characters long. Set self.maxDiff to None to see it.\n\n----------------------------------------------------------------------\nRan 157 tests in 72.997s\n\nFAILED (failures=4)\n"
+        }
+      ],
+      "note": "caught only by the full suite — declared guards are not bound to the invariant"
+    },
+    {
+      "id": "M3_head_subject_collapsed",
+      "description": "collapse T3 head-claim subjects: every implementation.* head is compared against the target pin, so a legitimate baseline head at base 'contradicts' the pack and releases related conflicts",
+      "invariant": "CA typed trust (A9, C-03)",
+      "file": "extensions/map_proposal/ca_adapter.py",
+      "guards": [
+        "tests.test_w4_ca_trust"
+      ],
+      "status": "SEMANTIC_CAUGHT",
+      "failing": [
+        {
+          "module": "full suite (not the declared guards)",
+          "tail": "-------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-hr9np50c\\M3_head_subject_collapsed\\tests\\test_w4_ca_trust.py\", line 351, in test_c03_wrong_baseline_head_is_same_subject_contradiction\n    self.assertTrue(any(\"context contradiction\" in l and \"pinned base\" in l\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 157 tests in 73.678s\n\nFAILED (failures=4)\n"
+        }
+      ],
+      "note": "caught only by the full suite — declared guards are not bound to the invariant"
+    },
+    {
+      "id": "M4_text_only_import",
+      "description": "blob 'parsing' rebuilt from raw text lines (valid Python, wrong semantics): multiline and unsupported import forms degrade silently",
+      "invariant": "AST semantic relation proof (DROP L05, C-3)",
+      "file": "extensions/map_proposal/relations.py",
+      "guards": [
+        "tests.test_w3_relations"
+      ],
+      "status": "SEMANTIC_CAUGHT",
+      "failing": [
+        {
+          "module": "full suite (not the declared guards)",
+          "tail": "-------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-hr9np50c\\M4_text_only_import\\tests\\test_w3_relations.py\", line 359, in test_x02_dynamic_import_unknown_unresolved\n    self.assertTrue(any(u[\"subject\"] == \"pkg/a.py\" and u[\"reason\"] == \"HUMAN_REQUIRED\"\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 157 tests in 63.546s\n\nFAILED (failures=6, errors=3)\n"
+        }
+      ],
+      "note": "caught only by the full suite — declared guards are not bound to the invariant"
+    },
+    {
+      "id": "M5_position_allowed",
+      "description": "allow position into proposed_change",
+      "invariant": "position prohibition (K02/S-1)",
+      "file": "extensions/map_proposal/model.py",
+      "guards": [
+        "tests.test_map_proposal",
+        "tests.test_w5_compatibility"
+      ],
+      "status": "SEMANTIC_CAUGHT",
+      "failing": [
+        {
+          "module": "full suite (not the declared guards)",
+          "tail": "---------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-hr9np50c\\M5_position_allowed\\tests\\test_map_proposal.py\", line 246, in test_make_proposal_rejects_position_and_empty_evidence\n    with self.assertRaises(ValueError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 157 tests in 70.450s\n\nFAILED (failures=1)\n"
+        }
+      ],
+      "note": "caught only by the full suite — declared guards are not bound to the invariant"
+    },
+    {
+      "id": "M6_lifecycle_auto_accept",
+      "description": "candidate lifecycle becomes ACCEPTED / human_required=False",
+      "invariant": "human lifecycle boundary (S-4)",
+      "file": "extensions/map_proposal/model.py",
+      "guards": [
+        "tests.test_w5_compatibility",
+        "tests.test_w2_channels"
+      ],
+      "status": "SEMANTIC_CAUGHT",
+      "failing": [
+        {
+          "module": "full suite (not the declared guards)",
+          "tail": "-------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-hr9np50c\\M6_lifecycle_auto_accept\\tests\\test_w5_compatibility.py\", line 144, in test_no_position_anywhere_in_any_proposal\n    self.assertEqual(proposal[\"status\"], \"PROPOSED\")\nAssertionError: 'ACCEPTED' != 'PROPOSED'\n- ACCEPTED\n+ PROPOSED\n\n\n----------------------------------------------------------------------\nRan 157 tests in 72.639s\n\nFAILED (failures=3)\n"
+        }
+      ],
+      "note": "caught only by the full suite — declared guards are not bound to the invariant"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "review_cursors": {
+    "c": {
+      "last_audited_sha": "65a7c480e7fa2656e55771c3cc001cf8117f59ad",
+      "latest_stable_sha": "65a7c480e7fa2656e55771c3cc001cf8117f59ad",
+      "note": "C HIGH+C MEDIUM closed via reviews #1-#3 + final review #4/#5 (65a7c48 = C-06 namespace fix)"
+    },
+    "d": {
+      "last_audited_sha": "2ed56da28403d5703cb6e3ec3af20bbc1e7360eb",
+      "latest_stable_sha": "2ed56da28403d5703cb6e3ec3af20bbc1e7360eb",
+      "note": "D-01/02/03 CLOSED_BY_CODEX (final review)"
+    },
+    "bcd": {
+      "last_audited_sha": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "latest_stable_sha": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "note": "BCD_READY_FOR_HUMAN_REVIEW satisfied per Codex final re-verification (with sandbox verification limits)"
+    },
+    "ui": {
+      "last_audited_sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "latest_stable_sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "note": "UI-01 CLOSED_BY_CODEX (final review)"
+    }
+  },
+  "dependency_baselines_no_separate_cursor": {
+    "b": "80e091acefd278fda03e188a125147b0aa5eedc5",
+    "ca": "9ea23491d1849f21bad9f60c1c1ca8df55bb5936",
+    "a30": "13c7ca8c7f64fce4c57fd49a48bb5c1b0b023a5e",
+    "note": "B/CA/A30 as dependency baselines; only need own cursor if they produce new commits"
+  },
+  "worktrees": {
+    "c": "G:\\jiagou\\projectmind-c-audit-fixes (fix/c-independent-audit-v1 from 4d1b3fc)",
+    "d": "G:\\jiagou\\projectmind-d-audit-fixes (fix/d-independent-audit-v1 from 8f00be38)",
+    "bcd": "G:\\jiagou\\projectmind-bcd-audit-fixes (integration/bcd-audit-fixes-v1 from deb9b9f)",
+    "ui": "G:\\jiagou\\projectmind-ui-audit-fixes (fix/ui-independent-audit-v1 from 674c70f)"
+  },
+  "review_rounds": [
+    {
+      "round": "review#1",
+      "track": "C",
+      "range": "4d1b3fc..db4349f",
+      "verdict": "FAIL",
+      "record": "reviews/codex_review1_c_track.last.md"
+    },
+    {
+      "round": "review#2",
+      "track": "C",
+      "range": "4d1b3fc..8c0c096",
+      "verdict": "FAIL",
+      "record": "reviews/codex_review2_c_track.last.md"
+    },
+    {
+      "round": "review#3",
+      "track": "C",
+      "range": "4d1b3fc..acd81bc",
+      "verdict": "PASS_WITH_LIMITS",
+      "record": "reviews/codex_review3_c_track.last.md"
+    },
+    {
+      "round": "final-review",
+      "tracks": "C-MEDIUM/D/UI/BCD",
+      "ranges": "acd81bc..3abfc75 | 8f00be38..2ed56da | 674c70fc..d4e3f2a | deb9b9ff..c17771c",
+      "verdict": "FAIL (1 MEDIUM: C-06 namespace gap)",
+      "record": "reviews/codex_final_review.last.md"
+    },
+    {
+      "round": "final-re-verification",
+      "tracks": "C-06 fix + BCD",
+      "range": "65a7c48 / 1cc2fd8",
+      "verdict": "PASS_WITH_LIMITS",
+      "record": "reviews/codex_final_review2.last.md"
+    }
+  ]
+}

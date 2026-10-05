@@ -1,0 +1,553 @@
+{
+  "stable": true,
+  "pass": 30,
+  "breakdown": {
+    "PASS": 30
+  },
+  "rounds": [
+    {
+      "S01": {
+        "oracle": "real NODE_ADD exactly for uncovered path with eligible declarations",
+        "contract": "plan §8 S01/A01 + X19",
+        "deps": "FIXTURE facts + REAL git",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "fb46becf6798f5a5",
+        "notes": ""
+      },
+      "S02": {
+        "oracle": "real RELATION_ADD incl. unchanged-declarations X01",
+        "contract": "plan §8 S02/A02 + X01",
+        "deps": "REAL git + REAL B",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "cf82dfa46d9b8322",
+        "notes": ""
+      },
+      "S03": {
+        "oracle": "relation removal: last cross-domain import gone; multi-source residual; churn stays silent",
+        "contract": "plan §8 S03/A03 + X11/X13",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "9 passed, 0 skipped, 0 failed of 9 mapped",
+        "input_hash": "0a6113902e373f35",
+        "notes": "C-01: multi-target residual proof bound"
+      },
+      "S04": {
+        "oracle": "rename/move → IMPLEMENTATION_LINK_CHANGE, never NODE_ADD; subdirectory variant",
+        "contract": "plan §8 S04/A04",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "bf3d4221cbb16edc",
+        "notes": ""
+      },
+      "S05": {
+        "oracle": "node removal: all evidence gone; partial retention → no candidate",
+        "contract": "plan §8 S05/A05",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "f827af87a278e2d7",
+        "notes": ""
+      },
+      "S06": {
+        "oracle": "responsibility change: entryPoint declaration gone, no first-symbol pick",
+        "contract": "plan §8 S06/A06",
+        "deps": "REAL B (installed collector)",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "b743071ddbf2cedf",
+        "notes": ""
+      },
+      "S07": {
+        "oracle": "comment-only change: zero strong proposals with reason",
+        "contract": "plan §8 S07/A07 + X20",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "f25006ac942a792d",
+        "notes": ""
+      },
+      "S08": {
+        "oracle": "formatting-only (line/quote drift): zero proposals",
+        "contract": "plan §8 S08/A08",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "0915990c48766cfb",
+        "notes": "closed P06"
+      },
+      "S09": {
+        "oracle": "helper-only change: no NODE_ADD / strong proposal",
+        "contract": "plan §8 S09/A09 + F10",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "584c0e7473e8d9fc",
+        "notes": ""
+      },
+      "S10": {
+        "oracle": "internal class added: no NODE_ADD",
+        "contract": "plan §8 S10/A10 + F9",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "92b49b8357e51c15",
+        "notes": ""
+      },
+      "S11": {
+        "oracle": "docstring import text is never a relation; string/comment included",
+        "contract": "plan §8 S11/A11 + X03/X12",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "6a26ea82b80ed791",
+        "notes": ""
+      },
+      "S12": {
+        "oracle": "test/generated noise → no business architecture candidates",
+        "contract": "plan §8 S12/A12",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "d45cbac9f9e94f6d",
+        "notes": "closed P06"
+      },
+      "S13": {
+        "oracle": "B skipped source → HUMAN_REQUIRED; no channel uses it; normal sources work",
+        "contract": "plan §8 S13/A13 + X04/X21",
+        "deps": "REAL B skipped semantics",
+        "result": "PASS",
+        "evidence": "6 passed, 0 skipped, 0 failed of 6 mapped",
+        "input_hash": "257a1510b102fd97",
+        "notes": "C-02: full evidence-domain eligibility gate bound"
+      },
+      "S14": {
+        "oracle": "B mismatch rejected on all paths; same-revision/empty diff no bypass",
+        "contract": "plan §8 S14/A14 + X06",
+        "deps": "REAL B mismatch + supplied fixtures",
+        "result": "PASS",
+        "evidence": "6 passed, 0 skipped, 0 failed of 6 mapped",
+        "input_hash": "9d5bc23da1dcb339",
+        "notes": ""
+      },
+      "S15": {
+        "oracle": "B unavailable → honest degraded; B-free channels continue; no fabricated facts",
+        "contract": "plan §8 S15/A15",
+        "deps": "REAL absence + REAL exception",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "82146a1208b9e59e",
+        "notes": ""
+      },
+      "S16": {
+        "oracle": "stale map: pre-base deletion candidate; read-unknown ≠ absent; base==target zero",
+        "contract": "plan §8 S16/A16-valid-map + F11/F15",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "3 passed, 0 skipped, 0 failed of 3 mapped",
+        "input_hash": "000fe0ee73a8c26d",
+        "notes": ""
+      },
+      "S17": {
+        "oracle": "ambiguous multi-owner mapping → low confidence + uncertainty, no arbitrary pick",
+        "contract": "plan §8 S17/A17",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "02f99cbaca85040a",
+        "notes": "rename + relation variants"
+      },
+      "S18": {
+        "oracle": "missing evidence: added file without B entries → unresolved UNKNOWN",
+        "contract": "plan §8 S18/A18",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "02d909c779ff03e7",
+        "notes": ""
+      },
+      "S19": {
+        "oracle": "relevant CA conflict suppresses touching candidates only; word boundary",
+        "contract": "plan §8 S19/A19 + X14/X15/X18",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "8 passed, 0 skipped, 0 failed of 8 mapped",
+        "input_hash": "a842c63f286ebd74",
+        "notes": "C-03: subject-aware T3 bound"
+      },
+      "S20": {
+        "oracle": "non-current partitions (stale/proposal/research/history) never read",
+        "contract": "plan §8 S20/A20",
+        "deps": "REAL CA stale semantics",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "936141cd7a028fbe",
+        "notes": ""
+      },
+      "S21": {
+        "oracle": "multi-scope same key both in selection layer",
+        "contract": "plan §8 S21/A21",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "a5c65770f1e0c284",
+        "notes": ""
+      },
+      "S22": {
+        "oracle": "verified_fields per field; unverified fields support nothing",
+        "contract": "plan §8 S22/A22",
+        "deps": "MOCK validator (field map contract)",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "4751a3ca15d0c59f",
+        "notes": "live verifiers = recorded limit"
+      },
+      "S23": {
+        "oracle": "unavailable keys explicit UNKNOWN, never faked bad-pack",
+        "contract": "plan §8 S23/A23",
+        "deps": "MOCK validator",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "a2903b10d771c293",
+        "notes": "real unavailable rows need network verifiers (recorded)"
+      },
+      "S24": {
+        "oracle": "invalid pack → whole-pack discard; independent candidates survive",
+        "contract": "plan §8 S24/A24",
+        "deps": "REAL CA digest tamper",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "93a296f25c93ac08",
+        "notes": ""
+      },
+      "S25": {
+        "oracle": "coherent poison never enters evidence/rationale (also with proposals present)",
+        "contract": "plan §8 S25/A25 + X05/X16/X17",
+        "deps": "REAL CA pack poison",
+        "result": "PASS",
+        "evidence": "4 passed, 0 skipped, 0 failed of 4 mapped",
+        "input_hash": "3d31fa02e864a058",
+        "notes": ""
+      },
+      "S26": {
+        "oracle": "determinism: byte-identical repeats; order-insensitive IDs",
+        "contract": "plan §8 S26/A26 + X09",
+        "deps": "REAL git + REAL B history",
+        "result": "PASS",
+        "evidence": "4 passed, 0 skipped, 0 failed of 4 mapped",
+        "input_hash": "9c664cf192844c4b",
+        "notes": ""
+      },
+      "S27": {
+        "oracle": "malformed inputs controlled rejection incl. valid-context malformed map",
+        "contract": "plan §8 S27/A27",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "3 passed, 0 skipped, 0 failed of 3 mapped",
+        "input_hash": "d58e604b0db9e2f7",
+        "notes": "closed P06"
+      },
+      "S28": {
+        "oracle": "path abuse rejected across changed/oldPath/map evidence/entryPoint sources",
+        "contract": "plan §8 S28/A28",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "5 passed, 0 skipped, 0 failed of 5 mapped",
+        "input_hash": "0833ed75ff340013",
+        "notes": ""
+      },
+      "S29": {
+        "oracle": "no formal-map write: file hash unchanged; no position; PROPOSED lifecycle",
+        "contract": "plan §8 S29/A29",
+        "deps": "REAL formal map hash",
+        "result": "PASS",
+        "evidence": "3 passed, 0 skipped, 0 failed of 3 mapped",
+        "input_hash": "2baa062a1bdae08f",
+        "notes": ""
+      },
+      "S30": {
+        "oracle": "host isolation: runtime BaseException contained, all routes survive",
+        "contract": "plan §8 S30/A30",
+        "deps": "REAL Core A30 runtime tests (bound by name)",
+        "result": "PASS",
+        "evidence": "4 A30 runtime test(s) actually run in A30 fix worktree projectmind-core-a30 (external owner delivery): ExtensionHttpTests.test_a30_d_extension_routes_survive_runtime_system_exit, ExtensionHttpTests.test_a30_host_run_contract_direct, ExtensionHttpTests.test_a30_runtime_base_exception_family_is_contained, ExtensionHttpTests.test_a30_runtime_system_exit_is_contained_as_extension_error; unittest tail: ",
+        "input_hash": "bound by test name; see evidence",
+        "notes": "runs the actual test_a30_* behavior tests in-runtime when present, else in the A30 fix worktree (owner delivery); zero discovered A30 tests → NOT_RUN"
+      }
+    },
+    {
+      "S01": {
+        "oracle": "real NODE_ADD exactly for uncovered path with eligible declarations",
+        "contract": "plan §8 S01/A01 + X19",
+        "deps": "FIXTURE facts + REAL git",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "fb46becf6798f5a5",
+        "notes": ""
+      },
+      "S02": {
+        "oracle": "real RELATION_ADD incl. unchanged-declarations X01",
+        "contract": "plan §8 S02/A02 + X01",
+        "deps": "REAL git + REAL B",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "cf82dfa46d9b8322",
+        "notes": ""
+      },
+      "S03": {
+        "oracle": "relation removal: last cross-domain import gone; multi-source residual; churn stays silent",
+        "contract": "plan §8 S03/A03 + X11/X13",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "9 passed, 0 skipped, 0 failed of 9 mapped",
+        "input_hash": "0a6113902e373f35",
+        "notes": "C-01: multi-target residual proof bound"
+      },
+      "S04": {
+        "oracle": "rename/move → IMPLEMENTATION_LINK_CHANGE, never NODE_ADD; subdirectory variant",
+        "contract": "plan §8 S04/A04",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "bf3d4221cbb16edc",
+        "notes": ""
+      },
+      "S05": {
+        "oracle": "node removal: all evidence gone; partial retention → no candidate",
+        "contract": "plan §8 S05/A05",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "f827af87a278e2d7",
+        "notes": ""
+      },
+      "S06": {
+        "oracle": "responsibility change: entryPoint declaration gone, no first-symbol pick",
+        "contract": "plan §8 S06/A06",
+        "deps": "REAL B (installed collector)",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "b743071ddbf2cedf",
+        "notes": ""
+      },
+      "S07": {
+        "oracle": "comment-only change: zero strong proposals with reason",
+        "contract": "plan §8 S07/A07 + X20",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "f25006ac942a792d",
+        "notes": ""
+      },
+      "S08": {
+        "oracle": "formatting-only (line/quote drift): zero proposals",
+        "contract": "plan §8 S08/A08",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "0915990c48766cfb",
+        "notes": "closed P06"
+      },
+      "S09": {
+        "oracle": "helper-only change: no NODE_ADD / strong proposal",
+        "contract": "plan §8 S09/A09 + F10",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "584c0e7473e8d9fc",
+        "notes": ""
+      },
+      "S10": {
+        "oracle": "internal class added: no NODE_ADD",
+        "contract": "plan §8 S10/A10 + F9",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "92b49b8357e51c15",
+        "notes": ""
+      },
+      "S11": {
+        "oracle": "docstring import text is never a relation; string/comment included",
+        "contract": "plan §8 S11/A11 + X03/X12",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "6a26ea82b80ed791",
+        "notes": ""
+      },
+      "S12": {
+        "oracle": "test/generated noise → no business architecture candidates",
+        "contract": "plan §8 S12/A12",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "d45cbac9f9e94f6d",
+        "notes": "closed P06"
+      },
+      "S13": {
+        "oracle": "B skipped source → HUMAN_REQUIRED; no channel uses it; normal sources work",
+        "contract": "plan §8 S13/A13 + X04/X21",
+        "deps": "REAL B skipped semantics",
+        "result": "PASS",
+        "evidence": "6 passed, 0 skipped, 0 failed of 6 mapped",
+        "input_hash": "257a1510b102fd97",
+        "notes": "C-02: full evidence-domain eligibility gate bound"
+      },
+      "S14": {
+        "oracle": "B mismatch rejected on all paths; same-revision/empty diff no bypass",
+        "contract": "plan §8 S14/A14 + X06",
+        "deps": "REAL B mismatch + supplied fixtures",
+        "result": "PASS",
+        "evidence": "6 passed, 0 skipped, 0 failed of 6 mapped",
+        "input_hash": "9d5bc23da1dcb339",
+        "notes": ""
+      },
+      "S15": {
+        "oracle": "B unavailable → honest degraded; B-free channels continue; no fabricated facts",
+        "contract": "plan §8 S15/A15",
+        "deps": "REAL absence + REAL exception",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "82146a1208b9e59e",
+        "notes": ""
+      },
+      "S16": {
+        "oracle": "stale map: pre-base deletion candidate; read-unknown ≠ absent; base==target zero",
+        "contract": "plan §8 S16/A16-valid-map + F11/F15",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "3 passed, 0 skipped, 0 failed of 3 mapped",
+        "input_hash": "000fe0ee73a8c26d",
+        "notes": ""
+      },
+      "S17": {
+        "oracle": "ambiguous multi-owner mapping → low confidence + uncertainty, no arbitrary pick",
+        "contract": "plan §8 S17/A17",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "02f99cbaca85040a",
+        "notes": "rename + relation variants"
+      },
+      "S18": {
+        "oracle": "missing evidence: added file without B entries → unresolved UNKNOWN",
+        "contract": "plan §8 S18/A18",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "02d909c779ff03e7",
+        "notes": ""
+      },
+      "S19": {
+        "oracle": "relevant CA conflict suppresses touching candidates only; word boundary",
+        "contract": "plan §8 S19/A19 + X14/X15/X18",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "8 passed, 0 skipped, 0 failed of 8 mapped",
+        "input_hash": "a842c63f286ebd74",
+        "notes": "C-03: subject-aware T3 bound"
+      },
+      "S20": {
+        "oracle": "non-current partitions (stale/proposal/research/history) never read",
+        "contract": "plan §8 S20/A20",
+        "deps": "REAL CA stale semantics",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "936141cd7a028fbe",
+        "notes": ""
+      },
+      "S21": {
+        "oracle": "multi-scope same key both in selection layer",
+        "contract": "plan §8 S21/A21",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "a5c65770f1e0c284",
+        "notes": ""
+      },
+      "S22": {
+        "oracle": "verified_fields per field; unverified fields support nothing",
+        "contract": "plan §8 S22/A22",
+        "deps": "MOCK validator (field map contract)",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "4751a3ca15d0c59f",
+        "notes": "live verifiers = recorded limit"
+      },
+      "S23": {
+        "oracle": "unavailable keys explicit UNKNOWN, never faked bad-pack",
+        "contract": "plan §8 S23/A23",
+        "deps": "MOCK validator",
+        "result": "PASS",
+        "evidence": "1 passed, 0 skipped, 0 failed of 1 mapped",
+        "input_hash": "a2903b10d771c293",
+        "notes": "real unavailable rows need network verifiers (recorded)"
+      },
+      "S24": {
+        "oracle": "invalid pack → whole-pack discard; independent candidates survive",
+        "contract": "plan §8 S24/A24",
+        "deps": "REAL CA digest tamper",
+        "result": "PASS",
+        "evidence": "2 passed, 0 skipped, 0 failed of 2 mapped",
+        "input_hash": "93a296f25c93ac08",
+        "notes": ""
+      },
+      "S25": {
+        "oracle": "coherent poison never enters evidence/rationale (also with proposals present)",
+        "contract": "plan §8 S25/A25 + X05/X16/X17",
+        "deps": "REAL CA pack poison",
+        "result": "PASS",
+        "evidence": "4 passed, 0 skipped, 0 failed of 4 mapped",
+        "input_hash": "3d31fa02e864a058",
+        "notes": ""
+      },
+      "S26": {
+        "oracle": "determinism: byte-identical repeats; order-insensitive IDs",
+        "contract": "plan §8 S26/A26 + X09",
+        "deps": "REAL git + REAL B history",
+        "result": "PASS",
+        "evidence": "4 passed, 0 skipped, 0 failed of 4 mapped",
+        "input_hash": "9c664cf192844c4b",
+        "notes": ""
+      },
+      "S27": {
+        "oracle": "malformed inputs controlled rejection incl. valid-context malformed map",
+        "contract": "plan §8 S27/A27",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "3 passed, 0 skipped, 0 failed of 3 mapped",
+        "input_hash": "d58e604b0db9e2f7",
+        "notes": "closed P06"
+      },
+      "S28": {
+        "oracle": "path abuse rejected across changed/oldPath/map evidence/entryPoint sources",
+        "contract": "plan §8 S28/A28",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "5 passed, 0 skipped, 0 failed of 5 mapped",
+        "input_hash": "0833ed75ff340013",
+        "notes": ""
+      },
+      "S29": {
+        "oracle": "no formal-map write: file hash unchanged; no position; PROPOSED lifecycle",
+        "contract": "plan §8 S29/A29",
+        "deps": "REAL formal map hash",
+        "result": "PASS",
+        "evidence": "3 passed, 0 skipped, 0 failed of 3 mapped",
+        "input_hash": "2baa062a1bdae08f",
+        "notes": ""
+      },
+      "S30": {
+        "oracle": "host isolation: runtime BaseException contained, all routes survive",
+        "contract": "plan §8 S30/A30",
+        "deps": "REAL Core A30 runtime tests (bound by name)",
+        "result": "PASS",
+        "evidence": "4 A30 runtime test(s) actually run in A30 fix worktree projectmind-core-a30 (external owner delivery): ExtensionHttpTests.test_a30_d_extension_routes_survive_runtime_system_exit, ExtensionHttpTests.test_a30_host_run_contract_direct, ExtensionHttpTests.test_a30_runtime_base_exception_family_is_contained, ExtensionHttpTests.test_a30_runtime_system_exit_is_contained_as_extension_error; unittest tail: ",
+        "input_hash": "bound by test name; see evidence",
+        "notes": "runs the actual test_a30_* behavior tests in-runtime when present, else in the A30 fix worktree (owner delivery); zero discovered A30 tests → NOT_RUN"
+      }
+    }
+  ]
+}
