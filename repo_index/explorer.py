@@ -33,7 +33,9 @@ BINARY_SNIFF_BYTES = 8192
 REASON_BINARY = "二进制内容，首版不提供源码视图"
 REASON_OVERSIZE = "文件超过 1 MiB 上限"
 REASON_NAME_ENCODING = "文件名不是 UTF-8，首版不支持"
-REASON_SPECIAL_MODE = "首版不读取符号链接或子模块"
+REASON_SYMLINK = "符号链接，首版不读取"
+REASON_SUBMODULE = "子模块，首版不读取"
+REASON_SPECIAL_MODE = "首版不读取该类型的清单条目"
 REASON_COUNT = "一次索引最多 2000 个文件"
 REASON_TOTAL_BUDGET = "解析源码总量超限"
 REASON_ENCODING = "编码不支持或解码失败"
@@ -135,6 +137,12 @@ def _classify_and_read(repo_root: Path, entries: list[dict]) -> tuple[dict[str, 
                             "reason": REASON_NAME_ENCODING})
             continue
         manifest[entry["path"]] = entry
+        if entry["object_type"] == b"commit" or entry["mode"] == b"160000":
+            skipped.append({"path": entry["path"], "reason": REASON_SUBMODULE})
+            continue
+        if entry["mode"] == b"120000":
+            skipped.append({"path": entry["path"], "reason": REASON_SYMLINK})
+            continue
         if entry["object_type"] != b"blob" or entry["mode"] not in (b"100644", b"100755"):
             skipped.append({"path": entry["path"], "reason": REASON_SPECIAL_MODE})
             continue
@@ -243,3 +251,44 @@ class ExplorerRegistry:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_MISMATCH",
                                 "revision 与该 projectId 绑定的提交不一致")
         return context
+
+    # -- tree ----------------------------------------------------------------
+    def tree(self, project_id: str, revision: str) -> dict:
+        context = self.get(project_id, revision)
+        directories: dict[str, dict] = {}
+        files: list[dict] = []
+        for record in context.entries:
+            path = record["path"] or record["raw_path"].decode("utf-8", "backslashreplace")
+            segments = path.split("/")
+            for index in range(1, len(segments)):
+                dir_path = "/".join(segments[:index])
+                if dir_path not in directories:
+                    directories[dir_path] = {
+                        "path": dir_path,
+                        "parentPath": "" if index == 1 else "/".join(segments[:index - 1]),
+                        "kind": "directory",
+                        "language": None,
+                    }
+            entry = {
+                "path": path,
+                "parentPath": "" if len(segments) == 1 else "/".join(segments[:-1]),
+                "kind": "file",
+                "language": "python" if path.endswith((".py", ".pyi")) else None,
+            }
+            if path not in context.allowed:
+                reason = next((item["reason"] for item in context.skipped
+                               if item["path"] == path), None)
+                if reason is None:
+                    reason = next((item["reason"] for item in context.skipped
+                                   if item["path"] == record["raw_path"].decode("utf-8", "backslashreplace")),
+                                  REASON_NAME_ENCODING)
+                entry["skippedReason"] = reason
+            files.append(entry)
+        entries = sorted(files + list(directories.values()), key=lambda item: item["path"])
+        return {
+            "schemaVersion": 1,
+            "projectId": context.project_id,
+            "revision": context.revision,
+            "entries": entries,
+            "coverage": context.coverage,
+        }

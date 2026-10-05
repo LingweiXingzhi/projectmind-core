@@ -389,6 +389,22 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if request.path == "/api/snapshot":
                     self.send_json(HTTPStatus.OK, build_snapshot(repo, map_path))
                     return
+                if request.path == "/api/repo-explorer/tree":
+                    if explorer_registry is None:
+                        self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+                        return
+                    query = parse_qs(request.query)
+                    project_id = query.get("projectId", [""])[0]
+                    revision = query.get("revision", [""])[0]
+                    try:
+                        if not project_id or not revision:
+                            raise ExplorerError(HTTPStatus.BAD_REQUEST, "BAD_REQUEST",
+                                                "projectId 与 revision 为必填参数")
+                        self.send_json(HTTPStatus.OK,
+                                       explorer_registry.tree(project_id, revision))
+                    except ExplorerError as exc:
+                        self.send_json(exc.status, explorer_error_payload(exc))
+                    return
                 if request.path == "/api/evidence":
                     query = parse_qs(request.query)
                     path = query.get("path", [""])[0]
