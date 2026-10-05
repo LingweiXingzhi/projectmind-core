@@ -71,7 +71,7 @@ async function runReview() {
       body: JSON.stringify(proposalRequest),
     });
 
-    await renderChanges(base, target, compare.changes);
+    await renderChanges(base, target, compare.changes, mapEvidencePaths(currentMap));
     renderProposals(review);
     renderHuman(review);
     reviewStatus.textContent =
@@ -85,7 +85,7 @@ async function runReview() {
   }
 }
 
-async function renderChanges(base, target, changes) {
+async function renderChanges(base, target, changes, declaredPaths) {
   document.getElementById("review-change-count").textContent = `${changes.length} 个文件`;
   reviewChanges.replaceChildren();
   if (!changes.length) {
@@ -112,11 +112,29 @@ async function renderChanges(base, target, changes) {
     const code = document.createElement("code");
     code.className = "review-change-code";
     code.textContent = change.code;
-    const path = document.createElement("a");
-    path.href = `/api/evidence?path=${encodeURIComponent(change.path)}&revision=${encodeURIComponent(target)}`;
-    path.target = "_blank";
-    path.rel = "noopener";
-    path.textContent = change.path;
+    // UI-01: /api/evidence only serves map-declared paths that exist at the
+    // requested revision. Link sources follow the change type (added/modified
+    // -> target, deleted -> base, renamed -> old@base + new@target); when no
+    // valid evidence view exists the path is shown without a link instead of
+    // presenting a broken 400/404 as evidence.
+    const targets = evidenceTargetsFor(change, declaredPaths);
+    const display = change.oldPath ? `${change.oldPath} → ${change.path}` : change.path;
+    const path = document.createElement("span");
+    if (targets.length) {
+      path.textContent = display + " · 证据：";
+      targets.forEach((item, index) => {
+        const revision = item.revision === "base" ? base : target;
+        if (index) path.append(document.createTextNode(" + "));
+        const link = document.createElement("a");
+        link.href = `/api/evidence?path=${encodeURIComponent(item.path)}&revision=${encodeURIComponent(revision)}`;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = `${item.path}@${item.revision}`;
+        path.append(link);
+      });
+    } else {
+      path.textContent = display + " · 未声明为地图证据路径，无证据视图";
+    }
     const badge = document.createElement("span");
     badge.className = "review-fact-badge";
     if (skipped.has(change.path)) {
