@@ -16,6 +16,7 @@ const explorerState = {
   treeToken: 0,
   fileToken: 0,
   symbolToken: 0,
+  relationToken: 0,
   compareToken: 0,
 };
 
@@ -347,6 +348,7 @@ function renderFile(result, replace) {
   if (replace) {
     view.replaceChildren();
     loadSymbols(result.path, result.versionContext || null);
+    loadRelations(result.path, result.versionContext || null);
   }
   view.appendChild(gutter);
   view.appendChild(body);
@@ -421,6 +423,32 @@ async function scrollToLine(line) {
     lines[index].scrollIntoView({ block: "center" });
     lines[index].classList.add("explorer-line-target");
     setTimeout(() => lines[index] && lines[index].classList.remove("explorer-line-target"), 1500);
+  }
+}
+
+// ---------- 关系（C 未接入前显示 unavailable，不伪装成空结果） ----------
+async function loadRelations(path, ctx = null) {
+  const panel = document.getElementById("explorer-relations");
+  const token = ++explorerState.relationToken;
+  const context = ctx || { projectId: explorerState.projectId, revision: explorerState.revision };
+  if (!context || !context.projectId) return;
+  const query = new URLSearchParams({
+    projectId: context.projectId, revision: context.revision, path,
+  });
+  try {
+    const result = await explorerFetch(`/api/repo-explorer/relations?${query}`);
+    if (token !== explorerState.relationToken) return;
+    if (result.status === "unavailable") {
+      panel.replaceChildren(explorerElement("span", "explorer-symbols-note",
+        "静态导入关系：尚未接入解析器（目录与源码浏览不受影响）。"));
+    } else {
+      panel.replaceChildren(explorerElement("span", "explorer-symbols-note",
+        `静态导入关系：${result.status}`));
+    }
+  } catch (error) {
+    if (token !== explorerState.relationToken) return;
+    panel.replaceChildren(explorerElement("span", "explorer-symbols-note",
+      `关系读取失败：${error.message}`));
   }
 }
 

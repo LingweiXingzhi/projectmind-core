@@ -349,6 +349,30 @@ class ExplorerRegistry:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "PATH_INVALID",
                                 "路径须为仓库内相对文件路径，使用 /，不能含 .. 或控制字符")
 
+    # -- relations ------------------------------------------------------------
+    def relations(self, project_id: str, revision: str, path: str) -> dict:
+        """Placeholder until C's parse_imports lands (task book §6.5):
+        status="unavailable", never a wrapped empty success."""
+        context = self.get(project_id, revision)
+        self._validate_path(path)
+        if path not in context.manifest:
+            raise ExplorerError(HTTPStatus.NOT_FOUND, "PATH_NOT_IN_REVISION",
+                                "路径不在该提交的清单中")
+        if path not in context.allowed:
+            reason = next((item["reason"] for item in context.skipped
+                           if item["path"] == path), "该文件在本次索引中被跳过")
+            raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
+        return {
+            "schemaVersion": 1,
+            "projectId": context.project_id,
+            "revision": context.revision,
+            "path": path,
+            "status": "unavailable",
+            "imports": [],
+            "dependents": [],
+            "warnings": ["静态导入关系尚未接入解析器；目录与源码浏览不受影响"],
+        }
+
     # -- changes --------------------------------------------------------------
     def changes(self, project_id: str, base: str, target: str) -> dict:
         """File changes between two full commit SHAs of this project's repo
