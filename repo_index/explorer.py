@@ -220,16 +220,16 @@ def parse_name_status(raw: bytes) -> list[dict]:
         code = parts[index]
         index += 1
         undecodable = False
-        if code.startswith(("R", "C")):
+        if code.startswith((b"R", b"C")):
             old_path, old_ok = _decode_git_path(parts[index])
             path, path_ok = _decode_git_path(parts[index + 1])
             index += 2
-            entry = {"status": code[0], "path": path, "oldPath": old_path}
+            entry = {"status": code[:1].decode("ascii"), "path": path, "oldPath": old_path}
             undecodable = not (old_ok and path_ok)
         else:
             path, path_ok = _decode_git_path(parts[index])
             index += 1
-            entry = {"status": code, "path": path, "oldPath": None}
+            entry = {"status": code.decode("ascii"), "path": path, "oldPath": None}
             undecodable = not path_ok
         if undecodable:
             entry["pathUndecodable"] = True
