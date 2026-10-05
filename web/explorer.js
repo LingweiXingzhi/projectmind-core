@@ -288,7 +288,7 @@ function showFileMessage(message) {
   explorerState.fileCursor = null;
 }
 
-async function openExplorerFile(path, startLine = 1, ctx = null) {
+async function openExplorerFile(path, startLine = 1, ctx = null, retried = false) {
   const context = ctx || { projectId: explorerState.projectId, revision: explorerState.revision };
   if (!context || !context.projectId) return;
   const token = ++explorerState.fileToken;
@@ -304,26 +304,46 @@ async function openExplorerFile(path, startLine = 1, ctx = null) {
       result.versionContext = ctx;
     }
     renderFile(result, startLine === 1);
+    // 分页与符号跳转必须绑定同一版本上下文（B3B5-02）。
+    if (explorerState.fileCursor) explorerState.fileCursor.ctx = context;
   } catch (error) {
     if (token !== explorerState.fileToken) return;
+    // 410 实际恢复路径（B3B5-04）：上下文被 LRU 淘汰后失效缓存、重新
+    // open 并重试一次；主上下文身份随之更新。
+    if (!retried && /CONTEXT_EVICTED/.test(error.message)) {
+      const sha = ctx ? ctx.revision : explorerState.revision;
+      delete explorerState.contexts[sha];
+      const fresh = await ensureContext(sha, ctx ? ctx.versionLabel : undefined);
+      if (fresh) {
+        if (!ctx && fresh.projectId !== explorerState.projectId) {
+          explorerState.projectId = fresh.projectId;
+        }
+        return openExplorerFile(path, startLine, fresh, true);
+      }
+    }
     showFileMessage(`无法读取 ${path}：${error.message}`);
   }
 }
 
 // ---------- 比较两个提交（changes） ----------
-async function ensureContext(sha, versionLabel) {
-  if (explorerState.contexts[sha]) return explorerState.contexts[sha];
+async function ensureContext(sha, versionLabel, gen) {
+  const cached = explorerState.contexts[sha];
+  if (cached) return { ...cached, versionLabel };
   const result = await explorerFetch("/api/repo-explorer/open", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ repoPath: explorerState.repoPath, revision: sha }),
   });
-  const context = { projectId: result.projectId, revision: result.revision, versionLabel };
+  // 过期结果不得写入缓存（B3B5-03）：异步等待期间用户可能已切换仓库或
+  // 发起新的比较——以调用方捕获的代次为准。
+  if (gen !== undefined && gen !== explorerState.compareToken) return null;
+  if (result.revision !== sha) return null;
+  const context = { projectId: result.projectId, revision: result.revision };
   explorerState.contexts[result.revision] = context;
-  return context;
+  return { ...context, versionLabel };
 }
 
-async function runCompare(event) {
+async function runCompare(event, retried = false) {
   event.preventDefault();
   if (!explorerState.projectId) return;
   const base = document.getElementById("explorer-base").value.trim();
@@ -341,6 +361,17 @@ async function runCompare(event) {
     status.textContent = "";
   } catch (error) {
     if (token !== explorerState.compareToken) return;
+    // 主上下文被淘汰时刷新并自动重试一次（B3B5-04 的比较侧恢复路径）。
+    if (!retried && /CONTEXT_EVICTED/.test(error.message)) {
+      delete explorerState.contexts[explorerState.revision];
+      const fresh = await ensureContext(explorerState.revision);
+      if (fresh) {
+        if (fresh.projectId !== explorerState.projectId) {
+          explorerState.projectId = fresh.projectId;
+        }
+        return runCompare(event, true);
+      }
+    }
     status.textContent = `比较失败：${error.message}`;
   }
 }
@@ -366,25 +397,32 @@ function renderChanges(result) {
       CHANGE_STATUS_LABELS[change.status] || change.status));
     item.appendChild(explorerElement("code", "explorer-change-path",
       change.oldPath ? `${change.oldPath} → ${change.path}` : change.path));
-    const targetCtx = () => ensureContext(result.targetRevision, "新版");
-    const baseCtx = () => ensureContext(result.baseRevision, "旧版");
+    if (change.pathUndecodable) {
+      // 非 UTF-8 文件名：backslashreplace 表示不可寻址，禁止错误跳转（B3B5-07）。
+      item.appendChild(explorerElement("span", "explorer-skip-pill",
+        "文件名不是 UTF-8，无法打开源码"));
+      list.appendChild(item);
+      continue;
+    }
+    const openVersion = async (sha, label, path) => {
+      // 代次在首次异步等待前捕获：等待期间切换仓库/发起新比较的过期
+      // 结果不得写缓存或启动文件读取（B3B5-03）。
+      const gen = explorerState.compareToken;
+      const ctx = await ensureContext(sha, label, gen);
+      if (!ctx || gen !== explorerState.compareToken) return;
+      openExplorerFile(path, 1, ctx);
+    };
     if (change.status !== "D") {
       const openNew = explorerElement("button", "explorer-symbol-chip", "打开新版");
       openNew.type = "button";
-      openNew.addEventListener("click", async () => {
-        const ctx = await targetCtx();
-        openExplorerFile(change.path, 1, ctx);
-      });
+      openNew.addEventListener("click", () => openVersion(result.targetRevision, "新版", change.path));
       item.appendChild(openNew);
     }
     if (change.status === "D" || change.status === "R" || change.status === "M" || change.status === "C") {
       const oldPath = change.oldPath || change.path;
       const openOld = explorerElement("button", "explorer-symbol-chip", "打开旧版");
       openOld.type = "button";
-      openOld.addEventListener("click", async () => {
-        const ctx = await baseCtx();
-        openExplorerFile(oldPath, 1, ctx);
-      });
+      openOld.addEventListener("click", () => openVersion(result.baseRevision, "旧版", oldPath));
       item.appendChild(openOld);
     }
     list.appendChild(item);
@@ -437,7 +475,8 @@ function renderFile(result, replace) {
 async function loadMoreFile() {
   const cursor = explorerState.fileCursor;
   if (!cursor || cursor.nextLine > cursor.totalLines) return;
-  await openExplorerFile(cursor.path, cursor.nextLine);
+  // 继续读取绑定打开该文件时的版本上下文（B3B5-02）。
+  await openExplorerFile(cursor.path, cursor.nextLine, cursor.ctx);
 }
 
 // ---------- 符号（legacy_code_facts 过渡：只有定义行，无结束行） ----------
@@ -480,10 +519,19 @@ async function loadSymbols(path, ctx = null) {
 }
 
 async function scrollToLine(line) {
-  const cursor = explorerState.fileCursor;
+  let cursor = explorerState.fileCursor;
   if (!cursor || line < 1 || line > cursor.totalLines) return;
+  // 跨页跳转每次循环都重读最新游标：分页渲染会替换游标对象，旧引用会
+  // 导致重复请求同一页（B3B5-01）；无进展或文件已切换即停止。
   while (cursor.renderedLines < line && cursor.nextLine <= cursor.totalLines) {
-    await openExplorerFile(cursor.path, cursor.nextLine);
+    await openExplorerFile(cursor.path, cursor.nextLine, cursor.ctx);
+    const latest = explorerState.fileCursor;
+    if (!latest || latest.path !== cursor.path
+        || (latest.ctx ? latest.ctx.projectId : null) !== (cursor.ctx ? cursor.ctx.projectId : null)) {
+      return;
+    }
+    if (latest.renderedLines <= cursor.renderedLines) return;
+    cursor = latest;
   }
   const lines = document.querySelectorAll(".explorer-line");
   const index = line - 1;

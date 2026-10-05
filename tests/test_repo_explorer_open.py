@@ -104,7 +104,7 @@ class OpenEndpointTests(ExplorerServerHarness):
         self.assertEqual(reasons.get("big.txt"), "文件超过 1 MiB 上限")
         capabilities = body["capabilities"]
         self.assertEqual(capabilities, {"files": True, "symbols": True,
-                                        "imports": False, "changes": False})
+                                        "imports": False, "changes": True})
 
     def test_open_rejects_missing_directory(self):
         status, body = self.request("POST", "/api/repo-explorer/open",

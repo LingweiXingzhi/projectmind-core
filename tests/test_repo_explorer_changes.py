@@ -109,6 +109,25 @@ class ChangesEndpointTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(body["error"]["code"], "BAD_REQUEST")
 
+    def test_name_status_parser_preserves_non_utf8_identity(self):
+        # B3B5-07: errors="replace" would collapse distinct invalid names
+        # into one string; backslashreplace keeps them distinct and the
+        # entry is flagged so the UI refuses to open them.
+        from repo_index.explorer import parse_name_status
+        raw = b"M\0ok.py\0M\0bad-\xff.py\0R100\0bad-\xff-old.py\0renamed.py\0"
+        changes = parse_name_status(raw)
+        self.assertEqual(changes[0], {"status": "M", "path": "ok.py", "oldPath": None})
+        self.assertEqual(changes[1]["path"], r"bad-\xff.py")
+        self.assertTrue(changes[1]["pathUndecodable"])
+        self.assertEqual(changes[2]["status"], "R")
+        self.assertEqual(changes[2]["path"], "renamed.py")
+        self.assertEqual(changes[2]["oldPath"], r"bad-\xff-old.py")
+        self.assertTrue(changes[2]["pathUndecodable"])
+        # Two distinct invalid names never collapse.
+        raw2 = b"M\0bad-\xfe.py\0M\0bad-\xff.py\0"
+        parsed2 = parse_name_status(raw2)
+        self.assertNotEqual(parsed2[0]["path"], parsed2[1]["path"])
+
 
 if __name__ == "__main__":
     unittest.main()

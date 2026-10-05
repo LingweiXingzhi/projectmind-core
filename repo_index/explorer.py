@@ -199,6 +199,44 @@ def _classify_and_read(repo_root: Path, entries: list[dict]) -> tuple[dict[str, 
     return manifest, tuple(skipped), sources
 
 
+def _decode_git_path(token: bytes) -> tuple[str, bool]:
+    """Decode a raw Git path, preserving identity for non-UTF-8 names.
+
+    backslashreplace yields a distinct string per distinct byte sequence, so
+    two different invalid names can never collapse into one addressable path
+    (B3B5-07); the undecodable flag lets callers refuse to open them.
+    """
+    try:
+        return token.decode("utf-8"), False
+    except UnicodeError:
+        return token.decode("utf-8", "backslashreplace"), True
+
+
+def parse_name_status(raw: bytes) -> list[dict]:
+    parts = [part for part in raw.split(b"\0") if part]
+    changes: list[dict] = []
+    index = 0
+    while index < len(parts):
+        code = parts[index]
+        index += 1
+        undecodable = False
+        if code.startswith(("R", "C")):
+            old_path, old_ok = _decode_git_path(parts[index])
+            path, path_ok = _decode_git_path(parts[index + 1])
+            index += 2
+            entry = {"status": code[0], "path": path, "oldPath": old_path}
+            undecodable = not (old_ok and path_ok)
+        else:
+            path, path_ok = _decode_git_path(parts[index])
+            index += 1
+            entry = {"status": code, "path": path, "oldPath": None}
+            undecodable = not path_ok
+        if undecodable:
+            entry["pathUndecodable"] = True
+        changes.append(entry)
+    return changes
+
+
 class ExplorerRegistry:
     """Thread-safe LRU of opened repo contexts (capacity 4)."""
 
@@ -270,7 +308,7 @@ class ExplorerRegistry:
             "repositoryName": context.repo_root.name,
             "revision": context.revision,
             "capabilities": {"files": True, "symbols": True,
-                             "imports": False, "changes": False},
+                             "imports": False, "changes": True},
             "coverage": context.coverage,
         }
 
@@ -388,20 +426,7 @@ class ExplorerRegistry:
         except gitio.GitIoError as exc:
             raise ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "REPO_UNREADABLE",
                                 "无法读取指定提交之间的差异") from exc
-        parts = [part.decode("utf-8", errors="replace") for part in raw.split(b"\0") if part]
-        changes = []
-        index = 0
-        while index < len(parts):
-            code = parts[index]
-            index += 1
-            if code.startswith(("R", "C")):
-                old_path, path = parts[index], parts[index + 1]
-                index += 2
-                changes.append({"status": code[0], "path": path, "oldPath": old_path})
-            else:
-                path = parts[index]
-                index += 1
-                changes.append({"status": code, "path": path, "oldPath": None})
+        changes = parse_name_status(raw)
         return {
             "schemaVersion": 1,
             "projectId": context.project_id,
