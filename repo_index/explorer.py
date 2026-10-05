@@ -186,8 +186,15 @@ class ExplorerRegistry:
 
     # -- open ---------------------------------------------------------------
     def open(self, repo_path: str, revision: str = "HEAD") -> dict:
+        given = Path(repo_path)
+        # The task contract takes a local ABSOLUTE path; a relative or empty
+        # value would otherwise resolve against the server's cwd and open
+        # some unintended repository.
+        if not given.is_absolute():
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REPO_INVALID",
+                                "repoPath 必须是本机仓库的绝对路径")
         try:
-            repo_root = gitio.repository_root(Path(repo_path))
+            repo_root = gitio.repository_root(given)
         except gitio.GitIoError as exc:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "REPO_INVALID", str(exc)) from exc
         with self._lock:

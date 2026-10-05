@@ -112,6 +112,14 @@ class OpenEndpointTests(ExplorerServerHarness):
         self.assertEqual(status, 400)
         self.assertEqual(body["error"]["code"], "REPO_INVALID")
 
+    def test_open_rejects_empty_and_relative_repo_paths(self):
+        # Found by smoke testing: Path("") resolves to the server's cwd,
+        # which would silently open the wrong repository.
+        for bad in ("", "sample-repo", "./sample-repo"):
+            status, body = self.request("POST", "/api/repo-explorer/open", {"repoPath": bad})
+            self.assertEqual(status, 400, repr(bad))
+            self.assertEqual(body["error"]["code"], "REPO_INVALID", repr(bad))
+
     def test_open_rejects_non_commit_revisions(self):
         run_git(self.repo, "tag", "v1")
         for bad in ("main", "v1", self.head[:8]):
