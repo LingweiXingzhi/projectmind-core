@@ -7,6 +7,8 @@ const explorerState = {
   revision: null,
   repositoryName: "",
   coverage: null,
+  repoPath: "",
+  contexts: {}, // sha -> {projectId, revision}（版本文件读取用）
   treeEntries: [],
   expanded: new Set(),
   fileCursor: null, // { path, nextLine, totalLines, renderedLines }
@@ -14,6 +16,7 @@ const explorerState = {
   treeToken: 0,
   fileToken: 0,
   symbolToken: 0,
+  compareToken: 0,
 };
 
 function explorerElement(tag, className, text) {
@@ -76,7 +79,12 @@ async function openRepository(event) {
     explorerState.revision = result.revision;
     explorerState.repositoryName = result.repositoryName;
     explorerState.coverage = result.coverage;
+    explorerState.repoPath = pathInput;
+    explorerState.contexts = { [result.revision]: { projectId: result.projectId, revision: result.revision } };
     renderExplorerHeader(result);
+    document.getElementById("explorer-compare-form").hidden = false;
+    const targetInput = document.getElementById("explorer-target");
+    if (!targetInput.value) targetInput.value = result.revision;
     await refreshTree();
     status.textContent = "";
   } catch (error) {
@@ -213,16 +221,21 @@ function showFileMessage(message) {
   explorerState.fileCursor = null;
 }
 
-async function openExplorerFile(path, startLine = 1) {
-  if (!explorerState.projectId) return;
+async function openExplorerFile(path, startLine = 1, ctx = null) {
+  const context = ctx || { projectId: explorerState.projectId, revision: explorerState.revision };
+  if (!context || !context.projectId) return;
   const token = ++explorerState.fileToken;
   const query = new URLSearchParams({
-    projectId: explorerState.projectId, revision: explorerState.revision, path,
+    projectId: context.projectId, revision: context.revision, path,
     startLine: String(startLine), endLine: String(startLine + 499),
   });
   try {
     const result = await explorerFetch(`/api/repo-explorer/file?${query}`);
     if (token !== explorerState.fileToken) return;
+    if (ctx) {
+      result.versionLabel = ctx.versionLabel;
+      result.versionContext = ctx;
+    }
     renderFile(result, startLine === 1);
   } catch (error) {
     if (token !== explorerState.fileToken) return;
@@ -230,11 +243,94 @@ async function openExplorerFile(path, startLine = 1) {
   }
 }
 
+// ---------- 比较两个提交（changes） ----------
+async function ensureContext(sha, versionLabel) {
+  if (explorerState.contexts[sha]) return explorerState.contexts[sha];
+  const result = await explorerFetch("/api/repo-explorer/open", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repoPath: explorerState.repoPath, revision: sha }),
+  });
+  const context = { projectId: result.projectId, revision: result.revision, versionLabel };
+  explorerState.contexts[result.revision] = context;
+  return context;
+}
+
+async function runCompare(event) {
+  event.preventDefault();
+  if (!explorerState.projectId) return;
+  const base = document.getElementById("explorer-base").value.trim();
+  const target = document.getElementById("explorer-target").value.trim();
+  const status = document.getElementById("explorer-changes-status");
+  const token = ++explorerState.compareToken;
+  status.textContent = "正在比较…";
+  const query = new URLSearchParams({
+    projectId: explorerState.projectId, base, target,
+  });
+  try {
+    const result = await explorerFetch(`/api/repo-explorer/changes?${query}`);
+    if (token !== explorerState.compareToken) return;
+    renderChanges(result);
+    status.textContent = "";
+  } catch (error) {
+    if (token !== explorerState.compareToken) return;
+    status.textContent = `比较失败：${error.message}`;
+  }
+}
+
+const CHANGE_STATUS_LABELS = {
+  A: "新增", M: "修改", D: "删除", R: "重命名", C: "复制", T: "类型变更",
+};
+
+function renderChanges(result) {
+  const container = document.getElementById("explorer-changes-result");
+  container.replaceChildren();
+  container.appendChild(explorerElement("p", "explorer-symbols-note",
+    `基准 ${result.baseRevision.slice(0, 12)} → 目标 ${result.targetRevision.slice(0, 12)} · ${result.changes.length} 项变化（静态 Git 差异，不含语义判断）`));
+  if (!result.changes.length) {
+    container.appendChild(explorerElement("div", "explorer-empty", "两个提交之间没有文件变化。"));
+    return;
+  }
+  const list = explorerElement("ul", "explorer-change-list");
+  for (const change of result.changes) {
+    const item = explorerElement("li", "explorer-change-item");
+    item.appendChild(explorerElement("span",
+      `explorer-change-pill is-${change.status}`,
+      CHANGE_STATUS_LABELS[change.status] || change.status));
+    item.appendChild(explorerElement("code", "explorer-change-path",
+      change.oldPath ? `${change.oldPath} → ${change.path}` : change.path));
+    const targetCtx = () => ensureContext(result.targetRevision, "新版");
+    const baseCtx = () => ensureContext(result.baseRevision, "旧版");
+    if (change.status !== "D") {
+      const openNew = explorerElement("button", "explorer-symbol-chip", "打开新版");
+      openNew.type = "button";
+      openNew.addEventListener("click", async () => {
+        const ctx = await targetCtx();
+        openExplorerFile(change.path, 1, ctx);
+      });
+      item.appendChild(openNew);
+    }
+    if (change.status === "D" || change.status === "R" || change.status === "M" || change.status === "C") {
+      const oldPath = change.oldPath || change.path;
+      const openOld = explorerElement("button", "explorer-symbol-chip", "打开旧版");
+      openOld.type = "button";
+      openOld.addEventListener("click", async () => {
+        const ctx = await baseCtx();
+        openExplorerFile(oldPath, 1, ctx);
+      });
+      item.appendChild(openOld);
+    }
+    list.appendChild(item);
+  }
+  container.appendChild(list);
+}
+
 function renderFile(result, replace) {
   document.getElementById("explorer-file-head").hidden = false;
   document.getElementById("explorer-file-path").textContent = result.path;
+  const versionTag = result.versionLabel ? `（${result.versionLabel}）` : "";
   document.getElementById("explorer-file-range").textContent =
-    result.totalLines === 0 ? "空文件" : `第 ${result.startLine}–${result.endLine} 行 / 共 ${result.totalLines} 行`;
+    (result.totalLines === 0 ? "空文件" : `第 ${result.startLine}–${result.endLine} 行 / 共 ${result.totalLines} 行`) + versionTag;
   const view = document.getElementById("explorer-file-view");
   const code = explorerElement("code", "explorer-code");
   const lines = result.content.split("\n");
@@ -250,7 +346,7 @@ function renderFile(result, replace) {
   });
   if (replace) {
     view.replaceChildren();
-    loadSymbols(result.path);
+    loadSymbols(result.path, result.versionContext || null);
   }
   view.appendChild(gutter);
   view.appendChild(body);
@@ -275,12 +371,14 @@ async function loadMoreFile() {
 }
 
 // ---------- 符号（legacy_code_facts 过渡：只有定义行，无结束行） ----------
-async function loadSymbols(path) {
+async function loadSymbols(path, ctx = null) {
   const panel = document.getElementById("explorer-symbols");
   const token = ++explorerState.symbolToken;
+  const context = ctx || { projectId: explorerState.projectId, revision: explorerState.revision };
+  if (!context || !context.projectId) return;
   panel.replaceChildren(explorerElement("span", "explorer-symbols-note", "正在读取符号…"));
   const query = new URLSearchParams({
-    projectId: explorerState.projectId, revision: explorerState.revision, path,
+    projectId: context.projectId, revision: context.revision, path,
   });
   try {
     const result = await explorerFetch(`/api/repo-explorer/symbols?${query}`);
@@ -332,4 +430,5 @@ document.getElementById("explorer-search").addEventListener("input", (event) => 
   renderTree(event.target.value.trim());
 });
 document.getElementById("explorer-more").addEventListener("click", loadMoreFile);
+document.getElementById("explorer-compare-form").addEventListener("submit", runCompare);
 detectModeAndInitExplorer();

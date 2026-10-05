@@ -275,19 +275,21 @@ class ExplorerRegistry:
         }
 
     # -- lookup (tree/file slices build on this) ----------------------------
-    def get(self, project_id: str, revision: str) -> RepoContext:
+    def _get_by_id(self, project_id: str) -> RepoContext:
         with self._lock:
             context = self._by_id.get(project_id)
             if context is None:
                 raise ExplorerError(HTTPStatus.GONE, "CONTEXT_EVICTED",
                                     "上下文不存在或已被淘汰，请重新 open")
-            if revision != context.revision:
-                raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_MISMATCH",
-                                    "revision 与该 projectId 绑定的提交不一致")
-            # True LRU: any access refreshes recency under the same lock
-            # (B1-a-03); in-flight holders keep their immutable reference.
             self._by_key.move_to_end((str(context.repo_root), context.revision))
             return context
+
+    def get(self, project_id: str, revision: str) -> RepoContext:
+        context = self._get_by_id(project_id)
+        if revision != context.revision:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_MISMATCH",
+                                "revision 与该 projectId 绑定的提交不一致")
+        return context
 
     # -- file -----------------------------------------------------------------
     def file(self, project_id: str, revision: str, path: str,
@@ -346,6 +348,59 @@ class ExplorerRegistry:
         if invalid:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "PATH_INVALID",
                                 "路径须为仓库内相对文件路径，使用 /，不能含 .. 或控制字符")
+
+    # -- changes --------------------------------------------------------------
+    def changes(self, project_id: str, base: str, target: str) -> dict:
+        """File changes between two full commit SHAs of this project's repo
+        (task book §6.6): raw Git name-status letters with rename detection;
+        nothing silently dropped. The task-book signature carries projectId,
+        base and target only — no revision parameter."""
+        context = self._get_by_id(project_id)
+        base_sha = self._resolve_pinned_commit(context.repo_root, base, "base")
+        target_sha = self._resolve_pinned_commit(context.repo_root, target, "target")
+        try:
+            raw = gitio.git(context.repo_root, "diff", "--name-status", "-z", "-M",
+                            base_sha, target_sha, "--")
+        except gitio.GitIoError as exc:
+            raise ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "REPO_UNREADABLE",
+                                "无法读取指定提交之间的差异") from exc
+        parts = [part.decode("utf-8", errors="replace") for part in raw.split(b"\0") if part]
+        changes = []
+        index = 0
+        while index < len(parts):
+            code = parts[index]
+            index += 1
+            if code.startswith(("R", "C")):
+                old_path, path = parts[index], parts[index + 1]
+                index += 2
+                changes.append({"status": code[0], "path": path, "oldPath": old_path})
+            else:
+                path = parts[index]
+                index += 1
+                changes.append({"status": code, "path": path, "oldPath": None})
+        return {
+            "schemaVersion": 1,
+            "projectId": context.project_id,
+            "baseRevision": base_sha,
+            "targetRevision": target_sha,
+            "changes": changes,
+        }
+
+    @staticmethod
+    def _resolve_pinned_commit(repo_root: Path, value: str, field: str) -> str:
+        if not isinstance(value, str) or not SHA_PATTERN.fullmatch(value):
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID",
+                                f"{field} 必须是完整的 40/64 位提交 SHA")
+        try:
+            resolved = gitio.git(repo_root, "rev-parse", "--verify",
+                                 f"{value}^{{commit}}").decode("ascii", errors="replace").strip()
+        except gitio.GitIoError as exc:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID",
+                                f"{field} 无法解析为该仓库中的提交") from exc
+        if resolved != value:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID",
+                                f"{field} 必须直接指向提交")
+        return resolved
 
     # -- symbols --------------------------------------------------------------
     def symbols(self, project_id: str, revision: str, path: str) -> dict:

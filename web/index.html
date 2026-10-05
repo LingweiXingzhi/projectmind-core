@@ -75,6 +75,18 @@
                 <div id="explorer-skipped" class="compare-status" hidden></div>
               </div>
 
+              <form id="explorer-compare-form" class="compare-card" hidden>
+                <div class="compare-heading"><div><span class="eyebrow">STEP 2</span><h2>比较两个提交的文件变化</h2><p>输入该仓库的两个完整提交 SHA；新增/修改/删除/重命名都可打开相应版本的源码。</p></div></div>
+                <div class="compare-controls">
+                  <label>基准提交 SHA<input id="explorer-base" type="text" spellcheck="false" placeholder="完整 40 位 SHA" /></label>
+                  <div class="compare-arrow">→</div>
+                  <label>目标提交 SHA<input id="explorer-target" type="text" spellcheck="false" placeholder="完整 40 位 SHA" /></label>
+                  <button class="button primary" type="submit">比较变化</button>
+                </div>
+                <div id="explorer-changes-status" class="compare-status">打开仓库后可用；两个版本都必须是完整 SHA。</div>
+                <div id="explorer-changes-result" class="compare-result"></div>
+              </form>
+
               <div id="explorer-workspace" class="explorer-grid" hidden>
                 <div class="explorer-side map-card">
                   <div class="map-card-header"><div><span class="map-icon">❏</span><strong>目录</strong><span class="map-subtitle">点击展开 · 点击文件查看源码</span></div></div>
