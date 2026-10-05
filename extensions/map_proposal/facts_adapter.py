@@ -9,6 +9,8 @@ signatures / responsibility from B.
 """
 from __future__ import annotations
 
+from extensions.map_proposal.model import validate_path
+
 FACTS_LIMITS = "code facts unavailable"
 
 
@@ -26,6 +28,9 @@ def _normalize(facts):
     files = {}
     for entry in files_raw:
         if isinstance(entry, dict) and isinstance(entry.get("path"), str):
+            # C-08: facts paths are a path source like every other (S28);
+            # traversal-shaped declarations are a controlled input rejection.
+            validate_path(entry["path"], "code fact path")
             if not isinstance(entry.get("entries") or [], list):
                 raise ValueError("code_fact entries 须为列表")
             sanitized = []

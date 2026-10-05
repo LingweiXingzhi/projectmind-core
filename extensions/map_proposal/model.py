@@ -185,12 +185,19 @@ def validate_map(current_map):
             if not isinstance(item, dict) or not isinstance(item.get("path"), str):
                 raise RequestError("node evidence 项须含 path")
             evidence_paths.append(validate_path(item["path"], "map evidence path"))
+        entry_point = _bounded_text(node.get("entryPoint"), 300, "entryPoint")
+        # C-08: the path component of a parseable entryPoint is a path source
+        # too (S28) — '../../secret.py · main()' is rejected, while unparseable
+        # entryPoints keep flowing to the G-3 degradation limit.
+        entry_path, _ = parse_entry_point(entry_point)
+        if entry_path:
+            validate_path(entry_path, "entryPoint path")
         parsed_nodes.append(
             {
                 "id": node_id,
                 "title": _bounded_text(node.get("title"), 200, "node title"),
                 "summary": _bounded_text(node.get("summary"), 2000, "node summary"),
-                "entry_point": _bounded_text(node.get("entryPoint"), 300, "entryPoint"),
+                "entry_point": entry_point,
                 "evidence_paths": evidence_paths,
             }
         )

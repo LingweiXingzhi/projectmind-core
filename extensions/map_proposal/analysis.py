@@ -182,13 +182,17 @@ def handle_added(change, target, indexes, facts, proposals, unresolved, no_propo
         )
         return
     entries = facts["files"].get(path)
-    if entries is None:
+    if not entries:
+        # C-04: an empty declarations list (real B on an empty __init__.py)
+        # is not evidence for a new responsibility node — only a missing
+        # record used to divert here; both are HUMAN_REQUIRED.
         unresolved.append(
             {
                 "subject": path,
                 "reason": "HUMAN_REQUIRED",
-                "evidence": [diff_evidence(target, path, "added; no parseable declarations")],
-                "note": "无声明事实：不虚构 code_fact 证据；B 无条目不等于架构上不存在",
+                "evidence": [diff_evidence(target, path, "added; no declarations to cite")],
+                "note": "无声明事实（B 无记录或空 declarations）：不虚构 code_fact 证据；"
+                        "B 无条目不等于架构上不存在（C-04）",
             }
         )
         return
@@ -266,7 +270,10 @@ def handle_modified(change, target, base, indexes, facts, base_facts, proposals,
         touched_responsibility = False
         for owner in owners:
             func = indexes["entry_lookup"].get((owner, path))
-            if func and any(g == func or g.rsplit(".", 1)[-1] == func for g in gone):
+            # C-05: declaration identity is the full dotted name. Tail-name
+            # matching confused the entryPoint main with Widget.main and fired
+            # a responsibility change while the entry symbol still existed.
+            if func and any(g == func for g in gone):
                 touched_responsibility = True
                 replacements = [e["name"] for e in target_entries
                                 if e.get("kind") in TOP_LEVEL_KINDS and "." not in e.get("name", "")]
@@ -298,7 +305,21 @@ def handle_modified(change, target, base, indexes, facts, base_facts, proposals,
         return
 
     if owners:
-        no_proposal.append({"paths": [path], "reason": "changed inside map domain; no declaration comparison available"})
+        # C-07: with a node claiming this path, an unavailable base/target
+        # declaration comparison is an explicit degradation of the
+        # responsibility channel — not an ordinary no_proposal (A8/G-3).
+        unresolved.append(
+            {
+                "subject": path,
+                "reason": "HUMAN_REQUIRED",
+                "evidence": [
+                    diff_evidence(target, path, "modified in map domain"),
+                    map_node_evidence(owners[0], "node covers the changed path"),
+                ],
+                "note": "声明比较不可用（base 或 target 的事实缺失/被跳过/B 不可用）；"
+                        "职责通道状态未知，不当作无变化（C-07）",
+            }
+        )
         return
     unresolved.append(
         {

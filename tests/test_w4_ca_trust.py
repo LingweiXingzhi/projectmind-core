@@ -261,8 +261,18 @@ class AdmissionTests(unittest.TestCase):
                                base=self.base)
         with with_validator(passing_validator):
             res = engine.suggest_map(self.repo, request)
-        # node-a must not be suppressed by node-api conflict text
-        self.assertFalse(any(u["subject"] == "pkg/a.py" for u in res["unresolved"]))
+        # X15: node-a must not be suppressed by node-api conflict text. The
+        # pkg/a.py HUMAN_REQUIRED entry that exists under the C-07 contract
+        # (declaration comparison unavailable) is an honest degradation of
+        # the responsibility channel — it is NOT conflict routing, so no
+        # conflict-routed entry may mention node-a or pkg/a.py.
+        self.assertFalse(any(u["subject"].startswith("conflict:")
+                             for u in res["unresolved"]))
+        self.assertFalse(any("conflict" in str(u.get("note", ""))
+                             and ("node-a" in u["note"] or "pkg/a.py" in u["note"])
+                             for u in res["unresolved"]))
+        self.assertFalse(any("候选因相关 conflict" in str(u.get("note", ""))
+                             for u in res["unresolved"]))
 
     def test_s23_unavailable_keys_explicit_unknown_not_fake_badpack(self):
         pack = {

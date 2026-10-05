@@ -73,6 +73,21 @@ def _parse_blob(repo, revision, source_path):
                                     f"{type(exc).__name__}") from exc
 
 
+def _importlib_bindings(tree):
+    """Local names bound to importlib.import_module by from-imports
+    (C-06): `from importlib import import_module` and its aliased form
+    previously produced NO dynamic signal at all — the direct call vanished
+    silently. Only this module-scoped binding is tracked; cross-module
+    rebinding stays an unexplained dynamic path (recorded as such)."""
+    bound = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "importlib":
+            for alias in node.names:
+                if alias.name == "import_module":
+                    bound.add(alias.asname or alias.name)
+    return bound
+
+
 def _scan_imports(tree):
     """(static module strings, dynamic import tags, plain-provenance strings)
     from one parsed module.
@@ -85,8 +100,11 @@ def _scan_imports(tree):
     provenance must NOT be alias-downgraded, because the same string can
     arise from an explicit import in another statement (Codex round-2
     MEDIUM). Aliased and parenthesized/multiline forms are AST-native.
-    Docstrings, comments and string literals never appear here."""
+    Docstrings, comments and string literals never appear here.
+    C-06: direct and aliased `import_module(...)` calls are dynamic signals,
+    not silent absences."""
     static, dynamic, plain = set(), set(), set()
+    importlib_names = _importlib_bindings(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -107,8 +125,9 @@ def _scan_imports(tree):
                 static.add(candidate)
         elif isinstance(node, ast.Call):
             func = node.func
-            if isinstance(func, ast.Name) and func.id == "__import__":
-                dynamic.add(_dynamic_tag(node, "__import__"))
+            if isinstance(func, ast.Name) and (func.id == "__import__" or func.id in importlib_names):
+                dynamic.add(_dynamic_tag(
+                    node, "__import__" if func.id == "__import__" else "importlib.import_module"))
             elif isinstance(func, ast.Attribute) and func.attr == "import_module":
                 dynamic.add(_dynamic_tag(node, "importlib.import_module"))
     return static, dynamic, plain
@@ -147,6 +166,26 @@ def _resolved_imports(repo, revision, source_path, known_paths):
     return resolved
 
 
+def _repo_internal_unresolved(module, source_path, known_paths):
+    """C-06: is an unresolvable module still repo-internal? A relative import
+    that fails to resolve is repo-internal by construction; an absolute one
+    is repo-internal when a known path ends with the module's path shape
+    (src-layout: 'pkg.b' vs known 'src/pkg/b.py'). External/stdlib modules
+    match nothing and stay out of architecture relations — recorded limit,
+    never a fabricated relation."""
+    if not module:
+        return False
+    if module.startswith("."):
+        return True
+    base = module.replace(".", "/")
+    for candidate in (base + ".py", base + "/__init__.py"):
+        suffix = "/" + candidate
+        for known in known_paths:
+            if known == candidate or known.endswith(suffix):
+                return True
+    return False
+
+
 def _file_relation_events(repo, base, target, change, known_paths):
     """AST-diff one changed .py file's import sets: pinned base blob vs
     pinned target blob. `renamed` compares old_path@base with path@target;
@@ -165,10 +204,15 @@ def _file_relation_events(repo, base, target, change, known_paths):
     target_static, target_dynamic, target_plain = _scan_imports(
         _parse_blob(repo, target, path))
     target_resolved = {}
+    unresolved_internal = set()
     for module in sorted(target_static):
         resolved = resolve_module(module, path, known_paths)
         if resolved:
             target_resolved.setdefault(resolved, []).append(module)
+        elif _repo_internal_unresolved(module, path, known_paths):
+            # C-06: repo-internal imports the current resolver cannot explain
+            # (src-layout, namespace packages) stay visible as UNKNOWN.
+            unresolved_internal.add(module)
     added = {p: mods for p, mods in target_resolved.items() if p not in base_resolved}
     return {
         "path": path,
@@ -185,6 +229,7 @@ def _file_relation_events(repo, base, target, change, known_paths):
         },
         "removed": {p: mods for p, mods in base_resolved.items() if p not in target_resolved},
         "dynamic": sorted(target_dynamic - base_dynamic),
+        "unresolved_internal": sorted(unresolved_internal),
     }
 
 
@@ -357,6 +402,25 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
                     "evidence": evidence,
                     "confidence": "low",
                     "uncertainty": [],
+                }
+            )
+
+    for event in events:
+        if event["unresolved_internal"]:
+            # C-06: unexplained repo-internal imports surface as UNKNOWN —
+            # the relation signal for this file is incomplete, never silently
+            # absent.
+            modules = "、".join(event["unresolved_internal"][:8])
+            limits.append(f"import resolution incomplete in {event['path']} "
+                          f"(src-layout/namespace/dynamic path): {modules}")
+            unresolved.append(
+                {
+                    "subject": event["path"],
+                    "reason": "HUMAN_REQUIRED",
+                    "evidence": [diff_evidence(target, event["path"],
+                                               f"unresolved repo-internal imports: {modules}")],
+                    "note": "存在无法用当前解释器解析的仓库内 import（src-layout／命名空间包等）；"
+                            "关系信号不完整，进入 UNKNOWN（C-06）",
                 }
             )
 
