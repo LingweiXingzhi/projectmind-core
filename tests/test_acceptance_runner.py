@@ -5,18 +5,19 @@ Oracle A14/A17: SKIP / NOT_RUN / INVALID_TEST / ENVIRONMENT_LIMIT / ERROR are
 never PASS, and the runner's evidence reports the tests that actually ran.
 The meta-tests drive the real run_selection against disposable test packages
 built in a temp directory, so every failure mode the pre-fix runner hid is
-now bound: real pass, real fail, SkipTest, missing test, zero matched tests,
-broken module import, and the explicit category vocabulary.
+bound: real pass, real fail, SkipTest, missing test, zero matched tests,
+broken module import, category vocabulary — and, after the Codex review, the
+S30 subprocess path itself (a skipped A30 test exits 0 but is SKIP,
+enumeration failure is INVALID_TEST, evidence carries parsed outcomes).
 """
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from tests.acceptance_matrix import RESULT_CATEGORIES, input_hash, run_selection  # noqa: E402
+from tests import acceptance_matrix
+from tests.acceptance_matrix import RESULT_CATEGORIES, input_hash, run_selection
 
 
 PASS_MOD = '''
@@ -135,6 +136,14 @@ class RunnerMetaTests(unittest.TestCase):
         res = run_selection([("mod_empty", "test_")], import_root="fake_matrix_pkg")
         self.assertEqual(res["result"], "NOT_RUN")
 
+    def test_zero_match_selection_is_not_run_even_with_passing_sibling(self):
+        # V-01 review MEDIUM: a passing selection must not mask a zero-match
+        # sibling; the row is NOT_RUN until every selection binds tests.
+        res = run_selection([("mod_pass", "test_"), ("mod_pass", "test_no_match_")],
+                            import_root="fake_matrix_pkg")
+        self.assertEqual(res["result"], "NOT_RUN")
+        self.assertIn("test_no_match_", res["evidence"])
+
     def test_result_categories_are_explicit_and_only_pass_passes(self):
         # A14/A17 vocabulary: seven explicit categories; the non-pass
         # categories can never be confused with PASS by consumers.
@@ -149,6 +158,100 @@ class RunnerMetaTests(unittest.TestCase):
                             ("test_w4_ca_trust", "test_s19_")])
         first_only = input_hash([("test_w3_relations", "test_s03_")])
         self.assertNotEqual(whole, first_only)
+
+    def test_input_hash_changes_with_a_zero_match_selection(self):
+        # V-01 review MEDIUM: the selection identity is part of the input, so
+        # adding a zero-match selection must change the hash.
+        base = input_hash([("test_w3_relations", "test_s03_")])
+        extended = input_hash([("test_w3_relations", "test_s03_"),
+                               ("test_w3_relations", "test_no_match_xyz_")])
+        self.assertNotEqual(base, extended)
+
+
+A30_OK_MOD = (
+    "import unittest\n"
+    "\n"
+    "class FakeA30Tests(unittest.TestCase):\n"
+    "    def test_a30_runtime_containment(self):\n"
+    "        self.assertTrue(True)\n"
+)
+
+A30_SKIP_MOD = (
+    "import unittest\n"
+    "\n"
+    "class FakeA30Tests(unittest.TestCase):\n"
+    "    def test_a30_runtime_containment(self):\n"
+    "        self.assertTrue(True)\n"
+    "\n"
+    "    def test_a30_other_route_survives(self):\n"
+    "        self.skipTest('environment: no such device')\n"
+)
+
+A30_FAIL_MOD = (
+    "import unittest\n"
+    "\n"
+    "class FakeA30Tests(unittest.TestCase):\n"
+    "    def test_a30_runtime_containment(self):\n"
+    "        self.assertEqual(1, 2)\n"
+)
+
+A30_ABSENT_MOD = (
+    "import unittest\n"
+    "\n"
+    "class UnrelatedTests(unittest.TestCase):\n"
+    "    def test_unrelated(self):\n"
+    "        self.assertTrue(True)\n"
+)
+
+A30_BROKEN_MOD = "raise RuntimeError('broken test module')\n"
+
+
+class S30PathMetaTests(unittest.TestCase):
+    """The S30 helper must bind the actual test_a30_* outcomes, not the
+    subprocess exit code: a skipped A30 test exits 0 and is never PASS."""
+
+    def build_fake_worktree(self, source):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "fake-a30"
+        (root / "tests").mkdir(parents=True)
+        (root / "tests" / "__init__.py").write_text("", encoding="utf-8")
+        (root / "tests" / "test_extensions.py").write_text(source, encoding="utf-8")
+        patcher = mock.patch.object(acceptance_matrix, "A30_WORKTREE", root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return root
+
+    def test_s30_all_green_a30_tests_are_pass(self):
+        self.build_fake_worktree(A30_OK_MOD)
+        outcome = acceptance_matrix.run_a30_fix_tests()
+        self.assertEqual(outcome["result"], "PASS")
+        self.assertIn("FakeA30Tests.test_a30_runtime_containment=ok",
+                      outcome["evidence"])
+
+    def test_s30_skipped_a30_test_is_skip_never_pass(self):
+        # V-01 review HIGH: the skipped A30 test exits 0, so the pre-fix
+        # return-code-only check classified the run PASS. It must be SKIP.
+        self.build_fake_worktree(A30_SKIP_MOD)
+        outcome = acceptance_matrix.run_a30_fix_tests()
+        self.assertEqual(outcome["result"], "SKIP")
+        self.assertIn("test_a30_other_route_survives=skipped", outcome["evidence"])
+
+    def test_s30_failing_a30_test_is_fail(self):
+        self.build_fake_worktree(A30_FAIL_MOD)
+        outcome = acceptance_matrix.run_a30_fix_tests()
+        self.assertEqual(outcome["result"], "FAIL")
+        self.assertIn("test_a30_runtime_containment=FAIL", outcome["evidence"])
+
+    def test_s30_no_a30_tests_anywhere_is_not_run(self):
+        self.build_fake_worktree(A30_ABSENT_MOD)
+        outcome = acceptance_matrix.run_a30_fix_tests()
+        self.assertEqual(outcome["result"], "NOT_RUN")
+
+    def test_s30_broken_enumeration_is_invalid_test(self):
+        self.build_fake_worktree(A30_BROKEN_MOD)
+        outcome = acceptance_matrix.run_a30_fix_tests()
+        self.assertEqual(outcome["result"], "INVALID_TEST")
 
 
 if __name__ == "__main__":

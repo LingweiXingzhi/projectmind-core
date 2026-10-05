@@ -118,20 +118,26 @@ def _iter_test_classes(module):
 
 
 def _match_specs(selections, import_root):
-    """(module_name, class_name, test_name) specs + import errors for a
-    selection list. Import failures are collected, never silently dropped."""
-    specs, import_errors = [], []
+    """(module_name, class_name, test_name) specs, import errors, and the
+    selections that matched ZERO tests. Import failures and empty selections
+    are collected, never silently dropped — a passing selection must not mask
+    a broken sibling (V-01 review MEDIUM)."""
+    specs, import_errors, empty = [], [], []
     for module_name, substring in selections:
         try:
             module = __import__(f"{import_root}.{module_name}", fromlist=["*"])
         except Exception as exc:  # noqa: BLE001 — a broken mapping is evidence
             import_errors.append(f"{import_root}.{module_name}: {type(exc).__name__}: {exc}")
             continue
+        found = 0
         for cls_name, cls in _iter_test_classes(module):
             for tname in sorted(vars(cls)):
                 if tname.startswith("test") and substring in tname:
                     specs.append((module_name, cls_name, tname))
-    return specs, import_errors
+                    found += 1
+        if not found:
+            empty.append(f"{module_name}:{substring!r}")
+    return specs, import_errors, empty
 
 
 def run_selection(selections, import_root="tests"):
@@ -144,11 +150,20 @@ def run_selection(selections, import_root="tests"):
     - any SkipTest (and none failed)   -> SKIP (an explicit non-pass)
     - otherwise                        -> PASS
     """
-    specs, import_errors = _match_specs(selections, import_root)
+    specs, import_errors, empty_selections = _match_specs(selections, import_root)
     if import_errors:
         return {
             "result": "INVALID_TEST",
             "evidence": "mapping/dependency broken: " + "; ".join(import_errors),
+            "passed": 0, "failed": 0, "skipped": 0, "total": 0,
+        }
+    if empty_selections:
+        # V-01 review: a zero-match selection next to passing ones used to be
+        # masked into an overall PASS; absence of evidence is NOT_RUN.
+        return {
+            "result": "NOT_RUN",
+            "evidence": "NO TESTS MAPPED for selection(s): "
+                        + ", ".join(empty_selections),
             "passed": 0, "failed": 0, "skipped": 0, "total": 0,
         }
     if not specs:
@@ -232,10 +247,29 @@ def _a30_test_names(root):
 
 
 def _run_named_tests(root, qualified_names):
-    names = [f"tests.test_extensions.{n}" for n in qualified_names]
-    proc = subprocess.run([sys.executable, "-m", "unittest", *names],
-                          cwd=str(root), capture_output=True, text=True, timeout=300)
-    return proc.returncode == 0, proc.stdout.strip().splitlines()[-1] if proc.stdout else ""
+    """(outcomes, ran_count) — one subprocess PER named test, classified from
+    the run's final summary line. V-01 review: a skipped test exits 0, and
+    the A30 tests interleave HTTP-server logs between '...' and the verdict,
+    so neither the return code nor same-line verbose parsing is trustworthy.
+    Per-test isolation plus summary-line classification is immune to both."""
+    outcomes = {}
+    for name in qualified_names:
+        proc = subprocess.run([sys.executable, "-m", "unittest", "-v",
+                               f"tests.test_extensions.{name}"],
+                              cwd=str(root), capture_output=True, text=True,
+                              timeout=300)
+        output = " ".join([proc.stdout or "", proc.stderr or ""])
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        summary = lines[-1] if lines else ""
+        if proc.returncode != 0:
+            outcomes[name] = "FAIL" if "FAILED" in summary else "ERROR"
+        elif "skipped=" in summary:
+            outcomes[name] = "skipped"
+        elif summary.startswith("OK"):
+            outcomes[name] = "ok"
+        else:
+            outcomes[name] = "UNKNOWN"
+    return outcomes, len(qualified_names)
 
 
 def run_a30_fix_tests():
@@ -243,22 +277,51 @@ def run_a30_fix_tests():
     name (V-01: no inference from unrelated host tests, counts, or hardcoded
     evidence text). Runs the discovered test_a30_* tests in-runtime when this
     checkout carries them; otherwise in the A30 fix worktree (owner delivery,
-    labeled as external evidence). Zero discovered A30 tests -> NOT_RUN."""
+    labeled as external evidence).
+
+    V-01 review fixes: a skipped A30 test exits 0 but classifies SKIP, never
+    PASS; an enumeration failure is INVALID_TEST instead of a silent NOT_RUN;
+    the evidence carries the parsed per-test outcomes; and INPUT_HASH pins
+    the actual A30 test source plus the bound test names."""
     candidates = [("this checkout (in-runtime)", ROOT)]
     if A30_WORKTREE.is_dir():
         candidates.append((f"A30 fix worktree {A30_WORKTREE.name} (external owner delivery)",
                            A30_WORKTREE))
+    invalid_roots = []
     for location, root in candidates:
         names = _a30_test_names(root)
+        if names is None:
+            invalid_roots.append(location)
+            continue
         if not names:
             continue
-        ok, tail = _run_named_tests(root, names)
-        evidence = (f"{len(names)} A30 runtime test(s) actually run in {location}: "
-                    + ", ".join(names) + f"; unittest tail: {tail}")
-        return ({"result": "PASS", "evidence": evidence} if ok
-                else {"result": "FAIL", "evidence": evidence})
+        outcomes, ran = _run_named_tests(root, names)
+        digest = hashlib.sha256()
+        digest.update((root / "tests" / "test_extensions.py").read_bytes())
+        digest.update(json.dumps(names).encode("utf-8"))
+        row_hash = digest.hexdigest()[:16]
+        header = (f"{len(names)} A30 runtime test(s) run in {location}: "
+                  + ", ".join(f"{name}={outcomes.get(name, 'MISSING')}" for name in names))
+        if ran != len(names) or any(name not in outcomes for name in names) \
+                or any(outcome == "UNKNOWN" for outcome in outcomes.values()):
+            return {"result": "INVALID_TEST", "input_hash": row_hash,
+                    "evidence": header + "; could not account for the outcome of "
+                    "every named A30 test"}
+        if any(outcome in ("FAIL", "ERROR") for outcome in outcomes.values()):
+            return {"result": "FAIL", "input_hash": row_hash, "evidence": header}
+        if any(outcome == "skipped" for outcome in outcomes.values()):
+            skipped_names = [name for name, outcome in outcomes.items()
+                             if outcome == "skipped"]
+            return {"result": "SKIP", "input_hash": row_hash,
+                    "evidence": header + "; skipped: " + ", ".join(skipped_names)
+                    + " — a skipped A30 behavior test is never PASS (V-01)"}
+        return {"result": "PASS", "input_hash": row_hash, "evidence": header}
+    if invalid_roots:
+        return {"result": "INVALID_TEST", "input_hash": "n/a",
+                "evidence": "A30 test enumeration failed in: "
+                + "; ".join(invalid_roots)}
     return {
-        "result": "NOT_RUN",
+        "result": "NOT_RUN", "input_hash": "n/a",
         "evidence": "no test_a30_* runtime-isolation tests discovered in this "
                     "checkout or the A30 fix worktree — S30 cannot pass without "
                     "running the actual A30 behavior tests (V-01)",
@@ -272,7 +335,10 @@ def input_hash(selections):
     survived unrelated test and implementation changes."""
     parts = []
     for module_name, substring in selections:
-        specs, _ = _match_specs([(module_name, substring)], "tests")
+        # The selection identity itself is hashed, so a zero-match selection
+        # still changes the hash (V-01 review: bindings are part of the input).
+        parts.append(f"selection:{module_name}:{substring}")
+        specs, _, _ = _match_specs([(module_name, substring)], "tests")
         for module, cls_name, tname in specs:
             cls = getattr(__import__(f"tests.{module}", fromlist=["*"]), cls_name)
             try:
@@ -302,7 +368,7 @@ def main():
                 rows[sid] = {
                     "oracle": oracle, "contract": source, "deps": deps,
                     "result": outcome["result"], "evidence": outcome["evidence"],
-                    "input_hash": "bound by test name; see evidence",
+                    "input_hash": outcome["input_hash"],
                     "notes": notes,
                 }
                 continue

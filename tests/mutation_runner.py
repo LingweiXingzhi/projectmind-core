@@ -62,9 +62,9 @@ MUTATIONS = [
         "the pack and releases related conflicts",
         "CA typed trust (A9, C-03)",
         "extensions/map_proposal/ca_adapter.py",
-        '    if key.startswith("implementation.target_head"):\n'
+        '    if key == "implementation.target_head" and scope == "global":\n'
         '        return "target"\n'
-        '    if key.startswith("implementation.baseline"):\n'
+        '    if key == "implementation.baseline.head" and scope == "global":\n'
         '        return "baseline"\n'
         '    return "foreign"',
         '    return "target"',
