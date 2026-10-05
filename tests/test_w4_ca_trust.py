@@ -302,8 +302,8 @@ class C03SubjectAwareT3Tests(unittest.TestCase):
             {"path": "pkg/new.py", "entries": [{"name": "N", "kind": "class", "line": 1}]},
         ]
 
-    def head_claim(self, claim_id, key, head):
-        return {"key": key, "scope": "global", "value": {"head": head},
+    def head_claim(self, claim_id, key, head, scope="global"):
+        return {"key": key, "scope": scope, "value": {"head": head},
                 "freshness": "verified", "claim_ids": [claim_id]}
 
     def pack_with(self, claims):
@@ -381,6 +381,37 @@ class C03SubjectAwareT3Tests(unittest.TestCase):
         res = self.run_engine(pack)
         self.assertFalse(any("context contradiction" in l for l in res["limits"]))
         self.assertEqual(self.node_add_subjects(res), [])
+
+    def test_c03_component_named_baseline_is_foreign_not_baseline(self):
+        # Codex review HIGH: implementation.baseline_router.head is a
+        # COMPONENT head whose key merely shares the 'baseline' prefix. With
+        # prefix matching it was compared against the base pin and could
+        # 'contradict' the pack, releasing the suppressed candidate. Exact
+        # key typing makes it foreign (UNKNOWN); the conflict keeps routing.
+        pack = self.pack_with(
+            [self.head_claim("c-router", "implementation.baseline_router.head", "d" * 40)])
+        res = self.run_engine(pack)
+        self.assertFalse(any("context contradiction" in l for l in res["limits"]))
+        self.assertTrue(any("different subject" in l
+                            and "implementation.baseline_router.head" in l
+                            for l in res["limits"]))
+        self.assertEqual(self.node_add_subjects(res), [])
+        self.assertTrue(any(u["subject"].startswith("conflict:") for u in res["unresolved"]))
+
+    def test_c03_component_scoped_baseline_head_is_foreign(self):
+        # Codex review HIGH: a baseline.head claim scoped to 'component:router'
+        # is a claim about THAT component, not about the repo baseline;
+        # scope-blind typing compared it against the base pin. Scope-aware
+        # typing makes it foreign (UNKNOWN), never a pack contradiction.
+        pack = self.pack_with(
+            [self.head_claim("c-router-base", "implementation.baseline.head",
+                             "d" * 40, scope="component:router")])
+        res = self.run_engine(pack)
+        self.assertFalse(any("context contradiction" in l for l in res["limits"]))
+        self.assertTrue(any("different subject" in l and "component:router" in l
+                            for l in res["limits"]))
+        self.assertEqual(self.node_add_subjects(res), [])
+        self.assertTrue(any(u["subject"].startswith("conflict:") for u in res["unresolved"]))
 
     def test_c03_target_head_wrong_still_contradicts(self):
         # regression guard: the same-subject target check is unchanged.

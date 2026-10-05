@@ -273,18 +273,23 @@ def apply_context_admission(proposals, ca, ca_mode, changed_paths, node_ids,
     return kept, limits, unresolved
 
 
-def _head_subject(key):
+def _head_subject(key, scope):
     """Typed head-claim subject (C-03, A9): the KEY names the subject a head
-    claim is about. Independent verification requires the same claim type,
-    same subject and same scope — a field that happens to be named 'head'
-    about a DIFFERENT subject (baseline, component, PR) is a different fact
-    and must never verify or contradict C's own pin. The pre-C-03 code
-    compared every implementation.* head against the target and treated a
-    legitimate implementation.baseline.head pointing at the base as a pack
-    contradiction, releasing related conflict candidates."""
-    if key.startswith("implementation.target_head"):
+    claim is about, and independent verification requires the same claim
+    type, same subject AND same scope. Repo-level head claims are exactly
+    'implementation.target_head' / 'implementation.baseline.head' at global
+    scope; anything else — loose prefixes like implementation.baseline_router
+    (a COMPONENT whose name happens to start with 'baseline'), component-
+    scoped claims of a repo-level key, PR/component heads — is a different
+    subject: locally unverifiable UNKNOWN, never a contradiction of C's
+    pins. The pre-C-03 code compared every implementation.* head against the
+    target; the first review pass fixed the target/baseline split but still
+    matched by prefix and ignored scope, so 'implementation.baseline_router.
+    .head' at global scope and 'implementation.baseline.head' scoped to
+    'component:router' were both misread as repo-baseline claims."""
+    if key == "implementation.target_head" and scope == "global":
         return "target"
-    if key.startswith("implementation.baseline"):
+    if key == "implementation.baseline.head" and scope == "global":
         return "baseline"
     return "foreign"
 
@@ -316,12 +321,13 @@ def _independent_verification(ca, target_revision, limits, unresolved,
                           "needs an independent verifier C does not run")
             continue
         head = value["head"]
-        subject = _head_subject(key)
+        subject = _head_subject(key, claim_row.get("scope"))
         if subject == "foreign":
             limits.append(
                 f"context implementation head claim belongs to a different subject "
                 f"(UNKNOWN, not verified against C's pins): "
-                f"{claim_row.get('claim_id')} ({key}) claims head {head}")
+                f"{claim_row.get('claim_id')} ({key} @ scope {claim_row.get('scope')}) "
+                f"claims head {head}")
             continue
         pin = target_revision if subject == "target" else base_revision
         role = "pinned target" if subject == "target" else "pinned base"
