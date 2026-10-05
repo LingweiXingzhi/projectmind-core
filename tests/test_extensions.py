@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -18,10 +19,30 @@ class ExtensionHttpTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.extensions_root = Path(self.temp.name)
+        # Isolation (B0-01): extension handlers create their Worklog /
+        # Continuity stores in the bound repo's git common dir, so the
+        # server must bind a disposable repo whose common dir lives in
+        # this test's tempdir — never the real checkout.
+        self.repo_temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.repo_temp.cleanup)
+        self.repo = Path(self.repo_temp.name) / "repo"
+        self.repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main", str(self.repo)], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=Test",
+                        "-c", "user.email=test@example.invalid",
+                        "commit", "--allow-empty", "-qm", "fixture"], check=True)
+        self.map_path = Path(self.temp.name) / "map.json"
+        self.map_path.write_text(json.dumps({
+            "note": "isolation fixture",
+            "nodes": [{"id": "fixture", "title": "fixture", "summary": "fixture",
+                       "entryPoint": "x.py", "position": {"x": 0, "y": 0},
+                       "evidence": [{"path": "x.py", "reason": "fixture"}]}],
+            "edges": [],
+        }), encoding="utf-8")
 
     def start_server(self, root: Path | None = None) -> str:
         server = ThreadingHTTPServer(
-            ("127.0.0.1", 0), make_handler(ROOT, MAP_PATH, extensions_root=root or self.extensions_root)
+            ("127.0.0.1", 0), make_handler(self.repo, self.map_path, extensions_root=root or self.extensions_root)
         )
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()

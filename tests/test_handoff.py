@@ -1,5 +1,7 @@
 import copy
 import json
+import subprocess
+import tempfile
 import unittest
 import threading
 from http.server import ThreadingHTTPServer
@@ -177,7 +179,23 @@ class HandoffTests(unittest.TestCase):
 
     def test_live_http_page_generate_and_stale_error(self):
         from app import make_handler, MAP_PATH
-        server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(ROOT, MAP_PATH))
+        # Isolation (B0-01): bind a disposable repo so extension stores and
+        # git refs never touch the real checkout's shared databases.
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        repo = Path(folder.name) / 'repo'
+        repo.mkdir()
+        subprocess.run(['git', 'init', '-q', '-b', 'main', str(repo)], check=True)
+        subprocess.run(['git', '-C', str(repo), '-c', 'user.name=Test',
+                        '-c', 'user.email=test@example.com',
+                        'commit', '--allow-empty', '-qm', 'fixture'], check=True)
+        subprocess.run(['git', '-C', str(repo), 'remote', 'add', 'origin',
+                        'https://github.com/LingweiXingzhi/projectmind-core.git'], check=True)
+        head = subprocess.check_output(
+            ['git', '-C', str(repo), 'rev-parse', 'HEAD']).decode().strip()
+        subprocess.run(['git', '-C', str(repo), 'update-ref',
+                        'refs/remotes/origin/main', head], check=True)
+        server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(repo, MAP_PATH))
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
