@@ -37,7 +37,7 @@ import posixpath
 
 from extensions.map_proposal import gitio
 from extensions.map_proposal.analysis import diff_evidence, map_node_evidence
-from extensions.map_proposal.facts_adapter import path_eligibility
+from extensions.map_proposal.facts_adapter import domain_gate, path_eligibility
 from extensions.map_proposal.model import make_evidence
 
 
@@ -188,6 +188,29 @@ def _file_relation_events(repo, base, target, change, known_paths):
     }
 
 
+def _gate_unresolved(unresolved, subject, target_revision, violations):
+    """Visible HUMAN_REQUIRED for an evidence-domain eligibility violation
+    (C-02): strong proposals never silently cancel on skipped/uncollected
+    members — the gap surfaces for human decision instead."""
+    details = []
+    evidence = []
+    for path, state, reason in violations[:6]:
+        label = "B skipped" if state == "skipped" else "未被 B 收集"
+        details.append(f"{path}（{label}" + (f": {reason}" if reason else "") + "）")
+        evidence.append(
+            {"kind": "code_fact_skipped" if state == "skipped" else "code_fact_missing",
+             "revision": target_revision, "path": path})
+    unresolved.append(
+        {
+            "subject": subject,
+            "reason": "HUMAN_REQUIRED",
+            "evidence": evidence,
+            "note": "提案证据域成员的 B 事实资格不合格，不发布强候选（C-02 准入门）："
+                    + "；".join(details),
+        }
+    )
+
+
 def handle_relations(repo, base, target, indexes, facts, known_paths, relation_changes,
                      proposals, unresolved, limits):
     events = []
@@ -207,18 +230,30 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
             )
 
     emitted_pairs = set()
+    gated_pairs = set()
     proof_cache = {}
     for event in events:
         source_path = event["path"]
         for target_path in sorted(event["added"]):
-            if path_eligibility(target_path, facts) == "skipped":
-                continue
             source_owners = indexes["node_by_path"].get(source_path, [])
             target_owners = indexes["node_by_path"].get(target_path, [])
             if not source_owners or not target_owners or set(source_owners) == set(target_owners):
                 continue
             pair = (tuple(sorted(source_owners)), tuple(sorted(target_owners)))
-            if pair in emitted_pairs:
+            if pair in emitted_pairs or pair in gated_pairs:
+                continue
+            # C-02: centralized evidence-domain eligibility (A4/E-3) — a
+            # strong node-level claim requires every member of BOTH endpoint
+            # domains to be positively eligible in B facts (present, not
+            # skipped, not merely uncollected). Violations surface as
+            # HUMAN_REQUIRED, never as a silent cancel.
+            gate_ok, gate_violations = domain_gate(
+                _node_domain_paths(indexes, source_owners, source_path)
+                + _node_domain_paths(indexes, target_owners, target_path), facts)
+            if not gate_ok:
+                gated_pairs.add(pair)
+                _gate_unresolved(unresolved, f"{source_owners[0]}->{target_owners[0]}",
+                                 target, gate_violations)
                 continue
             emitted_pairs.add(pair)
             modules = "、".join(sorted(event["added"][target_path]))
@@ -258,8 +293,6 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
     for event in events:
         source_path = event["path"]
         for target_path in sorted(event["removed"]):
-            if path_eligibility(target_path, facts) == "skipped":
-                continue
             source_owners = indexes["node_by_path"].get(source_path, [])
             target_owners = indexes["node_by_path"].get(target_path, [])
             if not source_owners or not target_owners or set(source_owners) == set(target_owners):
@@ -273,7 +306,18 @@ def handle_relations(repo, base, target, indexes, facts, known_paths, relation_c
             if not edge_exists:
                 continue
             pair = (tuple(sorted(source_owners)), tuple(sorted(target_owners)))
-            if pair in emitted_pairs:
+            if pair in emitted_pairs or pair in gated_pairs:
+                continue
+            # C-02: both endpoint domains must be B-eligible before the proof
+            # reads them; a skipped member (e.g. over B's budget) or one B
+            # never collected must not silently strengthen the proof.
+            gate_ok, gate_violations = domain_gate(
+                _node_domain_paths(indexes, source_owners, source_path)
+                + _node_domain_paths(indexes, target_owners, target_path), facts)
+            if not gate_ok:
+                gated_pairs.add(pair)
+                _gate_unresolved(unresolved, f"{source_owners[0]}->{target_owners[0]}",
+                                 target, gate_violations)
                 continue
             # C-01: the removal claim is node-level (source domain -> target
             # domain), so every target_path inside one target domain shares a

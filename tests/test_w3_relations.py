@@ -182,6 +182,9 @@ class RelationChannelTests(unittest.TestCase):
             {"pkg/a.py": A_CLASS,
              "pkg/a2.py": "from pkg.b import B\n", "pkg/b.py": B_CLASS},
             two_node_map(extra_na_paths=["pkg/a2.py"]),
+            # C-02: the source domain now has two members; facts must cover
+            # both (a2.py is unchanged, so only explicit facts know it).
+            fact_paths=["pkg/a.py", "pkg/a2.py", "pkg/b.py"],
         )
         self.assertEqual([p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"], [])
 
@@ -254,6 +257,74 @@ class RelationChannelTests(unittest.TestCase):
         )
         self.assertEqual(
             [p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"], [])
+
+    def test_c02_skipped_target_member_blocks_add_with_visible_unresolved(self):
+        # C-02 (HIGH) repro A, full-facts side: unchanged target b.py has a
+        # syntax error; B marks it skipped. The strong RELATION_ADD must not
+        # publish AND the cancellation must be visible (HUMAN_REQUIRED) — the
+        # pre-fix code silently `continue`d on skipped endpoints.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS},
+            {"pkg/a.py": "from pkg.b import B\n\n" + A_CLASS, "pkg/b.py": B_CLASS},
+            two_node_map(),
+            skipped=[{"path": "pkg/b.py",
+                      "reason": "无法按当前 Python 解析器读取编码或语法"}],
+        )
+        self.assertEqual([p for p in res["proposals"] if p["kind"] == "RELATION_ADD"], [])
+        gated = [u for u in res["unresolved"] if u["reason"] == "HUMAN_REQUIRED"
+                 and u["subject"] == "na->nb"]
+        self.assertTrue(gated)
+        self.assertIn("pkg/b.py", gated[0]["note"])
+
+    def test_c02_partial_supplied_facts_missing_member_blocks_add(self):
+        # C-02 invariant: partial B collection must not create a stronger
+        # conclusion than full collection. a2.py (a source-domain member) is
+        # absent from the supplied facts -> eligibility unknown -> no strong
+        # proposal, visible HUMAN_REQUIRED (full facts with a2 skipped would
+        # behave the same, so partial is never stronger than full).
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/a2.py": "", "pkg/b.py": B_CLASS},
+            {"pkg/a.py": "from pkg.b import B\n\n" + A_CLASS,
+             "pkg/a2.py": "", "pkg/b.py": B_CLASS},
+            two_node_map(extra_na_paths=["pkg/a2.py"]),
+        )
+        self.assertEqual([p for p in res["proposals"] if p["kind"] == "RELATION_ADD"], [])
+        self.assertTrue(any(u["reason"] == "HUMAN_REQUIRED" and u["subject"] == "na->nb"
+                            for u in res["unresolved"]))
+
+    def test_c02_skipped_auxiliary_source_not_used_in_removal_proof(self):
+        # C-02 (HIGH) repro B: a2.py exceeds B's 1 MiB budget -> skipped. The
+        # removal proof must not treat it as eligible evidence; the candidate
+        # is blocked with a visible HUMAN_REQUIRED even though C could read
+        # the blob itself. a2 also drops its import in git, so the pre-fix
+        # proof would have concluded "gone" from B-ineligible reads.
+        res = self.run_engine(
+            {"pkg/a.py": "from pkg.b import B\n\n" + A_CLASS,
+             "pkg/a2.py": "from pkg.b import B\n", "pkg/b.py": B_CLASS},
+            {"pkg/a.py": A_CLASS, "pkg/a2.py": "", "pkg/b.py": B_CLASS},
+            two_node_map(extra_na_paths=["pkg/a2.py"]),
+            skipped=[{"path": "pkg/a2.py", "reason": "文件超过首版 1 MiB 上限"}],
+        )
+        self.assertEqual(
+            [p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"], [])
+        self.assertTrue(any(u["reason"] == "HUMAN_REQUIRED" and u["subject"] == "na->nb"
+                            for u in res["unresolved"]))
+
+    def test_c02_one_of_multiple_target_members_skipped_blocks_add(self):
+        # C-02: one skipped member of the target domain blocks the strong
+        # node-level claim, with the member and reason named.
+        res = self.run_engine(
+            {"pkg/a.py": A_CLASS, "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            {"pkg/a.py": "from pkg.b import B\n\n" + A_CLASS,
+             "pkg/b.py": B_CLASS, "pkg/b2.py": B2_CLASS},
+            two_node_map(nb_paths=["pkg/b.py", "pkg/b2.py"]),
+            skipped=[{"path": "pkg/b2.py", "reason": "文件超过首版 1 MiB 上限"}],
+        )
+        self.assertEqual([p for p in res["proposals"] if p["kind"] == "RELATION_ADD"], [])
+        gated = [u for u in res["unresolved"] if u["reason"] == "HUMAN_REQUIRED"
+                 and u["subject"] == "na->nb"]
+        self.assertTrue(gated)
+        self.assertIn("pkg/b2.py", gated[0]["note"])
 
     def test_removal_requires_existing_map_edge(self):
         res = self.run_engine(
@@ -438,6 +509,7 @@ class RelationChannelTests(unittest.TestCase):
             {"pkg/a.py": A_CLASS,
              "pkg/a2.py": '"""from pkg.b import B"""\n' + A_CLASS, "pkg/b.py": B_CLASS},
             two_node_map(extra_na_paths=["pkg/a2.py"]),
+            fact_paths=["pkg/a.py", "pkg/a2.py", "pkg/b.py"],
         )
         removals = [p for p in res["proposals"] if p["kind"] == "RELATION_REMOVE_CANDIDATE"]
         self.assertEqual(len(removals), 1)
