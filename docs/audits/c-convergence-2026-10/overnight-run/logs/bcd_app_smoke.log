@@ -1,0 +1,12 @@
+ProjectMind demo: http://127.0.0.1:8877
+127.0.0.1 - - [05/Oct/2026 02:12:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:22] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:23] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:23] "GET /ext/map_proposal HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:23] "GET /api/extensions/map_proposal HTTP/1.1" 400 -
+127.0.0.1 - - [05/Oct/2026 02:12:23] "GET /api/extensions/code_facts HTTP/1.1" 400 -
+127.0.0.1 - - [05/Oct/2026 02:12:23] "GET /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:23] "GET /api/extensions/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:23] "GET /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:27] "GET /api/extensions/context_authority HTTP/1.1" 200 -
+127.0.0.1 - - [05/Oct/2026 02:12:55] "POST /api/extensions/map_proposal HTTP/1.1" 200 -

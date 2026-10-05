@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {
+      "phase": "P01_RELATIONS",
+      "base_sha": "78c2751",
+      "target_sha": "98c3a00",
+      "files_changed": [
+        "extensions/map_proposal/relations.py",
+        "extensions/map_proposal/engine.py",
+        "tests/test_w3_relations.py",
+        "tests/test_w4_ca_trust.py",
+        "tests/audit_w3_adversarial.py",
+        "tests/audit_probes.py"
+      ],
+      "contract_sections": [
+        "R03 independent import channel (plan §6)",
+        "C-3 unknown is never zero",
+        "G-3 degradation must be visible",
+        "F06 same-normalized-target rewrite produces no relation change"
+      ],
+      "tests": ["python -m unittest discover tests (104/104 OK)"],
+      "test_results": {"pass": 104, "fail": 0},
+      "known_limits": [
+        "module resolution heuristic: namespace packages / src-layout unresolvable → possible invisible miss (recorded, does not fabricate)",
+        "from-import shape rewrite can flag package-__init__ dependency removed (bounded: needs map edge + full domain proof, low confidence, human review)",
+        "deleted-file removal signals not in relation channel (stale-map channel covers node removal; edge removal via deleted last importer is a recorded gap)"
+      ],
+      "review_status": "PENDING"
+    }
+  ]
+}

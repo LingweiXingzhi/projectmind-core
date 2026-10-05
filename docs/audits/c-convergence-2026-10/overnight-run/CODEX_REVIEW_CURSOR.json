@@ -1,0 +1,15 @@
+{
+  "last_audited_sha": null,
+  "latest_stable_sha": "98c3a00",
+  "pending_reviews": [
+    {
+      "phase": "P01_RELATIONS",
+      "base_sha": "78c2751",
+      "target_sha": "98c3a00",
+      "review_status": "PENDING"
+    }
+  ],
+  "last_verdict": null,
+  "last_review_time": null,
+  "notes": "If last_audited_sha stays null when Codex first recovers, use AUDIT_BASE_SHA=78c2751 (last trusted pre-overnight convergence stable SHA, already pushed) and AUDIT_TARGET_SHA=latest_stable_sha. Never rescan history before AUDIT_BASE_SHA."
+}

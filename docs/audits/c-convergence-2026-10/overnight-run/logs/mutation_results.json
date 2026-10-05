@@ -1,0 +1,92 @@
+[
+  {
+    "id": "M1_revision_gate_off",
+    "status": "MUTATION_CAUGHT",
+    "description": "disable B revision gate (F06/L06 regression): any facts revision accepted",
+    "guards_run": [
+      "tests.test_map_proposal"
+    ],
+    "failing": [
+      {
+        "module": "tests.test_map_proposal",
+        "tail": "ile \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-45qkrscg\\M1_revision_gate_off\\tests\\test_map_proposal.py\", line 105, in test_supplied_mismatch_rejected_on_same_revision\n    with self.assertRaises(Exception):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Exception not raised\n\n----------------------------------------------------------------------\nRan 31 tests in 0.231s\n\nFAILED (failures=4)\n"
+      }
+    ]
+  },
+  {
+    "id": "M2_skipped_into_relations",
+    "status": "MUTATION_CAUGHT",
+    "description": "allow B-skipped source into the relation channel (F04 regression)",
+    "guards_run": [
+      "tests.test_w3_relations"
+    ],
+    "failing": [
+      {
+        "module": "tests.test_w3_relations",
+        "tail": "path': 'pkg/a.py'}, {'kind': 'map_node', 'detail': 'na: covers pkg/a.py'}, {'kind': 'map_node', 'detail': 'nb: covers pkg/b.py'}], 'confidence': 'low', 'uncertainty': [], 'status': 'PROPOSED', 'human_required': True}\n\nDiff is 1028 characters long. Set self.maxDiff to None to see it.\n\n----------------------------------------------------------------------\nRan 16 tests in 8.674s\n\nFAILED (failures=1)\n"
+      }
+    ]
+  },
+  {
+    "id": "M3_claim_auto_attach",
+    "status": "MUTATION_CAUGHT",
+    "description": "F03 regression: first surviving validated CA claim attaches to first proposal evidence",
+    "guards_run": [
+      "tests.test_w4_ca_trust"
+    ],
+    "failing": [
+      {
+        "module": "tests.test_w4_ca_trust",
+        "tail": " File \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-45qkrscg\\M3_claim_auto_attach\\tests\\test_w4_ca_trust.py\", line 207, in test_s25_poison_never_attaches_when_proposals_exist\n    self.assertNotEqual(evidence[\"kind\"], \"context_claim\")\nAssertionError: 'context_claim' == 'context_claim'\n\n----------------------------------------------------------------------\nRan 12 tests in 3.053s\n\nFAILED (failures=1)\n"
+      }
+    ]
+  },
+  {
+    "id": "M4_text_only_import",
+    "status": "MUTATION_CAUGHT",
+    "description": "DROP L05 regression: blob 'parsing' rebuilt from raw text lines so docstring/comment import text becomes real imports",
+    "guards_run": [
+      "tests.test_w3_relations"
+    ],
+    "failing": [
+      {
+        "module": "tests.test_w3_relations",
+        "tail": "import\\extensions\\map_proposal\\engine.py\", line 15, in <module>\n    from extensions.map_proposal import analysis, ca_adapter, facts_adapter, model, relations, gitio\n  File \"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-45qkrscg\\M4_text_only_import\\extensions\\map_proposal\\relations.py\", line 70\n    except (gitio.DiffSignalError, SyntaxError, ValueError) as exc:\n    ^^^^^^\nSyntaxError: invalid syntax\n"
+      }
+    ]
+  },
+  {
+    "id": "M5_position_allowed",
+    "status": "MUTATION_CAUGHT",
+    "description": "allow position into proposed_change (K02/S-1 regression)",
+    "guards_run": [
+      "tests.test_map_proposal",
+      "tests.test_w5_compatibility"
+    ],
+    "failing": [
+      {
+        "module": "tests.test_map_proposal",
+        "tail": "Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-45qkrscg\\M5_position_allowed\\tests\\test_map_proposal.py\", line 246, in test_make_proposal_rejects_position_and_empty_evidence\n    with self.assertRaises(ValueError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 31 tests in 0.178s\n\nFAILED (failures=1)\n"
+      }
+    ]
+  },
+  {
+    "id": "M6_lifecycle_auto_accept",
+    "status": "MUTATION_CAUGHT",
+    "description": "candidate lifecycle becomes ACCEPTED / human_required=False (S-4 regression)",
+    "guards_run": [
+      "tests.test_w5_compatibility",
+      "tests.test_w2_channels"
+    ],
+    "failing": [
+      {
+        "module": "tests.test_w5_compatibility",
+        "tail": "\"C:\\Users\\李则兴\\AppData\\Local\\Temp\\pm-mutation-45qkrscg\\M6_lifecycle_auto_accept\\tests\\test_w5_compatibility.py\", line 144, in test_no_position_anywhere_in_any_proposal\n    self.assertEqual(proposal[\"status\"], \"PROPOSED\")\nAssertionError: 'ACCEPTED' != 'PROPOSED'\n- ACCEPTED\n+ PROPOSED\n\n\n----------------------------------------------------------------------\nRan 14 tests in 0.520s\n\nFAILED (failures=1)\n"
+      },
+      {
+        "module": "tests.test_w2_channels",
+        "tail": "s\\李则兴\\AppData\\Local\\Temp\\pm-mutation-45qkrscg\\M6_lifecycle_auto_accept\\tests\\test_w2_channels.py\", line 89, in test_s01_new_module_exact_node_with_structured_evidence\n    self.assertEqual(proposal[\"status\"], \"PROPOSED\")\nAssertionError: 'ACCEPTED' != 'PROPOSED'\n- ACCEPTED\n+ PROPOSED\n\n\n----------------------------------------------------------------------\nRan 20 tests in 0.886s\n\nFAILED (failures=1)\n"
+      }
+    ]
+  }
+]

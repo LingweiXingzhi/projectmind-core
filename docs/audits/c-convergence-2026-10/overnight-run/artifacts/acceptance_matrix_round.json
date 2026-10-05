@@ -1,0 +1,550 @@
+{
+  "stable": false,
+  "pass": 29,
+  "rounds": [
+    {
+      "S01": {
+        "oracle": "real NODE_ADD exactly for uncovered path with eligible declarations",
+        "contract": "plan §8 S01/A01 + X19",
+        "deps": "FIXTURE facts + REAL git",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_w2_channels.NodeAddTests.test_s01_function_only_module_still_low_confidence_node, test_w2_channels.NodeAddTests.test_s01_new_module_exact_node_with_structured_evidence",
+        "input_hash": "384073c401e62bff",
+        "notes": ""
+      },
+      "S02": {
+        "oracle": "real RELATION_ADD incl. unchanged-declarations X01",
+        "contract": "plan §8 S02/A02 + X01",
+        "deps": "REAL git + REAL B",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_real_b_integration.RealBIntegrationTests.test_s02_s13_real_collector_supplied_pipeline, test_w3_relations.RelationChannelTests.test_s02_x01_real_import_add_with_unchanged_declarations",
+        "input_hash": "67060bea058db6dc",
+        "notes": ""
+      },
+      "S03": {
+        "oracle": "relation removal: last cross-domain import gone; multi-source residual; churn stays silent",
+        "contract": "plan §8 S03/A03 + X11/X13",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "5 test(s) run in round 1: test_w3_relations.RelationChannelTests.test_removal_requires_existing_map_edge, test_w3_relations.RelationChannelTests.test_s03_domain_proof_is_ast_not_text, test_w3_relations.RelationChannelTests.test_s03_multi_source_remaining_import_no_removal, test_w3_relations.RelationChannelTests.test_s03_x11_last_import_removed_gives_removal_candidate, test_w3_relations.RelationChannelTests.test_x13_import_rewrite_churn_no_relation",
+        "input_hash": "fcfa98c0933f5679",
+        "notes": ""
+      },
+      "S04": {
+        "oracle": "rename/move → IMPLEMENTATION_LINK_CHANGE, never NODE_ADD; subdirectory variant",
+        "contract": "plan §8 S04/A04",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.RenameTests.test_s04_rename_updates_link_not_node",
+        "input_hash": "62ee8a65a43c3c14",
+        "notes": ""
+      },
+      "S05": {
+        "oracle": "node removal: all evidence gone; partial retention → no candidate",
+        "contract": "plan §8 S05/A05",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.StaleMapTests.test_s05_partial_evidence_retained_no_removal",
+        "input_hash": "84e3063fc936b1df",
+        "notes": ""
+      },
+      "S06": {
+        "oracle": "responsibility change: entryPoint declaration gone, no first-symbol pick",
+        "contract": "plan §8 S06/A06",
+        "deps": "REAL B (installed collector)",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_real_b_integration.RealBIntegrationTests.test_s06_real_base_delta_gives_responsibility_change, test_w2_channels.ModifiedChannelTests.test_s06_entrypoint_gone_responsibility_no_first_symbol_pick",
+        "input_hash": "3bdbab2f9a89ce83",
+        "notes": ""
+      },
+      "S07": {
+        "oracle": "comment-only change: zero strong proposals with reason",
+        "contract": "plan §8 S07/A07 + X20",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.ModifiedChannelTests.test_s07_comment_only_zero_strong_proposal",
+        "input_hash": "b9a8e223a872db04",
+        "notes": ""
+      },
+      "S08": {
+        "oracle": "formatting-only (line/quote drift): zero proposals",
+        "contract": "plan §8 S08/A08",
+        "deps": "FIXTURE",
+        "result": "FAIL",
+        "evidence": "0 test(s) run in round 1: NO TESTS MAPPED",
+        "input_hash": "e3b0c44298fc1c14",
+        "notes": "closed P06"
+      },
+      "S09": {
+        "oracle": "helper-only change: no NODE_ADD / strong proposal",
+        "contract": "plan §8 S09/A09 + F10",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.ModifiedChannelTests.test_s09_helper_only_no_node_no_strong_proposal",
+        "input_hash": "ea7d2c5e6b65f55c",
+        "notes": ""
+      },
+      "S10": {
+        "oracle": "internal class added: no NODE_ADD",
+        "contract": "plan §8 S10/A10 + F9",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.ModifiedChannelTests.test_s10_added_class_does_not_become_node",
+        "input_hash": "f3d39c04eeff3fe2",
+        "notes": ""
+      },
+      "S11": {
+        "oracle": "docstring import text is never a relation; string/comment included",
+        "contract": "plan §8 S11/A11 + X03/X12",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w3_relations.RelationChannelTests.test_s11_x03_docstring_import_text_never_a_relation",
+        "input_hash": "27096d945bfd5a85",
+        "notes": ""
+      },
+      "S12": {
+        "oracle": "test/generated noise → no business architecture candidates",
+        "contract": "plan §8 S12/A12",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.NodeAddTests.test_test_noise_and_generated_not_nodes",
+        "input_hash": "e3b0c44298fc1c14",
+        "notes": "closed P06"
+      },
+      "S13": {
+        "oracle": "B skipped source → HUMAN_REQUIRED; no channel uses it; normal sources work",
+        "contract": "plan §8 S13/A13 + X04/X21",
+        "deps": "REAL B skipped semantics",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_real_b_integration.RealBIntegrationTests.test_s02_s13_real_collector_supplied_pipeline, test_w3_relations.RelationChannelTests.test_f04_x21_skipped_source_never_feeds_relations",
+        "input_hash": "c0f9085f2878a699",
+        "notes": ""
+      },
+      "S14": {
+        "oracle": "B mismatch rejected on all paths; same-revision/empty diff no bypass",
+        "contract": "plan §8 S14/A14 + X06",
+        "deps": "REAL B mismatch + supplied fixtures",
+        "result": "PASS",
+        "evidence": "6 test(s) run in round 1: test_map_proposal.BGateTests.test_installed_b_mismatch_rejected, test_map_proposal.BGateTests.test_supplied_mismatch_rejected_on_empty_changes, test_map_proposal.BGateTests.test_supplied_mismatch_rejected_on_normal_path, test_map_proposal.BGateTests.test_supplied_mismatch_rejected_on_same_revision, test_map_proposal.PinGateTests.test_empty_changes_with_different_pins_rejected, test_real_b_integration.RealBIntegrationTests.test_s14_real_revision_mismatch_rejected_same_revision_safe",
+        "input_hash": "b0b119a5f52d5164",
+        "notes": ""
+      },
+      "S15": {
+        "oracle": "B unavailable → honest degraded; B-free channels continue; no fabricated facts",
+        "contract": "plan §8 S15/A15",
+        "deps": "REAL absence + REAL exception",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_map_proposal.BGateTests.test_b_unavailable_degraded_with_limits_no_fabricated_fact, test_real_b_integration.RealBIntegrationTests.test_s15_real_collector_unavailable_and_exception",
+        "input_hash": "1036b0e65f26006c",
+        "notes": ""
+      },
+      "S16": {
+        "oracle": "stale map: pre-base deletion candidate; read-unknown ≠ absent; base==target zero",
+        "contract": "plan §8 S16/A16-valid-map + F11/F15",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "3 test(s) run in round 1: test_w2_channels.StaleMapTests.test_base_equals_target_zero_proposal_even_with_stale_map, test_w2_channels.StaleMapTests.test_s16_deleted_before_base_flagged_honestly, test_w2_channels.StaleMapTests.test_s16_fully_gone_at_target_removal_candidate",
+        "input_hash": "fa7966371ce16cab",
+        "notes": ""
+      },
+      "S17": {
+        "oracle": "ambiguous multi-owner mapping → low confidence + uncertainty, no arbitrary pick",
+        "contract": "plan §8 S17/A17",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.RenameTests.test_s17_multiple_owners_ambiguity_flagged",
+        "input_hash": "fd42266ff504e823",
+        "notes": "rename + relation variants"
+      },
+      "S18": {
+        "oracle": "missing evidence: added file without B entries → unresolved UNKNOWN",
+        "contract": "plan §8 S18/A18",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w2_channels.NodeAddTests.test_added_without_facts_entries_is_unresolved",
+        "input_hash": "1784637cff7fdf16",
+        "notes": ""
+      },
+      "S19": {
+        "oracle": "relevant CA conflict suppresses touching candidates only; word boundary",
+        "contract": "plan §8 S19/A19 + X14/X15/X18",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "3 test(s) run in round 1: test_real_ca_integration.RealCAIntegrationTests.test_s19_s25_real_pack_conflict_routing_and_poison_non_attach, test_w4_ca_trust.AdmissionTests.test_s19_related_conflict_suppresses_touching_candidates_only, test_w4_ca_trust.AdmissionTests.test_s19_x15_word_boundary_no_substring_false_positive",
+        "input_hash": "5622ea7f01c5b4f8",
+        "notes": ""
+      },
+      "S20": {
+        "oracle": "non-current partitions (stale/proposal/research/history) never read",
+        "contract": "plan §8 S20/A20",
+        "deps": "REAL CA stale semantics",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_real_ca_integration.RealCAIntegrationTests.test_s20_real_stale_partition_never_read, test_w4_ca_trust.LoadContextTests.test_s20_non_current_partitions_never_read",
+        "input_hash": "cc029387233b3af2",
+        "notes": ""
+      },
+      "S21": {
+        "oracle": "multi-scope same key both in selection layer",
+        "contract": "plan §8 S21/A21",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_real_ca_integration.RealCAIntegrationTests.test_s21_real_multi_scope_both_in_selection_layer, test_w4_ca_trust.LoadContextTests.test_s21_multi_scope_same_key_both_in_selection_layer",
+        "input_hash": "af3bd6080ffeb66a",
+        "notes": ""
+      },
+      "S22": {
+        "oracle": "verified_fields per field; unverified fields support nothing",
+        "contract": "plan §8 S22/A22",
+        "deps": "MOCK validator (field map contract)",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_real_ca_integration.RealCAIntegrationTests.test_p05b_t2_field_level_support_labels, test_w4_ca_trust.LoadContextTests.test_s22_verified_fields_per_field",
+        "input_hash": "d1aa3a735de81ad0",
+        "notes": "live verifiers = recorded limit"
+      },
+      "S23": {
+        "oracle": "unavailable keys explicit UNKNOWN, never faked bad-pack",
+        "contract": "plan §8 S23/A23",
+        "deps": "MOCK validator",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 1: test_w4_ca_trust.AdmissionTests.test_s23_unavailable_keys_explicit_unknown_not_fake_badpack",
+        "input_hash": "ace8a26f4b6af9d6",
+        "notes": "real unavailable rows need network verifiers (recorded)"
+      },
+      "S24": {
+        "oracle": "invalid pack → whole-pack discard; independent candidates survive",
+        "contract": "plan §8 S24/A24",
+        "deps": "REAL CA digest tamper",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_real_ca_integration.RealCAIntegrationTests.test_s24_tampered_real_pack_rejected_whole_pack_discarded, test_w4_ca_trust.AdmissionTests.test_s24_invalid_pack_degrades_but_independent_candidates_survive",
+        "input_hash": "f9366ab6321686b9",
+        "notes": ""
+      },
+      "S25": {
+        "oracle": "coherent poison never enters evidence/rationale (also with proposals present)",
+        "contract": "plan §8 S25/A25 + X05/X16/X17",
+        "deps": "REAL CA pack poison",
+        "result": "PASS",
+        "evidence": "4 test(s) run in round 1: test_real_ca_integration.RealCAIntegrationTests.test_p05b_t1_context_enrichment_labeled_relevant_only, test_real_ca_integration.RealCAIntegrationTests.test_s19_s25_real_pack_conflict_routing_and_poison_non_attach, test_w4_ca_trust.AdmissionTests.test_s25_coherent_poison_never_enters_evidence, test_w4_ca_trust.AdmissionTests.test_s25_poison_never_attaches_when_proposals_exist",
+        "input_hash": "1e39679694e24585",
+        "notes": ""
+      },
+      "S26": {
+        "oracle": "determinism: byte-identical repeats; order-insensitive IDs",
+        "contract": "plan §8 S26/A26 + X09",
+        "deps": "REAL git + REAL B history",
+        "result": "PASS",
+        "evidence": "4 test(s) run in round 1: test_map_proposal.CanonicalAndIdentityTests.test_determinism_same_input_same_output, test_real_b_integration.RealBIntegrationTests.test_real_history_end_to_end_deterministic_no_map_write, test_w3_relations.RelationChannelTests.test_relation_add_determinism, test_w5_compatibility.DeterminismAndIdentityTests.test_a26_repeat_is_byte_identical",
+        "input_hash": "4aec4b5936c3d45e",
+        "notes": ""
+      },
+      "S27": {
+        "oracle": "malformed inputs controlled rejection incl. valid-context malformed map",
+        "contract": "plan §8 S27/A27",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 1: test_w5_compatibility.ErrorBoundaryTests.test_malformed_facts_shape_controlled_rejection, test_w5_compatibility.ErrorBoundaryTests.test_malformed_map_shape_controlled_rejection",
+        "input_hash": "55b108f4a204d78c",
+        "notes": "closed P06"
+      },
+      "S28": {
+        "oracle": "path abuse rejected across changed/oldPath/map evidence/entryPoint sources",
+        "contract": "plan §8 S28/A28",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "4 test(s) run in round 1: test_map_proposal.PathSafetyTests.test_facts_and_entry_point_paths_bounded, test_map_proposal.PathSafetyTests.test_unsafe_changed_paths_rejected, test_map_proposal.PathSafetyTests.test_unsafe_map_evidence_path_rejected, test_w5_compatibility.ErrorBoundaryTests.test_s28_rename_old_path_abuse_rejected",
+        "input_hash": "333a29306cbff5ea",
+        "notes": ""
+      },
+      "S29": {
+        "oracle": "no formal-map write: file hash unchanged; no position; PROPOSED lifecycle",
+        "contract": "plan §8 S29/A29",
+        "deps": "REAL formal map hash",
+        "result": "PASS",
+        "evidence": "3 test(s) run in round 1: test_map_proposal.NoMapWriteTests.test_map_file_hash_unchanged, test_real_b_integration.RealBIntegrationTests.test_real_history_end_to_end_deterministic_no_map_write, test_w5_compatibility.ErrorBoundaryTests.test_no_position_anywhere_in_any_proposal",
+        "input_hash": "7c5491deda7f3993",
+        "notes": ""
+      },
+      "S30": {
+        "oracle": "host isolation: runtime BaseException contained, all routes survive",
+        "contract": "plan §8 S30/A30",
+        "deps": "REAL Core (A30 fix branch)",
+        "result": "PASS",
+        "evidence": "01:45:56] \"GET /api/snapshot HTTP/1.1\" 200 -\n127.0.0.1 - - [05/Oct/2026 01:45:56] \"GET /api/extensions HTTP/1.1\" 200 -\n127.0.0.1 - - [05/Oct/2026 01:45:56] \"GET /api/extensions/healthy HTTP/1.1\" 200 -\n.\n----------------------------------------------------------------------\nRan 9 tests in 5.273s\n\nOK\n",
+        "input_hash": "n/a (external worktree)",
+        "notes": "verified on fix/core-extension-runtime-isolation worktree"
+      }
+    },
+    {
+      "S01": {
+        "oracle": "real NODE_ADD exactly for uncovered path with eligible declarations",
+        "contract": "plan §8 S01/A01 + X19",
+        "deps": "FIXTURE facts + REAL git",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_w2_channels.NodeAddTests.test_s01_function_only_module_still_low_confidence_node, test_w2_channels.NodeAddTests.test_s01_new_module_exact_node_with_structured_evidence",
+        "input_hash": "384073c401e62bff",
+        "notes": ""
+      },
+      "S02": {
+        "oracle": "real RELATION_ADD incl. unchanged-declarations X01",
+        "contract": "plan §8 S02/A02 + X01",
+        "deps": "REAL git + REAL B",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_real_b_integration.RealBIntegrationTests.test_s02_s13_real_collector_supplied_pipeline, test_w3_relations.RelationChannelTests.test_s02_x01_real_import_add_with_unchanged_declarations",
+        "input_hash": "67060bea058db6dc",
+        "notes": ""
+      },
+      "S03": {
+        "oracle": "relation removal: last cross-domain import gone; multi-source residual; churn stays silent",
+        "contract": "plan §8 S03/A03 + X11/X13",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "5 test(s) run in round 2: test_w3_relations.RelationChannelTests.test_removal_requires_existing_map_edge, test_w3_relations.RelationChannelTests.test_s03_domain_proof_is_ast_not_text, test_w3_relations.RelationChannelTests.test_s03_multi_source_remaining_import_no_removal, test_w3_relations.RelationChannelTests.test_s03_x11_last_import_removed_gives_removal_candidate, test_w3_relations.RelationChannelTests.test_x13_import_rewrite_churn_no_relation",
+        "input_hash": "fcfa98c0933f5679",
+        "notes": ""
+      },
+      "S04": {
+        "oracle": "rename/move → IMPLEMENTATION_LINK_CHANGE, never NODE_ADD; subdirectory variant",
+        "contract": "plan §8 S04/A04",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.RenameTests.test_s04_rename_updates_link_not_node",
+        "input_hash": "62ee8a65a43c3c14",
+        "notes": ""
+      },
+      "S05": {
+        "oracle": "node removal: all evidence gone; partial retention → no candidate",
+        "contract": "plan §8 S05/A05",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.StaleMapTests.test_s05_partial_evidence_retained_no_removal",
+        "input_hash": "84e3063fc936b1df",
+        "notes": ""
+      },
+      "S06": {
+        "oracle": "responsibility change: entryPoint declaration gone, no first-symbol pick",
+        "contract": "plan §8 S06/A06",
+        "deps": "REAL B (installed collector)",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_real_b_integration.RealBIntegrationTests.test_s06_real_base_delta_gives_responsibility_change, test_w2_channels.ModifiedChannelTests.test_s06_entrypoint_gone_responsibility_no_first_symbol_pick",
+        "input_hash": "3bdbab2f9a89ce83",
+        "notes": ""
+      },
+      "S07": {
+        "oracle": "comment-only change: zero strong proposals with reason",
+        "contract": "plan §8 S07/A07 + X20",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.ModifiedChannelTests.test_s07_comment_only_zero_strong_proposal",
+        "input_hash": "b9a8e223a872db04",
+        "notes": ""
+      },
+      "S08": {
+        "oracle": "formatting-only (line/quote drift): zero proposals",
+        "contract": "plan §8 S08/A08",
+        "deps": "FIXTURE",
+        "result": "FAIL",
+        "evidence": "0 test(s) run in round 2: NO TESTS MAPPED",
+        "input_hash": "e3b0c44298fc1c14",
+        "notes": "closed P06"
+      },
+      "S09": {
+        "oracle": "helper-only change: no NODE_ADD / strong proposal",
+        "contract": "plan §8 S09/A09 + F10",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.ModifiedChannelTests.test_s09_helper_only_no_node_no_strong_proposal",
+        "input_hash": "ea7d2c5e6b65f55c",
+        "notes": ""
+      },
+      "S10": {
+        "oracle": "internal class added: no NODE_ADD",
+        "contract": "plan §8 S10/A10 + F9",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.ModifiedChannelTests.test_s10_added_class_does_not_become_node",
+        "input_hash": "f3d39c04eeff3fe2",
+        "notes": ""
+      },
+      "S11": {
+        "oracle": "docstring import text is never a relation; string/comment included",
+        "contract": "plan §8 S11/A11 + X03/X12",
+        "deps": "REAL git",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w3_relations.RelationChannelTests.test_s11_x03_docstring_import_text_never_a_relation",
+        "input_hash": "27096d945bfd5a85",
+        "notes": ""
+      },
+      "S12": {
+        "oracle": "test/generated noise → no business architecture candidates",
+        "contract": "plan §8 S12/A12",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.NodeAddTests.test_test_noise_and_generated_not_nodes",
+        "input_hash": "e3b0c44298fc1c14",
+        "notes": "closed P06"
+      },
+      "S13": {
+        "oracle": "B skipped source → HUMAN_REQUIRED; no channel uses it; normal sources work",
+        "contract": "plan §8 S13/A13 + X04/X21",
+        "deps": "REAL B skipped semantics",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_real_b_integration.RealBIntegrationTests.test_s02_s13_real_collector_supplied_pipeline, test_w3_relations.RelationChannelTests.test_f04_x21_skipped_source_never_feeds_relations",
+        "input_hash": "c0f9085f2878a699",
+        "notes": ""
+      },
+      "S14": {
+        "oracle": "B mismatch rejected on all paths; same-revision/empty diff no bypass",
+        "contract": "plan §8 S14/A14 + X06",
+        "deps": "REAL B mismatch + supplied fixtures",
+        "result": "PASS",
+        "evidence": "6 test(s) run in round 2: test_map_proposal.BGateTests.test_installed_b_mismatch_rejected, test_map_proposal.BGateTests.test_supplied_mismatch_rejected_on_empty_changes, test_map_proposal.BGateTests.test_supplied_mismatch_rejected_on_normal_path, test_map_proposal.BGateTests.test_supplied_mismatch_rejected_on_same_revision, test_map_proposal.PinGateTests.test_empty_changes_with_different_pins_rejected, test_real_b_integration.RealBIntegrationTests.test_s14_real_revision_mismatch_rejected_same_revision_safe",
+        "input_hash": "b0b119a5f52d5164",
+        "notes": ""
+      },
+      "S15": {
+        "oracle": "B unavailable → honest degraded; B-free channels continue; no fabricated facts",
+        "contract": "plan §8 S15/A15",
+        "deps": "REAL absence + REAL exception",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_map_proposal.BGateTests.test_b_unavailable_degraded_with_limits_no_fabricated_fact, test_real_b_integration.RealBIntegrationTests.test_s15_real_collector_unavailable_and_exception",
+        "input_hash": "1036b0e65f26006c",
+        "notes": ""
+      },
+      "S16": {
+        "oracle": "stale map: pre-base deletion candidate; read-unknown ≠ absent; base==target zero",
+        "contract": "plan §8 S16/A16-valid-map + F11/F15",
+        "deps": "FIXTURE + MOCK tree",
+        "result": "PASS",
+        "evidence": "3 test(s) run in round 2: test_w2_channels.StaleMapTests.test_base_equals_target_zero_proposal_even_with_stale_map, test_w2_channels.StaleMapTests.test_s16_deleted_before_base_flagged_honestly, test_w2_channels.StaleMapTests.test_s16_fully_gone_at_target_removal_candidate",
+        "input_hash": "fa7966371ce16cab",
+        "notes": ""
+      },
+      "S17": {
+        "oracle": "ambiguous multi-owner mapping → low confidence + uncertainty, no arbitrary pick",
+        "contract": "plan §8 S17/A17",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.RenameTests.test_s17_multiple_owners_ambiguity_flagged",
+        "input_hash": "fd42266ff504e823",
+        "notes": "rename + relation variants"
+      },
+      "S18": {
+        "oracle": "missing evidence: added file without B entries → unresolved UNKNOWN",
+        "contract": "plan §8 S18/A18",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w2_channels.NodeAddTests.test_added_without_facts_entries_is_unresolved",
+        "input_hash": "1784637cff7fdf16",
+        "notes": ""
+      },
+      "S19": {
+        "oracle": "relevant CA conflict suppresses touching candidates only; word boundary",
+        "contract": "plan §8 S19/A19 + X14/X15/X18",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "3 test(s) run in round 2: test_real_ca_integration.RealCAIntegrationTests.test_s19_s25_real_pack_conflict_routing_and_poison_non_attach, test_w4_ca_trust.AdmissionTests.test_s19_related_conflict_suppresses_touching_candidates_only, test_w4_ca_trust.AdmissionTests.test_s19_x15_word_boundary_no_substring_false_positive",
+        "input_hash": "5622ea7f01c5b4f8",
+        "notes": ""
+      },
+      "S20": {
+        "oracle": "non-current partitions (stale/proposal/research/history) never read",
+        "contract": "plan §8 S20/A20",
+        "deps": "REAL CA stale semantics",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_real_ca_integration.RealCAIntegrationTests.test_s20_real_stale_partition_never_read, test_w4_ca_trust.LoadContextTests.test_s20_non_current_partitions_never_read",
+        "input_hash": "cc029387233b3af2",
+        "notes": ""
+      },
+      "S21": {
+        "oracle": "multi-scope same key both in selection layer",
+        "contract": "plan §8 S21/A21",
+        "deps": "REAL CA pack",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_real_ca_integration.RealCAIntegrationTests.test_s21_real_multi_scope_both_in_selection_layer, test_w4_ca_trust.LoadContextTests.test_s21_multi_scope_same_key_both_in_selection_layer",
+        "input_hash": "af3bd6080ffeb66a",
+        "notes": ""
+      },
+      "S22": {
+        "oracle": "verified_fields per field; unverified fields support nothing",
+        "contract": "plan §8 S22/A22",
+        "deps": "MOCK validator (field map contract)",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_real_ca_integration.RealCAIntegrationTests.test_p05b_t2_field_level_support_labels, test_w4_ca_trust.LoadContextTests.test_s22_verified_fields_per_field",
+        "input_hash": "d1aa3a735de81ad0",
+        "notes": "live verifiers = recorded limit"
+      },
+      "S23": {
+        "oracle": "unavailable keys explicit UNKNOWN, never faked bad-pack",
+        "contract": "plan §8 S23/A23",
+        "deps": "MOCK validator",
+        "result": "PASS",
+        "evidence": "1 test(s) run in round 2: test_w4_ca_trust.AdmissionTests.test_s23_unavailable_keys_explicit_unknown_not_fake_badpack",
+        "input_hash": "ace8a26f4b6af9d6",
+        "notes": "real unavailable rows need network verifiers (recorded)"
+      },
+      "S24": {
+        "oracle": "invalid pack → whole-pack discard; independent candidates survive",
+        "contract": "plan §8 S24/A24",
+        "deps": "REAL CA digest tamper",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_real_ca_integration.RealCAIntegrationTests.test_s24_tampered_real_pack_rejected_whole_pack_discarded, test_w4_ca_trust.AdmissionTests.test_s24_invalid_pack_degrades_but_independent_candidates_survive",
+        "input_hash": "f9366ab6321686b9",
+        "notes": ""
+      },
+      "S25": {
+        "oracle": "coherent poison never enters evidence/rationale (also with proposals present)",
+        "contract": "plan §8 S25/A25 + X05/X16/X17",
+        "deps": "REAL CA pack poison",
+        "result": "PASS",
+        "evidence": "4 test(s) run in round 2: test_real_ca_integration.RealCAIntegrationTests.test_p05b_t1_context_enrichment_labeled_relevant_only, test_real_ca_integration.RealCAIntegrationTests.test_s19_s25_real_pack_conflict_routing_and_poison_non_attach, test_w4_ca_trust.AdmissionTests.test_s25_coherent_poison_never_enters_evidence, test_w4_ca_trust.AdmissionTests.test_s25_poison_never_attaches_when_proposals_exist",
+        "input_hash": "1e39679694e24585",
+        "notes": ""
+      },
+      "S26": {
+        "oracle": "determinism: byte-identical repeats; order-insensitive IDs",
+        "contract": "plan §8 S26/A26 + X09",
+        "deps": "REAL git + REAL B history",
+        "result": "PASS",
+        "evidence": "4 test(s) run in round 2: test_map_proposal.CanonicalAndIdentityTests.test_determinism_same_input_same_output, test_real_b_integration.RealBIntegrationTests.test_real_history_end_to_end_deterministic_no_map_write, test_w3_relations.RelationChannelTests.test_relation_add_determinism, test_w5_compatibility.DeterminismAndIdentityTests.test_a26_repeat_is_byte_identical",
+        "input_hash": "4aec4b5936c3d45e",
+        "notes": ""
+      },
+      "S27": {
+        "oracle": "malformed inputs controlled rejection incl. valid-context malformed map",
+        "contract": "plan §8 S27/A27",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "2 test(s) run in round 2: test_w5_compatibility.ErrorBoundaryTests.test_malformed_facts_shape_controlled_rejection, test_w5_compatibility.ErrorBoundaryTests.test_malformed_map_shape_controlled_rejection",
+        "input_hash": "55b108f4a204d78c",
+        "notes": "closed P06"
+      },
+      "S28": {
+        "oracle": "path abuse rejected across changed/oldPath/map evidence/entryPoint sources",
+        "contract": "plan §8 S28/A28",
+        "deps": "FIXTURE",
+        "result": "PASS",
+        "evidence": "4 test(s) run in round 2: test_map_proposal.PathSafetyTests.test_facts_and_entry_point_paths_bounded, test_map_proposal.PathSafetyTests.test_unsafe_changed_paths_rejected, test_map_proposal.PathSafetyTests.test_unsafe_map_evidence_path_rejected, test_w5_compatibility.ErrorBoundaryTests.test_s28_rename_old_path_abuse_rejected",
+        "input_hash": "333a29306cbff5ea",
+        "notes": ""
+      },
+      "S29": {
+        "oracle": "no formal-map write: file hash unchanged; no position; PROPOSED lifecycle",
+        "contract": "plan §8 S29/A29",
+        "deps": "REAL formal map hash",
+        "result": "PASS",
+        "evidence": "3 test(s) run in round 2: test_map_proposal.NoMapWriteTests.test_map_file_hash_unchanged, test_real_b_integration.RealBIntegrationTests.test_real_history_end_to_end_deterministic_no_map_write, test_w5_compatibility.ErrorBoundaryTests.test_no_position_anywhere_in_any_proposal",
+        "input_hash": "7c5491deda7f3993",
+        "notes": ""
+      },
+      "S30": {
+        "oracle": "host isolation: runtime BaseException contained, all routes survive",
+        "contract": "plan §8 S30/A30",
+        "deps": "REAL Core (A30 fix branch)",
+        "result": "PASS",
+        "evidence": "01:46:23] \"GET /api/snapshot HTTP/1.1\" 200 -\n127.0.0.1 - - [05/Oct/2026 01:46:23] \"GET /api/extensions HTTP/1.1\" 200 -\n127.0.0.1 - - [05/Oct/2026 01:46:23] \"GET /api/extensions/healthy HTTP/1.1\" 200 -\n.\n----------------------------------------------------------------------\nRan 9 tests in 5.222s\n\nOK\n",
+        "input_hash": "n/a (external worktree)",
+        "notes": "verified on fix/core-extension-runtime-isolation worktree"
+      }
+    }
+  ]
+}

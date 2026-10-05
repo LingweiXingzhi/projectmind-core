@@ -1,0 +1,26 @@
+{
+  "phase": "WINDOW_COMPLETE_C_PENDING_RE_REVIEW",
+  "timestamp": "2026-10-04T11:10:00+08:00",
+  "core_base": "7484d44ddeac3c054ca3ba68f92293d965bb615c (untouched)",
+  "b_head": "80e091acefd278fda03e188a125147b0aa5eedc5 (untouched)",
+  "d_head": "8f00be38532f3f5e9823aec8cbf430038cc9ff4b (untouched)",
+  "bd_head": "a71c508 (integration/bd-v1, pushed; Draft PR #33; Codex BD gate = PASS_WITH_LIMITS, 0 BLOCKER/0 HIGH, LOW cleared)",
+  "codex_bd_verdict": "PASS_WITH_LIMITS",
+  "ca_head": "9ea23491d1849f21bad9f60c1c1ca8df55bb5936 (live-verified, merged zero-conflict)",
+  "c_base": "f43dcaf (integration/bd-ca-c-base, pushed; 246 tests: 244 PASS + 2 env-limited)",
+  "c_head": "5058c54 (feat/map-proposal-mvp, pushed; Draft PR #34)",
+  "c_status": "IMPLEMENTED + two Codex audit rounds + all findings fixed and codified as probe regressions (51/51 C tests; worktree 297 = 295 PASS + 2 env-limited preexisting)",
+  "codex_c_verdict": "R1 FAIL (2H+5M, all fixed @5286697) -> FOLLOWUP FAIL (2H+3M residual, all fixed @dd26a3c) -> RE-REVIEW NOT RUN (§12 one-follow-up cap consumed) => C_CODEX_REVIEW = PENDING_RE_REVIEW (user decision)",
+  "tests": "C 51/51; worktree 297: 295 pass + 2 env-limited (PR31 preexisting, failure-set md5 3a1eda05 stable)",
+  "security": "H1: high-impact CA claims (implementation./contract. keys, status/SHA-like value text) never attached without independent verification -> HUMAN_REQUIRED; H2: conflict routing word-boundary over paths/node-ids/evidence-paths with proposal suppression; churn guard; AST-based import verification; no map writes; no command exec",
+  "blockers": ["DECISION NEEDED: whether to authorize one more Codex C re-review round (fixes already landed at dd26a3c/5058c54)"],
+  "next_action": "User decision: authorize C re-review (compact request CODEX_C_REVIEW_FOLLOWUP_COMPACT.md reusable against HEAD 5058c54) or accept C as self-validated pending human review. Either way all work is committed and pushed.",
+  "artifacts": {
+    "bd_pr": "https://github.com/LingweiXingzhi/projectmind-core/pull/33",
+    "c_pr": "https://github.com/LingweiXingzhi/projectmind-core/pull/34",
+    "worktrees": ["G:/jiagou/projectmind-integration-bd", "G:/jiagou/projectmind-c-base", "G:/jiagou/projectmind-map-proposal"],
+    "logs": "G:/jiagou/overnight-logs/",
+    "reports": ["BD_INTEGRATION_FINAL_REPORT.md", "CODEX_BD_REVIEW.md", "C_MVP_FINAL_REPORT.md", "C_V0_1_RESOLVED_SEMANTICS.md", "OVERNIGHT_BD_C_FINAL_REPORT.md", "PROJECTMIND_BD_C_DEMO.md", "CODEX_C_REVIEW_COMPACT.md", "CODEX_C_REVIEW_FOLLOWUP_COMPACT.md"]
+  },
+  "finished": false
+}

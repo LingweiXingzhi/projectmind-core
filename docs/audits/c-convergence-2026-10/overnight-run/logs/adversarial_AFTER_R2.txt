@@ -1,0 +1,17 @@
+== task 9: adversarial relation cases ==
+{"case": "1a relative from . import b", "kinds": ["RELATION_ADD"], "unresolved": [], "limits": []}
+{"case": "1b relative from .b import B", "kinds": ["RELATION_ADD"], "unresolved": [], "limits": []}
+{"case": "2a import pkg.b as pb", "kinds": ["RELATION_ADD"], "unresolved": [], "limits": []}
+{"case": "2b from pkg.b import B as BB", "kinds": ["RELATION_ADD"], "unresolved": [], "limits": []}
+{"case": "3 from pkg import b", "kinds": ["RELATION_ADD"], "unresolved": [], "limits": []}
+{"case": "4 multiline import (pkg.b,)", "kinds": [], "unresolved": ["pkg/a.py"], "limits": ["import signal extraction unavailable: cannot verify imports of pkg/a.py@82e72c72: SyntaxError"]}
+{"case": "5 import pkg (target __init__)", "kinds": ["RELATION_ADD"], "unresolved": [], "limits": []}
+{"case": "6 two sources same relation", "kinds": ["RELATION_ADD"], "unresolved": [], "limits": []}
+{"case": "7 one removes another remains", "kinds": [], "unresolved": [], "limits": []}
+{"case": "8 syntax error target", "kinds": [], "unresolved": ["pkg/a.py"], "limits": ["import signal extraction unavailable: cannot verify imports of pkg/a.py@d7f53beb: IndentationError"]}
+{"case": "9 dynamic import", "kinds": [], "unresolved": ["pkg/a.py"], "limits": []}
+{"case": "10 string literal import text", "kinds": [], "unresolved": [], "limits": []}
+{"case": "11 docstring import text", "kinds": [], "unresolved": [], "limits": []}
+{"case": "12 commented import", "kinds": [], "unresolved": [], "limits": []}
+{"case": "13 renamed source + import add", "kinds": ["IMPLEMENTATION_LINK_CHANGE"], "unresolved": [], "limits": []}
+{"case": "14 skipped + normal source", "kinds": [], "unresolved": ["pkg/a.py"], "limits": []}

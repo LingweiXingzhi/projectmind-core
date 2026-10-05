@@ -1,0 +1,15 @@
+{
+  "queue": [
+    {"id": "P01_RELATIONS", "status": "DONE", "result": "98c3a00 — AST base/target set diff; 104/104; adversarial 1a/1b/3 fixed, 4 now honest UNKNOWN"},
+    {"id": "P02_MUTATION", "status": "IN_PROGRESS", "spec": "M1 B revision gate off, M2 skipped into relation proposal, M3 validated-claim attach, M4 text-only import (no AST), M5 position into proposed_change, M6 lifecycle accepted/applied, M7 map-write if testable. Isolated temp copies only. Expected: relevant tests FAIL. MUTATION_CAUGHT/MUTATION_MISSED recorded."},
+    {"id": "P03_CORE_A30", "status": "PENDING", "spec": "worktree G:/jiagou/projectmind-core-a30, branch fix/core-extension-runtime-isolation; run() catches BaseException → ExtensionError with operator-interrupt policy; formal tests; normal push; draft PR allowed; NO main merge"},
+    {"id": "P04_REAL_B", "status": "PENDING", "spec": "real collect_code_facts in pipeline; S06/S13/S14/S15 re-run; real repo history flow; C must not re-parse declarations"},
+    {"id": "P05_REAL_CA", "status": "PENDING", "spec": "real validate_context_pack + current_by_scope/verified_fields/conflicts/unavailable in pipeline"},
+    {"id": "P05B_TYPED_CA", "status": "PENDING", "spec": "T1 context enrich / T2 verified-field support / T3 independently-verified high-impact; poison re-tests per class"},
+    {"id": "P06_MATRIX_CLOSURE", "status": "PENDING", "spec": "S08/S12/S17/S18/S27 variants, subdirectory rename, no-worktree-fallback, DevKit compat, route status/schema, malicious map text, handler 400/500"},
+    {"id": "P07_SEMANTIC_AMBIGUITY", "status": "PENDING", "spec": "evidence-path semantics HUMAN_DECISION_REQUIRED_EVIDENCE_DOMAIN; entryPoint syntax; B malformed tolerance; greenfield map; status vocabulary"},
+    {"id": "P08_FORMAL_ACCEPTANCE", "status": "PENDING", "spec": "canonical S01-S30 suite with REAL/FIXTURE/MOCK labels, run twice, stable; 30/30 target"}
+  ],
+  "priority_rule": "CORRECTNESS > INTEGRATION > REVIEW > UI",
+  "morning_deadline": "08:00 local: no new large phases; 08:30: stop new work, checkpoint, final report"
+}

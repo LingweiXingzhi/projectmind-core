@@ -1,0 +1,11 @@
+{
+  "codex_review_status": "NOT_PROBED",
+  "codex_quota_reset": null,
+  "probe_policy": "not probed at start per master instruction §48.8; probe when a useful frozen review range exists (latest_stable_sha has moved beyond P01) or at most every 30 minutes",
+  "last_probe_time": null,
+  "last_probe_result": null,
+  "model": "gpt-6.1-sol",
+  "reasoning": "medium",
+  "service_tier": "default",
+  "sandbox": "read-only"
+}

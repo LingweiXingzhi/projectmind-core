@@ -1,0 +1,63 @@
+{
+  "run_status": "COMPLETE",
+  "implementation_status": "C_GATE_MET_BCD_INTEGRATED_UI_DELIVERED",
+  "current_phase": "DONE",
+  "current_subtask": "",
+  "last_completed_phase": "P08 + BCD + UI + FINAL_REPORT",
+  "next_action": "human review of PR #36/#37/#38 and the 6 recorded human decisions; nothing further runs unattended",
+  "convergence_branch": "integration/c-convergence-v1",
+  "convergence_head": "4d1b3fc",
+  "latest_stable_sha": "7af59ea",
+  "last_audited_sha": "857e9d0",
+  "current_review_target_sha": "857e9d0",
+  "codex_review_status": "PASS_WITH_LIMITS",
+  "codex_quota_reset": null,
+  "review_backlog": [
+    {
+      "type": "NOTE",
+      "note": "round-3 LOW (dynamic_tag positional restriction) fixed post-review-budget in 7af59ea; full suite green; next reviewer may treat 857e9d0..4d1b3fc as an incremental range (matrix runner + one-line LOW fix + test syncs)"
+    }
+  ],
+  "dirty_files": [],
+  "common_matrix": {
+    "pass": 30,
+    "partial": 0,
+    "fail": 0,
+    "two_round_stable": true
+  },
+  "mutation": "6/6 CAUGHT",
+  "real_b": "PASS",
+  "real_ca": "PASS (live network verifiers = recorded limit)",
+  "a30": "PASS (in-runtime on integration/bcd-v1)",
+  "c_status": "C_CONVERGENCE_READY_FOR_HUMAN_REVIEW",
+  "bcd_status": "BCD_INTEGRATED_SAFE_FOR_HUMAN_REVIEW",
+  "ui_status": "IMPLEMENTED_BROWSER_VERIFIED (feat/unified-ui-v1 @ 674c70f, PR #38 draft)",
+  "blockers": [],
+  "high_findings": [],
+  "human_decisions": [
+    "D1 HUMAN_DECISION_REQUIRED_EVIDENCE_DOMAIN",
+    "D2 HUMAN_DECISION_REQUIRED_MAP_NODE_FIELDS",
+    "D3 HUMAN_DECISION_REQUIRED_STATUS_VOCABULARY",
+    "D4 HUMAN_DECISION_REQUIRED_GREENFIELD_MAP",
+    "D5 HUMAN_DECISION_REQUIRED_B_SHAPE_TOLERANCE",
+    "D6 HUMAN_DECISION_REQUIRED_T2_CONFIDENCE_UPLIFT"
+  ],
+  "human_decisions_doc": "HUMAN_DECISIONS.md",
+  "draft_prs": [
+    "PR #36 fix/core-extension-runtime-isolation (A30/D1)",
+    "PR #37 integration/bcd-v1 (BCD integration)",
+    "PR #38 feat/unified-ui-v1 (unified IA)"
+  ],
+  "devkit_compat": "C-S01..C-S11 11/11 PASS (fix/devkit-c-contract-pins)",
+  "safety_check": {
+    "main_modified": false,
+    "main_pushed": false,
+    "main_merged": false,
+    "force_push": false,
+    "source_branches_modified": false,
+    "teammate_branches_deleted": false,
+    "formal_map_auto_written": false
+  },
+  "final_report": "FINAL_REPORT.md",
+  "finished": true
+}
