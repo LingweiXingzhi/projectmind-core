@@ -192,3 +192,27 @@ h1 { margin: 10px 0 8px; color: #f0f5f7; font-size: clamp(24px, 2.2vw, 32px); le
 .collab-tab.active { border-color: #4a6fd1; color: #4a6fd1; }
 .collab-frame-wrap { border: 1px solid rgba(128,128,128,.28); border-radius: 12px; overflow: hidden; background: rgba(255,255,255,.02); }
 .collab-frame { width: 100%; height: min(72vh, 780px); border: none; display: block; }
+
+/* ===== 仓库浏览视图（explorer） ===== */
+.needs-map-note { margin: 12px 0; padding: 10px 14px; border: 1px solid var(--line, #ddd6c8); border-radius: 10px; background: #fff8e6; color: #6b5417; }
+.explorer-grid { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 16px; align-items: start; }
+.explorer-search-wrap { padding: 10px 14px 0; }
+.explorer-search-wrap input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line, #ddd6c8); border-radius: 8px; font: inherit; }
+.explorer-tree { max-height: 62vh; overflow: auto; padding: 10px 8px 14px; }
+.explorer-list { list-style: none; margin: 0; padding-left: 14px; }
+.explorer-list > .explorer-list { }
+.explorer-tree > .explorer-list { padding-left: 6px; }
+.explorer-row { display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.explorer-row:hover { background: rgba(0, 0, 0, 0.05); }
+.explorer-row.selected { background: rgba(47, 108, 184, 0.14); }
+.explorer-row.is-directory { font-weight: 600; }
+.explorer-row.is-skipped { opacity: 0.62; }
+.explorer-caret { width: 12px; display: inline-block; color: #8a8377; }
+.explorer-icon { width: 14px; color: #8a8377; }
+.explorer-name { overflow: hidden; text-overflow: ellipsis; }
+.explorer-skip-pill { margin-left: auto; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #f3e3c0; color: #6b5417; }
+.explorer-empty { padding: 18px; color: #8a8377; text-align: center; }
+.explorer-file { display: flex; gap: 0; max-height: 62vh; overflow: auto; font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.55; }
+.explorer-gutter { padding: 12px 10px 16px; text-align: right; color: #a49b8c; background: rgba(0, 0, 0, 0.03); user-select: none; min-width: 46px; }
+.explorer-body { padding: 12px 16px 16px; white-space: pre; }
+.explorer-line { min-height: 1.55em; }

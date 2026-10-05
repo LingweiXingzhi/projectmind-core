@@ -4,7 +4,12 @@ async function listExtensions() {
   try {
     const response = await fetch("/api/extensions");
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "无法读取扩展");
+    if (!response.ok) {
+      const detail = typeof result.error === "string"
+        ? result.error
+        : (result.error && result.error.message) || `HTTP ${response.status}`;
+      throw new Error(detail);
+    }
     extensionLinks.replaceChildren();
     if (!result.extensions.length) {
       const empty = document.createElement("div");

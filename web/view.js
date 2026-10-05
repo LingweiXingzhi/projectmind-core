@@ -2,7 +2,7 @@
 // architecture). Extension pages stay reachable under 高级/调试 for raw
 // inspection; no backend semantics are redefined here — every view consumes
 // the existing APIs as-is.
-const VIEW_TITLES = { map: "项目地图", review: "变更审查", collab: "协作交接" };
+const VIEW_TITLES = { map: "项目地图", review: "变更审查", collab: "协作交接", explorer: "仓库浏览" };
 
 function activateView(name) {
   for (const section of document.querySelectorAll(".view")) {
@@ -27,7 +27,9 @@ for (const item of document.querySelectorAll(".top-nav .nav-item")) {
 }
 
 // 协作交接 view: tab composition over the D extensions' own pages — their
-// semantics stay exactly as D published them.
+// semantics stay exactly as D published them. The frame loads lazily on the
+// first tab activation (and explorer.js removes it entirely in no-map mode),
+// so a no-map instance never fetches an extension page.
 for (const tab of document.querySelectorAll(".collab-tab")) {
   tab.addEventListener("click", () => {
     for (const other of document.querySelectorAll(".collab-tab")) {

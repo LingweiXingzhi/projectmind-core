@@ -10,6 +10,7 @@
     <script src="/review.js" defer></script>
     <script src="/extensions.js" defer></script>
     <script src="/view.js" defer></script>
+    <script src="/explorer.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -22,10 +23,11 @@
         </div>
 
         <div class="sidebar-label space-top">产品导航</div>
-        <nav class="top-nav" aria-label="三大产品入口">
+        <nav class="top-nav" aria-label="产品入口">
           <div class="nav-item active" data-view="map" role="button" tabindex="0"><span>▦</span> 项目地图 <small>01</small></div>
           <div class="nav-item" data-view="review" role="button" tabindex="0"><span>⇄</span> 变更审查 <small>02</small></div>
           <div class="nav-item" data-view="collab" role="button" tabindex="0"><span>⎘</span> 协作交接 <small>03</small></div>
+          <div class="nav-item" data-view="explorer" role="button" tabindex="0"><span>❏</span> 仓库浏览 <small>04</small></div>
         </nav>
 
         <div class="sidebar-label space-top">高级 / 调试</div>
@@ -46,8 +48,53 @@
           </div>
         </header>
 
+        <!-- ======== 视图 4：仓库浏览（无地图模式为主视图） ======== -->
+        <section id="view-explorer" class="view" hidden aria-label="仓库浏览">
+          <div class="content-grid">
+            <section class="workspace">
+              <div class="intro-row">
+                <div>
+                  <div class="eyebrow">REPO EXPLORER / 04</div>
+                  <h1>浏览真实仓库的已提交内容</h1>
+                  <p class="intro-copy">目录、源码、符号与关系都绑定同一个固定提交；未提交的修改与未跟踪文件不属于这个版本。自动结果是技术结构，不是已确认的业务架构。</p>
+                </div>
+              </div>
+
+              <form id="explorer-open-form" class="compare-card">
+                <div class="compare-heading"><div><span class="eyebrow">STEP 1</span><h2>打开本机 Git 仓库</h2><p>输入仓库的本地绝对路径；版本默认 HEAD，也可填完整提交 SHA。</p></div></div>
+                <div class="compare-controls">
+                  <label>仓库路径<input id="explorer-repo-path" type="text" spellcheck="false" placeholder="例如 G:\demo\sample-repo" /></label>
+                  <label>版本<input id="explorer-revision" type="text" spellcheck="false" placeholder="HEAD 或完整 SHA" /></label>
+                  <button class="button primary" type="submit">打开仓库</button>
+                </div>
+                <div id="explorer-status" class="compare-status">尚未打开仓库。</div>
+              </form>
+
+              <div id="explorer-header" class="compare-card" hidden>
+                <div class="compare-heading"><div><span class="eyebrow">OPENED</span><h2 id="explorer-title">—</h2><p id="explorer-coverage">—</p></div></div>
+                <div id="explorer-skipped" class="compare-status" hidden></div>
+              </div>
+
+              <div id="explorer-workspace" class="explorer-grid" hidden>
+                <div class="explorer-side map-card">
+                  <div class="map-card-header"><div><span class="map-icon">❏</span><strong>目录</strong><span class="map-subtitle">点击展开 · 点击文件查看源码</span></div></div>
+                  <div class="explorer-search-wrap"><input id="explorer-search" type="search" spellcheck="false" placeholder="按仓库内路径搜索…" aria-label="按路径搜索" /></div>
+                  <div id="explorer-tree" class="explorer-tree"><div class="explorer-empty">先打开一个仓库。</div></div>
+                </div>
+                <div class="explorer-main map-card">
+                  <div class="map-card-header"><div><span class="map-icon">≡</span><strong id="explorer-file-path">未选择文件</strong><span id="explorer-file-range" class="map-subtitle"></span></div></div>
+                  <div id="explorer-file-head" hidden></div>
+                  <div id="explorer-file-view" class="explorer-file"><div class="explorer-empty">从左侧选择一个文件。</div></div>
+                  <div class="map-draft-bar"><span></span><button class="button ghost" id="explorer-more" type="button" hidden>继续读取</button></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
         <!-- ======== 视图 1：项目地图 ======== -->
         <section id="view-map" class="view" aria-label="项目地图">
+        <div class="needs-map-note" hidden><strong>需要人工地图：</strong>本实例未提供 --map，地图功能不可用；请使用「仓库浏览」查看已提交内容，或用 --map 启动并加载人工地图。</div>
         <div class="content-grid">
           <section class="workspace" aria-labelledby="page-title">
             <div class="intro-row">
@@ -146,6 +193,7 @@
 
         <!-- ======== 视图 3：协作交接 ======== -->
         <section id="view-collab" class="view" hidden aria-label="协作交接">
+          <div class="needs-map-note" hidden><strong>需要人工地图：</strong>协作扩展仅在人工地图模式提供（无地图实例不会创建扩展存储）。</div>
           <div class="content-grid">
             <section class="workspace">
               <div class="intro-row">
@@ -161,7 +209,7 @@
                 <button class="button ghost collab-tab" data-page="/ext/handoff" type="button">交接包</button>
               </div>
               <div class="collab-frame-wrap">
-                <iframe id="collab-frame" class="collab-frame" title="协作工具" src="/ext/worklog"></iframe>
+                <iframe id="collab-frame" class="collab-frame" title="协作工具" data-src="/ext/worklog"></iframe>
               </div>
             </section>
           </div>

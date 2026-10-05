@@ -407,7 +407,7 @@ async function init() {
   try {
     const response = await fetch("/api/snapshot");
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "无法读取仓库");
+    if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : (result.error && result.error.message) || "无法读取仓库");
     snapshot = result;
     comparison = null;
     aiResult = null;
