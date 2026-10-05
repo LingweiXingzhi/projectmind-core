@@ -406,16 +406,34 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
         def send_json(self, status: HTTPStatus, value: dict) -> None:
             self.send_bytes(status, json.dumps(value, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
-        def read_json_body(self, max_bytes: int) -> dict:
+        def read_json_body(self, raw: bytes, max_bytes: int) -> dict:
             if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
                 raise ValueError("Expected application/json")
-            length = int(self.headers.get("Content-Length", "0"))
-            if length < 1 or length > max_bytes:
+            if len(raw) < 1 or len(raw) > max_bytes:
                 raise ValueError("Invalid request size")
-            request = json.loads(self.rfile.read(length))
+            request = json.loads(raw)
             if not isinstance(request, dict):
                 raise ValueError("Expected JSON object")
             return request
+
+        def consume_body(self) -> bytes | None:
+            """Read the declared request body up front so early error
+            responses never race the client's send (Windows aborts such
+            connections with WinError 10053). None means the declared size
+            is unreasonable; the caller answers 413 and closes."""
+            try:
+                length = int(self.headers.get("Content-Length", "0") or "0")
+            except ValueError:
+                return b""
+            if length < 0 or length > 10_000_000:
+                return None
+            data = bytearray()
+            while len(data) < length:
+                chunk = self.rfile.read(min(65536, length - len(data)))
+                if not chunk:
+                    break
+                data.extend(chunk)
+            return bytes(data)
 
         def do_GET(self) -> None:
             request = urlparse(self.path)
@@ -611,6 +629,12 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
 
         def do_POST(self) -> None:
             path = urlparse(self.path).path
+            body = self.consume_body()
+            if body is None:
+                self.close_connection = True
+                self.send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                               {"error": {"code": "REQUEST_TOO_LARGE", "message": "请求体过大"}})
+                return
             if path == "/api/repo-explorer/open":
                 if explorer_registry is None:
                     self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
@@ -620,7 +644,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.FORBIDDEN, payload)
                     return
                 try:
-                    request = self.read_json_body(2048)
+                    request = self.read_json_body(body, 2048)
                     revision = request.get("revision") or "HEAD"
                     result = explorer_registry.open(request.get("repoPath", ""), revision)
                     self.send_json(HTTPStatus.OK, result)
@@ -640,7 +664,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, extensions_unavailable_payload())
                 return
             try:
-                request = self.read_json_body(65536 if path.startswith("/api/extensions/") else 2048)
+                request = self.read_json_body(body, 65536 if path.startswith("/api/extensions/") else 2048)
                 if path.startswith("/api/extensions/"):
                     identifier = path.removeprefix("/api/extensions/")
                     self.send_json(HTTPStatus.OK, extensions.run(identifier, "POST", request))
