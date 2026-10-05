@@ -14,9 +14,12 @@ function activateView(name) {
   const crumb = document.getElementById("breadcrumb-current");
   if (crumb) crumb.textContent = VIEW_TITLES[name] || name;
   if (name === "collab") {
-    // 首次进入协作视图即加载当前页签（B1-b-06）；无地图模式下 iframe 已被移除。
+    // 首次进入协作视图即加载当前页签（B1-b-06）；但必须等模式探测确认是
+    // 地图模式——探测完成前 explorer.js 会移除无地图实例的 iframe，而地图
+    // 实例的补加载由 explorer.js 的探测完成回调负责。
     const frame = document.getElementById("collab-frame");
-    if (frame && !frame.getAttribute("src") && frame.dataset.src) {
+    if (frame && !frame.getAttribute("src") && frame.dataset.src
+        && document.body.dataset.mapMode === "true") {
       const active = document.querySelector(".collab-tab.active");
       frame.src = (active && active.dataset.page) || frame.dataset.src;
     }

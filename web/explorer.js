@@ -49,10 +49,13 @@ function resetFilePane(message) {
   explorerState.symbolToken += 1;
   explorerState.relationToken += 1;
   explorerState.compareToken += 1;
+  explorerState.treeToken += 1;
   const view = document.getElementById("explorer-file-view");
   view.replaceChildren(explorerElement("div", "explorer-empty", message || "从左侧选择一个文件。"));
   document.getElementById("explorer-file-head").hidden = true;
   document.getElementById("explorer-more").hidden = true;
+  document.getElementById("explorer-file-path").textContent = "未选择文件";
+  document.getElementById("explorer-file-range").textContent = "";
   document.getElementById("explorer-symbols").replaceChildren();
   document.getElementById("explorer-relations").replaceChildren();
 }
@@ -75,7 +78,17 @@ async function detectModeAndInitExplorer() {
       noMap = body?.error?.code === "MAP_REQUIRED";
     }
   } catch (error) { noMap = false; }
-  if (!noMap) return;
+  if (!noMap) {
+    document.body.dataset.mapMode = "true";
+    // 探测期间用户可能已进入协作视图：确认地图模式后立即补加载（B1-b-06）。
+    const frame = document.getElementById("collab-frame");
+    if (frame && !frame.getAttribute("src")
+        && document.querySelector("#view-collab:not([hidden])")) {
+      frame.src = frame.dataset.src || "";
+    }
+    return;
+  }
+  document.body.dataset.mapMode = "false";
   document.body.classList.add("no-map");
   for (const note of document.querySelectorAll(".needs-map-note")) note.hidden = false;
   const pill = document.querySelector(".demo-pill");
@@ -116,6 +129,9 @@ async function openRepository(event) {
       "打开仓库后可用；两个版本都必须是完整 SHA。";
     resetFilePane();
     await refreshTree();
+    // 整次打开一个代次：目录响应返回时若本次 open 已失效（用户已改为
+    // 其他仓库或已失败），不得清除新的状态（B1-b-01 残留）。
+    if (token !== explorerState.openToken) return;
     status.textContent = "";
   } catch (error) {
     if (token !== explorerState.openToken) return;
