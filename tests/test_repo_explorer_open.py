@@ -145,6 +145,29 @@ class OpenEndpointTests(ExplorerServerHarness):
         self.assertIn(b"408", response.split(b"\r\n")[0])
         self.assertIn(b"REQUEST_INCOMPLETE", response)
 
+    def test_post_body_over_size_cap_answers_413_not_timeout(self):
+        # B4B6-04: an oversized declared body keeps its distinct 413
+        # REQUEST_TOO_LARGE contract instead of the 408 incomplete path.
+        import socket
+        with socket.create_connection(("127.0.0.1", self._port), timeout=10) as sock:
+            request = (b"POST /api/repo-explorer/open HTTP/1.1\r\n"
+                       b"Host: 127.0.0.1\r\n"
+                       b"Content-Type: application/json\r\n"
+                       b"Content-Length: 10000001\r\n"
+                       b"\r\n")
+            sock.sendall(request)
+            response = b""
+            while True:
+                try:
+                    part = sock.recv(4096)
+                except (ConnectionResetError, OSError):
+                    break
+                if not part:
+                    break
+                response += part
+        self.assertIn(b"413", response.split(b"\r\n")[0])
+        self.assertIn(b"REQUEST_TOO_LARGE", response)
+
     def test_open_survives_gitlink_entries(self):
         # B1-a-01: gitlinks report "-" as size in ls-tree --long; open must
         # classify the submodule instead of failing on int("-").

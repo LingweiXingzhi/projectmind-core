@@ -426,32 +426,36 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 raise ValueError("Expected JSON object")
             return request
 
-        def consume_body(self) -> bytes | None:
+        def consume_body(self) -> tuple[bytes | None, str | None]:
             """Read the declared request body up front so early error
             responses never race the client's send (Windows aborts such
-            connections with WinError 10053). None means the declared body
-            could not be read in full (too large, timed out, or early EOF);
-            the caller answers a controlled error and closes. B4B6-01/02."""
+            connections with WinError 10053). Returns (None, reason) when
+            the declared body cannot be read: reason is "too_large" over
+            the size cap (answers 413) or "incomplete" for timeouts and
+            early EOF (answers 408) — the failure causes stay distinct
+            (B4B6-01/02/04)."""
             try:
                 length = int(self.headers.get("Content-Length", "0") or "0")
             except ValueError:
-                return b""
-            if length < 0 or length > 10_000_000:
-                return None
+                return b"", None
+            if length < 0:
+                return b"", None
+            if length > 10_000_000:
+                return None, "too_large"
             data = bytearray()
             while len(data) < length:
                 try:
                     chunk = self.rfile.read(min(65536, length - len(data)))
                 except TimeoutError:
-                    return None
+                    return None, "incomplete"
                 if not chunk:
                     break
                 data.extend(chunk)
             if len(data) != length:
                 # Early EOF: a short body must never be dispatched as if it
                 # were the declared one (B4B6-02).
-                return None
-            return bytes(data)
+                return None, "incomplete"
+            return bytes(data), None
 
         def do_GET(self) -> None:
             request = urlparse(self.path)
@@ -647,12 +651,17 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
 
         def do_POST(self) -> None:
             path = urlparse(self.path).path
-            body = self.consume_body()
+            body, body_error = self.consume_body()
             if body is None:
                 self.close_connection = True
-                self.send_json(HTTPStatus.REQUEST_TIMEOUT,
-                               {"error": {"code": "REQUEST_INCOMPLETE",
-                                          "message": "请求体不完整或读取超时，连接已关闭"}})
+                if body_error == "too_large":
+                    self.send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                                   {"error": {"code": "REQUEST_TOO_LARGE",
+                                              "message": "请求体过大，连接已关闭"}})
+                else:
+                    self.send_json(HTTPStatus.REQUEST_TIMEOUT,
+                                   {"error": {"code": "REQUEST_INCOMPLETE",
+                                              "message": "请求体不完整或读取超时，连接已关闭"}})
                 return
             if path == "/api/repo-explorer/open":
                 if explorer_registry is None:
