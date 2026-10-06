@@ -87,16 +87,16 @@ HANDOFF：沿用原交付报告的两次提交及 B-symbols-v1.bundle，由 A �
 
 ### 证据文件
 
-- [github-state-before.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/github-state-before.json)
-- [github-state-after.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/github-state-after.json)
-- [local-git-state-before.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/local-git-state-before.log)
-- [local-git-state-after.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/local-git-state-after.log)
-- [tests-local.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/tests-local.log)
-- [manual-checks.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/manual-checks.log)
+- [github-state-before.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/github-state-before.json")
+- [github-state-after.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/github-state-after.json")
+- [local-git-state-before.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/local-git-state-before.log")
+- [local-git-state-after.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/local-git-state-after.log")
+- [tests-local.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/tests-local.log")
+- [manual-checks.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/manual-checks.log")
 - [independent-review.md](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/independent-review.md)
 - [independent-probes.py](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/independent-probes.py)
 - [independent-bundle-reproduction.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/independent-bundle-reproduction.json)
-- [independent-bundle-reproduction.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/independent-bundle-reproduction.log)
-- [independent-bundle-harness-first-attempt.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/independent-bundle-harness-first-attempt.json)
+- [independent-bundle-reproduction.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/independent-bundle-reproduction.log")
+- [independent-bundle-harness-first-attempt.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/reaudit-20261006003058Z/independent-bundle-harness-first-attempt.json")
 
 机器可读结论：[REVIEW.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/reaudit-20261006003058Z/REVIEW.json)。

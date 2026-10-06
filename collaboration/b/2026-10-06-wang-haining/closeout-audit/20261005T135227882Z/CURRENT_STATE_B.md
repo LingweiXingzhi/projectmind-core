@@ -59,14 +59,14 @@ main快照7484d44ddeac3c054ca3ba68f92293d965bb615c，本轮12项现有测试通�
 
 | 运行版本 | RUNTIME/FRONTEND/BACKEND SHA（同一checkout） | 端口 | 安全目标repo | MAP_SOURCE |
 |---|---|---|---|---|
-| main | 7484d44ddeac3c054ca3ba68f92293d965bb615c | 18820 | [main target](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/main>) | [main map](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/main-map.json>) |
-| B | 80e091acefd278fda03e188a125147b0aa5eedc5 | 18821 | [B target](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/B>) | [B map](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/B-map.json>) |
-| BCD | 1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d | 18822 | [BCD target](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/BCD>) | [BCD map](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/BCD-map.json>) |
-| UI | d4e3f2a71f07af358bd6d0e262bfc210c420084b | 18823 | [UI target](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/UI>) | [UI map](<<LOCAL_WORKSPACE>/projectmind-closeout-sandboxes/projectmind-owner-closeout-2026-10-05-v1/B/20261005T135227882Z/targets/UI-map.json>) |
+| main | 7484d44ddeac3c054ca3ba68f92293d965bb615c | 18820 | main target（本地隔离验证素材，位置已脱敏） | main map（本地隔离验证素材，位置已脱敏） |
+| B | 80e091acefd278fda03e188a125147b0aa5eedc5 | 18821 | B target（本地隔离验证素材，位置已脱敏） | B map（本地隔离验证素材，位置已脱敏） |
+| BCD | 1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d | 18822 | BCD target（本地隔离验证素材，位置已脱敏） | BCD map（本地隔离验证素材，位置已脱敏） |
+| UI | d4e3f2a71f07af358bd6d0e262bfc210c420084b | 18823 | UI target（本地隔离验证素材，位置已脱敏） | UI map（本地隔离验证素材，位置已脱敏） |
 
 四个目标Git common-dir都在sandbox。D数据库在各自目标.git/projectmind-worklog/records.sqlite3与.git/projectmind-continuity/records.sqlite3。目标代码SHA为91570b87c302eae0f7c0c27541832f6a5a0cd4d2；比较基准为b3b8b8f018dff4469e83e3d25de749d7b67340ba。源码SHA与被分析项目SHA分别记录。
 
-地图是手工TEST_FIXTURE，2节点/1关系；实际字节SHA256为ea36dabba86312d6ec079366c333362732fb3770e4af684ae675674ded6cf81b，不是正式Project Model。命令/PID/端口/源码/目标/map见[processes.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/processes.json)和[runtime-config.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/runtime-config.json)。没有使用产品仓库作为运行目标。[EV04](#ev04)、[EV16](#ev16)、[EV25](#ev25)
+地图是手工TEST_FIXTURE，2节点/1关系；实际字节SHA256为ea36dabba86312d6ec079366c333362732fb3770e4af684ae675674ded6cf81b，不是正式Project Model。命令/PID/端口/源码/目标/map见[processes.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/processes.json")和[runtime-config.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/runtime-config.json")。没有使用产品仓库作为运行目标。[EV04](#ev04)、[EV16](#ev16)、[EV25](#ev25)
 
 ## 4. Repository / Branch Reality
 
@@ -135,7 +135,7 @@ B页面成功结果load_user/function/line1与fetch_user/async_function/line4；
 
 新项目获取地图、完整CA over HTTP、人审结果进入正式架构状态、具体C审查结果经D传承给新Agent尚未构成完整普通用户链。[EV04](#ev04)、[EV14](#ev14)、[EV17](#ev17)、[EV18](#ev18)、[EV19](#ev19)
 
-真实集成不等于完整体验；B/CA/host几个文件相同hash不等于BCD/UI整个后端等价。engine与continuity model确实不同，见[module-byte-identities.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/module-byte-identities.json)及[version-file-differences.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/version-file-differences.json)。不组合最佳结果。
+真实集成不等于完整体验；B/CA/host几个文件相同hash不等于BCD/UI整个后端等价。engine与continuity model确实不同，见[module-byte-identities.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/module-byte-identities.json")及[version-file-differences.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/version-file-differences.json")。不组合最佳结果。
 
 ## 10. Test-Proven-Only
 
@@ -161,11 +161,11 @@ B页面成功结果load_user/function/line1与fetch_user/async_function/line4；
 
 NOT_VERIFIED：真实LLM、浏览器下载/导入、跨机协作、大仓库成本/token、missing-object no-fetch本轮安全门、UI独立receiver、C/CA/D/A30各自整套Demo。未验证不等于不存在。
 
-ENVIRONMENT_BLOCKED：Windows实体仓库/导航原件/DevKit现场；live Grilling不能核实；ps被沙箱阻止，未杀未经再次核验的PID。自己的服务记录见[own-process-stop.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/own-process-stop.json)，sandbox全部保留。[EV24](#ev24)
+ENVIRONMENT_BLOCKED：Windows实体仓库/导航原件/DevKit现场；live Grilling不能核实；ps被沙箱阻止，未杀未经再次核验的PID。自己的服务记录见[own-process-stop.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/own-process-stop.json")，sandbox全部保留。[EV24](#ev24)
 
 ## 12. Current User Flow by Version
 
-完整STEP_ID/SHA/class/status/entry/input/output/how/REAL-FIXTURE-MOCK/limits/next/setup记录见[flow-traces.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/flow-traces.json)，4版本×12步骤。
+完整STEP_ID/SHA/class/status/entry/input/output/how/REAL-FIXTURE-MOCK/limits/next/setup记录见[flow-traces.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/flow-traces.json")，4版本×12步骤。
 
 | 版本 | 当前用户路径 | 实际首断 |
 |---|---|---|
@@ -206,7 +206,7 @@ PRIMARY BCD：
 | UI Handoffd4e… | YES | 生成YES | MIXED | 默认来源Core需手工替换；不切运行repo | 预览VERIFIED；下载未测 |
 | 正式人审/Model发布/产品内Agent切换 | 没有对应完整现有入口 | prior input只是单次请求 | — | 未实现正式发布链；独立Agent由审计平台隔离机制启动 | scoped代码/页面检查 |
 
-[EV17](#ev17)、[EV19](#ev19)。动作/实际中文结果/各版本限制见[browser-observations.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/browser-observations.json)和[ui-matrix.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/ui-matrix.json)。截图曾在工具内显示，但没有落盘截图文件，报告不声称已留存。B/D下载不算验证成功。
+[EV17](#ev17)、[EV19](#ev19)。动作/实际中文结果/各版本限制见[browser-observations.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/browser-observations.json)和[ui-matrix.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/ui-matrix.json")。截图曾在工具内显示，但没有落盘截图文件，报告不声称已留存。B/D下载不算验证成功。
 
 ## 16. Core Product Claims
 
@@ -234,7 +234,7 @@ B深入：None→33Python源码，paths=[user.py]→1源码，[]→0；三者tre
 | D5 OPEN | B shape严格/条目宽容边界 | 容器400，条目清洗宽容为策略非决定 | 合法样例不挡；可能掩盖漂移 | 固定entry契约前 |
 | D6 OPEN | CA验证能否提高confidence | T2仅字段标签，不提高confidence | 本次low不挡；影响可信度承诺 | 承诺confidence提升前 |
 
-另外Model TEAM_REVIEW_QUESTIONS旧D1–D5“结论待填写”，命名MODEL-Q1…Q5，UNCONFIRMED5：长期一致性目标、临时图编辑、正式适用版本宣布、架构批准权、导出给AI的分析优先级。和上面D1–D6不是同命名空间，不合并、不自动升正式决策。一般新增NEW-Q4项另计。来源/选项/政策/影响/trigger/EVIDENCE_IDS见[human-decisions.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/human-decisions.json)。没有替团队作结论、定日期或owner。[EV22](#ev22)
+另外Model TEAM_REVIEW_QUESTIONS旧D1–D5“结论待填写”，命名MODEL-Q1…Q5，UNCONFIRMED5：长期一致性目标、临时图编辑、正式适用版本宣布、架构批准权、导出给AI的分析优先级。和上面D1–D6不是同命名空间，不合并、不自动升正式决策。一般新增NEW-Q4项另计。来源/选项/政策/影响/trigger/EVIDENCE_IDS见[human-decisions.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/human-decisions.json")。没有替团队作结论、定日期或owner。[EV22](#ev22)
 
 ## 18. Known Limits
 
@@ -293,7 +293,7 @@ subject、allowed input scope、who answers、context/ADR destination、end cond
 
 固定源码与Git拓扑 — REPRODUCED_THIS_RUN / VERIFIED。10fixed SHA match；BCD与UI互不包含；B/C/D是BCD祖先。
 
-产物：[versions.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/versions.json)；[topology.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/topology.json)；[sandbox-source-integrity.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/sandbox-source-integrity.json)。
+产物：[versions.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/versions.json")；[topology.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/topology.json")；[sandbox-source-integrity.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/sandbox-source-integrity.json")。
 
 限制：固定副本不是Windows原件。
 
@@ -301,7 +301,7 @@ subject、allowed input scope、who answers、context/ADR destination、end cond
 
 远端核验 — REPRODUCED_THIS_RUN / VERIFIED。Core前后23heads一致；Model draft与main引用一致；main仅README。
 
-产物：[remote-heads-start.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/remote-heads-start.json)；[remote-heads-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/remote-heads-end.json)；[remote-comparison.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/remote-comparison.json)；[model-remote-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/model-remote-end.json)。
+产物：[remote-heads-start.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/remote-heads-start.json")；[remote-heads-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/remote-heads-end.json")；[remote-comparison.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/remote-comparison.json")；[model-remote-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/model-remote-end.json")。
 
 限制：不证明观察之间没有短暂变化；无fetch/push。
 
@@ -309,7 +309,7 @@ subject、allowed input scope、who answers、context/ADR destination、end cond
 
 保护完整性 — REPRODUCED_THIS_RUN / VERIFIED。所有记录字段相同；10运行源码tracked/untracked clean。
 
-产物：[protected-start.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/protected-start.json)；[protected-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/protected-end.json)；[protected-comparison.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/protected-comparison.json)；[sandbox-source-integrity.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/sandbox-source-integrity.json)。
+产物：[protected-start.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/protected-start.json")；[protected-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/protected-end.json")；[protected-comparison.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/protected-comparison.json")；[sandbox-source-integrity.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/sandbox-source-integrity.json")。
 
 限制：不覆盖队友Windows实体。
 
@@ -317,7 +317,7 @@ subject、allowed input scope、who answers、context/ADR destination、end cond
 
 无地图bootstrap与辅助启动 — REPRODUCED_THIS_RUN / VERIFIED。4版本无mapexit2 requires --map；手工map后18820–23运行。
 
-产物：[runtime-config.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/runtime-config.json)；[processes.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/processes.json)；[no-map-main.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/no-map-main.txt)；[no-map-B.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/no-map-B.txt)；[no-map-BCD.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/no-map-BCD.txt)；[no-map-UI.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/no-map-UI.txt)。
+产物：[runtime-config.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/runtime-config.json")；[processes.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/processes.json")；[no-map-main.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/no-map-main.txt")；[no-map-B.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/no-map-B.txt")；[no-map-BCD.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/no-map-BCD.txt")；[no-map-UI.txt](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/no-map-UI.txt")。
 
 限制：SETUP_ASSISTANCE：地图手工fixture；非自动导入生成。
 
@@ -325,7 +325,7 @@ subject、allowed input scope、who answers、context/ADR destination、end cond
 
 完整现有测试 — REPRODUCED_THIS_RUN / VERIFIED。main12pass；B41pass+1fail；BCD250pass+14skip+1fail；UI202pass+14skip+1fail。
 
-产物：[existing-test-results.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/existing-test-results.json)；[tests-main.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/tests-main.log)；[tests-B.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/tests-B.log)；[tests-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/tests-BCD.log)；[tests-UI.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/tests-UI.log)。
+产物：[existing-test-results.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/existing-test-results.json")；[tests-main.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/tests-main.log")；[tests-B.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/tests-B.log")；[tests-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/tests-BCD.log")；[tests-UI.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/tests-UI.log")。
 
 限制：raw结果；自动HTTP fixture port0分配偏差见EV24。
 
@@ -333,7 +333,7 @@ subject、allowed input scope、who answers、context/ADR destination、end cond
 
 真实B/CA依赖补验 — REPRODUCED_THIS_RUN / VERIFIED。15pass、0skip。
 
-产物：[real-dependencies-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/real-dependencies-BCD.log)。
+产物：[real-dependencies-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/real-dependencies-BCD.log")。
 
 限制：1项之前已通过；不可重复相加成整套重跑结果。
 
@@ -341,7 +341,7 @@ subject、allowed input scope、who answers、context/ADR destination、end cond
 
 partial-clone夹具前提 — REPRODUCED_THIS_RUN / VERIFIED。filtering not recognized by server, ignoring；缺blob列表为空。
 
-产物：[partial-clone-probe.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/partial-clone-probe.json)。
+产物：[partial-clone-probe.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/partial-clone-probe.json")。
 
 限制：missing-object no-fetch行为本轮NOT_VERIFIED；非B已证实bug。
 
@@ -349,7 +349,7 @@ partial-clone夹具前提 — REPRODUCED_THIS_RUN / VERIFIED。filtering not rec
 
 接受矩阵 — REPRODUCED_THIS_RUN / VERIFIED。30/30 PASS stable true，两轮。
 
-产物：[matrix-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/matrix-BCD.json)；[matrix-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/matrix-BCD.log)。
+产物：[matrix-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/matrix-BCD.json")；[matrix-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/matrix-BCD.log")。
 
 限制：含fixture/mock；非普通UI全链；UI版本未跑该矩阵。
 
@@ -357,7 +357,7 @@ partial-clone夹具前提 — REPRODUCED_THIS_RUN / VERIFIED。filtering not rec
 
 语义变异 — REPRODUCED_THIS_RUN / VERIFIED。6/6 SEMANTIC_CAUGHT。
 
-产物：[mutation-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/mutation-BCD.json)；[mutation-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/mutation-BCD.log)。
+产物：[mutation-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/mutation-BCD.json")；[mutation-BCD.log](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/mutation-BCD.log")。
 
 限制：未改运行源码/保护代码/finding；测试guard不等于产品Demo。
 
@@ -365,7 +365,7 @@ partial-clone夹具前提 — REPRODUCED_THIS_RUN / VERIFIED。filtering not rec
 
 Core真实Git接口 — REPRODUCED_THIS_RUN / VERIFIED。2变化；declared user.py200，undeclared new_tools.py400按设计；export200。
 
-产物：[http-results.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-results.json)；[snapshot.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-main/snapshot.json)；[compare.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/compare.json)；[evidence-map-declared.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-UI/evidence-map-declared.json)；[evidence-undeclared-new-file.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-UI/evidence-undeclared-new-file.json)。
+产物：[http-results.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-results.json")；[snapshot.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-main/snapshot.json")；[compare.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/compare.json")；[evidence-map-declared.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-UI/evidence-map-declared.json")；[evidence-undeclared-new-file.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-UI/evidence-undeclared-new-file.json")。
 
 限制：真实产品合成目标；map职责人工，不是代码存在性证明。
 
@@ -373,7 +373,7 @@ Core真实Git接口 — REPRODUCED_THIS_RUN / VERIFIED。2变化；declared user
 
 B facts与输入边界 — REPRODUCED_THIS_RUN / VERIFIED。full33files34defs；selected1file2defs；[]0；missing/HEAD400；load_user1/fetch_user4。
 
-产物：[code-facts-full.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-full.json)；[code-facts-selected.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-selected.json)；[code-facts-empty.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-empty.json)；[code-facts-missing.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-missing.json)；[code-facts-head.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-head.json)。
+产物：[code-facts-full.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-full.json")；[code-facts-selected.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-selected.json")；[code-facts-empty.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-empty.json")；[code-facts-missing.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-missing.json")；[code-facts-head.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-head.json")。
 
 限制：Python定义事实；非职责、非任意语言保证。
 
@@ -381,7 +381,7 @@ B facts与输入边界 — REPRODUCED_THIS_RUN / VERIFIED。full33files34defs；
 
 B读取范围 — REPRODUCED_THIS_RUN / VERIFIED。全部ls-tree34rows；对应33/1/0 Python源码blob读取。
 
-产物：[B-scan-scope.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/B-scan-scope.json)。
+产物：[B-scan-scope.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/B-scan-scope.json")。
 
 限制：tree枚举不是全源码重读；无缓存、时延、token节省证明。
 
@@ -389,7 +389,7 @@ B读取范围 — REPRODUCED_THIS_RUN / VERIFIED。全部ls-tree34rows；对应3
 
 B→C门控与规则候选 — REPRODUCED_THIS_RUN / VERIFIED。1 NODE_ADD helper line3 PROPOSED INFERENCE low；mismatch400/missingmap400；REJECTED请求200 empty。
 
-产物：[proposal-installed-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-installed-B.json)；[proposal-supplied-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-supplied-B.json)；[proposal-mismatched-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-mismatched-B.json)；[proposal-missing-map.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-missing-map.json)；[C-review-not-persisted.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/C-review-not-persisted.json)；[proposal-installed-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-UI/proposal-installed-B.json)。
+产物：[proposal-installed-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-installed-B.json")；[proposal-supplied-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-supplied-B.json")；[proposal-mismatched-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-mismatched-B.json")；[proposal-missing-map.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-missing-map.json")；[C-review-not-persisted.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/C-review-not-persisted.json")；[proposal-installed-B.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-UI/proposal-installed-B.json")。
 
 限制：不是LLM；prior input不是保存正式决定；供方仓库身份非JSON字段。
 
@@ -397,7 +397,7 @@ B→C门控与规则候选 — REPRODUCED_THIS_RUN / VERIFIED。1 NODE_ADD helpe
 
 CA HTTP预算失败 — REPRODUCED_THIS_RUN / VERIFIED。BCD68841/69731bytes，UI68828/69718bytes，均400 Invalid request size；host65536。
 
-产物：[http-followup.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-followup.json)；[CA-validation-utf8.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/CA-validation-utf8.json)；[proposal-with-CA-utf8.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-with-CA-utf8.json)；[CA-validation-utf8.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-UI/CA-validation-utf8.json)。
+产物：[http-followup.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-followup.json")；[CA-validation-utf8.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/CA-validation-utf8.json")；[proposal-with-CA-utf8.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-with-CA-utf8.json")；[CA-validation-utf8.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-UI/CA-validation-utf8.json")。
 
 限制：只对该任务/registry/pack；不泛化所有pack失败。
 
@@ -405,7 +405,7 @@ CA HTTP预算失败 — REPRODUCED_THIS_RUN / VERIFIED。BCD68841/69731bytes，U
 
 CA Python旁路 — REPRODUCED_THIS_RUN / VERIFIED。validation成功；C request context_mode FULL；1proposal。
 
-产物：[CA-direct-python.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/CA-direct-python.json)。
+产物：[CA-direct-python.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/CA-direct-python.json")。
 
 限制：DEVELOPER_ONLY_CONTINUATION，不补算HTTP用户链成功。
 
@@ -413,7 +413,7 @@ CA Python旁路 — REPRODUCED_THIS_RUN / VERIFIED。validation成功；C reques
 
 D实际保存与交接 — REPRODUCED_THIS_RUN / VERIFIED。有效请求200；continuity v4 active；UI再读到实际保存的记录。
 
-产物：[worklog-save.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/worklog-save.json)；[continuity-create.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-create.json)；[continuity-start.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-start.json)；[continuity-export.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-export.json)；[handoff-valid-input.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-BCD/handoff-valid-input.json)；[recovery-packet-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json)。
+产物：[worklog-save.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/worklog-save.json")；[continuity-create.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-create.json")；[continuity-start.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-start.json")；[continuity-export.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-export.json")；[handoff-valid-input.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-BCD/handoff-valid-input.json")；[recovery-packet-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json")。
 
 限制：最初harness workNotes形状错400，修输入200不是修产品；非正式人审批准。
 
@@ -429,7 +429,7 @@ D实际保存与交接 — REPRODUCED_THIS_RUN / VERIFIED。有效请求200；co
 
 fresh receiver — REPRODUCED_THIS_RUN / VERIFIED。身份SHA和两个Git blob事实正确；未全repo重读；C提案body/id、6待决具体定义UNKNOWN。
 
-产物：[recovery-validation.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/recovery-validation.json)；[recovery-receiver-result.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/recovery-receiver-result.json)；[recovery-packet-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json)。
+产物：[recovery-validation.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/recovery-validation.json")；[recovery-receiver-result.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/recovery-receiver-result.json")；[recovery-packet-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json")。
 
 限制：只测BCD包；UI未独立receiver；无token成本证明。
 
@@ -437,7 +437,7 @@ fresh receiver — REPRODUCED_THIS_RUN / VERIFIED。身份SHA和两个Git blob�
 
 代码实现路径与边界 — CODE_INSPECTION / VERIFIED。host65536；Btree；C wanted paths/prior/map；D common-dir SQLite；无正式架构发布写入链。
 
-产物：[source-inspection.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/source-inspection.json)；[module-byte-identities.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/module-byte-identities.json)；[version-file-differences.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/version-file-differences.json)。
+产物：[source-inspection.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/source-inspection.json")；[module-byte-identities.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/module-byte-identities.json")；[version-file-differences.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/version-file-differences.json")。
 
 限制：相同选中文件hash不等于两个整个版本等价。
 
@@ -445,7 +445,7 @@ fresh receiver — REPRODUCED_THIS_RUN / VERIFIED。身份SHA和两个Git blob�
 
 历史repair/review — HISTORICAL_REPORT / VERIFIED。历史14 CLOSED_BY_CODEX/HOST-01 deferred；265=263pass+2errors；matrix30/30/semantic6/6。
 
-产物：[historical-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/historical-documents.json)。
+产物：[historical-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/historical-documents.json")。
 
 限制：原Windows文件不可核实；本轮未重开旧finding。
 
@@ -453,7 +453,7 @@ fresh receiver — REPRODUCED_THIS_RUN / VERIFIED。身份SHA和两个Git blob�
 
 D1-D6未决来源 — HISTORICAL_REPORT / VERIFIED。6 DECISION_REQUIRED；无resolved evidence；本轮OPEN6。
 
-产物：[historical-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/historical-documents.json)；[human-decisions.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/human-decisions.json)。
+产物：[historical-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/historical-documents.json")；[human-decisions.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/human-decisions.json")。
 
 限制：计固定归档未决；不声称群里没做新决定。
 
@@ -461,7 +461,7 @@ D1-D6未决来源 — HISTORICAL_REPORT / VERIFIED。6 DECISION_REQUIRED；无re
 
 Model意图与批准状态 — CODE_INSPECTION / VERIFIED。文档说无正式批准schema；main仅README；另5旧命名空间结论待填写。
 
-产物：[model-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/model-documents.json)；[model-document-hashes.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/model-document-hashes.json)；[model-remote-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/model-remote-end.json)。
+产物：[model-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/model-documents.json")；[model-document-hashes.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/model-document-hashes.json")；[model-remote-end.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/model-remote-end.json")。
 
 限制：draft是产品理解来源，不冻结正式Model；blob/file hash见artifact。
 
@@ -469,7 +469,7 @@ Model意图与批准状态 — CODE_INSPECTION / VERIFIED。文档说无正式�
 
 Grilling历史/当前分开 — HISTORICAL_REPORT / VERIFIED。历史ACTIVE/round0/continuity true；缺subject/scope/who/ADR/end；READY NO。
 
-产物：[historical-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/historical-documents.json)；[grilling-observation.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/grilling-observation.json)。
+产物：[historical-documents.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/historical-documents.json")；[grilling-observation.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/grilling-observation.json")。
 
 限制：live NOT_VERIFIED；catalog没该skill不证明队友机器卸载。
 
@@ -477,7 +477,7 @@ Grilling历史/当前分开 — HISTORICAL_REPORT / VERIFIED。历史ACTIVE/roun
 
 审计过程边界与限制 — REPRODUCED_THIS_RUN / VERIFIED。手工18820–23合规；测试port0未约束；Windows现场不可用；ps blocked未杀PID。
 
-产物：[audit-boundary.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/audit-boundary.json)；[own-process-stop.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/own-process-stop.json)。
+产物：[audit-boundary.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/audit-boundary.json)；[own-process-stop.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/own-process-stop.json")。
 
 限制：BOUNDARY_VIOLATION YES是端口流程；无保护代码/状态修改；精确临时端口未留存。
 
@@ -485,7 +485,7 @@ Grilling历史/当前分开 — HISTORICAL_REPORT / VERIFIED。历史ACTIVE/roun
 
 map与状态不混淆 — REPRODUCED_THIS_RUN / VERIFIED。map字节不变；capture hash同实际字节且confirmedForRevision null。
 
-产物：[http-results.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/http-results.json)；[recovery-packet-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json)；[runtime-config.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/runtime-config.json)。
+产物：[http-results.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/http-results.json")；[recovery-packet-BCD.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json")；[runtime-config.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/runtime-config.json")。
 
 限制：内容hash不等于已批准map版本；本机共享不等于远程。
 
@@ -493,7 +493,7 @@ map与状态不混淆 — REPRODUCED_THIS_RUN / VERIFIED。map字节不变；cap
 
 文档漂移 — CODE_INSPECTION / VERIFIED。2项：main无产品代码陈述旧；BCD业务仍提案陈述旧。
 
-产物：[documentation-drift.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/documentation-drift.json)；[source-inspection.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/closeout-audit/20261005T135227882Z/evidence/source-inspection.json)。
+产物：[documentation-drift.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/documentation-drift.json")；[source-inspection.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: closeout-audit/20261005T135227882Z/evidence/source-inspection.json")。
 
 限制：旧PROPOSED形状、有限scope历史观察不自动列矛盾。
 

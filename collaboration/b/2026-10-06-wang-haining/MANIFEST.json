@@ -23,7 +23,7 @@
   "closeout_audit": "INCOMPLETE",
   "upload_authorization": "User explicitly requested all task成果 uploaded, including incomplete audit records.",
   "snapshot_note": "Reports retain the status and no-upload statements as recorded before this upload. This upload manifest is the later publication event.",
-  "normalization": "Published text copies replace machine-local paths with logical locations. Source and published SHA256 are both recorded; source files were not edited. Git bundle is preserved byte for byte.",
+  "normalization": "Published text copies replace machine-local paths with logical locations. Source and published SHA256 are both recorded; source files were not edited. Git bundle is preserved byte for byte. Evidence links not individually expanded on GitHub point to the complete ZIP with internal path hints; local sandbox material references are plain labels. Original files remain unchanged.",
   "created_utc": "2026-10-06T00:56:06.796347+00:00",
   "files": [
     {
@@ -42,9 +42,9 @@
     },
     {
       "path": "symbols/B交付报告.md",
-      "bytes": 6607,
+      "bytes": 6707,
       "source_sha256": "7f428a89342d7a6d072cdda7b25b45bea95f66ad4612b2a877bc3ed9bf93bd1b",
-      "published_sha256": "ac43bca9f6dd8351bf64c09e57e6b79f17b13da4000a6298ec92d2f098b78837",
+      "published_sha256": "fdef839db90e544d25177ac52008057b0fd30e6dbaac92e870c7898c31f37a8e",
       "copy_kind": "normalized_text_copy"
     },
     {
@@ -77,9 +77,9 @@
     },
     {
       "path": "symbols/reaudit-20261006003058Z/B复审报告.md",
-      "bytes": 8408,
+      "bytes": 8808,
       "source_sha256": "5387812d86a0eabf3d124148f5f0b78eb31d5e32256fa2e36cc54aeecbe29364",
-      "published_sha256": "1018be7fc38da89a6b3606cbb25a1c3a46f7e10ed3473a2383bed953c87cd8c4",
+      "published_sha256": "522536e9e4b5a2106ad0f32dc6487deb2eba4f024aa470675acede7750a25801",
       "copy_kind": "normalized_text_copy"
     },
     {
@@ -189,9 +189,9 @@
     },
     {
       "path": "closeout-audit/20261005T135227882Z/CURRENT_STATE_B.md",
-      "bytes": 56073,
+      "bytes": 59593,
       "source_sha256": "fbc3f0c3f821c8dcaf90ceb6644ad0c9c77734adbbbf559cd9d6eee7775bdc7c",
-      "published_sha256": "653d8e03fec5ee503892dec68f37e994e40bc19c182b1265ad4005fe54075e7b",
+      "published_sha256": "deb34cdcbd0aec6d3565085a8c1b317af12b9b2b4897ed508bd6d8dafbb46971",
       "copy_kind": "normalized_text_copy"
     },
     {
@@ -1288,9 +1288,9 @@
     },
     {
       "path": "completion-check/20261006T004409377Z/两份任务完成核查.md",
-      "bytes": 5416,
+      "bytes": 5466,
       "source_sha256": "c48ac80b8cd442b26b479de244408b257be9ab68a73d0c3331677a3f5d2d38db",
-      "published_sha256": "7b8a041a8015052874271419b11102c5e741a1c16e26b4bc8a15aa664e45e0e6",
+      "published_sha256": "32dfdfd41a6c9ef9eeb1e70c4362b951185c864636298cfc2681a856a0828c64",
       "copy_kind": "normalized_text_copy"
     }
   ]

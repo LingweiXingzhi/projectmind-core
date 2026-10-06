@@ -58,7 +58,7 @@ python -B -m unittest discover -s tests -p test_repo_index_symbols.py -v
 - [最终测试日志](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/tests-final.log)
 - [接入示例结果](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/integration-example.log)
 - [RESULT.json](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/RESULT.json)
-- [bundle核验](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/bundle-verify.log)
+- [bundle核验](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/bundle-verify.log")
 
 过程记录：测试初次执行时模块尚未创建，导入失败；创建后基础和最终测试通过。一次手工探测命令出现转义错误，修正探测后正确定位NUL；交付脚本首次模板解析失败没有执行或Git副作用，重写后完整交付成功。这些不计为产品验证成功。
 
@@ -85,7 +85,7 @@ Reason: 新增技术解析模块及公开实现入口。建议记录repo_index.s
 
 同机可按两个SHA接入。在A的Windows机器上，可由用户发送这个本地Git交付包：
 
-[B-symbols-v1.bundle](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/symbols/B-symbols-v1.bundle)
+[B-symbols-v1.bundle](https://github.com/LingweiXingzhi/projectmind-core/blob/docs/b-delivery-wang-haining-2026-10-06/collaboration/b/2026-10-06-wang-haining/B-all-deliverables-2026-10-06.zip "完整ZIP内: symbols/B-symbols-v1.bundle")
 
 bundle大小：9601字节。SHA256：3336b88eebdb8e14007b8ea50252fe510fce7ce47b375949152d1aa71beffb52。
 
