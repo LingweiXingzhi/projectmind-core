@@ -1,0 +1,156 @@
+{
+  "format": "projectmind-d-delivery-v1",
+  "recordedAt": "2026-10-06T07:50:22.934Z",
+  "role": "D",
+  "issue": 44,
+  "scope": "integration documentation; no product or formal model changes",
+  "projectModelImpact": "NONE",
+  "productBranch": "feat/42-continuity-usability",
+  "productHead": "86d1e2d8f2d27187e2e707eaa99f41643aaf1601",
+  "productTree": "1161b4dc5eb4b3e1b6f3bf92830d1d5d6389735c",
+  "mainHead": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+  "prs": [
+    {
+      "pr": 24,
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/24",
+      "title": "feat(handoff): 导出版本化交接包、main 快捷比较与工作记录",
+      "branch": "feat/23-handoff-draft",
+      "head": "731135bd87498db766070183455601247a29fbc6",
+      "base": "main",
+      "baseHead": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "changedFiles": 6
+    },
+    {
+      "pr": 26,
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/26",
+      "title": "feat(worklog): 分类工作日志、持续编辑与 MD/Word/PDF 导入",
+      "branch": "feat/25-worklog",
+      "head": "9b3d333dbd75ec7a246de646aa28a9d4b3d0ec80",
+      "base": "main",
+      "baseHead": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "changedFiles": 6
+    },
+    {
+      "pr": 27,
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/27",
+      "title": "Add task continuity with sender checkpoints, receiver feedback and worklog snapshots",
+      "branch": "feat/handoff-continuity",
+      "head": "8f00be38532f3f5e9823aec8cbf430038cc9ff4b",
+      "base": "main",
+      "baseHead": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "changedFiles": 20
+    },
+    {
+      "pr": 41,
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/41",
+      "title": "D：真实仓库样例与 Repo Explorer 独立验收工具",
+      "branch": "feat/repo-explorer-acceptance-v1",
+      "head": "caa26916e9ad255bfbae2a27d8863c96d028acde",
+      "base": "integration/bcd-audit-fixes-v1",
+      "baseHead": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "state": "open",
+      "draft": false,
+      "merged": false,
+      "changedFiles": 6
+    },
+    {
+      "pr": 43,
+      "url": "https://github.com/LingweiXingzhi/projectmind-core/pull/43",
+      "title": "D：简化交接操作，提示自动消失，分开本次结束与任务完成",
+      "branch": "feat/42-continuity-usability",
+      "head": "86d1e2d8f2d27187e2e707eaa99f41643aaf1601",
+      "base": "feat/handoff-continuity",
+      "baseHead": "8f00be38532f3f5e9823aec8cbf430038cc9ff4b",
+      "state": "open",
+      "draft": false,
+      "merged": false,
+      "changedFiles": 6
+    }
+  ],
+  "dependencies": {
+    "continuity": [
+      "handoff",
+      "worklog"
+    ],
+    "todayUi": [
+      "continuity"
+    ],
+    "repoExplorerTools": "independent of D product chain"
+  },
+  "inheritedModuleProofs": [
+    {
+      "path": "extensions/handoff",
+      "fromPr": 24,
+      "toPr": 43,
+      "tree": "7b03502e48b50762935e34bca2a1fcc03e68cefe",
+      "testBlob": "eb2a27d8e6cb53684639f8d52f46e626851cac67"
+    },
+    {
+      "path": "extensions/worklog",
+      "fromPr": 26,
+      "toPr": 43,
+      "tree": "9a28379f6a909bae2732a7aad1df9ea85ad457b4",
+      "testBlob": "5409a32119796f23101d84062dff2babee286eac"
+    }
+  ],
+  "optionalOrderedContinuityCommits": [
+    "d2afd0d20674b786b0c905d234e9210bd29f783a",
+    "8f00be38532f3f5e9823aec8cbf430038cc9ff4b",
+    "86d1e2d8f2d27187e2e707eaa99f41643aaf1601"
+  ],
+  "orderedToolCommits": [
+    "c7f4d859267522a017cac7b863f1ec34c2b4ef34",
+    "caa26916e9ad255bfbae2a27d8863c96d028acde"
+  ],
+  "todayChangedPaths": [
+    "extensions/continuity/README.md",
+    "extensions/continuity/index.html",
+    "extensions/continuity/model.py",
+    "extensions/continuity/store.py",
+    "tests/check_continuity_ui.js",
+    "tests/test_continuity.py"
+  ],
+  "toolChangedPaths": [
+    "docs/repo-explorer/ACCEPTANCE.md",
+    "tests/repo_explorer_acceptance/acceptance.py",
+    "tests/repo_explorer_acceptance/fixture.py",
+    "tests/repo_explorer_acceptance/reports/initial-not-run.json",
+    "tests/repo_explorer_acceptance/reports/tool-selfcheck.txt",
+    "tests/repo_explorer_acceptance/test_tools.py"
+  ],
+  "trust": {
+    "mapApplicableVersion": "UNKNOWN",
+    "ai": "candidate",
+    "logs": "not independently verified",
+    "participantFeedback": "not independently verified"
+  },
+  "verification": {
+    "currentDocumentation": "PASS: JSON and fixed SHAs; local/remote tree identity; inherited module and test hashes; saved logs and participant export; docs-only change scope",
+    "productPython": {
+      "status": "PASS_PREVIOUS_RUN",
+      "count": 53,
+      "localHead": "9d338c4dd0f6991a07db6a414a17122f1045ab7e",
+      "tree": "1161b4dc5eb4b3e1b6f3bf92830d1d5d6389735c"
+    },
+    "uiLogic": "PASS_PREVIOUS_RUN_NOT_VISUAL",
+    "participantSessionEnd": "OBSERVED_EXPORTED_RECORD_NOT_INDEPENDENT_ACCEPTANCE",
+    "previousContinuityBrowser": "REPORTED_IN_PR27_NOT_RERUN",
+    "toolSelfcheck": {
+      "status": "PASS_PREVIOUS_RUN",
+      "count": 12
+    },
+    "repoExplorerProduct": "NOT_RUN",
+    "aIntegratedProduct": "NOT_RUN",
+    "newUiFullBrowser": "NOT_RUN",
+    "targetDevicePdfDoc": "NOT_RUN"
+  }
+}
