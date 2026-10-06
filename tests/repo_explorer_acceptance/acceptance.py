@@ -203,13 +203,16 @@ class Runner:
         # r02 Q6 / R49-02: capabilities must express what THIS deployment can
         # do. A complete deployment advertises both parsers, and the endpoints
         # must then really answer with them.
-        caps = self.base.get('capabilities')
+        opened = self.client.success('open', post={'repoPath': self.m['repository'],
+                                                   'revision': self.m['baseRevision']})
+        caps = opened.get('capabilities')
         require(isinstance(caps, dict) and caps.get('symbols') is True and caps.get('imports') is True,
                 'complete deployment advertises both parsers', caps)
         for action in ['symbols', 'relations']:
             result = self.client.success(action, {**self.need(self.base), 'path': 'pkg/service.py'})
             require(result.get('status') != 'unavailable',
-                    'advertised capability is actually served', {'action': action, 'result': result})
+                    'advertised capability is actually served',
+                    {'action': action, 'status': result.get('status')})
 
     def check_files(self):
         ctx = self.need(self.base); self.tree(ctx, self.m['basePaths'])
