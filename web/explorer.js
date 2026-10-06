@@ -309,17 +309,19 @@ async function openExplorerFile(path, startLine = 1, ctx = null, retried = false
   } catch (error) {
     if (token !== explorerState.fileToken) return;
     // 410 实际恢复路径（B3B5-04）：上下文被 LRU 淘汰后失效缓存、重新
-    // open 并重试一次；恢复链绑定原请求代次与仓库身份——等待期间用户
-    // 已切换仓库或发起新比较时，迟到的结果不得发布或重试。
+    // open 并重试一次；恢复链绑定原请求代次与仓库身份——守卫失败（用户
+    // 已切换仓库/发起新比较/选择了其他文件）时静默退出，绝不清空新状态。
     if (!retried && /CONTEXT_EVICTED/.test(error.message)) {
       const sha = ctx ? ctx.revision : explorerState.revision;
       const gen = explorerState.compareToken;
       const contexts = explorerState.contexts;
       delete contexts[sha];
       const fresh = await ensureContext(sha, ctx ? ctx.versionLabel : undefined, gen);
-      if (fresh && token === explorerState.fileToken
-          && gen === explorerState.compareToken
-          && explorerState.contexts === contexts) {
+      const stale = token !== explorerState.fileToken
+        || gen !== explorerState.compareToken
+        || explorerState.contexts !== contexts;
+      if (stale) return;
+      if (fresh) {
         if (!ctx && fresh.projectId !== explorerState.projectId) {
           explorerState.projectId = fresh.projectId;
         }
@@ -369,13 +371,15 @@ async function runCompare(event, retried = false) {
   } catch (error) {
     if (token !== explorerState.compareToken) return;
     // 主上下文被淘汰时刷新并自动重试一次（B3B5-04 的比较侧恢复路径）；
-    // 恢复同样绑定请求代次与仓库身份。
+    // 守卫失败（新比较已发起/仓库已切换）时静默退出，不覆盖新比较状态。
     if (!retried && /CONTEXT_EVICTED/.test(error.message)) {
       const contexts = explorerState.contexts;
       delete contexts[explorerState.revision];
       const fresh = await ensureContext(explorerState.revision, undefined, token);
-      if (fresh && token === explorerState.compareToken
-          && explorerState.contexts === contexts) {
+      const stale = token !== explorerState.compareToken
+        || explorerState.contexts !== contexts;
+      if (stale) return;
+      if (fresh) {
         if (fresh.projectId !== explorerState.projectId) {
           explorerState.projectId = fresh.projectId;
         }
@@ -415,9 +419,9 @@ function renderChanges(result) {
       continue;
     }
     const openVersion = async (sha, label, path) => {
-      // 代次在首次异步等待前捕获：比较代次（compareToken）与文件选择代次
-      // （fileToken）任一推进——用户切换了比较或从目录选了别的文件——过期
-      // 结果都不得写缓存或启动文件读取（B3B5-03/B3B5-04）。
+      // 点击即推进选择代次（r19 B3B5-03）：多个版本按钮先后挂起时，最后
+      // 一次点击胜出——先返回的旧结果因 fileToken 已被后次点击推进而被丢弃。
+      explorerState.fileToken += 1;
       const gen = explorerState.compareToken;
       const fileGen = explorerState.fileToken;
       const ctx = await ensureContext(sha, label, gen);
