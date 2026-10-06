@@ -62,11 +62,24 @@ python3 tests/repo_explorer_acceptance/acceptance.py \
 
 不指定服务，不发送 HTTP。D01–D08 与解析器未接入分支均输出 NOT_RUN，六项 UI 也为 NOT_RUN。退出码 2 表示验收未完整执行，不能当绿灯。
 
+> **历史记录**：上面这段描述的是该 runner 的用法与 D 早期交付时的状态（当时尚无 A 的集成 checkout）。它**不代表当前集成状态**。
+
 > 本仓库**不携带** D 早期那份 `reports/initial-not-run.json`（它是当时的 Linux 路径与旧 SHA 绑定，属于历史 D 交付记录，不随本次集成）。本节记录的是该 runner 的用法，不是当前集成状态；当前集成状态的 SHA 绑定报告见下面的 §3。
 
 运行本 runner 时所有文本读写都是显式 UTF-8（`-X utf8=0` / cp936 下同样可读可写），因此报告在非 UTF-8 默认编码的 Windows 上也可以直接用 UTF-8 读取。
 
-## 3. 收到 A 完整交付后的实际接口验收
+## 3. 当前集成状态的验收入口（实际结论在外部证据目录）
+
+**当前已执行的验收结论**不在本文件里，而在 SHA 绑定的外部证据目录：
+
+- 报告与证据：`codex-bridge/repo-explorer-a/A-20261006-0007/test-results/r50-d3/`
+  （`d3-acceptance-report.json`、`environment.txt`（被验 SHA + 启动命令 + 工作树状态）、
+  `app-instance.log`、`degraded-instance.log`、`ui-evidence.json`、六张 Chrome 截图、`run-d3-full.sh`、`drive-ui.py`）
+- 结果：`productAcceptance: PASS` —— D01–D08、解析器未接入实例 D08-PARSER、六步 UI 全部 PASS。
+- 性质：UI 为**参与者观察**（真实 Chrome 驱动并截图），非第三方验证；代码层面的独立审计结论见同一 `codex-bridge` 运行目录的 `replies/` 与 `run-state.json`，与本文件的验收结果**分开**表述。
+- 历史记录（旧 SHA 的 NOT_RUN、D 早期交付的 `reports/initial-not-run.json`）只作历史保留，不随本集成携带。
+
+下面的步骤说明仍然适用，用于在**新的**目标 checkout 上重新执行验收：
 
 先阅读 A 在目标 checkout 的 `docs/repo-explorer/INTERFACES_V1.md` 和启动说明，核对本计划 schemaVersion=1。必要接口差异应明确记录并经交付说明确认，不改产品来追测试、不静默换协议。
 

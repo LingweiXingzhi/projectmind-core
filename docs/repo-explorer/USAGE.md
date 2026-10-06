@@ -53,6 +53,8 @@ python app.py --port 8765
 
 - explorer 全量单测（7 个模块，绑定各送审 SHA 归档于 `codex-bridge/repo-explorer-a/A-20261006-0007/test-results/`）：56 项 OK（1eba76c）；接入 B/C 解析器后的最新一次全量结果与绑定 SHA 见审计包。
 - 浏览器实测（真实 IAB 操作，截图存档）：无地图启动 → 打开样例仓库 → 展开/收起目录 → 打开文件带行号 → 路径搜索与清空 → 符号跳转 → 比较两提交 → 打开旧版源码；短 SHA 拒绝、越界路径拒绝、无地图模式的 MAP_REQUIRED/扩展阻断均实测。符号/关系面板在解析器接入后的界面行为以最新一次实测为准。
-- D 的独立样例与验收 runner：样例生成器与（覆盖率断言已按已接受契约修正的）runner 均已随集成分支交付。**当前集成候选 `464c37b` 的 D3 已真实执行并通过**——D01–D08 + 降级实例 D08-PARSER + 六步 UI（真实 Chrome 驱动）全部 PASS，
-  `productAcceptance: PASS`，绑定该 SHA；报告与六张截图见 `G:/jiagou/d3-run/report-full2/` 与审计归档 `codex-bridge/…/test-results/r49-d3/`。
-  UI 证据为**参与者观察**（非第三方验证）；工具自检仍然**不等于**独立审计结论。
+- D 的独立样例与验收 runner：样例生成器与（覆盖率断言已按已接受契约修正的）runner 均已随集成分支交付。
+- **D3 已完成并 PASS**（D01–D08 + 解析器未接入实例 D08-PARSER + 六步 UI 全部 PASS，`productAcceptance: PASS`）。本轮验收绑定的完整 SHA、启动命令、两个实例日志、六张 Chrome 截图与报告都在
+  `codex-bridge/repo-explorer-a/A-20261006-0007/test-results/r50-d3/`（`environment.txt` 记录被验 SHA 与工作树状态；该目录的 SHA 是权威）——文档不在此重复 SHA，以免与验收目标脱节。
+- **历史记录**（不作为当前状态）：D 早期交付时的 NOT_RUN 报告与旧 SHA 绑定已归档为历史，不再代表当前集成状态；见 `ACCEPTANCE.md` §2 的说明。
+- UI 证据为**参与者观察**（非第三方验证）；工具自检仍然**不等于**独立审计结论。
