@@ -52,26 +52,41 @@ def _git(repo: Path, *args: str) -> bytes:
 
 
 def _object_missing(root: Path, oid: str) -> bool | None:
-    """Dedicated existence probe (r30 F5 residual): ``git cat-file -e``.
+    """Structured existence probe (r30/r32 F5): ``git cat-file --batch-check``.
 
-    Returns True only when git itself completed and confirmed the object
-    absent; False when git confirmed it present; None when the probe is
-    inconclusive (git could not be spawned or timed out) — inconclusive
-    probes must never be the basis for object_missing classification.
+    Returns True only when git itself answered the structured record
+    ``<oid> missing``; False when git answered a present-object record
+    (``<oid> <type> <size>``); None whenever the answer is not a
+    determinate structured response — spawn failure, timeout, non-zero
+    exit (unreadable repo, config failure, e.g. exit 128) or malformed
+    output. Inconclusive probes must never be the basis for
+    object_missing classification; only the structured "missing"
+    response counts, no message matching. The probe inherits the main
+    reader's no-lazy-fetch / no-network configuration.
     """
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_NO_LAZY_FETCH": "1", "LC_ALL": "C"})
     try:
         result = subprocess.run(
             ["git", "--no-lazy-fetch", "--no-pager", "-C", str(root),
-             "cat-file", "-e", oid],
-            stdin=subprocess.DEVNULL, capture_output=True, timeout=10, env=env,
+             "cat-file", "--batch-check"],
+            input=oid.encode("ascii") + b"\n",
+            capture_output=True, timeout=10, env=env,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
-    if result.returncode == 0:
+    if result.returncode:
+        # Command/config/repo-level failure (e.g. exit 128): indeterminate.
+        return None
+    record = result.stdout.split(b"\n", 1)[0].split()
+    if len(record) == 2 and record[0].lower() == oid.encode("ascii") \
+            and record[1] == b"missing":
+        return True
+    if len(record) == 3 and record[0].lower() == oid.encode("ascii") \
+            and record[1] in (b"blob", b"tree", b"commit", b"tag") \
+            and record[2].isdigit():
         return False
-    return True
+    return None
 
 
 def repository_root(repo: Path | str) -> Path:

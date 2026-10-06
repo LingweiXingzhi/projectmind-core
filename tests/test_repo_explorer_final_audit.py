@@ -371,26 +371,73 @@ class FinalAuditRegressionTests(unittest.TestCase):
         self.assertEqual(body["error"]["code"], "OBJECT_MISSING")
 
     def test_object_missing_probe_tristate_never_lies(self):
-        # The probe itself must be tri-state at the unit level: only a
-        # completed git process with non-zero exit counts as missing; a
-        # spawn OSError or timeout is inconclusive (None), which the
-        # collector maps to repo_unreadable — never object_missing.
+        # The structured probe must be tri-state at the unit level: only the
+        # "<oid> missing" batch-check record counts as missing. Spawn
+        # OSError/timeout, non-zero exit (repo unreadable, config failure,
+        # e.g. exit 128) and malformed output are all inconclusive (None),
+        # which the collector maps to repo_unreadable — never object_missing.
         import subprocess as sp
         from extensions.code_facts import facts
         real_run = facts.subprocess.run
+
+        class R:
+            def __init__(self, returncode, stdout=b"", stderr=b""):
+                self.returncode = returncode
+                self.stdout = stdout
+                self.stderr = stderr
+
+        oid = "0" * 40
         try:
             facts.subprocess.run = lambda args, **kw: (_ for _ in ()).throw(
                 sp.TimeoutExpired(cmd="git", timeout=10))
-            self.assertIsNone(facts._object_missing(self.repo, "0" * 40))
+            self.assertIsNone(facts._object_missing(self.repo, oid))
             facts.subprocess.run = lambda args, **kw: (_ for _ in ()).throw(
                 OSError("injected"))
-            self.assertIsNone(facts._object_missing(self.repo, "0" * 40))
-            facts.subprocess.run = lambda args, **kw: type("R", (), {"returncode": 1})()
-            self.assertTrue(facts._object_missing(self.repo, "0" * 40))
-            facts.subprocess.run = lambda args, **kw: type("R", (), {"returncode": 0})()
-            self.assertFalse(facts._object_missing(self.repo, "0" * 40))
+            self.assertIsNone(facts._object_missing(self.repo, oid))
+            # Non-zero exit (repo access / config failure, exit 128): None.
+            facts.subprocess.run = lambda args, **kw: R(128)
+            self.assertIsNone(facts._object_missing(self.repo, oid))
+            # Malformed structured output: None.
+            facts.subprocess.run = lambda args, **kw: R(0, b"garbage\n")
+            self.assertIsNone(facts._object_missing(self.repo, oid))
+            # Structured confirmed-missing record: True.
+            facts.subprocess.run = lambda args, **kw: R(
+                0, oid.encode("ascii") + b" missing\n")
+            self.assertTrue(facts._object_missing(self.repo, oid))
+            # Structured present record: False.
+            facts.subprocess.run = lambda args, **kw: R(
+                0, oid.encode("ascii") + b" blob 12\n")
+            self.assertFalse(facts._object_missing(self.repo, oid))
         finally:
             facts.subprocess.run = real_run
+
+    def test_cat_file_failure_with_repo_unreadable_probe_maps_to_repo_unreadable(
+            self):
+        # r32 acceptance: when the cat-file data call fails generically and
+        # the structured probe cannot answer (repo access failure, exit 128),
+        # the symbols chain must return REPO_UNREADABLE, never
+        # OBJECT_MISSING.
+        from extensions.code_facts import facts
+        real_run = facts.subprocess.run
+
+        class R:
+            def __init__(self, returncode, stdout=b"", stderr=b""):
+                self.returncode = returncode
+                self.stdout = stdout
+                self.stderr = stderr
+
+        def fake(args, **kw):
+            if "cat-file" in args and "blob" in args:
+                return R(1, stderr=b"injected data-call failure")
+            if "batch-check" in args:
+                return R(128, stderr=b"fatal: not a git repository")
+            return real_run(args, **kw)
+
+        facts.subprocess.run = fake
+        self.addCleanup(setattr, facts.subprocess, "run", real_run)
+        status, body = self._symbols_via_http()
+        self.assertEqual(status, 500)
+        self.assertEqual(body["error"]["code"], "REPO_UNREADABLE")
 
     # ---- F5 残留（专项复核）：kind 结构化分类，禁止自然语言关键词猜测 ----
     def test_f5_classification_is_kind_based_not_text_based(self):
