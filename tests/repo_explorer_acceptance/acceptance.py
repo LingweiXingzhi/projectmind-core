@@ -200,6 +200,16 @@ class Runner:
     def check_open(self):
         self.base = self.open(self.m['repository'], self.m['baseRevision'], self.m['basePaths'])
         require(not any(Path(p).name == 'project-map.json' for p in self.m['basePaths']), 'fixture has no map JSON')
+        # r02 Q6 / R49-02: capabilities must express what THIS deployment can
+        # do. A complete deployment advertises both parsers, and the endpoints
+        # must then really answer with them.
+        caps = self.base.get('capabilities')
+        require(isinstance(caps, dict) and caps.get('symbols') is True and caps.get('imports') is True,
+                'complete deployment advertises both parsers', caps)
+        for action in ['symbols', 'relations']:
+            result = self.client.success(action, {**self.need(self.base), 'path': 'pkg/service.py'})
+            require(result.get('status') != 'unavailable',
+                    'advertised capability is actually served', {'action': action, 'result': result})
 
     def check_files(self):
         ctx = self.need(self.base); self.tree(ctx, self.m['basePaths'])
@@ -304,6 +314,13 @@ class Runner:
         d = self.degraded.success('open', post={'repoPath': self.m['repository'], 'revision': self.m['baseRevision']})
         ctx = {'projectId': d['projectId'], 'revision': d['revision']}
         require(d['revision'] == self.m['baseRevision'], 'degraded instance exact fixture version', d)
+        # R49-02: the degraded instance must not advertise an ability it then
+        # refuses — its capabilities have to match the endpoint behaviour.
+        caps = d.get('capabilities')
+        require(isinstance(caps, dict) and caps.get('symbols') is False and caps.get('imports') is False,
+                'degraded deployment advertises no parser capability', caps)
+        require(caps.get('files') is True and caps.get('changes') is True,
+                'degraded deployment still advertises what it does serve', caps)
         for action in ['symbols', 'relations']:
             result = self.degraded.success(action, {**ctx, 'path': 'pkg/service.py'})
             identity(result, ctx['projectId'], ctx['revision'], 'pkg/service.py')
@@ -322,11 +339,14 @@ class Runner:
 
 
 def load_fixture(path):
-    m = json.loads(Path(path).read_text())
+    # R49-05: every text read/write in this runner is explicit UTF-8; the
+    # previous locale default (cp936 with UTF-8 mode off) broke the manifest,
+    # the UI evidence and the report itself.
+    m = json.loads(Path(path).read_text(encoding='utf-8'))
     require(m.get('format') == FORMAT, 'known generated fixture format', m.get('format'))
     for repo_key, sha_key, paths_key in [('repository', 'baseRevision', 'basePaths'), ('repository', 'targetRevision', 'targetPaths'), ('secondRepository', 'secondRevision', 'secondPaths')]:
         repo = Path(m[repo_key]).resolve(); root = Path(m['root']).resolve()
-        require(root in repo.parents and (root / '.d-fixture-owner').read_text() == FORMAT, 'owned independent fixture root')
+        require(root in repo.parents and (root / '.d-fixture-owner').read_text(encoding='utf-8') == FORMAT, 'owned independent fixture root')
         require(SHA.fullmatch(m[sha_key]) and tracked(repo, m[sha_key]) == m[paths_key], 'manifest versions/paths match actual Git', sha_key)
     require(changes(Path(m['repository']), m['baseRevision'], m['targetRevision']) == m['expectedChanges'], 'actual Git changes match manifest')
     return m
@@ -356,7 +376,7 @@ def main():
                     Client(args.degraded_base_url) if args.degraded_base_url else None)
     report = runner.run()
     if args.ui_evidence:
-        observed = json.loads(args.ui_evidence.read_text())
+        observed = json.loads(args.ui_evidence.read_text(encoding='utf-8'))
         require(bool(args.base_url) and observed.get('targetHead') == target['head'] and observed.get('baseUrl') == args.base_url, 'UI evidence matches exact live target', observed)
         require(isinstance(observed.get('observer'), str) and bool(observed['observer']) and bool(observed.get('observedAt')), 'named observer and actual timestamp')
         steps = observed.get('steps', [])
@@ -370,7 +390,8 @@ def main():
     statuses = [r['status'] for r in report['http']] + [r['status'] for r in report['ui']]
     report['productAcceptance'] = 'NOT_PASSED' if 'FAIL' in statuses else 'PASS' if all(s == 'PASS' for s in statuses) else 'NOT_RUN'
     args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n',
+                           encoding='utf-8')
     print('Report:', args.report.resolve(), '| productAcceptance:', report['productAcceptance'])
     # Incomplete/unexecuted acceptance must not appear green to CI.
     return 0 if report['productAcceptance'] == 'PASS' else 1 if report['productAcceptance'] == 'NOT_PASSED' else 2

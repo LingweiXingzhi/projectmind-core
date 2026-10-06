@@ -20,6 +20,7 @@
 响应：`schemaVersion`、`projectId`、`repositoryName`、`revision`（完整 SHA）、`capabilities{files, symbols, imports, changes}`、`coverage{trackedFileCount, indexedFileCount, skipped[{path, reason}], partial}`。
 
 当前能力：`files=true`、`symbols=true`（`python_ast_v1`）、`imports=true`、`changes=true`。
+能力值**表达该部署实际能提供的能力**（r02 Q6）：解析器未接入的部署里对应的 `symbols`/`imports` 为 `false`，其端点随后返回 `status="unavailable"`，`open` 不会声明一个自己的端点会拒绝的能力。
 `trackedFileCount` 只统计普通 blob（100644/100755）且文件名可 UTF-8 解码的条目；`indexedFileCount` 是实际完成编码处理的文件数（两者都不是"成功解析符号"的计数）。
 
 错误：`REPO_INVALID`（路径无效/非绝对/非仓库根）、`REVISION_INVALID`（非 HEAD/完整 SHA、无法解析、标签对象）。
@@ -66,12 +67,12 @@ C 的 `repo_index/imports.py` `parse_imports` 已接入（`status="unavailable"`
     1. `M/name` 若真实存在（`name.py` 或 `name/__init__.py`）→ 按名称读法连接（唯一 → `resolved`，多个 → `ambiguous`）。
     2. 否则该语句的依赖是**模块 `M` 自身**：`M.py` 与 `M/__init__.py` 只有一个是具体源码 blob 且是**普通模块文件** → `resolved` 到它（例如 `from .utils import helper` → `pkg/utils.py`）；两者同时存在 → `ambiguous` 并列出两者（同名文件与同名包并存）；都没有 → `unresolved`。
     3. **唯一不能确认的情形**：模块 `M` 的具体源码 blob 只有包 `__init__.py`。此时 `name` 可能是 `__init__` 内定义的属性或重导出，首版不做跨文件推断 → `unresolved`，原因"可能是包属性或重导出"，**不得**把 `__init__.py` 当作 `targetPath`。`import M` 与 `from M import *` 不受此限制（它们的目标就是模块本身）。
-  - `ambiguous`：同上——同一模块名下 `x.py` 与 `x/__init__.py` 并存时保留全部候选并显式标注歧义。
-  - 候选指向目录但该目录没有 `__init__.py`（PEP 420 命名空间包形态）→ `unresolved`，warnings 注明"可能的命名空间包，无源码入口"。
+  - `ambiguous`：同一模块名下存在**多个真实源码 blob** 时保留全部候选并显式标注歧义——包括 `x.py` 与 `x/__init__.py` 并存，以及仅扩展名大小写不同的两个真实文件（如 `dup.py` 与 `dup.PY`）。候选按字典序稳定排序，结果**不依赖**进程哈希种子。
+  - 候选指向目录但该目录没有 `__init__.py`（PEP 420 命名空间包形态）且**没有任何具体源码候选**时 → `unresolved`，warnings 注明"可能的命名空间包，无源码入口"。同名目录**不得**遮蔽旁边的真实 `helper.py`（存在具体候选时照常解析）。
   - 每个 `unresolved` 记录的原因（无包语境 / 越出顶层包 / 命名空间包 / 未找到候选）写入 `warnings`。
 - `dependents` 每项 `{path, line, end_line}`，仅来自成功解析且 `resolution.status="resolved"` 到当前文件的导入记录；不确定的反向关系不展示成已确认依赖。空结果的界面文案固定为"已解析范围内未发现导入本文件的记录"。
 - `importScan{scanned, parseFailed, total}`（r03 R2-Q8）：导入扫描自身的覆盖统计。分母 `total` 为 allowed 集合中扩展名（大小写不敏感）为 `.py`/`.pyi` 的文件数——与解析器支持范围一致，`consumer.PY` 同样计入并被扫描；`parseFailed` 为解析失败数。
-- `status` 为当前文件的 C 解析结果：仅成功解析（含空结果）为 `ok`；语法/解码失败保留 `parse_error`。存在解析失败或被 open 预算跳过而未纳入扫描的 Python 文件时，warnings 写明失败数与未扫描数；任一缺口存在时**不得**表述为完整扫描结论。
+- `status` 为当前文件的 C 解析结果：仅成功解析（含空结果）为 `ok`；语法/解码失败保留 `parse_error`。存在解析失败或未被 open 纳入内容索引（预算、编码或类型跳过）的 Python 文件时，warnings 如实写明**覆盖缺口**及其数量；任一缺口存在时**不得**表述为完整扫描结论。warnings 只陈述缺口本身——"已解析范围内未发现导入本文件的记录"只在 `dependents` 确实为空时由界面显示，不会与一个非空列表同时出现。
 - **无解析器部署**（C 尚未接入）：`status="unavailable"`、`imports=[]`、`dependents=[]`、`importScan=null`，warnings 明确说明解析器未接入；**不**包装为成功空结果。
 - 准入与 file 相同（404 / 403 `FILE_SKIPPED`）。
 

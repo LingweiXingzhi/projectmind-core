@@ -26,11 +26,23 @@ from pathlib import Path
 from repo_index import gitio
 from extensions.code_facts.facts import CodeFactsError, read_source
 
-try:  # the parsers B and C deliver; absent when neither has been integrated
+# Task book §6.4/§6.5: a parser that was never delivered answers "unavailable"
+# on its own endpoint. B and C arrive independently, so the two guards are
+# separate — one missing parser must never disable the other — and only a
+# genuinely absent module counts, never an internal failure inside a parser
+# that IS installed (that must surface as an error, not as "not integrated").
+try:
     from repo_index.imports import parse_imports
-    from repo_index.symbols import parse_symbols
-except ImportError:  # task book §6.4/§6.5: no parser at all -> honest "unavailable"
+except ModuleNotFoundError as exc:
+    if exc.name != "repo_index.imports":
+        raise
     parse_imports = None
+
+try:
+    from repo_index.symbols import parse_symbols
+except ModuleNotFoundError as exc:
+    if exc.name != "repo_index.symbols":
+        raise
     parse_symbols = None
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
@@ -323,21 +335,25 @@ def parse_name_status(raw: bytes) -> list[dict]:
     return changes
 
 
-def _module_index(known: frozenset[str]) -> dict[tuple[str, str], str]:
-    """(module path, casefolded extension) -> the real repository path.
+def _module_index(known: frozenset[str]) -> dict[tuple[str, str], list[str]]:
+    """(module path, casefolded extension) -> EVERY real repository path.
 
     Only the extension is case-normalised, so `helper.PY` is a Python module
     while `Helper.py` is still a different module from `helper.py` — the same
-    rule the parsers apply to file types (R48-03).
+    rule the parsers apply to file types (R48-03). Several real paths can share
+    one key (`helper.py` and `helper.PY`); all of them are kept and the caller
+    gets them sorted, so the outcome never depends on set/hash iteration order
+    (R49-03) and several candidates are reported as ambiguous rather than
+    silently reduced to whichever happened to be inserted first.
     """
-    index: dict[tuple[str, str], str] = {}
+    index: dict[tuple[str, str], list[str]] = {}
     for path in known:
         name = path.rsplit("/", 1)[-1]
         dot = name.rfind(".")
         if dot <= 0:
             continue
         index.setdefault((path[: len(path) - len(name)] + name[:dot],
-                          name[dot + 1:].casefold()), path)
+                          name[dot + 1:].casefold()), []).append(path)
     return index
 
 
@@ -387,9 +403,9 @@ def _module_matches(prefix: str, index: dict) -> list[str]:
     found: list[str] = []
     for key in ((prefix, "py"), (prefix, "pyi"),
                 (f"{prefix}/__init__", "py"), (f"{prefix}/__init__", "pyi")):
-        path = index.get(key)
-        if path is not None and path not in found:
-            found.append(path)
+        for path in index.get(key, ()):
+            if path not in found:
+                found.append(path)
     return found
 
 
@@ -475,15 +491,18 @@ def _import_decision(entry: dict, source_path: str, index: dict,
                     for path in _module_matches(prefix, index)})
     if named:
         return _unique_or_ambiguous(named), None
-    modules = sorted({path for prefix in module_prefixes
-                      for path in _module_matches(prefix, index)})
-    for prefix in name_prefixes + module_prefixes:
-        # A directory that holds the module but is not a package itself is the
-        # PEP 420 namespace-package shape: it has no source entry point, and
-        # that reason must win over the attribute reading below.
+    # The name could not be found. A NAME path that is a directory without
+    # `__init__.py` is the PEP 420 namespace shape and explains the gap
+    # (R2-Q7). This is tested on the name prefix only: the module fallback
+    # below still applies when a real `helper.py` sits next to a nameless
+    # `helper/` directory, so that directory can never mask the real candidate
+    # (R49-04).
+    for prefix in name_prefixes:
         if prefix in directories and not _is_package(prefix, index):
             return ({"status": "unresolved", "targetPath": None, "candidates": []},
                     "可能的命名空间包，无源码入口")
+    modules = sorted({path for prefix in module_prefixes
+                      for path in _module_matches(prefix, index)})
     if not modules:
         return {"status": "unresolved", "targetPath": None, "candidates": []}, "未找到候选源码文件"
     if len(modules) > 1:
@@ -569,8 +588,14 @@ class ExplorerRegistry:
             "projectId": context.project_id,
             "repositoryName": context.repo_root.name,
             "revision": context.revision,
-            "capabilities": {"files": True, "symbols": True,
-                             "imports": True, "changes": True},
+            # r02 Q6: capabilities express what this deployment can actually
+            # do. A parser that was never delivered is reported as unavailable
+            # here too, so `open` can never advertise an ability its own
+            # endpoint then refuses (R49-02).
+            "capabilities": {"files": True,
+                             "symbols": parse_symbols is not None,
+                             "imports": parse_imports is not None,
+                             "changes": True},
             "coverage": context.coverage,
         }
 
@@ -729,12 +754,17 @@ class ExplorerRegistry:
         unscanned = sum(1 for item in context.manifest
                         if item.lower().endswith((".py", ".pyi"))
                         and item not in context.allowed)
+        # R49-06: the warning states the COVERAGE GAP only. Whether the
+        # (possibly empty) dependents list means "nothing found" is decided by
+        # the reader — the UI says "已解析范围内未发现导入本文件的记录" only when
+        # the list really is empty, so a non-empty list is never contradicted by
+        # the warning text here.
         if failed:
-            warnings.append(f"{failed} 个文件解析失败，已解析范围内未发现导入本文件的记录"
-                            "（dependents 仅为已解析范围内的结果）")
+            warnings.append(f"{failed} 个文件解析失败；dependents 仅为已解析范围内的结果")
         if unscanned:
-            warnings.append(f"{unscanned} 个 Python 文件未纳入本次扫描（被 open 预算跳过），"
-                            "dependents 覆盖不完整，不得视为完整扫描结论")
+            warnings.append(f"{unscanned} 个 Python 文件未被 open 纳入内容索引"
+                            "（预算、编码或类型跳过），dependents 覆盖不完整，"
+                            "不得视为完整扫描结论")
         return {
             "schemaVersion": 1,
             "projectId": context.project_id,

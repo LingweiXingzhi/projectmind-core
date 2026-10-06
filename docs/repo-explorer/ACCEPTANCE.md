@@ -60,7 +60,11 @@ python3 tests/repo_explorer_acceptance/acceptance.py \
   --report /tmp/projectmind-d-initial.json
 ```
 
-不指定服务，不发送 HTTP。D01–D08 与解析器未接入分支均输出 NOT_RUN，六项 UI 也为 NOT_RUN。实测结果在 `tests/repo_explorer_acceptance/reports/initial-not-run.json`；报告里的 Linux 路径是本次实际记录，其他机器需重新生成。退出码 2 表示验收未完整执行，不能当绿灯。
+不指定服务，不发送 HTTP。D01–D08 与解析器未接入分支均输出 NOT_RUN，六项 UI 也为 NOT_RUN。退出码 2 表示验收未完整执行，不能当绿灯。
+
+> 本仓库**不携带** D 早期那份 `reports/initial-not-run.json`（它是当时的 Linux 路径与旧 SHA 绑定，属于历史 D 交付记录，不随本次集成）。本节记录的是该 runner 的用法，不是当前集成状态；当前集成状态的 SHA 绑定报告见下面的 §3。
+
+运行本 runner 时所有文本读写都是显式 UTF-8（`-X utf8=0` / cp936 下同样可读可写），因此报告在非 UTF-8 默认编码的 Windows 上也可以直接用 UTF-8 读取。
 
 ## 3. 收到 A 完整交付后的实际接口验收
 

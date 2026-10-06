@@ -38,7 +38,7 @@ from app import make_handler
 from repo_index.explorer import ExplorerRegistry
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED_PYTHON_FILES = 27  # .py/.PY files the open budget indexed (huge.py is over 1 MiB)
+ALLOWED_PYTHON_FILES = 30  # .py/.PY files the open budget indexed (huge.py is over 1 MiB)
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -79,6 +79,11 @@ class RelationsEndpointTests(unittest.TestCase):
         write("dual.py", "thing = 1\n")
         write("dual/__init__.py", "thing = 2\n")
         write("pkg/dualconsumer.py", "from dual import thing\n")
+        # R49-04: a same-named directory WITHOUT `__init__.py` next to a real
+        # module file must not mask the real candidate.
+        write("helper.py", "def func():\n    return 1\n")
+        write("helper/other.py", "VALUE = 2\n")
+        write("nsmod.py", "from helper import func\n")
         # a namespace package: a directory with no `__init__.py`
         write("pkg/ns/inner.py", "VALUE = 4\n")
         # `pkg/ns` is a directory with no `__init__.py` and no `pkg/ns.py`, so
@@ -202,6 +207,37 @@ class RelationsEndpointTests(unittest.TestCase):
                          {"status": "ambiguous", "targetPath": None,
                           "candidates": ["dual.py", "dual/__init__.py"]})
 
+    def test_module_index_keeps_case_variant_paths_in_a_stable_order(self):
+        # R49-03: `dup.py` and `dup.PY` are two real paths under one module key.
+        # Both must survive the index and come back sorted, so the answer never
+        # depends on set/hash iteration order. The check is at the index level
+        # because a case-insensitive Windows filesystem cannot materialise such
+        # a pair — which is exactly why the defect was invisible in fixtures.
+        from repo_index.explorer import _import_resolution, _module_index, _module_matches
+        known = frozenset({"dup.py", "dup.PY", "pkg/dup.py"})
+        for order in (sorted(known), sorted(known, reverse=True)):
+            index = _module_index(frozenset(order))
+            self.assertEqual(sorted(_module_matches("dup", index)),
+                             ["dup.PY", "dup.py"])
+            self.assertEqual(_module_matches("pkg/dup", index), ["pkg/dup.py"])
+            entry = {"kind": "import", "module": "dup", "level": 0, "name": None}
+            self.assertEqual(_import_resolution(entry, "nsmod.py", index, frozenset()),
+                             {"status": "ambiguous", "targetPath": None,
+                              "candidates": ["dup.PY", "dup.py"]})
+
+    def test_a_nameless_directory_does_not_mask_a_real_module(self):
+        # R49-04: `helper/other.py` exists without `helper/__init__.py`, but
+        # `helper.py` is a real candidate, so the namespace shape must not
+        # clear the candidates.
+        status, body = self._relations("nsmod.py")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["imports"][0]["resolution"],
+                         {"status": "resolved", "targetPath": "helper.py",
+                          "candidates": ["helper.py"]})
+        status, dependents = self._relations("helper.py")
+        self.assertEqual(dependents["dependents"],
+                         [{"path": "nsmod.py", "line": 1, "end_line": 1}])
+
     def test_same_name_module_file_and_package_stay_ambiguous(self):
         status, body = self._relations("pkg/ambiguous.py")
         self.assertEqual(status, 200)
@@ -314,7 +350,13 @@ class RelationsEndpointTests(unittest.TestCase):
         self.assertEqual(scan["scanned"], ALLOWED_PYTHON_FILES - 1)
         warnings = " ".join(body["warnings"])
         self.assertIn("解析失败", warnings)
-        self.assertIn("未纳入本次扫描", warnings)          # huge.py, skipped by budget
+        self.assertIn("未被 open 纳入内容索引", warnings)   # huge.py, skipped by budget
+        # R49-06: the coverage warning states the gap only. It must not claim
+        # "no dependents found" when the list is non-empty (pkg/frommodule.py
+        # and consumer.PY both depend on pkg/helper.py in this fixture).
+        status, helper = self._relations("pkg/helper.py")
+        self.assertTrue(helper["dependents"])
+        self.assertNotIn("未发现导入本文件", " ".join(helper["warnings"]))
 
     def test_relations_degrade_honestly_when_no_parser_is_installed(self):
         # §6.5 / D08-PARSER: with no import parser integrated the endpoint must
@@ -323,8 +365,17 @@ class RelationsEndpointTests(unittest.TestCase):
         import repo_index.explorer as explorer
         with mock.patch.object(explorer, "parse_imports", None):
             status, body = self._relations("pkg/consumer.py")
+            conn = HTTPConnection("127.0.0.1", self.port, timeout=10)
+            conn.request("POST", "/api/repo-explorer/open",
+                         body=json.dumps({"repoPath": str(self.repo)}),
+                         headers={"Content-Type": "application/json"})
+            opened = json.loads(conn.getresponse().read())
+            conn.close()
         self.assertEqual(status, 200)
         self.assertEqual(body["status"], "unavailable")
+        # the degraded deployment says so in its capabilities too (R49-02)
+        self.assertIs(opened["capabilities"]["imports"], False)
+        self.assertIs(opened["capabilities"]["symbols"], True)
         self.assertEqual(body["imports"], [])
         self.assertEqual(body["dependents"], [])
         self.assertTrue(body["warnings"])
@@ -384,6 +435,21 @@ class RelationsEndpointTests(unittest.TestCase):
     # -- admission and capabilities -------------------------------------------
     def test_capabilities_now_report_imports_available(self):
         self.assertEqual(self.capabilities["imports"], True)
+
+    def test_capabilities_follow_the_actual_parser_availability(self):
+        # R49-02 / r02 Q6: capabilities must describe what this deployment can
+        # really serve, so `open` can never advertise parsers its endpoints
+        # then refuse.
+        import repo_index.explorer as explorer
+        with mock.patch.object(explorer, "parse_imports", None):
+            conn = HTTPConnection("127.0.0.1", self.port, timeout=10)
+            conn.request("POST", "/api/repo-explorer/open",
+                         body=json.dumps({"repoPath": str(self.repo)}),
+                         headers={"Content-Type": "application/json"})
+            opened = json.loads(conn.getresponse().read())
+            conn.close()
+        self.assertEqual(opened["capabilities"],
+                         {"files": True, "symbols": True, "imports": False, "changes": True})
 
     def test_unknown_path_is_404(self):
         status, body = self._relations("nope.py")
