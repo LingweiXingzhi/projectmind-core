@@ -413,12 +413,16 @@ class FinalAuditRegressionTests(unittest.TestCase):
 
     def test_cat_file_failure_with_repo_unreadable_probe_maps_to_repo_unreadable(
             self):
-        # r32 acceptance: when the cat-file data call fails generically and
+        # r33 acceptance: when the cat-file data call fails generically and
         # the structured probe cannot answer (repo access failure, exit 128),
         # the symbols chain must return REPO_UNREADABLE, never
-        # OBJECT_MISSING.
+        # OBJECT_MISSING. The injection branch itself is asserted to have
+        # fired (r33 LOW: a stub that matches "batch-check" against the
+        # actual argv element "--batch-check" never fires and silently tests
+        # the real git path instead).
         from extensions.code_facts import facts
         real_run = facts.subprocess.run
+        injected = {"data_call": 0, "probe_128": 0}
 
         class R:
             def __init__(self, returncode, stdout=b"", stderr=b""):
@@ -428,16 +432,43 @@ class FinalAuditRegressionTests(unittest.TestCase):
 
         def fake(args, **kw):
             if "cat-file" in args and "blob" in args:
+                injected["data_call"] += 1
                 return R(1, stderr=b"injected data-call failure")
-            if "batch-check" in args:
+            if "--batch-check" in args:
+                injected["probe_128"] += 1
                 return R(128, stderr=b"fatal: not a git repository")
             return real_run(args, **kw)
 
         facts.subprocess.run = fake
         self.addCleanup(setattr, facts.subprocess, "run", real_run)
         status, body = self._symbols_via_http()
+        self.assertEqual(injected["data_call"], 1, injected)
+        self.assertEqual(injected["probe_128"], 1, injected)
         self.assertEqual(status, 500)
         self.assertEqual(body["error"]["code"], "REPO_UNREADABLE")
+
+    def test_probe_uses_original_object_configuration(self):
+        # r33 acceptance: the probe must disable replace refs exactly like
+        # the main reader, so it judges the ORIGINAL object when replace
+        # refs exist.
+        from extensions.code_facts import facts
+        real_run = facts.subprocess.run
+        captured = {}
+
+        def fake(args, **kw):
+            if "--batch-check" in args:
+                captured["env"] = kw.get("env", {})
+                return type("R", (), {"returncode": 0,
+                                      "stdout": b"0" * 40 + b" missing\n",
+                                      "stderr": b""})()
+            return real_run(args, **kw)
+
+        facts.subprocess.run = fake
+        self.addCleanup(setattr, facts.subprocess, "run", real_run)
+        facts._object_missing(self.repo, "0" * 40)
+        self.assertEqual(captured["env"].get("GIT_NO_REPLACE_OBJECTS"), "1")
+        self.assertEqual(captured["env"].get("GIT_NO_LAZY_FETCH"), "1")
+        self.assertEqual(captured["env"].get("GIT_TERMINAL_PROMPT"), "0")
 
     # ---- F5 残留（专项复核）：kind 结构化分类，禁止自然语言关键词猜测 ----
     def test_f5_classification_is_kind_based_not_text_based(self):

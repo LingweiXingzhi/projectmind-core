@@ -65,7 +65,11 @@ def _object_missing(root: Path, oid: str) -> bool | None:
     reader's no-lazy-fetch / no-network configuration.
     """
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
-    env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_NO_LAZY_FETCH": "1", "LC_ALL": "C"})
+    # Same original-object configuration as the main reader (_git): replace
+    # refs disabled, so the probe judges existence of the ORIGINAL object,
+    # never a replacement (r33 F5 residual).
+    env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_NO_LAZY_FETCH": "1",
+                "GIT_NO_REPLACE_OBJECTS": "1", "LC_ALL": "C"})
     try:
         result = subprocess.run(
             ["git", "--no-lazy-fetch", "--no-pager", "-C", str(root),
