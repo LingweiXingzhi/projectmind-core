@@ -152,6 +152,56 @@ def _definitions(syntax: ast.AST) -> list[dict]:
     return entries
 
 
+def read_source(repo: Path | str, revision: str, path: str) -> str:
+    """Read and decode ONE committed blob at an explicit full commit SHA.
+
+    The explorer's parser hand-off (task book §5: "输入 source 是调用方已
+    解码的源码字符串；解码、Git 读取及大小限制由 A 负责") needs the decoded
+    text of a single file at the pinned revision, and it needs exactly the
+    same terminal failure classification the batch collector already
+    guarantees (终审 F5): a ``cat-file`` failure is only reported as
+    ``object_missing`` when the structured existence probe confirms the
+    object is gone; every other cause (spawn failure, timeout, non-zero
+    exit — e.g. exit 128) stays ``repo_unreadable``. Routing the read
+    through the same ``_git`` / ``_object_missing`` pair keeps that
+    classification single-sourced instead of re-deriving it per caller.
+
+    Decoding honours PEP 263 via ``tokenize.detect_encoding`` exactly like
+    the collector. The revision must be a full commit SHA.
+    """
+    if not isinstance(revision, str) or not SHA_PATTERN.fullmatch(revision):
+        raise CodeFactsError("revision 必须是完整的 40 或 64 位小写 Git 提交 SHA",
+                             kind="revision_invalid")
+    root = repository_root(repo)
+    resolved = _git(root, "rev-parse", "--verify", revision + "^{commit}").decode("ascii").strip()
+    if resolved != revision:
+        raise CodeFactsError("revision 必须直接指向提交，不能是标签对象",
+                             kind="revision_invalid")
+    raw_tree = _git(root, "ls-tree", "-z", revision, "--", path)
+    record = raw_tree.split(b"\0", 1)[0]
+    if not record:
+        raise CodeFactsError("所选文件在指定提交中不存在；请核对提交和相对路径",
+                             kind="invalid_input")
+    metadata, _raw_path = record.split(b"\t", 1)
+    _mode, _object_type, oid = metadata.split()
+    try:
+        raw = _git(root, "cat-file", "blob", oid.decode("ascii"))
+    except CodeFactsError:
+        # r30 F5：cat-file 失败原因不唯一，只有独立存在性探针确证对象缺失
+        # 时才归 object_missing，其余保持原始 repo_unreadable 分类。
+        if _object_missing(root, oid.decode("ascii")) is True:
+            raise CodeFactsError(
+                "指定提交的对象在本地不可用，请先补全仓库；提取不会自动获取对象",
+                kind="object_missing")
+        raise
+    try:
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
+        return raw.decode(encoding)
+    except (SyntaxError, UnicodeError, LookupError, ValueError) as exc:
+        raise CodeFactsError("无法按当前 Python 解析器读取该文件的编码",
+                             kind="repo_unreadable") from exc
+
+
 def collect_code_facts(repo: Path | str, revision: str, paths: list[str] | None = None) -> dict:
     """Return {revision, files, skipped}; paths=None selects all committed files.
 

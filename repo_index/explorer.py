@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import io
+import posixpath
 import re
 import threading
 import tokenize
@@ -23,7 +24,9 @@ from http import HTTPStatus
 from pathlib import Path
 
 from repo_index import gitio
-from extensions.code_facts.facts import CodeFactsError, collect_code_facts
+from repo_index.imports import parse_imports
+from repo_index.symbols import parse_symbols
+from extensions.code_facts.facts import CodeFactsError, read_source
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
 MAX_FILES = 2000
@@ -302,6 +305,63 @@ def parse_name_status(raw: bytes) -> list[dict]:
     return changes
 
 
+def _package_base(level: int, source_path: str) -> str | None:
+    """Search root of a relative import of `level` dots (task book §6.5).
+
+    Level 1 is the file's own package directory; each further level walks one
+    directory up. `1 <= level <= package depth d` is the whole legal range, so
+    a level beyond the top-level package — including any relative import from
+    a file that sits outside a package — has no search root and must resolve
+    as `unresolved`, never as a guess.
+    """
+    directory = posixpath.dirname(source_path)
+    parts = directory.split("/") if directory else []
+    if level > len(parts):
+        return None
+    return "/".join(parts[: len(parts) - (level - 1)])
+
+
+def _import_resolution(entry: dict, source_path: str, known: frozenset[str]) -> dict:
+    """`resolution{status, targetPath, candidates}` for one C import record.
+
+    status is `resolved` only for a unique target, `ambiguous` when the
+    statement can denote several known files, `unresolved` when none. A
+    `from pkg import name` record keeps both readings — an attribute of `pkg`
+    and the submodule `pkg/name` — so a genuinely ambiguous import is reported
+    as such instead of silently picking one. `import .*` wildcards carry no
+    target name and are judged on their module alone.
+    """
+    level = entry.get("level") or 0
+    base = _package_base(level, source_path) if level else ""
+    candidates: list[str] = []
+    if base is not None:
+        module = entry.get("module") or ""
+        module_rest = module.replace(".", "/")
+        prefixes: list[str] = []
+        if entry.get("kind") == "import":
+            if module_rest:
+                prefixes.append(module_rest)
+        else:
+            if module_rest:
+                prefixes.append(module_rest)
+            name = entry.get("name")
+            if name and name != "*":
+                prefixes.append(f"{module_rest}/{name}" if module_rest else name)
+        found = set()
+        for prefix in prefixes:
+            full = "/".join(part for part in (base, prefix) if part)
+            for candidate in (f"{full}.py", f"{full}/__init__.py"):
+                if candidate in known:
+                    found.add(candidate)
+        candidates = sorted(found)
+    if len(candidates) == 1:
+        return {"status": "resolved", "targetPath": candidates[0],
+                "candidates": candidates}
+    if not candidates:
+        return {"status": "unresolved", "targetPath": None, "candidates": []}
+    return {"status": "ambiguous", "targetPath": None, "candidates": candidates}
+
+
 class ExplorerRegistry:
     """Thread-safe LRU of opened repo contexts (capacity 4)."""
 
@@ -373,7 +433,7 @@ class ExplorerRegistry:
             "repositoryName": context.repo_root.name,
             "revision": context.revision,
             "capabilities": {"files": True, "symbols": True,
-                             "imports": False, "changes": True},
+                             "imports": True, "changes": True},
             "coverage": context.coverage,
         }
 
@@ -459,8 +519,18 @@ class ExplorerRegistry:
 
     # -- relations ------------------------------------------------------------
     def relations(self, project_id: str, revision: str, path: str) -> dict:
-        """Placeholder until C's parse_imports lands (task book §6.5):
-        status="unavailable", never a wrapped empty success."""
+        """Import relations via C's `parse_imports` (task book §6.5).
+
+        `imports` keeps C's original fields and adds A's own
+        `resolution{status, targetPath, candidates}`; a unique resolved target
+        is the only case that fills `targetPath`. `dependents` lists
+        `{path, line, end_line}` from other files whose imports resolve to
+        this one — a resolved record only, so an uncertain reverse edge is
+        never shown as a confirmed dependency. Parsing failures keep
+        `parse_error` and are never wrapped as a successful empty result; when
+        some files in the scanned range could not be parsed, a warning says
+        so (部分解析覆盖时界面注明"已解析范围内未发现").
+        """
         context = self.get(project_id, revision)
         self._validate_path(path)
         if path not in context.manifest:
@@ -470,15 +540,38 @@ class ExplorerRegistry:
             reason = next((item["reason"] for item in context.skipped
                            if item["path"] == path), "该文件在本次索引中被跳过")
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
+        known = frozenset(item for item in context.allowed
+                          if item.endswith((".py", ".pyi")))
+        parsed = parse_imports(path, context.sources[path])
+        imports = [dict(entry, resolution=_import_resolution(entry, path, known))
+                   for entry in parsed["imports"]]
+        dependents: list[dict] = []
+        unparsed: list[str] = []
+        for other in sorted(known):
+            if other == path:
+                continue
+            other_parsed = parse_imports(other, context.sources[other])
+            if other_parsed["status"] != "ok":
+                unparsed.append(other)
+                continue
+            for entry in other_parsed["imports"]:
+                resolution = _import_resolution(entry, other, known)
+                if resolution["status"] == "resolved" and resolution["targetPath"] == path:
+                    dependents.append({"path": other, "line": entry["line"],
+                                       "end_line": entry["end_line"]})
+        warnings = list(parsed["warnings"])
+        if unparsed:
+            warnings.append(
+                f"{len(unparsed)} 个文件未能解析，dependents 仅为已解析范围内的结果")
         return {
             "schemaVersion": 1,
             "projectId": context.project_id,
             "revision": context.revision,
             "path": path,
-            "status": "unavailable",
-            "imports": [],
-            "dependents": [],
-            "warnings": ["静态导入关系尚未接入解析器；目录与源码浏览不受影响"],
+            "status": parsed["status"],
+            "imports": imports,
+            "dependents": dependents,
+            "warnings": warnings,
         }
 
     # -- changes --------------------------------------------------------------
@@ -528,9 +621,18 @@ class ExplorerRegistry:
 
     # -- symbols --------------------------------------------------------------
     def symbols(self, project_id: str, revision: str, path: str) -> dict:
-        """Legacy parser transition (task book §6.4, accepted R2-Q6):
-        collect_code_facts entries mapped as-is, end_line always null with
-        an explicit range-incomplete warning; no fabricated ranges."""
+        """Full symbols via B's `parse_symbols` (task book §6.4/§5):
+        `parser="python_ast_v1"` with inclusive end_line and cleaned
+        docstrings, replacing the legacy code-facts transition (whose null
+        end_line / range-incomplete warning is withdrawn).
+
+        The source is read at the context's pinned revision through A's
+        hardened Git layer; the terminal failure classification is the
+        collector's own (终审 F5), so an unavailable object still answers
+        OBJECT_MISSING and any other Git failure REPO_UNREADABLE. Admission
+        is shared with `file` (404 / 403 FILE_SKIPPED) and never fabricates
+        an empty success for a parse failure.
+        """
         context = self.get(project_id, revision)
         self._validate_path(path)
         if path not in context.manifest:
@@ -541,39 +643,19 @@ class ExplorerRegistry:
                            if item["path"] == path), "该文件在本次索引中被跳过")
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
         try:
-            result = collect_code_facts(context.repo_root, context.revision, paths=[path])
+            source = read_source(context.repo_root, context.revision, path)
         except CodeFactsError as exc:
             raise self._code_facts_error(exc) from exc
-        file_entry = next((item for item in result["files"] if item["path"] == path), None)
-        skipped_entry = next((item for item in result["skipped"] if item["path"] == path), None)
-        warnings = ["legacy_code_facts 不提供结束行，源码范围不完整"]
-        if file_entry is not None:
-            symbols = [{
-                "name": entry["name"],
-                "qualified_name": entry["name"],
-                "kind": entry["kind"],
-                "start_line": entry["line"],
-                "end_line": None,
-                "docstring": None,
-            } for entry in file_entry["entries"]]
-            status = "ok"
-        elif skipped_entry is not None:
-            reason = skipped_entry["reason"]
-            status = "parse_error" if ("编码" in reason or "语法" in reason) else "unsupported"
-            symbols = []
-            warnings.append(reason)
-        else:
-            raise ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
-                                "解析器未返回该文件的任何记录")
+        result = parse_symbols(path, source)
         return {
             "schemaVersion": 1,
             "projectId": context.project_id,
             "revision": context.revision,
             "path": path,
-            "status": status,
-            "symbols": symbols,
-            "warnings": warnings,
-            "parser": "legacy_code_facts",
+            "status": result["status"],
+            "symbols": result["symbols"],
+            "warnings": result["warnings"],
+            "parser": "python_ast_v1",
         }
 
     @staticmethod

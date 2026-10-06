@@ -494,7 +494,7 @@ async function loadMoreFile() {
   await openExplorerFile(cursor.path, cursor.nextLine, cursor.ctx);
 }
 
-// ---------- 符号（legacy_code_facts 过渡：只有定义行，无结束行） ----------
+// ---------- 符号（python_ast_v1：起止行 + docstring） ----------
 async function loadSymbols(path, ctx = null) {
   const panel = document.getElementById("explorer-symbols");
   const token = ++explorerState.symbolToken;
@@ -510,11 +510,14 @@ async function loadSymbols(path, ctx = null) {
     panel.replaceChildren();
     if (result.status === "ok" && result.symbols.length) {
       panel.appendChild(explorerElement("span", "explorer-symbols-note",
-        `符号（${result.parser}，仅定义行）：`));
+        `符号（${result.parser}）：`));
       for (const symbol of result.symbols) {
+        const range = symbol.end_line && symbol.end_line !== symbol.start_line
+          ? `${symbol.start_line}-${symbol.end_line}` : `${symbol.start_line}`;
         const chip = explorerElement("button", "explorer-symbol-chip",
-          `${symbol.kind} ${symbol.name} · 行 ${symbol.start_line}`);
+          `${symbol.kind} ${symbol.name} · 行 ${range}`);
         chip.type = "button";
+        chip.title = symbol.qualified_name;
         chip.addEventListener("click", () => scrollToLine(symbol.start_line));
         panel.appendChild(chip);
       }
@@ -569,12 +572,50 @@ async function loadRelations(path, ctx = null) {
   try {
     const result = await explorerFetch(`/api/repo-explorer/relations?${query}`);
     if (token !== explorerState.relationToken) return;
-    if (result.status === "unavailable") {
-      panel.replaceChildren(explorerElement("span", "explorer-symbols-note",
-        "静态导入关系：尚未接入解析器（目录与源码浏览不受影响）。"));
-    } else {
-      panel.replaceChildren(explorerElement("span", "explorer-symbols-note",
-        `静态导入关系：${result.status}`));
+    panel.replaceChildren();
+    const note = (text) => panel.appendChild(
+      explorerElement("span", "explorer-symbols-note", text));
+    if (result.status !== "ok") {
+      const detail = result.warnings && result.warnings.length
+        ? `：${result.warnings.join("；")}` : "";
+      note(`静态导入关系 ${result.status}${detail}`);
+    }
+    if (result.imports && result.imports.length) {
+      note(`导入（${result.imports.length}）：`);
+      for (const item of result.imports) {
+        const resolution = item.resolution || {};
+        const module = ".".repeat(item.level || 0)
+          + (item.module ? `${item.module}.` : "") + (item.name || "");
+        const suffix = resolution.status === "resolved" ? `→ ${resolution.targetPath}`
+          : resolution.status === "ambiguous"
+            ? `→ 待确认（${(resolution.candidates || []).join(" / ")}）` : "→ 未解析";
+        const chip = explorerElement("button", "explorer-symbol-chip",
+          `${item.kind} ${module} · 行 ${item.line} ${suffix}`);
+        chip.type = "button";
+        if (resolution.status === "resolved" && resolution.targetPath) {
+          chip.addEventListener("click", () => openExplorerFile(resolution.targetPath));
+        } else {
+          chip.disabled = true;
+        }
+        panel.appendChild(chip);
+      }
+    } else if (result.status === "ok") {
+      note("该文件没有静态导入。");
+    }
+    if (result.dependents && result.dependents.length) {
+      note(`被依赖（${result.dependents.length}）：`);
+      for (const dep of result.dependents) {
+        const chip = explorerElement("button", "explorer-symbol-chip",
+          `${dep.path} · 行 ${dep.line}`);
+        chip.type = "button";
+        chip.addEventListener("click", () => openExplorerFile(dep.path));
+        panel.appendChild(chip);
+      }
+    } else if (result.status === "ok") {
+      note("已解析范围内未发现反向依赖。");
+    }
+    if (result.status === "ok" && result.warnings && result.warnings.length) {
+      note(result.warnings.join("；"));
     }
   } catch (error) {
     if (token !== explorerState.relationToken) return;

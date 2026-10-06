@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-"""B3 slice: GET /api/repo-explorer/symbols via the legacy code-facts parser.
+"""GET /api/repo-explorer/symbols via B's `parse_symbols` (task book §6.4/§5).
 
-Accepted contracts: parser="legacy_code_facts" with end_line=null and an
-explicit range-incomplete warning (task book §6.4); status mapping per
-R2-Q6 — ok only for successfully parsed files (empty symbols still ok),
-unsupported for non-Python, parse_error for decode/syntax failures inside
-the collector's skipped list, and content admission shared with open
-(R2-Q5): skipped files answer FILE_SKIPPED instead of faking success.
+Accepted contract after the parser hand-off: `parser="python_ast_v1"` with
+inclusive `end_line` and cleaned docstrings — the legacy code-facts
+transition (null end_line plus a range-incomplete warning) is withdrawn.
+Status mapping is preserved: ok only for successfully parsed files (empty
+symbols still ok), unsupported for non-Python, parse_error for syntax or
+decode failures — never a wrapped empty success — and content admission is
+shared with open (R2-Q5): skipped files answer FILE_SKIPPED.
 """
 import json
 import subprocess
@@ -35,7 +36,9 @@ class SymbolsEndpointTests(unittest.TestCase):
         run_git(self.repo, "config", "user.email", "t@example.invalid")
         (self.repo / "service.py").write_text(
             "def run(count):\n    return count\n\n"
-            "class Service:\n    def greet(self, name):\n        return name\n",
+            "class Service:\n"
+            "    \"\"\"服务说明。\"\"\"\n"
+            "    def greet(self, name):\n        return name\n",
             encoding="utf-8",
         )
         (self.repo / "empty.py").write_text("", encoding="utf-8")
@@ -74,21 +77,49 @@ class SymbolsEndpointTests(unittest.TestCase):
         conn.close()
         return response.status, json.loads(raw)
 
-    def test_python_file_maps_legacy_entries(self):
+    def test_python_file_returns_full_python_ast_ranges(self):
         status, body = self._symbols("service.py")
         self.assertEqual(status, 200)
         self.assertEqual(body["schemaVersion"], 1)
-        self.assertEqual(body["parser"], "legacy_code_facts")
+        self.assertEqual(body["parser"], "python_ast_v1")
         self.assertEqual(body["status"], "ok")
         by_qualified = {item["qualified_name"]: item for item in body["symbols"]}
         self.assertEqual(by_qualified["run"]["kind"], "function")
         self.assertEqual(by_qualified["run"]["start_line"], 1)
-        self.assertIsNone(by_qualified["run"]["end_line"])
+        self.assertEqual(by_qualified["run"]["end_line"], 2)
         self.assertIsNone(by_qualified["run"]["docstring"])
         self.assertEqual(by_qualified["Service"]["kind"], "class")
+        self.assertEqual(by_qualified["Service"]["start_line"], 4)
+        self.assertEqual(by_qualified["Service"]["end_line"], 7)
         self.assertEqual(by_qualified["Service.greet"]["kind"], "method")
-        self.assertEqual(by_qualified["Service.greet"]["start_line"], 5)
-        self.assertIn("legacy_code_facts 不提供结束行", " ".join(body["warnings"]))
+        self.assertEqual(by_qualified["Service.greet"]["start_line"], 6)
+        self.assertEqual(by_qualified["Service.greet"]["end_line"], 7)
+        for item in body["symbols"]:
+            self.assertEqual(set(item), {"name", "qualified_name", "kind",
+                                         "start_line", "end_line", "docstring"})
+
+    def test_docstrings_are_cleaned_and_reported(self):
+        status, body = self._symbols("service.py")
+        self.assertEqual(status, 200)
+        by_qualified = {item["qualified_name"]: item for item in body["symbols"]}
+        self.assertEqual(by_qualified["Service"]["docstring"], "服务说明。")
+        self.assertIsNone(by_qualified["Service.greet"]["docstring"])
+
+    def test_symbol_ranges_stay_inside_the_file_line_count(self):
+        # The symbols ranges must address the very same pinned source `file`
+        # serves, so a UI jump built from them can never leave the file.
+        status, symbols = self._symbols("service.py")
+        self.assertEqual(status, 200)
+        conn = HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("GET", f"/api/repo-explorer/file?projectId={self.project_id}"
+                            f"&revision={self.head}&path=service.py")
+        file_body = json.loads(conn.getresponse().read())
+        conn.close()
+        total = file_body["totalLines"]
+        for item in symbols["symbols"]:
+            self.assertGreaterEqual(item["start_line"], 1)
+            self.assertLessEqual(item["start_line"], item["end_line"])
+            self.assertLessEqual(item["end_line"], total)
 
     def test_empty_python_file_is_ok_with_no_symbols(self):
         status, body = self._symbols("empty.py")

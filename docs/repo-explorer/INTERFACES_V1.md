@@ -19,7 +19,7 @@
 
 响应：`schemaVersion`、`projectId`、`repositoryName`、`revision`（完整 SHA）、`capabilities{files, symbols, imports, changes}`、`coverage{trackedFileCount, indexedFileCount, skipped[{path, reason}], partial}`。
 
-当前能力：`files=true`、`symbols=true`（`legacy_code_facts` 过渡解析器）、`imports=false`、`changes=true`。
+当前能力：`files=true`、`symbols=true`（`python_ast_v1`）、`imports=true`、`changes=true`。
 `trackedFileCount` 只统计普通 blob（100644/100755）且文件名可 UTF-8 解码的条目；`indexedFileCount` 是实际完成编码处理的文件数（两者都不是"成功解析符号"的计数）。
 
 错误：`REPO_INVALID`（路径无效/非绝对/非仓库根）、`REVISION_INVALID`（非 HEAD/完整 SHA、无法解析、标签对象）。
@@ -43,19 +43,25 @@
 
 ## 4. GET /api/repo-explorer/symbols?projectId&revision&path
 
-当前 `parser="legacy_code_facts"`（过渡，来自现有公开接口 `collect_code_facts`）：
+`parser="python_ast_v1"`（B 的 `repo_index/symbols.py` `parse_symbols` 已接入；`legacy_code_facts` 过渡及"结束行为 null + 范围不完整警告"的约定随之撤销）：
 
-- `status="ok"`：文件被解析器成功处理（含 0 符号的空文件）；`symbols[]` 每项 `{name, qualified_name, kind, start_line, end_line=null, docstring=null}`；`warnings` 固定含"legacy_code_facts 不提供结束行，源码范围不完整"。
-- `status="parse_error"`：收集器 skipped 记录中因编码/语法解析失败（如语法错误文件）；`symbols=[]`，warnings 含原因。
-- `status="unsupported"`：非 `.py` 文件或其他不支持类型。
-- B（`repo_index/symbols.py` 的 `parse_symbols`）交付接入后：`parser="python_ast_v1"`，补齐 `end_line` 与 `docstring`，本节的 null/警告约定随之撤销。
-- 准入与 file 相同（404 / 403 `FILE_SKIPPED`）。
+- 源码在上下文绑定的完整 SHA 上、经 A 的 Git 读取/解码层取得后交给纯函数解析器；解析器本身不读文件、不执行目标代码。
+- `status="ok"`：文件被成功处理（含 0 符号的空文件）；`symbols[]` 每项 `{name, qualified_name, kind, start_line, end_line, docstring}`。`qualified_name` 按词法嵌套定义拼接，不推断运行时归属；`start_line`/`end_line` 为包含式源码范围（不含前置装饰器行）；`docstring` 经 `ast.get_docstring(clean=True)` 清理，最多保留 2000 字符，截断时在 warnings 提示。
+- `status="parse_error"`：语法或解码失败；`symbols=[]`，warnings 含错误行号与简要原因，不含整份源码。
+- `status="unsupported"`：非 `.py`/`.pyi` 文件。
+- 准入与 file 相同（404 / 403 `FILE_SKIPPED`）。读取时 Git 对象不可用仍按 F5 分类区分 `OBJECT_MISSING`（结构化探针确证缺失）与 `REPO_UNREADABLE`（其余 Git 失败），不伪装成成功空结果。
 
 ## 5. GET /api/repo-explorer/relations?projectId&revision&path
 
-当前 C（`repo_index/imports.py` 的 `parse_imports`）尚未交付：响应恒为 `status="unavailable"`、`imports=[]`、`dependents=[]`，warnings 说明"静态导入关系尚未接入解析器"。不伪装成成功空结果。
+C 的 `repo_index/imports.py` `parse_imports` 已接入（`status="unavailable"` 占位行为撤销）：
 
-C 交付并核查后将按任务书 §6.5 实现：imports 保留 C 原始字段并附 `resolution{status: resolved|unresolved|ambiguous, targetPath, candidates}`；相对导入按"搜索根 + 包层级"解析，`1 ≤ level ≤ 包深度 d`，越出顶层包/无包语境/无候选 → `unresolved`，多候选 → `ambiguous`；`dependents` 仅统计 resolved 且目标为当前文件的记录；部分解析覆盖时界面注明"已解析范围内未发现"。
+- 响应：`schemaVersion`、`projectId`、`revision`、`path`、`status`、`imports`、`dependents`、`warnings`。
+- `imports` 保留 C 的原始字段（`kind/module/level/name/alias/line/end_line`），并由 A 增加 `resolution{status, targetPath, candidates}`：`status` 为 `resolved`、`unresolved`、`ambiguous`；唯一明确目标才填 `targetPath`，否则为 null；`candidates` 为候选相对路径列表（字典序）。
+  - `resolved`：恰好一个已知候选；`ambiguous`：多个已知候选（例如 `from pkg import name` 既可指 `pkg` 的同名属性，也可指子模块 `pkg/name`）；`unresolved`：无候选。
+  - 相对导入按"搜索根 + 包层级"解析：`1 ≤ level ≤ 包深度 d`，越出顶层包/无包语境/无候选 → `unresolved`；绝对导入从仓库根解析。C 不判断模块是否存在，目标解析由 A 在所选提交的清单内完成。
+- `dependents` 每项 `{path, line, end_line}`，仅来自成功解析且 `resolution.status="resolved"` 到当前文件的导入记录；不确定的反向关系不展示成已确认依赖。
+- `status` 为当前文件的 C 解析结果：仅成功解析（含空结果）为 `ok`；语法/解码失败保留 `parse_error`。扫描范围内有文件未能解析时，warnings 注明 dependents 仅为已解析范围内的结果（界面据此显示"已解析范围内未发现"）。
+- 准入与 file 相同（404 / 403 `FILE_SKIPPED`）。
 
 ## 6. GET /api/repo-explorer/changes?projectId&base&target
 
