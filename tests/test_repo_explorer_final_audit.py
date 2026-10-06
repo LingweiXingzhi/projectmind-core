@@ -62,6 +62,22 @@ class FinalAuditRegressionTests(unittest.TestCase):
         tree_input = b"".join(
             b"100644 blob " + blob(content).encode("ascii") + b"\t" + name + b"\0"
             for name, content in names)
+        # r24 F4 residual: two COLLIDING DIRECTORIES — different raw byte
+        # dir names whose display texts are identical. Each subtree is built
+        # separately, then referenced from the root tree (mktree entry names
+        # cannot contain "/").
+        one_oid = blob(b"print('one')\n")
+        two_oid = blob(b"print('two')\n")
+        sub_invalid = subprocess.run(
+            ["git", "-C", str(self.repo), "mktree", "-z"],
+            input=b"100644 blob " + one_oid.encode("ascii") + b"\t" + b"one.py" + b"\0",
+            capture_output=True, check=True).stdout.decode().strip()
+        sub_legal = subprocess.run(
+            ["git", "-C", str(self.repo), "mktree", "-z"],
+            input=b"100644 blob " + two_oid.encode("ascii") + b"\t" + b"two.py" + b"\0",
+            capture_output=True, check=True).stdout.decode().strip()
+        tree_input += (b"040000 tree " + sub_invalid.encode("ascii") + b"\t" + b"dir-\xff" + b"\0")
+        tree_input += (b"040000 tree " + sub_legal.encode("ascii") + b"\t" + b"dir-\\xff" + b"\0")
         tree = subprocess.run(
             ["git", "-C", str(self.repo), "mktree", "-z"],
             input=tree_input, capture_output=True, check=True).stdout.decode().strip()
@@ -125,17 +141,21 @@ class FinalAuditRegressionTests(unittest.TestCase):
     def test_distinct_non_utf8_paths_keep_distinct_identities(self):
         status, body = self._get(f"/api/repo-explorer/tree?projectId={self.project_id}&revision={self.head}")
         self.assertEqual(status, 200)
-        undecodable = [entry for entry in body["entries"] if entry.get("pathUndecodable")]
-        self.assertEqual(len(undecodable), 3)
+        undecodable = [entry for entry in body["entries"] if entry.get("pathUndecodable")
+                       and entry["kind"] == "file"]
+        # bad-\xff.py, bad-\xfe.py, a\xffb.py, dir-\xff/one.py — two.py's dir
+        # name is legal ASCII, so its raw path decodes and stays a plain path
+        self.assertEqual(len(undecodable), 4)
         identities = {entry["pathIdentity"] for entry in undecodable}
-        self.assertEqual(len(identities), 3, "different raw byte paths must not merge")
+        self.assertEqual(len(identities), 4, "different raw byte paths must not merge")
         for entry in undecodable:
             self.assertTrue(entry["pathIdentity"].startswith("b64:"))
             self.assertEqual(entry["skippedReason"], "文件名不是 UTF-8，首版不支持")
 
     def test_undecodable_display_text_does_not_collide_with_legal_name(self):
         status, body = self._get(f"/api/repo-explorer/tree?projectId={self.project_id}&revision={self.head}")
-        entries = [entry for entry in body["entries"] if entry["path"] == "a\\xffb.py"]
+        entries = [entry for entry in body["entries"]
+                   if entry.get("displayPath") == "a\\xffb.py" or entry.get("path") == "a\\xffb.py"]
         self.assertEqual(len(entries), 2,
                          "legal name and escaped invalid name share the display text")
         legal = [entry for entry in entries if "pathUndecodable" not in entry]
@@ -157,8 +177,39 @@ class FinalAuditRegressionTests(unittest.TestCase):
         conn.close()
         flagged = [item for item in opened["coverage"]["skipped"]
                    if item.get("pathUndecodable")]
-        self.assertEqual(len(flagged), 3)
-        self.assertEqual(len({item["pathIdentity"] for item in flagged}), 3)
+        self.assertEqual(len(flagged), 4)
+        self.assertEqual(len({item["pathIdentity"] for item in flagged}), 4)
+
+    # ---- F4 residual (r24): colliding DIRECTORY display texts ----
+    def test_colliding_directories_stay_distinct_with_their_own_children(self):
+        status, body = self._get(f"/api/repo-explorer/tree?projectId={self.project_id}&revision={self.head}")
+        self.assertEqual(status, 200)
+        entries = body["entries"]
+        dirs = [entry for entry in entries
+                if entry["kind"] == "directory"
+                and "dir-\\xff" in (entry.get("displayPath"), entry.get("path"))]
+        self.assertEqual(len(dirs), 2, "two raw byte dirs share the display text")
+        self.assertEqual(len({entry["path"] for entry in dirs}), 2,
+                         "their link identities must differ (one b64, one plain)")
+        escaped_dirs = [entry for entry in dirs if entry.get("pathUndecodable")]
+        legal_dirs = [entry for entry in dirs if "pathUndecodable" not in entry]
+        self.assertEqual(len(escaped_dirs), 1)
+        self.assertEqual(len(legal_dirs), 1)
+        self.assertTrue(escaped_dirs[0]["path"].startswith("b64:"))
+        self.assertEqual(legal_dirs[0]["path"], "dir-\\xff")
+        by_parent = {}
+        for entry in entries:
+            if entry["kind"] != "file":
+                continue
+            name = (entry.get("displayPath") or entry["path"]).split("/")[-1]
+            if name in ("one.py", "two.py"):
+                by_parent.setdefault(entry["parentPath"], []).append(name)
+        for directory in dirs:
+            children = by_parent.get(directory["path"], [])
+            self.assertEqual(len(children), 1,
+                             f"directory {directory['path'][:20]}… must own exactly its own child")
+        self.assertEqual(sorted(children for children in by_parent.values()),
+                         [["one.py"], ["two.py"]])
 
     # ---- F5 ----
     def test_object_missing_maps_to_object_missing_not_repo_unreadable(self):

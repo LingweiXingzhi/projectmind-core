@@ -544,43 +544,69 @@ class ExplorerRegistry:
     # -- tree ----------------------------------------------------------------
     def tree(self, project_id: str, revision: str) -> dict:
         context = self.get(project_id, revision)
-        directories: dict[str, dict] = {}
+        directories: dict[str, dict] = {}   # link identity -> entry
         files: list[dict] = []
         for record in context.entries:
             undecodable = record["path"] is None
             if undecodable:
-                path = record["raw_path"].decode("utf-8", "backslashreplace")
+                # 终审 F4（r24 残留）：不可解码路径与其祖先目录的链接值一律
+                # 用 base64 身份——两个不同原始字节目录的展示文本可能相同，
+                # 按展示文本去重会把两组合并进同一节点。展示文本另存
+                # displayPath；合法路径的链接值就是其自身明文。
+                raw = record["raw_path"]
+                raw_segments = raw.split(b"/")
+                link = record["identity"]
+                display = raw.decode("utf-8", "backslashreplace")
+                parent_link = ""
+                for index in range(1, len(raw_segments)):
+                    prefix_raw = b"/".join(raw_segments[:index])
+                    dir_link = "b64:" + base64.b64encode(prefix_raw).decode("ascii")
+                    if dir_link not in directories:
+                        directories[dir_link] = {
+                            "path": dir_link,
+                            "displayPath": prefix_raw.decode("utf-8", "backslashreplace"),
+                            "parentPath": parent_link,
+                            "kind": "directory",
+                            "language": None,
+                            "pathUndecodable": True,
+                        }
+                    parent_link = dir_link
+                entry = {
+                    "path": link,
+                    "displayPath": display,
+                    "parentPath": parent_link,
+                    "kind": "file",
+                    "language": "python" if display.endswith((".py", ".pyi")) else None,
+                    "pathUndecodable": True,
+                    "pathIdentity": record["identity"],
+                    "skippedReason": next(
+                        (item["reason"] for item in context.skipped
+                         if item.get("pathIdentity") == record["identity"]),
+                        REASON_NAME_ENCODING),
+                }
             else:
                 path = record["path"]
-            segments = path.split("/")
-            for index in range(1, len(segments)):
-                dir_path = "/".join(segments[:index])
-                if dir_path not in directories:
-                    directories[dir_path] = {
-                        "path": dir_path,
-                        "parentPath": "" if index == 1 else "/".join(segments[:index - 1]),
-                        "kind": "directory",
-                        "language": None,
-                    }
-            entry = {
-                "path": path,
-                "parentPath": "" if len(segments) == 1 else "/".join(segments[:-1]),
-                "kind": "file",
-                "language": "python" if path.endswith((".py", ".pyi")) else None,
-            }
-            if undecodable:
-                # 终审 F4：展示文本之外携带 base64 身份；前端据此禁止源码跳转。
-                entry["pathUndecodable"] = True
-                entry["pathIdentity"] = record["identity"]
-                entry["skippedReason"] = next(
-                    (item["reason"] for item in context.skipped
-                     if item.get("pathIdentity") == record["identity"]),
-                    REASON_NAME_ENCODING)
-            elif path not in context.allowed:
-                reason = next((item["reason"] for item in context.skipped
-                               if item["path"] == path), None)
-                if reason is not None:
-                    entry["skippedReason"] = reason
+                segments = path.split("/")
+                for index in range(1, len(segments)):
+                    dir_path = "/".join(segments[:index])
+                    if dir_path not in directories:
+                        directories[dir_path] = {
+                            "path": dir_path,
+                            "parentPath": "" if index == 1 else "/".join(segments[:index - 1]),
+                            "kind": "directory",
+                            "language": None,
+                        }
+                entry = {
+                    "path": path,
+                    "parentPath": "" if len(segments) == 1 else "/".join(segments[:-1]),
+                    "kind": "file",
+                    "language": "python" if path.endswith((".py", ".pyi")) else None,
+                }
+                if path not in context.allowed:
+                    reason = next((item["reason"] for item in context.skipped
+                                   if item["path"] == path), None)
+                    if reason is not None:
+                        entry["skippedReason"] = reason
             files.append(entry)
         entries = sorted(files + list(directories.values()), key=lambda item: item["path"])
         return {

@@ -225,7 +225,8 @@ function buildTreeNodes(entries, query) {
   if (!query) return roots;
   const needle = query.toLowerCase();
   const keep = (node) => {
-    const self = node.path.toLowerCase().includes(needle);
+    // 搜索按展示文本匹配（F4：非 UTF-8 条目的 path 是 base64 身份链接值）
+    const self = ((node.displayPath || node.path)).toLowerCase().includes(needle);
     node.children = node.children.filter(keep);
     return self || node.children.length > 0;
   };
@@ -255,7 +256,9 @@ function renderTreeNode(node, query) {
   if (node.skippedReason) row.classList.add("is-skipped");
   row.appendChild(explorerElement("span", "explorer-caret", isDir ? (expanded ? "▾" : "▸") : ""));
   row.appendChild(explorerElement("span", "explorer-icon", isDir ? "▾" : "·"));
-  row.appendChild(explorerElement("span", "explorer-name", node.path.split("/").pop()));
+  // 展示名取 displayPath（F4：不可解码条目的 path 是 base64 身份链接值）
+  row.appendChild(explorerElement("span", "explorer-name",
+    (node.displayPath || node.path).split("/").pop()));
   if (node.skippedReason) {
     row.title = node.skippedReason;
     row.appendChild(explorerElement("span", "explorer-skip-pill", "不可读"));
