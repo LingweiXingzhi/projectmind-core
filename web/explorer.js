@@ -560,7 +560,7 @@ async function scrollToLine(line) {
   }
 }
 
-// ---------- 关系（C 未接入前显示 unavailable，不伪装成空结果） ----------
+// ---------- 关系（导入 + resolution + 已确认的反向依赖） ----------
 async function loadRelations(path, ctx = null) {
   const panel = document.getElementById("explorer-relations");
   const token = ++explorerState.relationToken;
