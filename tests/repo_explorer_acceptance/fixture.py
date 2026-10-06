@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import tempfile
 
@@ -195,6 +196,12 @@ def generate(parent=None):
     return manifest
 
 
+def _clear_readonly(func, path, _exc_info):
+    # Git object files are written read-only; clear the bit before unlink (Windows).
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
 def cleanup(manifest):
     root = Path(manifest['root']).resolve()
     marker = root / '.d-fixture-owner'
@@ -202,7 +209,7 @@ def cleanup(manifest):
         # Guard against a changed manifest redirecting deletion into a foreign root.
         saved = json.loads((root / 'manifest.json').read_text())
         if saved != manifest: raise ValueError('Manifest changed; refusing cleanup')
-        shutil.rmtree(root)
+        shutil.rmtree(root, onexc=_clear_readonly)
     else: raise ValueError('Not an owned generated fixture; refusing cleanup')
 
 
