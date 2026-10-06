@@ -9,6 +9,7 @@ All verification is read-only (local git / gh api).
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -17,8 +18,12 @@ GIT_TIMEOUT = 15
 
 
 def _run(cmd: list[str], cwd: str | None = None) -> tuple[int, str, str]:
+    # R48-05: never let inherited GIT_* redirect a verifier's Git read (the
+    # verifiers run `git rev-parse refs/remotes/origin/main` against the
+    # project checkout). Harmless for `gh`, which needs no GIT_* variable.
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                          errors="replace", timeout=GIT_TIMEOUT, cwd=cwd)
+                          errors="replace", timeout=GIT_TIMEOUT, cwd=cwd, env=env)
     return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
 
 

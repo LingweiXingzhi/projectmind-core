@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import re
 import subprocess
 
@@ -67,9 +68,14 @@ def _relevant(key: str, domains: tuple[str, ...] | None) -> bool:
 def _project_revision(repo_root: str, revision: str | None) -> str:
     if revision is not None and (not isinstance(revision, str) or not REVISION_PATTERN.fullmatch(revision)):
         raise ValueError("revision must be a full lowercase 40/64-character Git commit SHA")
+    # R48-05: the explicit repository wins. Inherited GIT_* (GIT_DIR /
+    # GIT_WORK_TREE / GIT_COMMON_DIR / ...) is stripped so a Context Pack can
+    # never be stamped with another repository's revision.
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     try:
         result = subprocess.run(["git", "rev-parse", "--verify", (revision or "HEAD") + "^{commit}"],
-                                cwd=repo_root, capture_output=True, text=True, timeout=10, check=False)
+                                cwd=repo_root, capture_output=True, text=True, timeout=10,
+                                check=False, env=env)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ValueError("cannot resolve project revision from repository") from exc
     resolved = result.stdout.strip()
