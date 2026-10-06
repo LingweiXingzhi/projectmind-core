@@ -1,0 +1,94 @@
+{
+  "ROLE": "B",
+  "STATUS": "READY",
+  "ACTUAL_CHECKOUT": "<B_CODE_CHECKOUT>",
+  "BRANCH": "feat/repo-explorer-symbols-v1",
+  "BASE_COMMIT": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+  "COMMITS": [
+    "6e81e715cfd46b840cc9b3f01b007778a1637f21",
+    "c3e08a9f41248d32f1c22383204aa99f44a08056"
+  ],
+  "FINAL_HEAD": "c3e08a9f41248d32f1c22383204aa99f44a08056",
+  "CHANGED_FILES": [
+    "docs/repo-explorer/SYMBOLS.md",
+    "repo_index/symbols.py",
+    "tests/test_repo_index_symbols.py"
+  ],
+  "PUBLIC_INTERFACE": "repo_index.symbols.parse_symbols(path: str, source: str) -> dict",
+  "CHECKS_RUN": [
+    {
+      "command": [
+        "<BUNDLED_PYTHON>",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_repo_index_symbols.py",
+        "-v"
+      ],
+      "cwd": "<B_CODE_CHECKOUT>",
+      "exit_code": 0,
+      "result": "17 tests PASS",
+      "log": "symbols/tests-final.log"
+    },
+    {
+      "command": "documentation public-import example + exact JSON comparison",
+      "result": "PASS",
+      "log": "symbols/integration-example.log"
+    },
+    {
+      "command": "git diff --cached --check + exact allowed-file scope",
+      "result": "PASS"
+    },
+    {
+      "command": "git bundle verify symbols/B-symbols-v1.bundle",
+      "result": "PASS",
+      "log": "symbols/bundle-verify.log"
+    }
+  ],
+  "CHECKS_NOT_RUN": [
+    {
+      "check": "A integrated HTTP/UI/application runtime",
+      "reason": "B-only pure parser task; A integration and D product acceptance"
+    },
+    {
+      "check": "all historical repository tests",
+      "reason": "No shared runtime/history module changed; targeted parser contract verified"
+    },
+    {
+      "check": "Python3.10/3.11/other platforms",
+      "reason": "Actual execution used bundled Python 3.12.14"
+    }
+  ],
+  "LIMITATIONS": [
+    "Grammar follows actual Python interpreter",
+    "Only .py/.pyi text; lexical definitions, not runtime calls/business architecture",
+    "Caller handles repo/revision/path/decoding/size",
+    "Non-string inputs raise TypeError; language python denotes parser identity",
+    "No automatic push/PR/main modification"
+  ],
+  "PROJECT_MODEL_IMPACT": "UPDATE",
+  "PROJECT_MODEL_IMPACT_REASON": "New technical parser implementation and public source-only entry; formal model unchanged, team confirms integration/status record",
+  "HANDOFF": {
+    "bundle": "symbols/B-symbols-v1.bundle",
+    "prerequisite": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+    "steps": [
+      "Import bundle into A own integration checkout Git object store",
+      "Apply listed two commits in order",
+      "Call B with decoded text from same selected repo/full SHA",
+      "A wraps projectId/revision/parser=python_ast_v1 and verifies HTTP/UI"
+    ]
+  },
+  "MAIN_SOURCE_HEAD_UNCHANGED": true,
+  "MAIN_BRANCH_SHA_UNCHANGED": true,
+  "SOURCE_WORKTREE_UNCHANGED": true,
+  "timestampUTC": "2026-10-06T00:22:23.649730+00:00",
+  "git_diff_stat": "docs/repo-explorer/SYMBOLS.md    | 126 +++++++++\n repo_index/symbols.py            |  82 ++++++\n tests/test_repo_index_symbols.py | 558 +++++++++++++++++++++++++++++++++++++++\n 3 files changed, 766 insertions(+)",
+  "bundle_sha256": "3336b88eebdb8e14007b8ea50252fe510fce7ce47b375949152d1aa71beffb52",
+  "bundle_bytes": 9601,
+  "review": "Independent review found NUL missing line; fixed and LF/CRLF/CR test passed. Other 5 independent contract probes passed.",
+  "early_failures": "Test before module creation had ModuleNotFoundError; later basic/final tests pass. One manual CLI probe had quoting error; corrected direct validation and final tests pass. Final delivery script first JS template quoting attempt failed before execution; rewritten safely, no Git/code side effects."
+}
