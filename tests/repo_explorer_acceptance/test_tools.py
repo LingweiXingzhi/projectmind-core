@@ -1,9 +1,12 @@
 """D tool self-checks, never product acceptance."""
 import ctypes
+import json
 import os
 from pathlib import Path
 import stat
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -38,7 +41,7 @@ class FixtureTests(unittest.TestCase):
         self.assertFalse((self.repo / 'EXECUTED_MARKER').exists())
         self.assertNotIn('untracked-only.py', self.m['targetPaths'])
         self.assertNotIn('DIRTY_WORKTREE_CANARY', blob(self.repo, self.m['targetRevision'], 'pkg/service.py').decode())
-        self.assertIn('DIRTY_WORKTREE_CANARY', (self.repo / 'pkg/service.py').read_text())
+        self.assertIn('DIRTY_WORKTREE_CANARY', (self.repo / 'pkg/service.py').read_text(encoding='utf-8'))
         self.assertEqual(self.m['targetPaths']['outside-link'], '120000')
         self.assertEqual(self.m['targetPaths']['vendor/submodule'], '160000')
 
@@ -67,6 +70,46 @@ class FixtureTests(unittest.TestCase):
             changed = dict(self.m, repository=folder)
             with self.assertRaises(ValueError): cleanup(changed)
         self.assertTrue(self.repo.exists())
+
+    def _child_interpreter(self, extra_args, script, *args):
+        result = subprocess.run([sys.executable, '-B', *extra_args, '-c', script,
+                                 str(Path(__file__).resolve().parent), *args],
+                                capture_output=True, text=True, timeout=600)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def test_manifest_round_trips_when_the_default_encoding_is_not_utf8(self):
+        # R47-N1: with UTF-8 mode off the default codec is the locale codec. The
+        # manifest holds non-ASCII text (the temp root name), so generate() and
+        # cleanup() must agree on an explicit encoding, not on the default one.
+        script = (
+            'import sys;'
+            'sys.path.insert(0, sys.argv[1]);'
+            'import fixture;'
+            'm = fixture.generate();'
+            'raw = open(m["root"] + "/manifest.json", "rb").read();'
+            'raw.decode("utf-8");'
+            'fixture.cleanup(m);'
+            'print("ROUNDTRIP_OK")'
+        )
+        stdout = self._child_interpreter(['-X', 'utf8=0'], script)
+        self.assertIn('ROUNDTRIP_OK', stdout)
+
+    def test_generated_revisions_do_not_depend_on_the_default_encoding(self):
+        # The committed bytes, and therefore every revision, must be identical
+        # whether or not UTF-8 mode is on.
+        script = (
+            'import json, sys;'
+            'sys.path.insert(0, sys.argv[1]);'
+            'import fixture;'
+            'm = fixture.generate();'
+            'print(json.dumps({k: m[k] for k in '
+            '("baseRevision", "targetRevision", "secondRevision")}));'
+            'fixture.cleanup(m)'
+        )
+        default = json.loads(self._child_interpreter([], script).strip().splitlines()[-1])
+        locale_mode = json.loads(self._child_interpreter(['-X', 'utf8=0'], script).strip().splitlines()[-1])
+        self.assertEqual(default, locale_mode)
 
 
 class CleanupBoundaryTests(unittest.TestCase):
@@ -175,6 +218,45 @@ class CleanupBoundaryTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 fixture._remove_plain_object(root, outside)
             self.assertTrue(outside.exists())
+
+    def test_a_non_bmp_name_never_deletes_its_sibling(self):
+        # R47-N2: a non-BMP character is two UTF-16 code units, so a name whose
+        # length was computed from Python characters used to be truncated and the
+        # neighbouring name was deleted instead.
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            target = root / '\U0001F600a.bin'
+            neighbour = root / '\U0001F600a.bi'
+            target.write_bytes(b'target')
+            neighbour.write_bytes(b'neighbour')
+            fixture._remove_plain_object(root, target)
+            self.assertFalse(target.exists())
+            self.assertEqual(neighbour.read_bytes(), b'neighbour')
+
+    def test_every_owned_name_is_removed_without_touching_its_siblings(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            names = ['plain.txt', '\u4e2d\u6587.txt', '\U0001F600non-bmp.bin']
+            for name in names:
+                (root / name).write_bytes(name.encode('utf-8'))
+            removed = set()
+            for name in names:
+                fixture._remove_plain_object(root, root / name)
+                removed.add(name)
+                for other in names:
+                    self.assertEqual((root / other).exists(), other not in removed,
+                                     f'{other!r} after removing {name!r}')
+
+    def test_a_tree_holding_non_bmp_names_is_removed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            nested = root / '\U0001F4C1dir'
+            nested.mkdir()
+            payload = nested / '\U0001F600deep.bin'
+            payload.write_bytes(b'deep')
+            os.chmod(payload, stat.S_IREAD)
+            fixture._remove_owned_tree(root)
+            self.assertFalse(root.exists())
 
     def test_a_redirected_parent_directory_is_refused(self):
         with tempfile.TemporaryDirectory() as folder:

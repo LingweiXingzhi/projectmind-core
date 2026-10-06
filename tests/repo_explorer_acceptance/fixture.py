@@ -73,7 +73,8 @@ def git(repo, *args, raw=None):
 
 def tracked(repo, revision):
     records = git(repo, 'ls-tree', '-r', '-z', revision).split(b'\0')
-    return {r.split(b'\t', 1)[1].decode(): r.split(b' ', 1)[0].decode() for r in records if r}
+    return {r.split(b'\t', 1)[1].decode('utf-8'): r.split(b' ', 1)[0].decode('utf-8')
+            for r in records if r}
 
 
 def blob(repo, revision, path):
@@ -85,13 +86,13 @@ def changes(repo, base, target):
     parts = git(repo, 'diff', '--name-status', '-z', '--find-renames=50%', base, target, '--').split(b'\0')
     result, i = [], 0
     while i < len(parts) and parts[i]:
-        code = parts[i].decode(); i += 1
+        code = parts[i].decode('utf-8'); i += 1
         if code[0] in ('R', 'C'):
             old, path = parts[i:i + 2]; i += 2
         else:
             old, path = None, parts[i]; i += 1
-        result.append({'status': code[0], 'path': path.decode(),
-                       'oldPath': old.decode() if old else None})
+        result.append({'status': code[0], 'path': path.decode('utf-8'),
+                       'oldPath': old.decode('utf-8') if old else None})
     return result
 
 
@@ -104,23 +105,25 @@ def init(repo):
 
 
 def write(repo, path, content):
+    # Every text write is UTF-8, never the interpreter's default codec, so the
+    # committed bytes do not depend on the locale or on UTF-8 mode.
     p = repo / path; p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_bytes(content.encode() if isinstance(content, str) else content)
+    p.write_bytes(content.encode('utf-8') if isinstance(content, str) else content)
 
 
 def commit(repo, title, timestamp):
     git(repo, 'add', '--all')
-    tree = git(repo, 'write-tree').decode().strip()
+    tree = git(repo, 'write-tree').decode('utf-8').strip()
     # commit-tree avoids inherited hooks and signing; dates and identities are fixed.
     env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
     env.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
                GIT_AUTHOR_NAME='ProjectMind fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
                GIT_COMMITTER_NAME='ProjectMind fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid',
                GIT_AUTHOR_DATE=timestamp, GIT_COMMITTER_DATE=timestamp)
-    parent = git(repo, 'rev-parse', '--verify', 'HEAD').decode().strip() if (repo / '.git/refs/heads/fixture').exists() else None
+    parent = git(repo, 'rev-parse', '--verify', 'HEAD').decode('utf-8').strip() if (repo / '.git/refs/heads/fixture').exists() else None
     command = ['git', '--no-replace-objects', '-C', str(repo), 'commit-tree', tree]
     if parent: command += ['-p', parent]
-    sha = subprocess.check_output(command, input=(title + '\n').encode(), env=env).decode().strip()
+    sha = subprocess.check_output(command, input=(title + '\n').encode('utf-8'), env=env).decode('utf-8').strip()
     git(repo, 'update-ref', 'refs/heads/fixture', sha)
     return sha
 
@@ -131,7 +134,7 @@ def generate(parent=None):
         if any((p / '.git').exists() for p in (parent, *parent.parents)):
             raise ValueError('Fixture parent must be outside existing repositories')
     root = Path(tempfile.mkdtemp(prefix='projectmind-d-fixture-', dir=parent)).resolve()
-    (root / '.d-fixture-owner').write_text(FORMAT)
+    (root / '.d-fixture-owner').write_text(FORMAT, encoding='utf-8')
     first, second = root / 'first' / 'sample', root / 'second' / 'sample'
     init(second)
     write(second, 'pkg/service.py', 'def second_only():\n    """第二仓库独有。"""\n    return 99\n')
@@ -166,14 +169,14 @@ def generate(parent=None):
         git(first, 'add', '--all')
         git(first, 'update-index', '--add', '--cacheinfo', '120000,' + link_sha + ',outside-link')
         git(first, 'update-index', '--add', '--cacheinfo', '160000,' + second_sha + ',vendor/submodule')
-        tree = git(first, 'write-tree').decode().strip()
+        tree = git(first, 'write-tree').decode('utf-8').strip()
         env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
         env.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
                    GIT_AUTHOR_NAME='ProjectMind fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
                    GIT_COMMITTER_NAME='ProjectMind fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid',
                    GIT_AUTHOR_DATE=date, GIT_COMMITTER_DATE=date)
         cmd = ['git', '-C', str(first), 'commit-tree', tree] + (['-p', parent_sha] if parent_sha else [])
-        sha = subprocess.check_output(cmd, input=(title + '\n').encode(), env=env).decode().strip()
+        sha = subprocess.check_output(cmd, input=(title + '\n').encode('utf-8'), env=env).decode('utf-8').strip()
         git(first, 'update-ref', 'refs/heads/fixture', sha)
         return sha
     base = special_commit('first fixture version', '2026-10-01T00:00:00+0000')
@@ -184,15 +187,18 @@ def generate(parent=None):
     target = special_commit('second fixture version', '2026-10-02T00:00:00+0000', base)
     write(first, 'untracked-only.py', 'def untracked_only():\n    return "不属于提交"\n')
     write(first, 'pkg/service.py', '# DIRTY_WORKTREE_CANARY\n' + SERVICE)
-    (root / 'outside-canary.txt').write_text('OUTSIDE_CONTENT_MUST_NOT_BE_READ\n')
+    (root / 'outside-canary.txt').write_text('OUTSIDE_CONTENT_MUST_NOT_BE_READ\n', encoding='utf-8')
     manifest = {'format': FORMAT, 'root': str(root), 'repository': str(first), 'secondRepository': str(second),
                 'baseRevision': base, 'targetRevision': target, 'secondRevision': second_sha,
                 'basePaths': tracked(first, base), 'targetPaths': tracked(first, target),
                 'secondPaths': tracked(second, second_sha), 'expectedChanges': changes(first, base, target),
-                'environment': {'git': git(first, '--version').decode().strip()},
+                'environment': {'git': git(first, '--version').decode('utf-8').strip()},
                 'facts': {'sourceExecuted': (first / 'EXECUTED_MARKER').exists(),
                           'mapJson': any(Path(p).name == 'project-map.json' for p in tracked(first, target))}}
-    (root / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+    # The manifest is written UTF-8 and read back UTF-8 on every platform; the
+    # interpreter's default codec (cp936, utf8_mode) must never decide this.
+    (root / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n',
+                                        encoding='utf-8')
     return manifest
 
 
@@ -310,8 +316,12 @@ def _open_child(parent_handle, name, access, *, directory=None):
     # re-resolution can never redirect the traversal away from the owned root.
     if os.name != 'nt':
         raise OSError('handle-bound removal is only implemented for Windows')
-    buffer = ctypes.create_unicode_buffer(name)
-    component = _UNICODE_STRING(Length=len(name) * 2, MaximumLength=len(name) * 2,
+    # UNICODE_STRING.Length is a byte count of the UTF-16LE buffer, not a Python
+    # character count: a non-BMP character occupies two UTF-16 code units, so
+    # len(name) * 2 would truncate the name the kernel opens.
+    encoded = name.encode('utf-16-le')
+    buffer = ctypes.create_string_buffer(encoded, len(encoded))
+    component = _UNICODE_STRING(Length=len(encoded), MaximumLength=len(encoded),
                                 Buffer=ctypes.cast(buffer, ctypes.c_void_p))
     attributes = _OBJECT_ATTRIBUTES(Length=ctypes.sizeof(_OBJECT_ATTRIBUTES),
                                     RootDirectory=parent_handle,
@@ -436,7 +446,7 @@ def cleanup(manifest):
             # Owner marker and manifest are read through the same handle that is
             # about to be purged, so a root redirected after the name check cannot
             # pass verification while a different tree is removed.
-            if _read_under(handle, '.d-fixture-owner', 4096) != FORMAT.encode():
+            if _read_under(handle, '.d-fixture-owner', 4096) != FORMAT.encode('utf-8'):
                 raise ValueError('Not an owned generated fixture; refusing cleanup')
             if json.loads(_read_under(handle, 'manifest.json', 1 << 20).decode('utf-8')) != manifest:
                 raise ValueError('Manifest changed; refusing cleanup')
@@ -446,8 +456,8 @@ def cleanup(manifest):
             _close_handle(handle)
     else:
         marker = root / '.d-fixture-owner'
-        if marker.is_file() and marker.read_text() == FORMAT:
-            if json.loads((root / 'manifest.json').read_text()) != manifest:
+        if marker.is_file() and marker.read_text(encoding='utf-8') == FORMAT:
+            if json.loads((root / 'manifest.json').read_text(encoding='utf-8')) != manifest:
                 raise ValueError('Manifest changed; refusing cleanup')
             shutil.rmtree(root)
         else:
@@ -460,7 +470,7 @@ def main():
     p.add_argument('--cleanup', type=Path, help='manifest of exactly one owned generated fixture')
     args = p.parse_args()
     if args.cleanup:
-        cleanup(json.loads(args.cleanup.read_text())); return
+        cleanup(json.loads(args.cleanup.read_text(encoding='utf-8'))); return
     data = generate(args.parent)
     print(json.dumps(data, ensure_ascii=False, indent=2))
     print('Manifest:', Path(data['root']) / 'manifest.json')
