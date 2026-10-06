@@ -29,6 +29,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -314,6 +315,19 @@ class RelationsEndpointTests(unittest.TestCase):
         warnings = " ".join(body["warnings"])
         self.assertIn("解析失败", warnings)
         self.assertIn("未纳入本次扫描", warnings)          # huge.py, skipped by budget
+
+    def test_relations_degrade_honestly_when_no_parser_is_installed(self):
+        # §6.5 / D08-PARSER: with no import parser integrated the endpoint must
+        # answer status="unavailable" with a reason, never a wrapped empty
+        # success.
+        import repo_index.explorer as explorer
+        with mock.patch.object(explorer, "parse_imports", None):
+            status, body = self._relations("pkg/consumer.py")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["status"], "unavailable")
+        self.assertEqual(body["imports"], [])
+        self.assertEqual(body["dependents"], [])
+        self.assertTrue(body["warnings"])
 
     def test_parse_error_is_preserved(self):
         status, body = self._relations("pkg/broken.py")

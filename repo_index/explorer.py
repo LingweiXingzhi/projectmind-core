@@ -24,9 +24,14 @@ from http import HTTPStatus
 from pathlib import Path
 
 from repo_index import gitio
-from repo_index.imports import parse_imports
-from repo_index.symbols import parse_symbols
 from extensions.code_facts.facts import CodeFactsError, read_source
+
+try:  # the parsers B and C deliver; absent when neither has been integrated
+    from repo_index.imports import parse_imports
+    from repo_index.symbols import parse_symbols
+except ImportError:  # task book §6.4/§6.5: no parser at all -> honest "unavailable"
+    parse_imports = None
+    parse_symbols = None
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
 MAX_FILES = 2000
@@ -672,6 +677,20 @@ class ExplorerRegistry:
             reason = next((item["reason"] for item in context.skipped
                            if item["path"] == path), "该文件在本次索引中被跳过")
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
+        if parse_imports is None:
+            # §6.5: no import parser integrated -> status "unavailable", never a
+            # wrapped empty success.
+            return {
+                "schemaVersion": 1,
+                "projectId": context.project_id,
+                "revision": context.revision,
+                "path": path,
+                "status": "unavailable",
+                "imports": [],
+                "dependents": [],
+                "importScan": None,
+                "warnings": ["静态导入解析器尚未接入；目录与源码浏览不受影响"],
+            }
         # The scan range must equal the parsers' own supported range, so the
         # extension test is case-insensitive: `consumer.PY` is a Python file to
         # parse_imports and must therefore also be scanned for dependents
@@ -796,6 +815,19 @@ class ExplorerRegistry:
             reason = next((item["reason"] for item in context.skipped
                            if item["path"] == path), "该文件在本次索引中被跳过")
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
+        if parse_symbols is None:
+            # §6.4: with no parser integrated the endpoint says so explicitly
+            # instead of wrapping an empty result as success.
+            return {
+                "schemaVersion": 1,
+                "projectId": context.project_id,
+                "revision": context.revision,
+                "path": path,
+                "status": "unavailable",
+                "symbols": [],
+                "warnings": ["符号解析器尚未接入；目录与源码浏览不受影响"],
+                "parser": None,
+            }
         if path.lower().endswith(PYTHON_SUFFIXES):
             # Only Python sources are read through the PEP 263 reader; a
             # browsable text file whose first line looks like a coding cookie

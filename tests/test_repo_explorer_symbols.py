@@ -136,6 +136,17 @@ class SymbolsEndpointTests(unittest.TestCase):
             self.assertLessEqual(item["start_line"], item["end_line"])
             self.assertLessEqual(item["end_line"], total)
 
+    def test_symbols_degrade_honestly_when_no_parser_is_installed(self):
+        # §6.4 / D08-PARSER: with no parser integrated the endpoint must answer
+        # status="unavailable" with a reason, never a wrapped empty success.
+        import repo_index.explorer as explorer
+        with mock.patch.object(explorer, "parse_symbols", None):
+            status, body = self._symbols("service.py")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["status"], "unavailable")
+        self.assertEqual(body["symbols"], [])
+        self.assertTrue(body["warnings"])
+
     def test_empty_python_file_is_ok_with_no_symbols(self):
         status, body = self._symbols("empty.py")
         self.assertEqual(status, 200)

@@ -50,6 +50,7 @@
 - `status="ok"`：文件被成功处理（含 0 符号的空文件）；`symbols[]` 每项 `{name, qualified_name, kind, start_line, end_line, docstring}`。`qualified_name` 按词法嵌套定义拼接，不推断运行时归属；`start_line`/`end_line` 为包含式源码范围（不含前置装饰器行）；`docstring` 经 `ast.get_docstring(clean=True)` 清理，最多保留 2000 字符，截断时在 warnings 提示。
 - `status="parse_error"`：语法或解码失败；`symbols=[]`，warnings 含错误行号与简要原因，不含整份源码。
 - `status="unsupported"`：非 `.py`/`.pyi` 文件。
+- **无解析器部署**（B 尚未接入，例如只交付了浏览层的实例）：`status="unavailable"`、`parser=null`、`symbols=[]`，warnings 明确说明解析器未接入；**不**包装为成功空结果。
 - 准入与 file 相同（404 / 403 `FILE_SKIPPED`）。读取时 Git 对象不可用仍按 F5 分类区分 `OBJECT_MISSING`（结构化探针确证缺失）与 `REPO_UNREADABLE`（其余 Git 失败），不伪装成成功空结果。
 
 ## 5. GET /api/repo-explorer/relations?projectId&revision&path
@@ -71,6 +72,7 @@ C 的 `repo_index/imports.py` `parse_imports` 已接入（`status="unavailable"`
 - `dependents` 每项 `{path, line, end_line}`，仅来自成功解析且 `resolution.status="resolved"` 到当前文件的导入记录；不确定的反向关系不展示成已确认依赖。空结果的界面文案固定为"已解析范围内未发现导入本文件的记录"。
 - `importScan{scanned, parseFailed, total}`（r03 R2-Q8）：导入扫描自身的覆盖统计。分母 `total` 为 allowed 集合中扩展名（大小写不敏感）为 `.py`/`.pyi` 的文件数——与解析器支持范围一致，`consumer.PY` 同样计入并被扫描；`parseFailed` 为解析失败数。
 - `status` 为当前文件的 C 解析结果：仅成功解析（含空结果）为 `ok`；语法/解码失败保留 `parse_error`。存在解析失败或被 open 预算跳过而未纳入扫描的 Python 文件时，warnings 写明失败数与未扫描数；任一缺口存在时**不得**表述为完整扫描结论。
+- **无解析器部署**（C 尚未接入）：`status="unavailable"`、`imports=[]`、`dependents=[]`、`importScan=null`，warnings 明确说明解析器未接入；**不**包装为成功空结果。
 - 准入与 file 相同（404 / 403 `FILE_SKIPPED`）。
 
 ## 6. GET /api/repo-explorer/changes?projectId&base&target
