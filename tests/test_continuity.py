@@ -90,6 +90,116 @@ class ContinuityTests(unittest.TestCase):
         with self.assertRaises(ExtensionError):
             handle(self.context, 'POST', {'action': 'update', 'id': r['id'], 'expectedVersion': r['version']})
 
+    def test_direct_claim_keeps_unchecked_reviews_unverified(self):
+        r = self.create()
+        r = self.event(r, 'claim', review={'materials': True, 'environment': False})
+        self.assertEqual(r['state'], 'active')
+        self.assertEqual(r['review']['checks'], {'materials': True, 'environment': False})
+        self.assertNotIn('nextStep', r['review']['checks'])
+        self.assertEqual(r['review']['status'], 'participant_report')
+        other = self.create()
+        with self.assertRaises(ExtensionError): self.event(other, 'claim', review={'environment': 'yes'})
+
+    def test_finish_session_preserves_open_items_and_new_entry_point_on_import(self):
+        r = self.event(self.create(), 'claim')
+        before = copy.deepcopy(r['checklist'])
+        r = self.event(r, 'finish_session', note='已读资料，环境仍未准备',
+                       stopPoint='等待安装运行环境', nextAction='先安装依赖，再验证返回值')
+        self.assertEqual(r['state'], 'ready')
+        self.assertEqual(r['checklist'], before)
+        self.assertEqual(r['task']['stopPoint'], '等待安装运行环境')
+        exported = handle(self.context, 'GET', {'action': 'export', 'id': r['id']})
+        self.assertIn('先安装依赖，再验证返回值', exported['aiContext'])
+        imported = handle(self.context, 'POST', {'action': 'import_packet', 'packet': exported['packet']})['record']
+        self.assertEqual(imported['state'], 'receiving')
+        self.assertEqual(imported['task'], r['task'])
+        self.assertEqual(imported['checklist'], before)
+        self.assertEqual(imported['importedHistory'][-1]['nextAction'], r['task']['nextAction'])
+        self.assertEqual(r['handoff']['mapRevision'], 'UNKNOWN')
+        self.assertEqual(r['handoff'], exported['legacyHandoff'])
+        again = self.event(r, 'claim')
+        self.assertEqual(again['state'], 'active')
+
+    def test_session_end_rejects_missing_entry_point_atomically_and_stale_writes(self):
+        r = self.event(self.create(), 'claim')
+        with self.assertRaises(ExtensionError): self.event(r, 'finish_session', note='暂停', stopPoint='环境待准备')
+        self.assertEqual(repository_store(self.repo).get(r['id']), r)
+        updated = self.event(r, 'note', note='准备环境')
+        with self.assertRaises(ExtensionError) as error:
+            self.event(r, 'finish_session', note='暂停', stopPoint='环境待准备', nextAction='安装依赖')
+        self.assertEqual(error.exception.status, 409)
+        self.assertEqual(repository_store(self.repo).get(r['id']), updated)
+
+    def test_problem_impact_and_completion_are_distinct(self):
+        r = self.event(self.create(), 'claim')
+        r = self.event(r, 'question', note='参数用途需要确认')
+        self.assertEqual(r['state'], 'active')
+        r = self.event(r, 'block', note='缺少必要凭据，无法运行')
+        self.assertEqual(r['state'], 'blocked')
+        with self.assertRaises(ExtensionError): self.event(r, 'claim')
+        r = self.event(r, 'claim', note='改用独立测试环境，可继续验证')
+        with self.assertRaises(ExtensionError) as error:
+            self.event(r, 'complete', note='完成', evidence='运行结果')
+        self.assertIn('验证返回值', str(error.exception))
+        self.assertIn('结束本次接手', str(error.exception))
+        r = handle(self.context, 'POST', {'action': 'update', 'id': r['id'], 'expectedVersion': r['version'],
+                    'checklist': [{**r['checklist'][0], 'state': 'done'}]})['record']
+        with self.assertRaises(ExtensionError): self.event(r, 'complete', note='完成')
+        r = self.event(r, 'complete', note='已验证返回值', evidence='实际返回 1')
+        self.assertEqual(r['state'], 'completed')
+
+    def test_old_export_import_preserves_feedback_and_handoff(self):
+        # A synthetic old-format record, independent of the user's local data.
+        r = self.event(self.create(), 'ready', note='旧版发送方记录')
+        r = self.event(r, 'receive', note='旧版接收记录')
+        packet = export_packet(r)
+        imported = handle(self.context, 'POST', {'action': 'import_packet', 'packet': packet})['record']
+        imported = self.event(imported, 'claim')
+        self.assertEqual([e['kind'] for e in imported['importedHistory']], ['ready', 'receive'])
+        exported = handle(self.context, 'GET', {'action': 'export', 'id': imported['id']})['packet']
+        self.assertEqual(exported['format'], packet['format'])
+        self.assertEqual(exported['record']['handoff'], packet['record']['handoff'])
+
+    def test_real_http_quick_actions_session_end_and_reimport(self):
+        server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(self.repo, self.map))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = f'http://127.0.0.1:{server.server_port}/api/extensions/continuity'
+        def post(action, **values):
+            request = Request(base, data=json.dumps({'action': action, **values}).encode(),
+                              headers={'Content-Type': 'application/json'})
+            with urlopen(request, timeout=5) as response:
+                return json.load(response)
+        def event(record, kind, **values):
+            return post('event', id=record['id'], expectedVersion=record['version'],
+                        actor='HTTP Receiver', kind=kind, **values)['record']
+        try:
+            r = post('create', **self.payload)['record']
+            r = event(r, 'claim')
+            self.assertEqual(r['review']['checks'], {})
+            r = event(r, 'question', note='确认输入范围')
+            self.assertEqual(r['state'], 'active')
+            r = event(r, 'block', note='等待测试数据')
+            self.assertEqual(r['state'], 'blocked')
+            with self.assertRaises(HTTPError) as error:
+                event(r, 'complete', note='完成', evidence='尚未执行')
+            self.assertEqual(error.exception.code, 400)
+            self.assertIn('验证返回值', json.load(error.exception)['error'])
+            error.exception.close()
+            r = event(r, 'finish_session', note='已读资料，测试稍后继续',
+                      stopPoint='等待测试数据', nextAction='准备数据并运行返回值验证')
+            self.assertEqual(r['state'], 'ready')
+            self.assertEqual(r['checklist'][0]['state'], 'pending')
+            with urlopen(base + '?action=export&id=' + r['id']) as response:
+                exported = json.load(response)
+            self.assertIn('准备数据并运行返回值验证', exported['aiContext'])
+            imported = post('import_packet', packet=exported['packet'])['record']
+            self.assertEqual(imported['state'], 'receiving')
+            self.assertEqual(imported['task'], r['task'])
+            self.assertEqual(imported['importedHistory'][-1]['kind'], 'finish_session')
+        finally:
+            server.shutdown(); thread.join(2); server.server_close()
+
     def test_task_readiness_not_equals_acceptance(self):
         r = self.create(task={'title': '只有标题'})
         self.assertEqual(len(ready_missing(r)), 4)

@@ -10,8 +10,8 @@ from extensions.worklog.store import CATEGORIES, fail, text
 
 FORMAT = 'projectmind-continuity-v1'
 MAX_PACKAGE = 12 * 1024 * 1024
-STATES = {'draft': '准备中', 'ready': '可交接', 'receiving': '接手检查中',
-          'active': '继续工作中', 'blocked': '有阻塞', 'completed': '本次任务完成'}
+STATES = {'draft': '未接手', 'ready': '待接手', 'receiving': '接手检查中',
+          'active': '工作中', 'blocked': '问题待处理', 'completed': '任务已完成'}
 TASK_FIELDS = {'title': 200, 'goal': 2000, 'completed': 4000, 'stopPoint': 4000,
                'nextAction': 2000, 'runInstructions': 2000, 'acceptance': 4000,
                'cautions': 2000, 'owner': 100}
@@ -236,8 +236,12 @@ def validate_packet(packet):
     for e in imported:
         if not isinstance(e, dict):
             fail('历史格式无效')
-        events.append({key: text(e.get(key, ''), limit, '导入历史') for key, limit in
-                       [('kind', 100), ('actor', 100), ('origin', 20), ('at', 100), ('note', 4000), ('evidence', 2000)]})
+        event = {key: text(e.get(key, ''), limit, '导入历史') for key, limit in
+                 [('kind', 100), ('actor', 100), ('origin', 20), ('at', 100), ('note', 4000), ('evidence', 2000)]}
+        for key, limit in [('stopPoint', 4000), ('nextAction', 2000)]:
+            if key in e:
+                event[key] = text(e[key], limit, '导入接续说明')
+        events.append(event)
     return {'task': task(rec.get('task')), 'handoff': h, 'scope': scope(rec.get('scope', []), h),
             'checklist': checklist(rec.get('checklist', [])), 'logs': validate_logs(rec.get('logs', [])),
             'workspace': workspace, 'mapCapture': capture, 'importedHistory': events,
