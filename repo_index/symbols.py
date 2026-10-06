@@ -38,6 +38,11 @@ def parse_symbols(path: str, source: str) -> dict:
     except (SyntaxError, ValueError, UnicodeError, RecursionError) as exc:
         result["status"] = "parse_error"
         line = getattr(exc, "lineno", None)
+        if line is None and isinstance(exc, SyntaxError) and "\0" in source:
+            # The compiler rejects NUL without reporting a location. Its first
+            # occurrence is still known, including CRLF and CR-only newlines.
+            prefix = source.split("\0", 1)[0]
+            line = prefix.replace("\r\n", "\n").replace("\r", "\n").count("\n") + 1
         reason = getattr(exc, "msg", str(exc))[:240]
         result["warnings"].append(
             f"Parse error at line {line if line is not None else 'unknown'}: {reason}"
@@ -75,4 +80,3 @@ def parse_symbols(path: str, source: str) -> dict:
 
     result["symbols"].sort(key=lambda item: (item["start_line"], item["qualified_name"]))
     return result
-
