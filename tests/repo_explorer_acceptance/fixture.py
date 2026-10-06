@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import stat
 import subprocess
 import tempfile
 
@@ -197,168 +196,262 @@ def generate(parent=None):
     return manifest
 
 
-def _is_reparse_point(info):
-    # Reparse state cannot be decided on platforms without st_file_attributes;
-    # an undecidable object is never touched.
-    attributes = getattr(info, 'st_file_attributes', None)
-    if attributes is None:
-        return True
-    return bool(attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
-
-
-def _plain_object(path):
-    # One lstat snapshot: a plain, singly-linked file or directory, with decidable
-    # link/reparse state. Anything else raises and is left for manual cleanup.
-    info = os.lstat(path)
-    if stat.S_ISLNK(info.st_mode):
-        raise OSError(f'refusing a symbolic link: {path}')
-    if _is_reparse_point(info):
-        raise OSError(f'refusing a reparse point or undecidable attributes: {path}')
-    if info.st_nlink != 1:
-        raise OSError(f'refusing an object shared with another name: {path}')
-    if not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)):
-        raise OSError(f'refusing an unsupported object type: {path}')
-    return info
-
-
-def _owned_plain_entry(root, path):
-    # The entry must sit under an owned root whose whole chain of directories is
-    # plain, so a redirected parent cannot reach an external object through a
-    # path that merely looks internal. Sampled; the caller re-binds the object by
-    # handle identity before any change.
+def _relative_parts(root, path):
+    # Names of path below root, refused unless path sits strictly inside root.
+    # Only used to derive names: every object is opened relative to a handle we
+    # already hold, so a manipulated name can never reach an object outside root.
     try:
-        root_info = os.lstat(root)
-        if not stat.S_ISDIR(root_info.st_mode) or stat.S_ISLNK(root_info.st_mode) or _is_reparse_point(root_info):
-            return False
-        candidate = Path(os.path.abspath(path))
-        if candidate != root and root not in candidate.parents:
-            return False
-        if candidate == root:
-            return True
-        for ancestor in candidate.parents:
-            if ancestor == root:
-                return True
-            info = os.lstat(ancestor)
-            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or _is_reparse_point(info):
-                return False
-        return False
-    except OSError:
-        return False
+        relative = os.path.relpath(os.path.abspath(path), os.path.abspath(root))
+    except ValueError:
+        raise OSError(f'refusing an unrelatable path: {path}')
+    if relative == os.curdir:
+        return []
+    parts = relative.split(os.sep)
+    if any(part in ('', os.curdir, os.pardir) for part in parts):
+        raise OSError(f'refusing a path outside the owned root: {path}')
+    return parts
 
 
 if os.name == 'nt':
-    import msvcrt
+    _ntdll = ctypes.WinDLL('ntdll', use_last_error=True)
+    _kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
 
+    _GENERIC_READ = 0x80000000
+    _SYNCHRONIZE = 0x00100000
+    _FILE_READ_DATA = 0x00000001          # same value as FILE_LIST_DIRECTORY
     _FILE_READ_ATTRIBUTES = 0x00000080
-    _FILE_WRITE_ATTRIBUTES = 0x00000100
     _DELETE = 0x00010000
     _FILE_SHARE_ALL = 0x00000001 | 0x00000002 | 0x00000004
     _OPEN_EXISTING = 3
     _FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
     _FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
-    _FILE_ATTRIBUTE_READONLY = 0x00000001
-    _FileBasicInfo = 0
-    _FileDispositionInfo = 4
+    _OBJ_CASE_INSENSITIVE = 0x00000040
+    _OBJ_DONT_REPARSE = 0x00001000
+    _FILE_OPEN = 1
+    _FILE_DIRECTORY_FILE = 0x00000001
+    _FILE_NON_DIRECTORY_FILE = 0x00000040
+    _FILE_SYNCHRONOUS_IO_NONALERT = 0x00000020
+    _FILE_ATTRIBUTE_DIRECTORY = 0x00000010
+    _FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
+    _FileDispositionInfoEx = 21
+    _FILE_DISPOSITION_DELETE = 0x00000001
+    _FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE = 0x00000010
     _INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
-    class _FILE_BASIC_INFO(ctypes.Structure):
-        _fields_ = [('CreationTime', ctypes.c_longlong), ('LastAccessTime', ctypes.c_longlong),
-                    ('LastWriteTime', ctypes.c_longlong), ('ChangeTime', ctypes.c_longlong),
-                    ('FileAttributes', ctypes.c_uint32)]
+    class _UNICODE_STRING(ctypes.Structure):
+        _fields_ = [('Length', ctypes.c_ushort), ('MaximumLength', ctypes.c_ushort),
+                    ('Buffer', ctypes.c_void_p)]
 
-    class _FILE_DISPOSITION_INFO(ctypes.Structure):
-        _fields_ = [('DeleteFile', ctypes.c_ubyte)]
+    class _OBJECT_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [('Length', ctypes.c_ulong), ('RootDirectory', ctypes.c_void_p),
+                    ('ObjectName', ctypes.c_void_p), ('Attributes', ctypes.c_ulong),
+                    ('SecurityDescriptor', ctypes.c_void_p),
+                    ('SecurityQualityOfService', ctypes.c_void_p)]
+
+    class _IO_STATUS_BLOCK(ctypes.Structure):
+        _fields_ = [('Status', ctypes.c_void_p), ('Information', ctypes.c_void_p)]
+
+    class _FILE_DISPOSITION_INFO_EX(ctypes.Structure):
+        _fields_ = [('Flags', ctypes.c_ulong)]
+
+    class _FILETIME(ctypes.Structure):
+        _fields_ = [('dwLowDateTime', ctypes.c_ulong), ('dwHighDateTime', ctypes.c_ulong)]
+
+    class _BY_HANDLE_FILE_INFORMATION(ctypes.Structure):
+        _fields_ = [('dwFileAttributes', ctypes.c_ulong), ('ftCreationTime', _FILETIME),
+                    ('ftLastAccessTime', _FILETIME), ('ftLastWriteTime', _FILETIME),
+                    ('dwVolumeSerialNumber', ctypes.c_ulong), ('nFileSizeHigh', ctypes.c_ulong),
+                    ('nFileSizeLow', ctypes.c_ulong), ('nNumberOfLinks', ctypes.c_ulong),
+                    ('nFileIndexHigh', ctypes.c_ulong), ('nFileIndexLow', ctypes.c_ulong)]
+
+    _ntdll.NtCreateFile.restype = ctypes.c_long
+    _ntdll.NtCreateFile.argtypes = [
+        ctypes.POINTER(ctypes.c_void_p), ctypes.c_ulong, ctypes.POINTER(_OBJECT_ATTRIBUTES),
+        ctypes.POINTER(_IO_STATUS_BLOCK), ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong,
+        ctypes.c_ulong, ctypes.c_ulong, ctypes.c_void_p, ctypes.c_ulong]
 
 
-def _open_object(path):
-    # Open the exact object, never through a link or reparse point, with the
-    # access needed to inspect it, clear attributes and delete it.
+def _handle_snapshot(handle):
+    # Read the opened object's own facts, never a path that could be re-resolved.
+    info = _BY_HANDLE_FILE_INFORMATION()
+    if not _kernel32.GetFileInformationByHandle(ctypes.c_void_p(handle), ctypes.byref(info)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return info
+
+
+def _assert_plain(info, path, *, directory):
+    # A plain, singly-linked object with no reparse state, or nothing is touched.
+    if info.dwFileAttributes & _FILE_ATTRIBUTE_REPARSE_POINT:
+        raise OSError(f'refusing a reparse point under the owned root: {path}')
+    if info.nNumberOfLinks != 1:
+        raise OSError(f'refusing an object shared with another name: {path}')
+    if directory is not None and bool(info.dwFileAttributes & _FILE_ATTRIBUTE_DIRECTORY) != directory:
+        raise OSError(f'refusing an unexpected object type: {path}')
+
+
+def _open_owned_root(root):
+    # Open the owned root directory object itself, never through a link. A root
+    # redirected to a reparse point is refused by its own snapshot, and every
+    # later object is opened relative to this handle, so a parent replaced after
+    # this point cannot reach an object outside the root.
     if os.name != 'nt':
         raise OSError('handle-bound removal is only implemented for Windows')
-    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-    handle = kernel32.CreateFileW(str(path),
-                                  _FILE_READ_ATTRIBUTES | _FILE_WRITE_ATTRIBUTES | _DELETE,
-                                  _FILE_SHARE_ALL, None, _OPEN_EXISTING,
-                                  _FILE_FLAG_OPEN_REPARSE_POINT | _FILE_FLAG_BACKUP_SEMANTICS, None)
+    handle = _kernel32.CreateFileW(str(root), _GENERIC_READ | _DELETE, _FILE_SHARE_ALL, None,
+                                   _OPEN_EXISTING,
+                                   _FILE_FLAG_OPEN_REPARSE_POINT | _FILE_FLAG_BACKUP_SEMANTICS, None)
     if handle in (None, _INVALID_HANDLE_VALUE):
         raise ctypes.WinError(ctypes.get_last_error())
     return handle
 
 
-def _remove_plain_object(root, path):
-    # Verify, clear the read-only attribute and delete through ONE handle. The
-    # opened object is compared with the inspected snapshot by device, inode and
-    # file type, so a parent swapped after the check can no longer redirect the
-    # attribute change or the deletion: both act on the handle, not on the path.
-    if not _owned_plain_entry(root, path):
-        raise OSError(f'refusing a path outside the owned plain root: {path}')
-    info = _plain_object(path)
-    handle = _open_object(path)
-    fd = None
+def _open_child(parent_handle, name, access, *, directory=None):
+    # Open one child relative to a handle already held. OBJ_DONT_REPARSE makes the
+    # kernel refuse the open if any component is a reparse point, so string path
+    # re-resolution can never redirect the traversal away from the owned root.
+    if os.name != 'nt':
+        raise OSError('handle-bound removal is only implemented for Windows')
+    buffer = ctypes.create_unicode_buffer(name)
+    component = _UNICODE_STRING(Length=len(name) * 2, MaximumLength=len(name) * 2,
+                                Buffer=ctypes.cast(buffer, ctypes.c_void_p))
+    attributes = _OBJECT_ATTRIBUTES(Length=ctypes.sizeof(_OBJECT_ATTRIBUTES),
+                                    RootDirectory=parent_handle,
+                                    ObjectName=ctypes.cast(ctypes.byref(component), ctypes.c_void_p),
+                                    Attributes=_OBJ_CASE_INSENSITIVE | _OBJ_DONT_REPARSE,
+                                    SecurityDescriptor=None, SecurityQualityOfService=None)
+    status_block = _IO_STATUS_BLOCK()
+    handle = ctypes.c_void_p()
+    # A synchronous handle so the same object can be read, inspected and deleted
+    # through this one handle without re-resolving any path.
+    options = _FILE_FLAG_OPEN_REPARSE_POINT | _FILE_SYNCHRONOUS_IO_NONALERT
+    if directory is True:
+        options |= _FILE_DIRECTORY_FILE
+    elif directory is False:
+        options |= _FILE_NON_DIRECTORY_FILE
+    status = _ntdll.NtCreateFile(ctypes.byref(handle), access, ctypes.byref(attributes),
+                                 ctypes.byref(status_block), None, 0, _FILE_SHARE_ALL, _FILE_OPEN,
+                                 options, None, 0)
+    if status < 0:
+        raise OSError(f'refusing {name!r}: NtCreateFile status {ctypes.c_ulong(status).value:#010x}')
+    return handle.value
+
+
+def _dispose_handle(handle, path):
+    # Delete through the bound handle and change no attribute at all: the
+    # read-only bit, where set, is ignored by the delete instead of cleared, so a
+    # name shared with another hard link keeps every attribute it held.
+    disposition = _FILE_DISPOSITION_INFO_EX(_FILE_DISPOSITION_DELETE |
+                                            _FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE)
+    if not _kernel32.SetFileInformationByHandle(ctypes.c_void_p(handle), _FileDispositionInfoEx,
+                                                ctypes.byref(disposition), ctypes.sizeof(disposition)):
+        raise ctypes.WinError(ctypes.get_last_error())
+
+
+def _close_handle(handle):
+    _kernel32.CloseHandle(ctypes.c_void_p(handle))
+
+
+def _read_under(parent_handle, name, limit):
+    # Read an owned metadata file through the same root handle that will be
+    # purged, so verification and removal cannot disagree about which root it is.
+    handle = _open_child(parent_handle, name, _GENERIC_READ | _SYNCHRONIZE, directory=False)
     try:
-        fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
-        handle = None                                  # ownership moved to the fd
-        opened = os.fstat(fd)
-        if (opened.st_dev, opened.st_ino, stat.S_IFMT(opened.st_mode)) != \
-           (info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode)):
-            raise OSError(f'refusing an object that changed after inspection: {path}')
-        raw = ctypes.c_void_p(msvcrt.get_osfhandle(fd))
-        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-        basic = _FILE_BASIC_INFO()
-        if not kernel32.GetFileInformationByHandleEx(raw, _FileBasicInfo,
-                                                     ctypes.byref(basic), ctypes.sizeof(basic)):
-            raise ctypes.WinError(ctypes.get_last_error())
-        if basic.FileAttributes & _FILE_ATTRIBUTE_READONLY:
-            basic.FileAttributes &= ~_FILE_ATTRIBUTE_READONLY
-            if not kernel32.SetFileInformationByHandle(raw, _FileBasicInfo,
-                                                       ctypes.byref(basic), ctypes.sizeof(basic)):
+        _assert_plain(_handle_snapshot(handle), name, directory=False)
+        buffer = ctypes.create_string_buffer(65536)
+        read = ctypes.c_ulong()
+        chunks, total = [], 0
+        while True:
+            if not _kernel32.ReadFile(ctypes.c_void_p(handle), buffer, len(buffer),
+                                      ctypes.byref(read), None):
                 raise ctypes.WinError(ctypes.get_last_error())
-        disposition = _FILE_DISPOSITION_INFO(1)
-        if not kernel32.SetFileInformationByHandle(raw, _FileDispositionInfo,
-                                                   ctypes.byref(disposition), ctypes.sizeof(disposition)):
-            raise ctypes.WinError(ctypes.get_last_error())
+            if not read.value:
+                break
+            chunks.append(buffer.raw[:read.value])
+            total += read.value
+            if total > limit:
+                raise OSError(f'refusing an oversized metadata file: {name}')
+        return b''.join(chunks)
     finally:
-        if fd is not None:
-            os.close(fd)                               # deleting on last close
-        elif handle is not None:
-            ctypes.WinDLL('kernel32', use_last_error=True).CloseHandle(ctypes.c_void_p(handle))
+        _close_handle(handle)
 
 
-def _remove_owned_tree(root, current=None):
-    # One pass, no retry: clear read-only attributes and delete each plain object
-    # through a handle bound to it, children first. The first refusal or failure
-    # propagates, leaving the rest of the tree for manual cleanup. Every entry is
-    # still checked against the owned root passed in by cleanup().
-    if current is None:
-        current = root
-    with os.scandir(current) as entries:
-        for entry in entries:
-            path = Path(entry.path)
-            if entry.is_dir(follow_symlinks=False):
-                _remove_owned_tree(root, path)      # removes the directory itself last
-            else:
-                _remove_plain_object(root, path)
-    _remove_plain_object(root, current)
+def _purge_directory(directory_path, directory_handle):
+    # Enumerate names for their spelling only; the object behind every name is
+    # opened relative to the directory handle, so a redirected enumeration can
+    # only cause a refusal, never a change outside the owned root.
+    for name in sorted(os.listdir(directory_path)):
+        child_path = os.path.join(directory_path, name)
+        child_handle = _open_child(directory_handle, name,
+                                   _FILE_READ_ATTRIBUTES | _FILE_READ_DATA | _DELETE | _SYNCHRONIZE)
+        try:
+            info = _handle_snapshot(child_handle)
+            _assert_plain(info, child_path, directory=None)
+            if info.dwFileAttributes & _FILE_ATTRIBUTE_DIRECTORY:
+                _purge_directory(child_path, child_handle)   # emptied before it goes
+            _dispose_handle(child_handle, child_path)
+        finally:
+            _close_handle(child_handle)
 
 
-def _rmtree(root):
-    # Windows read-only objects need attribute changes; do them handle-bound.
-    # Other platforms unlink without attribute changes, so no retry is needed.
-    if os.name == 'nt':
-        _remove_owned_tree(root)
-    else:
-        shutil.rmtree(root)
+def _remove_owned_tree(root):
+    # One pass, no retry: every object is verified and deleted through handles
+    # bound to the owned root, so a parent directory redirected at any point still
+    # cannot reach an external object. The first refusal propagates.
+    root_handle = _open_owned_root(root)
+    try:
+        _assert_plain(_handle_snapshot(root_handle), root, directory=True)
+        _purge_directory(str(root), root_handle)
+        _dispose_handle(root_handle, root)
+    finally:
+        _close_handle(root_handle)
+
+
+def _remove_plain_object(root, path):
+    # Remove exactly one object below root, opening every component relative to a
+    # handle already held, so a parent replaced after inspection cannot redirect
+    # the deletion to a different object.
+    parts = _relative_parts(root, path)
+    if not parts:
+        raise OSError(f'refusing to remove the owned root itself: {path}')
+    handles = [_open_owned_root(root)]
+    try:
+        _assert_plain(_handle_snapshot(handles[0]), root, directory=True)
+        for part in parts:
+            handles.append(_open_child(handles[-1], part,
+                                       _FILE_READ_ATTRIBUTES | _FILE_READ_DATA | _DELETE | _SYNCHRONIZE))
+        _assert_plain(_handle_snapshot(handles[-1]), path, directory=None)
+        _dispose_handle(handles[-1], path)
+    finally:
+        for handle in reversed(handles):
+            _close_handle(handle)
 
 
 def cleanup(manifest):
     root = Path(manifest['root']).resolve()
-    marker = root / '.d-fixture-owner'
-    if root.name.startswith('projectmind-d-fixture-') and marker.is_file() and marker.read_text() == FORMAT:
-        # Guard against a changed manifest redirecting deletion into a foreign root.
-        saved = json.loads((root / 'manifest.json').read_text())
-        if saved != manifest: raise ValueError('Manifest changed; refusing cleanup')
-        _rmtree(root)
-    else: raise ValueError('Not an owned generated fixture; refusing cleanup')
+    if not root.name.startswith('projectmind-d-fixture-'):
+        raise ValueError('Not an owned generated fixture; refusing cleanup')
+    if os.name == 'nt':
+        handle = _open_owned_root(root)
+        try:
+            _assert_plain(_handle_snapshot(handle), root, directory=True)
+            # Owner marker and manifest are read through the same handle that is
+            # about to be purged, so a root redirected after the name check cannot
+            # pass verification while a different tree is removed.
+            if _read_under(handle, '.d-fixture-owner', 4096) != FORMAT.encode():
+                raise ValueError('Not an owned generated fixture; refusing cleanup')
+            if json.loads(_read_under(handle, 'manifest.json', 1 << 20).decode('utf-8')) != manifest:
+                raise ValueError('Manifest changed; refusing cleanup')
+            _purge_directory(str(root), handle)
+            _dispose_handle(handle, root)
+        finally:
+            _close_handle(handle)
+    else:
+        marker = root / '.d-fixture-owner'
+        if marker.is_file() and marker.read_text() == FORMAT:
+            if json.loads((root / 'manifest.json').read_text()) != manifest:
+                raise ValueError('Manifest changed; refusing cleanup')
+            shutil.rmtree(root)
+        else:
+            raise ValueError('Not an owned generated fixture; refusing cleanup')
 
 
 def main():
