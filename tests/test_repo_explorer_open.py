@@ -184,6 +184,36 @@ class OpenEndpointTests(ExplorerServerHarness):
         self.assertEqual(coverage["trackedFileCount"], 4)  # plain blobs only
         _ = head2
 
+    def test_tracked_file_count_excludes_symlinks_gitlinks_and_undecodable_names(self):
+        # R35-T1 contract pin. The accepted definition (r02-round1-answers Q5,
+        # INTERFACES_V1 §1) is: trackedFileCount counts plain blobs
+        # (100644/100755) whose names decode as UTF-8 only. Symlinks,
+        # gitlinks and non-UTF-8 names are visible in the tree with a skip
+        # reason but are never counted. A fixture with 19 plain files plus one
+        # symlink and one gitlink therefore must report 19, not 20/21 —
+        # pinning this here keeps a downstream acceptance script from
+        # redefining the number and calling a correct product a failure.
+        note_oid = run_git(self.repo, "rev-parse", "HEAD:note.txt")
+        run_git(self.repo, "update-index", "--add", "--cacheinfo",
+                f"100755,{note_oid},run.sh")
+        run_git(self.repo, "update-index", "--add", "--cacheinfo",
+                f"120000,{note_oid},link.txt")
+        run_git(self.repo, "update-index", "--add", "--cacheinfo",
+                f"160000,{self.head},vendor/lib")
+        subprocess.run(["git", "-C", str(self.repo), "update-index", "-z", "--index-info"],
+                       input=b"100644 blob " + note_oid.encode("ascii")
+                       + b"\tbad-\xff.py\0", check=True)
+        run_git(self.repo, "commit", "-qm", "mixed modes")
+        status, body = self.request("POST", "/api/repo-explorer/open", {"repoPath": str(self.repo)})
+        self.assertEqual(status, 200)
+        coverage = body["coverage"]
+        reasons = {item["path"]: item["reason"] for item in coverage["skipped"]}
+        self.assertEqual(reasons.get("link.txt"), "符号链接，首版不读取")
+        self.assertEqual(reasons.get("vendor/lib"), "子模块，首版不读取")
+        self.assertTrue(any(item.get("pathUndecodable") for item in coverage["skipped"]))
+        self.assertEqual(coverage["trackedFileCount"], 5)  # 4 originals + run.sh
+        self.assertNotIn("link.txt", str(coverage["trackedFileCount"]))
+
     def test_open_reports_encoding_declaration_failures_as_skips(self):
         # B1-a-02: tokenize.detect_encoding raises SyntaxError for unknown
         # encoding declarations; the failure must be an explicit skip that
