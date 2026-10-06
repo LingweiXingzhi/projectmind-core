@@ -3,8 +3,10 @@ import json
 import os
 from pathlib import Path
 import stat
+from types import SimpleNamespace
 import tempfile
 import unittest
+from unittest import mock
 import fixture
 from fixture import generate, cleanup, git, tracked, blob, SYMBOLS, IMPORTS
 
@@ -107,6 +109,68 @@ class CleanupRetryBoundaryTests(unittest.TestCase):
             handler(lambda path: (os.unlink(path), removed.append(path)), str(target), PermissionError('denied'))
             self.assertEqual(removed, [str(target)])
             self.assertFalse(target.exists())
+
+    def test_shared_object_with_an_outside_name_is_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            outside = Path(folder).resolve() / 'canary.bin'
+            outside.write_bytes(b'canary')
+            hard = root / 'hard.bin'
+            try:
+                os.link(outside, hard)
+            except OSError as exc:
+                self.skipTest(f'hard links unavailable here: {exc}')
+            self.assertEqual(os.lstat(hard).st_nlink, 2)
+            before = outside.stat().st_mode
+            handler = fixture._make_cleanup_handler(root)
+            calls = []
+            with self.assertRaises(PermissionError):
+                handler(lambda path: calls.append(path), str(hard), PermissionError('denied'))
+            self.assertEqual(calls, [])
+            self.assertEqual(outside.stat().st_mode, before)
+            self.assertTrue(outside.exists())
+
+    def test_redirected_parent_directory_is_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            nested = root / 'nested'
+            nested.mkdir()
+            target = nested / 'object.bin'
+            target.write_bytes(b'x')
+            real_lstat = os.lstat
+
+            def fake_lstat(path, *args, **kwargs):
+                if os.path.abspath(path) == os.path.abspath(nested):
+                    return SimpleNamespace(st_mode=stat.S_IFLNK, st_nlink=1, st_file_attributes=0)
+                return real_lstat(path, *args, **kwargs)
+
+            handler = fixture._make_cleanup_handler(root)
+            calls = []
+            with mock.patch('os.lstat', side_effect=fake_lstat):
+                with self.assertRaises(PermissionError):
+                    handler(lambda path: calls.append(path), str(target), PermissionError('denied'))
+            self.assertEqual(calls, [])
+            self.assertTrue(target.exists())
+
+    def test_undecidable_entry_metadata_is_never_retried(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            target = root / 'object.bin'
+            target.write_bytes(b'x')
+            real_lstat = os.lstat
+
+            def fake_lstat(path, *args, **kwargs):
+                if os.path.abspath(path) == os.path.abspath(target):
+                    raise OSError('metadata unavailable')
+                return real_lstat(path, *args, **kwargs)
+
+            handler = fixture._make_cleanup_handler(root)
+            calls = []
+            with mock.patch('os.lstat', side_effect=fake_lstat):
+                with self.assertRaises((PermissionError, OSError)):
+                    handler(lambda path: calls.append(path), str(target), PermissionError('denied'))
+            self.assertEqual(calls, [])
+            self.assertTrue(target.exists())
 
 
 if __name__ == '__main__': unittest.main()

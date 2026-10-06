@@ -196,26 +196,56 @@ def generate(parent=None):
     return manifest
 
 
-def _is_reparse_point(path):
-    try:
-        attributes = os.lstat(path).st_file_attributes
-    except (OSError, AttributeError):
-        return False
+def _is_reparse_point(info):
+    # Reparse state cannot be decided on platforms without st_file_attributes;
+    # an undecidable object is never retried.
+    attributes = getattr(info, 'st_file_attributes', None)
+    if attributes is None:
+        return True
     return bool(attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
 
 
+def _plain_directory(path):
+    info = os.lstat(path)
+    return stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode) and not _is_reparse_point(info)
+
+
+def _owned_plain_entry(root, path):
+    # The entry must sit under an owned root whose whole chain of directories is
+    # plain (no links, no reparse points), so a redirected parent cannot be used
+    # to reach an external object through a path that merely looks internal.
+    try:
+        if not _plain_directory(root):
+            return False
+        candidate = Path(os.path.abspath(path))
+        if candidate != root and root not in candidate.parents:
+            return False
+        for ancestor in candidate.parents:
+            if ancestor == root:
+                return True
+            if not _plain_directory(ancestor):
+                return False
+        return False
+    except OSError:
+        return False
+
+
 def _make_cleanup_handler(root):
-    # Bound the retry to the owned root: only a permission failure is retried,
-    # only for a plain file or directory inside the fixture, and never through a
-    # link or reparse point. Every other error propagates unchanged.
+    # Bound the retry to the owned root. Only a permission failure on a plain,
+    # singly-linked object inside the fixture is retried: a link, a reparse
+    # point, a shared object (st_nlink > 1), an undecidable entry or any
+    # redirected parent is re-raised unchanged so nothing outside the fixture
+    # can be touched and the tree stays for manual cleanup.
     def handler(func, path, exc):
         if not isinstance(exc, PermissionError):
             raise exc
-        candidate = Path(path)
-        if candidate.is_symlink() or _is_reparse_point(path):
+        if not _owned_plain_entry(root, path):
             raise exc
-        resolved = Path(os.path.realpath(path))
-        if resolved != root and root not in resolved.parents:
+        try:
+            entry = os.lstat(path)
+        except OSError:
+            raise exc
+        if stat.S_ISLNK(entry.st_mode) or _is_reparse_point(entry) or entry.st_nlink != 1:
             raise exc
         os.chmod(path, stat.S_IWRITE)
         func(path)
