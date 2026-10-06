@@ -70,45 +70,21 @@ class FixtureTests(unittest.TestCase):
 
 
 class CleanupRetryBoundaryTests(unittest.TestCase):
-    """R40-C1: the read-only retry stays inside the owned root and only for permission errors."""
+    """R40-C1: verification, attribute change and deletion share one bound handle."""
 
     def _owned_root(self, folder):
         root = Path(folder).resolve() / 'projectmind-d-fixture-handler'
         root.mkdir()
         return root
 
-    def test_non_permission_errors_are_never_retried(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = self._owned_root(folder)
-            handler = fixture._make_cleanup_handler(root)
-            calls = []
-            with self.assertRaises(OSError):
-                handler(lambda path: calls.append(path), str(root / 'object.bin'), OSError('boom'))
-            self.assertEqual(calls, [])
-
-    def test_paths_outside_the_owned_root_are_refused(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = self._owned_root(folder)
-            outside = Path(folder).resolve() / 'outside.txt'
-            outside.write_text('canary', encoding='utf-8')
-            handler = fixture._make_cleanup_handler(root)
-            calls = []
-            with self.assertRaises(PermissionError):
-                handler(lambda path: calls.append(path), str(outside), PermissionError('denied'))
-            self.assertEqual(calls, [])
-            self.assertTrue(outside.exists())
-
-    def test_readonly_file_inside_root_is_cleared_and_retried(self):
+    def test_plain_readonly_file_inside_root_is_removed(self):
         with tempfile.TemporaryDirectory() as folder:
             root = self._owned_root(folder)
             target = root / 'object.bin'
             target.write_bytes(b'x')
             os.chmod(target, stat.S_IREAD)
-            handler = fixture._make_cleanup_handler(root)
-            removed = []
-            handler(lambda path: (os.unlink(path), removed.append(path)), str(target), PermissionError('denied'))
-            self.assertEqual(removed, [str(target)])
-            self.assertFalse(target.exists())
+            fixture._remove_owned_tree(root)
+            self.assertFalse(root.exists())
 
     def test_shared_object_with_an_outside_name_is_refused(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -121,13 +97,21 @@ class CleanupRetryBoundaryTests(unittest.TestCase):
             except OSError as exc:
                 self.skipTest(f'hard links unavailable here: {exc}')
             self.assertEqual(os.lstat(hard).st_nlink, 2)
+            os.chmod(hard, stat.S_IREAD)
             before = outside.stat().st_mode
-            handler = fixture._make_cleanup_handler(root)
-            calls = []
-            with self.assertRaises(PermissionError):
-                handler(lambda path: calls.append(path), str(hard), PermissionError('denied'))
-            self.assertEqual(calls, [])
+            with self.assertRaises(OSError):
+                fixture._remove_plain_object(root, hard)
             self.assertEqual(outside.stat().st_mode, before)
+            self.assertTrue(outside.exists())
+            self.assertTrue(hard.exists())
+
+    def test_paths_outside_the_owned_root_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            outside = Path(folder).resolve() / 'outside.txt'
+            outside.write_text('canary', encoding='utf-8')
+            with self.assertRaises(OSError):
+                fixture._remove_plain_object(root, outside)
             self.assertTrue(outside.exists())
 
     def test_redirected_parent_directory_is_refused(self):
@@ -144,12 +128,25 @@ class CleanupRetryBoundaryTests(unittest.TestCase):
                     return SimpleNamespace(st_mode=stat.S_IFLNK, st_nlink=1, st_file_attributes=0)
                 return real_lstat(path, *args, **kwargs)
 
-            handler = fixture._make_cleanup_handler(root)
-            calls = []
             with mock.patch('os.lstat', side_effect=fake_lstat):
-                with self.assertRaises(PermissionError):
-                    handler(lambda path: calls.append(path), str(target), PermissionError('denied'))
-            self.assertEqual(calls, [])
+                with self.assertRaises(OSError):
+                    fixture._remove_plain_object(root, target)
+            self.assertTrue(target.exists())
+
+    def test_object_replaced_after_inspection_is_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            target = root / 'object.bin'
+            target.write_bytes(b'x')
+            real_fstat = os.fstat
+
+            def fake_fstat(fd):
+                info = real_fstat(fd)
+                return SimpleNamespace(st_dev=info.st_dev, st_ino=info.st_ino + 1, st_mode=info.st_mode)
+
+            with mock.patch('os.fstat', side_effect=fake_fstat):
+                with self.assertRaises(OSError):
+                    fixture._remove_plain_object(root, target)
             self.assertTrue(target.exists())
 
     def test_undecidable_entry_metadata_is_never_retried(self):
@@ -164,13 +161,29 @@ class CleanupRetryBoundaryTests(unittest.TestCase):
                     raise OSError('metadata unavailable')
                 return real_lstat(path, *args, **kwargs)
 
-            handler = fixture._make_cleanup_handler(root)
-            calls = []
             with mock.patch('os.lstat', side_effect=fake_lstat):
-                with self.assertRaises((PermissionError, OSError)):
-                    handler(lambda path: calls.append(path), str(target), PermissionError('denied'))
-            self.assertEqual(calls, [])
+                with self.assertRaises(OSError):
+                    fixture._remove_plain_object(root, target)
             self.assertTrue(target.exists())
+
+    def test_a_failing_entry_is_not_retried(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            (root / 'a.bin').write_bytes(b'a')
+            (root / 'b.bin').write_bytes(b'b')
+            calls = []
+            real_remove = fixture._remove_plain_object
+
+            def counting_remove(owned_root, path):
+                if Path(path).name == 'a.bin':
+                    calls.append(path)
+                    raise OSError('refused once')
+                return real_remove(owned_root, path)
+
+            with mock.patch.object(fixture, '_remove_plain_object', side_effect=counting_remove):
+                with self.assertRaises(OSError):
+                    fixture._remove_owned_tree(root)
+            self.assertEqual(len(calls), 1)
 
 
 if __name__ == '__main__': unittest.main()

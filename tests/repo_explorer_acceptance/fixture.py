@@ -1,5 +1,6 @@
 """Build independent committed fixtures. Never import or execute their source."""
 import argparse
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -198,58 +199,155 @@ def generate(parent=None):
 
 def _is_reparse_point(info):
     # Reparse state cannot be decided on platforms without st_file_attributes;
-    # an undecidable object is never retried.
+    # an undecidable object is never touched.
     attributes = getattr(info, 'st_file_attributes', None)
     if attributes is None:
         return True
     return bool(attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
 
 
-def _plain_directory(path):
+def _plain_object(path):
+    # One lstat snapshot: a plain, singly-linked file or directory, with decidable
+    # link/reparse state. Anything else raises and is left for manual cleanup.
     info = os.lstat(path)
-    return stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode) and not _is_reparse_point(info)
+    if stat.S_ISLNK(info.st_mode):
+        raise OSError(f'refusing a symbolic link: {path}')
+    if _is_reparse_point(info):
+        raise OSError(f'refusing a reparse point or undecidable attributes: {path}')
+    if info.st_nlink != 1:
+        raise OSError(f'refusing an object shared with another name: {path}')
+    if not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)):
+        raise OSError(f'refusing an unsupported object type: {path}')
+    return info
 
 
 def _owned_plain_entry(root, path):
     # The entry must sit under an owned root whose whole chain of directories is
-    # plain (no links, no reparse points), so a redirected parent cannot be used
-    # to reach an external object through a path that merely looks internal.
+    # plain, so a redirected parent cannot reach an external object through a
+    # path that merely looks internal. Sampled; the caller re-binds the object by
+    # handle identity before any change.
     try:
-        if not _plain_directory(root):
+        root_info = os.lstat(root)
+        if not stat.S_ISDIR(root_info.st_mode) or stat.S_ISLNK(root_info.st_mode) or _is_reparse_point(root_info):
             return False
         candidate = Path(os.path.abspath(path))
         if candidate != root and root not in candidate.parents:
             return False
+        if candidate == root:
+            return True
         for ancestor in candidate.parents:
             if ancestor == root:
                 return True
-            if not _plain_directory(ancestor):
+            info = os.lstat(ancestor)
+            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or _is_reparse_point(info):
                 return False
         return False
     except OSError:
         return False
 
 
-def _make_cleanup_handler(root):
-    # Bound the retry to the owned root. Only a permission failure on a plain,
-    # singly-linked object inside the fixture is retried: a link, a reparse
-    # point, a shared object (st_nlink > 1), an undecidable entry or any
-    # redirected parent is re-raised unchanged so nothing outside the fixture
-    # can be touched and the tree stays for manual cleanup.
-    def handler(func, path, exc):
-        if not isinstance(exc, PermissionError):
-            raise exc
-        if not _owned_plain_entry(root, path):
-            raise exc
-        try:
-            entry = os.lstat(path)
-        except OSError:
-            raise exc
-        if stat.S_ISLNK(entry.st_mode) or _is_reparse_point(entry) or entry.st_nlink != 1:
-            raise exc
-        os.chmod(path, stat.S_IWRITE)
-        func(path)
-    return handler
+if os.name == 'nt':
+    import msvcrt
+
+    _FILE_READ_ATTRIBUTES = 0x00000080
+    _FILE_WRITE_ATTRIBUTES = 0x00000100
+    _DELETE = 0x00010000
+    _FILE_SHARE_ALL = 0x00000001 | 0x00000002 | 0x00000004
+    _OPEN_EXISTING = 3
+    _FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
+    _FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
+    _FILE_ATTRIBUTE_READONLY = 0x00000001
+    _FileBasicInfo = 0
+    _FileDispositionInfo = 4
+    _INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
+
+    class _FILE_BASIC_INFO(ctypes.Structure):
+        _fields_ = [('CreationTime', ctypes.c_longlong), ('LastAccessTime', ctypes.c_longlong),
+                    ('LastWriteTime', ctypes.c_longlong), ('ChangeTime', ctypes.c_longlong),
+                    ('FileAttributes', ctypes.c_uint32)]
+
+    class _FILE_DISPOSITION_INFO(ctypes.Structure):
+        _fields_ = [('DeleteFile', ctypes.c_ubyte)]
+
+
+def _open_object(path):
+    # Open the exact object, never through a link or reparse point, with the
+    # access needed to inspect it, clear attributes and delete it.
+    if os.name != 'nt':
+        raise OSError('handle-bound removal is only implemented for Windows')
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    handle = kernel32.CreateFileW(str(path),
+                                  _FILE_READ_ATTRIBUTES | _FILE_WRITE_ATTRIBUTES | _DELETE,
+                                  _FILE_SHARE_ALL, None, _OPEN_EXISTING,
+                                  _FILE_FLAG_OPEN_REPARSE_POINT | _FILE_FLAG_BACKUP_SEMANTICS, None)
+    if handle in (None, _INVALID_HANDLE_VALUE):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return handle
+
+
+def _remove_plain_object(root, path):
+    # Verify, clear the read-only attribute and delete through ONE handle. The
+    # opened object is compared with the inspected snapshot by device, inode and
+    # file type, so a parent swapped after the check can no longer redirect the
+    # attribute change or the deletion: both act on the handle, not on the path.
+    if not _owned_plain_entry(root, path):
+        raise OSError(f'refusing a path outside the owned plain root: {path}')
+    info = _plain_object(path)
+    handle = _open_object(path)
+    fd = None
+    try:
+        fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
+        handle = None                                  # ownership moved to the fd
+        opened = os.fstat(fd)
+        if (opened.st_dev, opened.st_ino, stat.S_IFMT(opened.st_mode)) != \
+           (info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode)):
+            raise OSError(f'refusing an object that changed after inspection: {path}')
+        raw = ctypes.c_void_p(msvcrt.get_osfhandle(fd))
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        basic = _FILE_BASIC_INFO()
+        if not kernel32.GetFileInformationByHandleEx(raw, _FileBasicInfo,
+                                                     ctypes.byref(basic), ctypes.sizeof(basic)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if basic.FileAttributes & _FILE_ATTRIBUTE_READONLY:
+            basic.FileAttributes &= ~_FILE_ATTRIBUTE_READONLY
+            if not kernel32.SetFileInformationByHandle(raw, _FileBasicInfo,
+                                                       ctypes.byref(basic), ctypes.sizeof(basic)):
+                raise ctypes.WinError(ctypes.get_last_error())
+        disposition = _FILE_DISPOSITION_INFO(1)
+        if not kernel32.SetFileInformationByHandle(raw, _FileDispositionInfo,
+                                                   ctypes.byref(disposition), ctypes.sizeof(disposition)):
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        if fd is not None:
+            os.close(fd)                               # deleting on last close
+        elif handle is not None:
+            ctypes.WinDLL('kernel32', use_last_error=True).CloseHandle(ctypes.c_void_p(handle))
+
+
+def _remove_owned_tree(root, current=None):
+    # One pass, no retry: clear read-only attributes and delete each plain object
+    # through a handle bound to it, children first. The first refusal or failure
+    # propagates, leaving the rest of the tree for manual cleanup. Every entry is
+    # still checked against the owned root passed in by cleanup().
+    if current is None:
+        current = root
+    with os.scandir(current) as entries:
+        for entry in entries:
+            path = Path(entry.path)
+            if entry.is_dir(follow_symlinks=False):
+                _remove_owned_tree(root, path)      # removes the directory itself last
+            else:
+                _remove_plain_object(root, path)
+    _remove_plain_object(root, current)
+
+
+def _rmtree(root):
+    # Windows read-only objects need attribute changes; do them handle-bound.
+    # Other platforms unlink without attribute changes, so no retry is needed.
+    if os.name == 'nt':
+        _remove_owned_tree(root)
+    else:
+        shutil.rmtree(root)
 
 
 def cleanup(manifest):
@@ -259,7 +357,7 @@ def cleanup(manifest):
         # Guard against a changed manifest redirecting deletion into a foreign root.
         saved = json.loads((root / 'manifest.json').read_text())
         if saved != manifest: raise ValueError('Manifest changed; refusing cleanup')
-        shutil.rmtree(root, onexc=_make_cleanup_handler(root))
+        _rmtree(root)
     else: raise ValueError('Not an owned generated fixture; refusing cleanup')
 
 
