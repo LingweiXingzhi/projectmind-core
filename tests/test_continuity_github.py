@@ -125,8 +125,11 @@ class GitHubExperimentTests(unittest.TestCase):
                              self.repo / '.git' / 'projectmind-worklog-github' / 'records.sqlite3')
             self.assertEqual(task_store.path,
                              self.repo / '.git' / 'projectmind-continuity-github' / 'records.sqlite3')
-            self.assertEqual(Path(common.decode().strip()).resolve(),
-                             (self.repo / '.git').resolve())
+            # `--git-common-dir` may answer relative to the repository (-C);
+            # an absolute answer can only come from a redirected GIT_DIR.
+            self.assertEqual(
+                Path(os.path.join(str(self.repo), common.decode().strip())).resolve(),
+                (self.repo / '.git').resolve())
             self.assertFalse((other / '.git' / 'projectmind-worklog-github').exists())
             self.assertFalse((other / '.git' / 'projectmind-continuity-github').exists())
 
