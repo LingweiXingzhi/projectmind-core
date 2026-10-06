@@ -1,6 +1,10 @@
 // 仓库浏览视图（repo explorer）— A 主线新增，不改动旧地图接口语义。
 // 数据全部来自 /api/repo-explorer/*（schemaVersion 1）。
 // 异步防串：每个请求携带自增令牌，响应返回时若令牌已过期则丢弃（设计门 Q3）。
+// F1（独立终审）：整体包入 IIFE——本脚本的顶层声明（含与 review.js 冲突的
+// renderChanges）不再进入 window，classic script 加载顺序无法再覆盖旧地图流程。
+(function () {
+"use strict";
 
 const explorerState = {
   projectId: null,
@@ -269,6 +273,11 @@ function renderTreeNode(node, query) {
       renderTree(document.getElementById("explorer-search").value.trim());
     });
   } else {
+    if (node.pathUndecodable) {
+      // 终审 F4：非 UTF-8 路径仅展示（base64 身份 + 跳过原因），禁止源码
+      // 跳转——展示文本不能作为可寻址路径使用。
+      return item;
+    }
     row.addEventListener("click", () => {
       for (const other of document.querySelectorAll(".explorer-row.selected")) {
         other.classList.remove("selected");
@@ -282,10 +291,20 @@ function renderTreeNode(node, query) {
 
 // ---------- 文件正文 ----------
 function showFileMessage(message) {
+  // F2（独立终审）：读取失败的页面不得残留任何上一文件的结果——正文被
+  // 错误信息替换时，符号 chips、关系面板、文件标签与在途请求一并清除。
+  explorerState.fileCursor = null;
+  explorerState.fileElements = null;
+  explorerState.symbolToken += 1;
+  explorerState.relationToken += 1;
   const view = document.getElementById("explorer-file-view");
   view.replaceChildren(explorerElement("div", "explorer-empty", message));
   document.getElementById("explorer-file-head").hidden = true;
-  explorerState.fileCursor = null;
+  document.getElementById("explorer-more").hidden = true;
+  document.getElementById("explorer-file-path").textContent = "未选择文件";
+  document.getElementById("explorer-file-range").textContent = "";
+  document.getElementById("explorer-symbols").replaceChildren();
+  document.getElementById("explorer-relations").replaceChildren();
 }
 
 async function openExplorerFile(path, startLine = 1, ctx = null, retried = false) {
@@ -593,3 +612,4 @@ document.getElementById("explorer-search").addEventListener("input", (event) => 
 document.getElementById("explorer-more").addEventListener("click", loadMoreFile);
 document.getElementById("explorer-compare-form").addEventListener("submit", runCompare);
 detectModeAndInitExplorer();
+})();

@@ -11,6 +11,7 @@ Contract highlights (accepted in the A-20261006-0007 design gate):
 """
 from __future__ import annotations
 
+import base64
 import io
 import re
 import threading
@@ -97,11 +98,14 @@ def _read_manifest(repo_root: Path, revision: str) -> list[dict]:
         size = None if size_raw == b"-" else int(size_raw)
         try:
             path = raw_path.decode("utf-8")
+            identity = None
         except UnicodeError:
             path = None
+            identity = _undecodable_identity(raw_path)
         entries.append({
             "path": path,
             "raw_path": raw_path,
+            "identity": identity,
             "mode": mode,
             "object_type": object_type,
             "oid": oid.decode("ascii"),
@@ -154,7 +158,12 @@ def _classify_and_read(repo_root: Path, entries: list[dict]) -> tuple[dict[str, 
     candidates: list[tuple[str, dict]] = []
     for entry in entries:
         if entry["path"] is None:
-            skipped.append({"path": entry["raw_path"].decode("utf-8", "backslashreplace"),
+            # 终审 F4：非法 UTF-8 名以 base64 身份进 skipped/树，display 文本
+            # 仅作展示——不同原始字节路径永不合并，也不会与合法路径同名碰撞。
+            display = entry["raw_path"].decode("utf-8", "backslashreplace")
+            skipped.append({"path": display,
+                            "pathIdentity": entry["identity"],
+                            "pathUndecodable": True,
                             "reason": REASON_NAME_ENCODING})
             continue
         manifest[entry["path"]] = entry
@@ -210,6 +219,18 @@ def _decode_git_path(token: bytes) -> tuple[str, bool]:
         return token.decode("utf-8"), False
     except UnicodeError:
         return token.decode("utf-8", "backslashreplace"), True
+
+
+def _undecodable_identity(raw_path: bytes) -> str:
+    """Collision-free identity for a non-UTF-8 Git path (终审 F4).
+
+    The backslashreplace display text could coincide with a *legal* file
+    name that literally contains those characters, so the identity carried
+    by the API is the base64 of the original bytes — two different raw byte
+    paths always map to two different identities, and the Git original is
+    preserved rather than a re-escaped display string.
+    """
+    return "b64:" + base64.b64encode(raw_path).decode("ascii")
 
 
 def parse_name_status(raw: bytes) -> list[dict]:
@@ -344,14 +365,19 @@ class ExplorerRegistry:
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
         lines = _split_source_lines(context.sources[path])
         total_lines = len(lines)
-        if total_lines == 0:
-            return self._file_response(context, path, 0, 0, 0, "", False)
-        if start_line < 1 or end_line < start_line or start_line > total_lines:
+        # 参数校验先于空文件提前返回（终审 F3）：空文件同样不得绕过
+        # startLine/endLine 的合法性检查。
+        if start_line < 1 or end_line < start_line:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "LINE_RANGE_INVALID",
                                 "行号范围无效")
         if end_line - start_line + 1 > MAX_LINES_PER_REQUEST:
             raise ExplorerError(HTTPStatus.BAD_REQUEST, "LINE_RANGE_TOO_LARGE",
                                 f"单次最多返回 {MAX_LINES_PER_REQUEST} 行")
+        if total_lines == 0:
+            return self._file_response(context, path, 0, 0, 0, "", False)
+        if start_line > total_lines:
+            raise ExplorerError(HTTPStatus.BAD_REQUEST, "LINE_RANGE_INVALID",
+                                "行号范围无效")
         clipped_end = min(end_line, total_lines)
         content = "".join(lines[start_line - 1:clipped_end])
         returned = clipped_end - start_line + 1
@@ -509,6 +535,10 @@ class ExplorerRegistry:
             return ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID", message)
         if "2000" in message or "16 MiB" in message or "1 MiB" in message:
             return ExplorerError(HTTPStatus.BAD_REQUEST, "BUDGET_EXCEEDED", message)
+        if "对象" in message and "不可用" in message:
+            # 终审 F5：对象缺失是明确的一类失败（仓库未补全对象），不得
+            # 混入 REPO_UNREADABLE。
+            return ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "OBJECT_MISSING", message)
         return ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "REPO_UNREADABLE", message)
 
     # -- tree ----------------------------------------------------------------
@@ -517,7 +547,11 @@ class ExplorerRegistry:
         directories: dict[str, dict] = {}
         files: list[dict] = []
         for record in context.entries:
-            path = record["path"] or record["raw_path"].decode("utf-8", "backslashreplace")
+            undecodable = record["path"] is None
+            if undecodable:
+                path = record["raw_path"].decode("utf-8", "backslashreplace")
+            else:
+                path = record["path"]
             segments = path.split("/")
             for index in range(1, len(segments)):
                 dir_path = "/".join(segments[:index])
@@ -534,14 +568,19 @@ class ExplorerRegistry:
                 "kind": "file",
                 "language": "python" if path.endswith((".py", ".pyi")) else None,
             }
-            if path not in context.allowed:
+            if undecodable:
+                # 终审 F4：展示文本之外携带 base64 身份；前端据此禁止源码跳转。
+                entry["pathUndecodable"] = True
+                entry["pathIdentity"] = record["identity"]
+                entry["skippedReason"] = next(
+                    (item["reason"] for item in context.skipped
+                     if item.get("pathIdentity") == record["identity"]),
+                    REASON_NAME_ENCODING)
+            elif path not in context.allowed:
                 reason = next((item["reason"] for item in context.skipped
                                if item["path"] == path), None)
-                if reason is None:
-                    reason = next((item["reason"] for item in context.skipped
-                                   if item["path"] == record["raw_path"].decode("utf-8", "backslashreplace")),
-                                  REASON_NAME_ENCODING)
-                entry["skippedReason"] = reason
+                if reason is not None:
+                    entry["skippedReason"] = reason
             files.append(entry)
         entries = sorted(files + list(directories.values()), key=lambda item: item["path"])
         return {
