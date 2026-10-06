@@ -11,12 +11,15 @@
 ## 一条完整用户路径
 
 1. **交：保存当前接续点。** 填任务标题、目标、已完成、停止位置、第一步、运行/复现方法和完成标准。可写行动清单、选择优先阅读的功能和日志。选择是否比较 main/完整 SHA、是否携带未提交文本差异、是否携带日志原件。
-2. **交：标记准备好。** 在“接手与反馈”选择“准备好交接”；目标、停止位置、第一步、完成标准缺失时明确提示。可交接不代表接收者已接住。
+2. **传：直接交出资料。** 保存后即可导出，不必在反馈下拉框中先切换“准备好”状态。保存的资料不代表接收者已接住。
 3. **传：导出或原地打开。** “历史与导出”可下载完整接续 JSON、中文 Markdown、复制给新 AI、下载兼容旧工具的原格式 Handoff。跨设备通过文件交换，不自动发送消息。
 4. **接：接收资料。** 另一台设备导入接续 JSON 或原 Handoff JSON。导入建立新的本机记录，不覆盖原记录，不执行命令、不检出代码、不写入工作日志。旧文件没有任务说明时，可编辑补充。
 5. **接：先检查。** 在接手页核对来源地址、包内提交是否存在、当前提交是否相同、地图内容是否变化、工作区是否有未提交工作。来源相符且提交存在时，复用公共 Git 比较，列出从交接提交到当前提交的变化，并按保存的地图证据匹配复核项。
-6. **接：记录结果。** 操作者填写姓名或工具名称（自行声明），完成材料、环境/复现、目标理解和第一步四项检查，再记录继续工作；可以提出问题、补充进展、记录阻塞和解除阻塞。检查单只表达参与者确认，不是独立验证。
-7. **继续：保存清单与反馈。** 清单可记录待做/已做/阻塞、实际结果和依据。完成所有清单项，并写完成说明与验证依据，才可记录本次完成。已完成记录保留为历史，可以“建立下一次接续”而不覆盖它。
+6. **接：开始工作。** 填写姓名或工具名称（自行声明），点击“接手”，无需先执行多次状态切换。四项检查收进“接手检查 · 选填”，未勾选不算验证通过。日常操作只有接手、记录进展、记录问题、结束；工作中不再重复显示接手按钮。
+7. **工作：记录进展或问题。** 问题与阻塞放在同一入口，用“这个问题让我暂时无法继续工作”说明影响；工作无法继续时显示“问题待处理”，之后在同一个接手位置点击“继续工作”并说明处理情况。清单状态为待做/已做/遇到问题。
+8. **结束：区分本次接手与整个任务。** “结束本次接手”允许保留未完成项，填写本次结果、停止位置和下一步，保存后等待下一次接手；任务仍未完成。若选择“整个任务已完成”，页面直接列出未完成清单并提供“去处理清单”，全部已做且有结果/验证依据才可完成。已完成任务保留为历史，可建立下一次接续。
+
+普通提示在最后一次显示约 5 秒后消失，连续提示会重新计时。操作失败的原因同时保留在表单里，文字不会因提示消失而丢失。相同的日志正文与原件预览不再重复展示，原件仍可下载。
 
 ## 与日志怎样结合
 
@@ -54,7 +57,11 @@ POST 新建最小样例：
 
 可选继承原交接的 `comparisonMode:"main"` / `baseRevision` / `aiCandidates` / `workNotes`。新增 `includeWorktreeDiff`、`includeAttachments` 均默认 false；`logIds` 最多 30 项；`scope` 是地图节点 ID 列表，只表示阅读优先级，完整地图保留。
 
-`update`、`refresh_checkpoint`、`event`、`followup` 必须传 `id` 和 `expectedVersion`。`update` 可改 task/checklist/scope；`refresh_checkpoint` 可另外固定当前代码、比较与日志，重置接手检查。`event` 传 `kind`、`actor`、`origin:human|ai`、`note`、`evidence`。kind 为 ready/receive/start/block/resume/complete/question/note。start/resume 额外传四项均为 true 的 review：materials/environment/understanding/nextStep。
+`update`、`refresh_checkpoint`、`event`、`followup` 必须传 `id` 和 `expectedVersion`。`update` 可改 task/checklist/scope；`refresh_checkpoint` 可另外固定当前代码、比较与日志，重置接手检查。`event` 传 `kind`、`actor`、`origin:human|ai`、`note`、`evidence`。
+
+旧事件 ready/receive/start/block/resume/complete/question/note 继续支持；旧 start/resume 仍要求四项为 true 的 review，保证旧调用约定不静默变化。新 UI 使用 claim 直接接手，review 可省略或部分填写，但所有值须为布尔值，不补造已通过检查。记录问题按影响使用 question 或 block，区别只在内部保留。
+
+新增 finish_session：要求非空 note、stopPoint、nextAction。它在同一事务中更新接续摘要并记录事件，将状态设为已有的 ready（待接手），不改清单、不把任务标为 completed。新版导入保留事件中的停止位置和下一步；旧版可继续读取 task 中相同的字段。JSON 格式名、状态值、原 Handoff、日志和数据库位置不变，不需要迁移旧数据。新行为需使用本分支的新 UI。
 
 导入 JSON 超过宿主单次 64 KiB 请求上限时顺序调用 `import_start`（filename/size）→ `import_chunk`（uploadId/offset/base64，每片 24 KiB）→ `import_finish`；失败可 `import_cancel`。会话 24 小时后清理，最多 8 个。小包也可 `import_packet`。错误 400（格式/状态/材料），404（缺失记录），409（版本冲突/状态不允许），429（导入会话过多）；不会自动联网 fetch。
 
@@ -62,4 +69,10 @@ POST 新建最小样例：
 
 运行 `python3 -m unittest discover -s tests -v`。新增 `tests/test_continuity.py` 覆盖发起/接收/反馈/阻塞/恢复/完成、持久化与历史、并发冲突、日志快照与附件、来源/代码/地图核对、重命名与未提交改动、旧包导入和真实 HTTP。浏览器验收另外记录，不把纯 DOM 检查当视觉验收。
 
+Issue #42 的补充检查：`node tests/check_continuity_ui.js` 使用 Node 标准库执行实际 UI 函数，检查 5 秒计时重置、四类动作、问题影响、两种结束方式、错误保留与草稿保留；这是逻辑检查，不是浏览器或视觉验收。产品运行不依赖 Node。
+
+本轮从实际交接提交 `8f00be38532f3f5e9823aec8cbf430038cc9ff4b` 建立 `feat/42-continuity-usability`，原分支未改。2026-10-06 实测：53 项 Python 测试通过（含新动作的真实 HTTP、结束/导出/重导入与旧功能回归），Node 逻辑检查及页面脚本语法检查通过。浏览器视觉与真实点击仍待本机确认：执行环境未安装本地 Chromium，云端浏览器访问隔离端口被 ERR_BLOCKED_BY_CLIENT 拒绝，不以逻辑检查替代浏览器验收。
+
 Project Model Impact：UPDATE（建议）。新增 D 工作接续职责与代码映射，保留原交接/日志边界；由团队确认后登记，当前不改正式模型或 A 公共主线。
+
+2026-10-06 的本轮简化：Project Model Impact = MINOR，仅改本模块内部交互与接续事件，不新增模块职责，不写正式地图。原先新增模块的 UPDATE 建议仍属于历史交付。
