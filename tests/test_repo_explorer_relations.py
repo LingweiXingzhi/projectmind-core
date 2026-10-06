@@ -37,7 +37,7 @@ from app import make_handler
 from repo_index.explorer import ExplorerRegistry
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED_PYTHON_FILES = 24  # .py/.PY files the open budget indexed (huge.py is over 1 MiB)
+ALLOWED_PYTHON_FILES = 27  # .py/.PY files the open budget indexed (huge.py is over 1 MiB)
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -94,6 +94,12 @@ class RelationsEndpointTests(unittest.TestCase):
         write("src/core/sub/__init__.py", "")
         write("src/core/sub/mod.py", "from .. import helper\n")
         write("src/tool.py", "from . import helper\n")
+        # An absolute import from a file that sits DIRECTLY in a search root:
+        # d = 0 kills its relative imports, but its own search root still
+        # governs absolute lookups (`src/srcpkg/helper.py`).
+        write("src/srcpkg/__init__.py", "")
+        write("src/srcpkg/helper.py", "def src_helper():\n    return 4\n")
+        write("src/consumer.py", "from srcpkg.helper import src_helper\n")
         # -- repository root: no package context ---------------------------------
         write("service.py", "from . import helper\n")
         # a case-variant Python file: same parser support, so it must be scanned
@@ -258,6 +264,16 @@ class RelationsEndpointTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(body["imports"][0]["resolution"],
                          {"status": "unresolved", "targetPath": None, "candidates": []})
+
+    def test_absolute_import_uses_the_search_root_of_a_context_free_file(self):
+        # `src/consumer.py` has no package context (it sits directly in the
+        # search root), but `from srcpkg.helper import src_helper` must still
+        # resolve inside `src/`.
+        status, body = self._relations("src/consumer.py")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["imports"][0]["resolution"],
+                         {"status": "resolved", "targetPath": "src/srcpkg/helper.py",
+                          "candidates": ["src/srcpkg/helper.py"]})
 
     # -- reverse scan ---------------------------------------------------------
     def test_dependents_only_count_resolved_records(self):

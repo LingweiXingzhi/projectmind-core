@@ -350,24 +350,31 @@ def _is_package(directory: str, index: dict) -> bool:
             or (f"{directory}/__init__", "pyi") in index)
 
 
-def _package_context(source_path: str, index: dict) -> tuple[str, list[str]] | None:
-    """(search root, package components) for a file inside a package.
+def _package_context(source_path: str, index: dict) -> tuple[str, list[str]]:
+    """`(search root, package components)` for a file (r04 R3-Q1).
 
-    The package is the maximal run of consecutive package directories holding
-    the file, and the search root is the directory just above it (r04 R3-Q1:
-    `src/pkg/mod.py` -> search root `src`, package `pkg`, depth d = 1). A file
-    that is not inside a package directory — including one sitting directly in
-    a search root, and one under a namespace package with no `__init__` — has
-    no package context at all, so every relative import in it is unresolved.
+    The search root is the deepest ancestor directory of the file that is not
+    itself a package; the package components are the package chain below it, so
+    the package name is the dotted path from the search root down to the file's
+    own directory and the depth `d` is its length:
+
+    - `src/core/mod.py` -> search root `src`, package `core`, d = 1
+    - `src/consumer.py` -> search root `src`, package "", d = 0 (directly under
+      a search root: no package context, but the search root still governs its
+      ABSOLUTE imports)
+    - `pkg/ns/inner.py` where `pkg/ns` has no `__init__.py` -> search root
+      `pkg/ns`, package "", d = 0 (the PEP 420 namespace shape)
+    - `service.py` at the repository root -> search root "", package "", d = 0
+
+    `d == 0` means every RELATIVE import is unresolved; it does not mean the
+    file has no search root.
     """
     directory = posixpath.dirname(source_path)
-    if not directory or not _is_package(directory, index):
-        return None
-    parts = directory.split("/")
+    parts = directory.split("/") if directory else []
     depth = len(parts)
-    while depth > 1 and _is_package("/".join(parts[:depth - 1]), index):
+    while depth > 0 and _is_package("/".join(parts[:depth]), index):
         depth -= 1
-    return "/".join(parts[:depth - 1]), parts[depth - 1:]
+    return "/".join(parts[:depth]), parts[depth:]
 
 
 def _module_matches(prefix: str, index: dict) -> list[str]:
@@ -409,11 +416,10 @@ def _import_prefixes(entry: dict, source_path: str, index: dict
     level = entry.get("level") or 0
     module_rest = (entry.get("module") or "").replace(".", "/")
     name = entry.get("name")
-    context = _package_context(source_path, index)
+    search_root, package_parts = _package_context(source_path, index)
     if level:
-        if context is None:
+        if not package_parts:
             return [], [], False, "文件不在包内，相对导入没有包语境"
-        search_root, package_parts = context
         if level > len(package_parts):
             return [], [], False, (f"相对导入越出顶层包（level={level} > 包深度 {len(package_parts)}）")
         base = "/".join(part for part in
@@ -421,7 +427,9 @@ def _import_prefixes(entry: dict, source_path: str, index: dict
                          "/".join(package_parts[:len(package_parts) - (level - 1)])) if part)
         roots = [base]
     else:
-        roots = [""] + ([context[0]] if context and context[0] else [])
+        # Absolute imports are looked up from the repository root and from the
+        # file's own search root (r03 R2-Q7), never across another search root.
+        roots = [""] + ([search_root] if search_root else [])
     module_prefixes = [target for target in
                        ("/".join(part for part in (root, module_rest) if part) for root in roots)
                        if target]
