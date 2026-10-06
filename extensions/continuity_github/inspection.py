@@ -1,5 +1,6 @@
 """Read-only checks against the selected repository, never imported paths."""
 import hashlib
+import os
 import re
 import subprocess
 from urllib.parse import urlsplit
@@ -9,11 +10,22 @@ from extensions.continuity_github.model import path, strings, fail, validate_log
 
 
 def git(repo, *args):
+    # R35-D1: same hardened runner as extensions/continuity/inspection.py —
+    # the explicit repo argument wins over inherited GIT_* environment
+    # (GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR / ...), and a partial clone is
+    # never allowed to fetch missing objects.
+    env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    env.update({'GIT_TERMINAL_PROMPT': '0', 'GIT_OPTIONAL_LOCKS': '0',
+                'GIT_NO_REPLACE_OBJECTS': '1', 'GIT_NO_LAZY_FETCH': '1', 'LC_ALL': 'C'})
     try:
-        r = subprocess.run(['git', '-C', str(repo), *args], capture_output=True, timeout=10)
+        r = subprocess.run(['git', '--no-lazy-fetch', '-C', str(repo), *args],
+                           capture_output=True, timeout=10, env=env,
+                           stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired):
         fail('Git 读取失败或超时，请检查本机仓库')
     if r.returncode:
+        if r.returncode == 129 and b'no-lazy-fetch' in (r.stderr or b''):
+            fail('Git 版本需支持 --no-lazy-fetch，请升级 Git 后重试')
         fail('当前仓库无法读取所需 Git 资料')
     return r.stdout
 

@@ -1,5 +1,6 @@
 """Independently owned HTTP adapter for the D handoff draft."""
 from http import HTTPStatus
+import os
 import subprocess
 from extension_host import ExtensionError
 from extensions.handoff.handoff import HandoffError, SHA, build_handoff, render_markdown, render_ai_context
@@ -10,10 +11,14 @@ CORE_SOURCE = 'https://github.com/LingweiXingzhi/projectmind-core'
 
 def main_revision(context):
     """Resolve the locally fetched remote tracking ref, without network access."""
+    # R35-D1: the explicit repo argument wins over inherited GIT_* environment
+    # (GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR / ...), so the handoff draft
+    # can never pick up another repository's origin/main.
+    env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
     try:
         result = subprocess.run(['git', '-C', str(context.repo), 'rev-parse', '--verify',
                                  'refs/remotes/origin/main^{commit}'], capture_output=True,
-                                text=True, timeout=5)
+                                text=True, timeout=5, env=env)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise HandoffError('无法读取本机 origin/main，请检查 Git 仓库') from exc
     revision = result.stdout.strip()

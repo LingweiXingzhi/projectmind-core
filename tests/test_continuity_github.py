@@ -16,6 +16,7 @@ REMOTE = fixtures.REMOTE
 from app import make_handler
 from extension_host import ExtensionError
 from extensions.continuity_github.extension import handle
+from extensions.continuity_github.inspection import git as inspection_git
 from extensions.continuity_github.references import references
 from extensions.continuity_github.logs import repository_store as logs
 from extensions.continuity_github.store import repository_store as tasks
@@ -119,10 +120,13 @@ class GitHubExperimentTests(unittest.TestCase):
                        'GIT_COMMON_DIR': str(other / '.git')}
             with patch.dict(os.environ, hostile):
                 log_store, task_store = logs(self.repo), tasks(self.repo)
+                common = inspection_git(self.repo, 'rev-parse', '--git-common-dir')
             self.assertEqual(log_store.path,
                              self.repo / '.git' / 'projectmind-worklog-github' / 'records.sqlite3')
             self.assertEqual(task_store.path,
                              self.repo / '.git' / 'projectmind-continuity-github' / 'records.sqlite3')
+            self.assertEqual(Path(common.decode().strip()).resolve(),
+                             (self.repo / '.git').resolve())
             self.assertFalse((other / '.git' / 'projectmind-worklog-github').exists())
             self.assertFalse((other / '.git' / 'projectmind-continuity-github').exists())
 

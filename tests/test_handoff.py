@@ -1,9 +1,11 @@
 import copy
 import json
+import os
 import subprocess
 import tempfile
 import unittest
 import threading
+from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -57,6 +59,34 @@ class HandoffTests(unittest.TestCase):
         candidate['explanation']['evidencePaths'] = ['invented.py']
         with self.assertRaises(HandoffError):
             self.build(ai_candidates=[candidate])
+
+    def test_main_revision_ignores_inherited_git_environment(self):
+        # R35-D1: resolving the handoff draft's origin/main must never follow
+        # an inherited GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR into a
+        # different real repository (there it would read that repository's
+        # origin/main, or fail outright).
+        from extensions.handoff.extension import main_revision
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / 'repo'
+            repo.mkdir()
+            subprocess.run(['git', 'init', '-q', '-b', 'main', str(repo)], check=True)
+            subprocess.run(['git', '-C', str(repo), 'config', 'user.name', 'T'], check=True)
+            subprocess.run(['git', '-C', str(repo), 'config', 'user.email', 't@example.invalid'], check=True)
+            (repo / 'a.py').write_text('x = 1\n', encoding='utf-8')
+            subprocess.run(['git', '-C', str(repo), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(repo), 'commit', '-qm', 'base'], check=True)
+            head = subprocess.run(['git', '-C', str(repo), 'rev-parse', 'HEAD'],
+                                  capture_output=True, check=True).stdout.decode().strip()
+            subprocess.run(['git', '-C', str(repo), 'update-ref',
+                            'refs/remotes/origin/main', head], check=True)
+            other = Path(tmp) / 'other'
+            other.mkdir()
+            subprocess.run(['git', 'init', '-q', str(other)], check=True)
+            self.assertEqual(main_revision(SimpleNamespace(repo=repo)), head)
+            with patch.dict(os.environ, {'GIT_DIR': str(other / '.git'),
+                                         'GIT_WORK_TREE': str(other),
+                                         'GIT_COMMON_DIR': str(other / '.git')}):
+                self.assertEqual(main_revision(SimpleNamespace(repo=repo)), head)
 
     def test_local_path_and_missing_evidence_visible(self):
         self.fixture['snapshot']['nodes'][0]['evidence'][0]['existsAtCommit'] = False
