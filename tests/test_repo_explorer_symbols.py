@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -44,6 +45,10 @@ class SymbolsEndpointTests(unittest.TestCase):
         (self.repo / "empty.py").write_text("", encoding="utf-8")
         (self.repo / "broken.py").write_text("def oops(:\n", encoding="utf-8")
         (self.repo / "notes.txt").write_text("plain\n", encoding="utf-8")
+        # A browsable text file whose first line looks like a coding cookie: it
+        # must answer `unsupported`, not a 500 decoding failure (R48-08).
+        (self.repo / "cookie.txt").write_text(
+            "# coding: nonexistent-charset\n说明\n", encoding="utf-8")
         (self.repo / "big.log").write_text("y" * (1_048_576 + 1), encoding="utf-8")
         run_git(self.repo, "add", ".")
         run_git(self.repo, "commit", "-qm", "symbols sample")
@@ -71,6 +76,16 @@ class SymbolsEndpointTests(unittest.TestCase):
         from urllib.parse import quote
         conn = HTTPConnection("127.0.0.1", self.port, timeout=10)
         conn.request("GET", f"/api/repo-explorer/symbols?projectId={self.project_id}"
+                            f"&revision={self.head}&path={quote(path)}")
+        response = conn.getresponse()
+        raw = response.read()
+        conn.close()
+        return response.status, json.loads(raw)
+
+    def _file(self, path: str):
+        from urllib.parse import quote
+        conn = HTTPConnection("127.0.0.1", self.port, timeout=10)
+        conn.request("GET", f"/api/repo-explorer/file?projectId={self.project_id}"
                             f"&revision={self.head}&path={quote(path)}")
         response = conn.getresponse()
         raw = response.read()
@@ -139,6 +154,36 @@ class SymbolsEndpointTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(body["status"], "unsupported")
         self.assertEqual(body["symbols"], [])
+
+    def test_coding_cookie_in_a_non_python_file_stays_browsable(self):
+        # R48-08: PEP 263 applies to Python sources only. A UTF-8 text file
+        # whose first line merely looks like a cookie must stay browsable by
+        # `file`, and symbols must answer `unsupported` for it — not a 500
+        # raised by the Python encoding reader.
+        status, file_body = self._file("cookie.txt")
+        self.assertEqual(status, 200)
+        self.assertIn("说明", file_body["content"])
+        status, body = self._symbols("cookie.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["status"], "unsupported")
+        self.assertEqual(body["symbols"], [])
+
+    def test_non_python_symbols_never_consult_the_pep263_reader(self):
+        # The same boundary at the reader itself: making the Python encoding
+        # reader unusable must not change the answer for a non-Python file,
+        # while a Python file still goes through it.
+        import repo_index.explorer as explorer
+        with mock.patch.object(explorer, "read_source",
+                               side_effect=AssertionError("PEP 263 reader used on a text file")):
+            status, body = self._symbols("notes.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["status"], "unsupported")
+        with mock.patch.object(explorer, "read_source",
+                               wraps=explorer.read_source) as reader:
+            status, body = self._symbols("service.py")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["parser"], "python_ast_v1")
+        self.assertTrue(reader.called)
 
     def test_oversized_file_shares_open_admission(self):
         status, body = self._symbols("big.log")

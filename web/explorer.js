@@ -593,7 +593,15 @@ async function loadRelations(path, ctx = null) {
           `${item.kind} ${module} · 行 ${item.line} ${suffix}`);
         chip.type = "button";
         if (resolution.status === "resolved" && resolution.targetPath) {
-          chip.addEventListener("click", () => openExplorerFile(resolution.targetPath));
+          // The jump stays bound to the relations response's own version
+          // context, so opening a relation of an OLD revision reads that
+          // revision — never the main browser's SHA (R48-04).
+          chip.addEventListener("click", () => {
+            const jump = relationJumpParams(
+              context, { projectId: explorerState.projectId, revision: explorerState.revision },
+              resolution.targetPath);
+            openExplorerFile(jump.path, jump.startLine, jump.context);
+          });
         } else {
           chip.disabled = true;
         }
@@ -608,13 +616,23 @@ async function loadRelations(path, ctx = null) {
         const chip = explorerElement("button", "explorer-symbol-chip",
           `${dep.path} · 行 ${dep.line}`);
         chip.type = "button";
-        chip.addEventListener("click", () => openExplorerFile(dep.path));
+        chip.addEventListener("click", () => {
+          const jump = relationJumpParams(
+            context, { projectId: explorerState.projectId, revision: explorerState.revision },
+            dep.path);
+          openExplorerFile(jump.path, jump.startLine, jump.context);
+        });
         panel.appendChild(chip);
       }
     } else if (result.status === "ok") {
-      note("已解析范围内未发现反向依赖。");
+      note("已解析范围内未发现导入本文件的记录。");
     }
-    if (result.status === "ok" && result.warnings && result.warnings.length) {
+    if (result.importScan) {
+      const scan = result.importScan;
+      note(`导入扫描覆盖：${scan.scanned}/${scan.total}`
+        + (scan.parseFailed ? `（${scan.parseFailed} 个解析失败）` : ""));
+    }
+    if (result.warnings && result.warnings.length) {
       note(result.warnings.join("；"));
     }
   } catch (error) {

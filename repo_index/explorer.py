@@ -35,6 +35,7 @@ MAX_TOTAL_BYTES = 16_777_216
 MAX_CONTEXTS = 4
 MAX_LINES_PER_REQUEST = 500
 BINARY_SNIFF_BYTES = 8192
+PYTHON_SUFFIXES = (".py", ".pyi")
 
 REASON_BINARY = "二进制内容，首版不提供源码视图"
 REASON_OVERSIZE = "文件超过 1 MiB 上限"
@@ -123,9 +124,21 @@ class _Unreadable(Exception):
         self.reason = reason
 
 
-def _decode_source(raw: bytes) -> str:
+def _decode_source(raw: bytes, path: str) -> str:
+    """Decode one blob for browsing.
+
+    A PEP 263 coding cookie describes **Python source**, so it is only
+    consulted for `.py`/`.pyi`. Every other browsable text file is UTF-8: a
+    plain text file whose first line merely looks like a cookie must stay
+    browsable instead of being skipped as an encoding failure (R48-08).
+    """
     if b"\0" in raw[:BINARY_SNIFF_BYTES]:
         raise _Unreadable(REASON_BINARY)
+    if not path.lower().endswith(PYTHON_SUFFIXES):
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise _Unreadable(REASON_ENCODING) from exc
     try:
         encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
         return raw.decode(encoding)
@@ -205,7 +218,7 @@ def _classify_and_read(repo_root: Path, entries: list[dict]) -> tuple[dict[str, 
         total_bytes += len(raw)
         indexed += 1
         try:
-            sources[path] = _decode_source(raw)
+            sources[path] = _decode_source(raw, path)
         except _Unreadable as exc:
             skipped.append({"path": path, "reason": exc.reason})
     return manifest, tuple(skipped), sources
@@ -305,61 +318,146 @@ def parse_name_status(raw: bytes) -> list[dict]:
     return changes
 
 
-def _package_base(level: int, source_path: str) -> str | None:
-    """Search root of a relative import of `level` dots (task book §6.5).
+def _module_index(known: frozenset[str]) -> dict[tuple[str, str], str]:
+    """(module path, casefolded extension) -> the real repository path.
 
-    Level 1 is the file's own package directory; each further level walks one
-    directory up. `1 <= level <= package depth d` is the whole legal range, so
-    a level beyond the top-level package — including any relative import from
-    a file that sits outside a package — has no search root and must resolve
-    as `unresolved`, never as a guess.
+    Only the extension is case-normalised, so `helper.PY` is a Python module
+    while `Helper.py` is still a different module from `helper.py` — the same
+    rule the parsers apply to file types (R48-03).
+    """
+    index: dict[tuple[str, str], str] = {}
+    for path in known:
+        name = path.rsplit("/", 1)[-1]
+        dot = name.rfind(".")
+        if dot <= 0:
+            continue
+        index.setdefault((path[: len(path) - len(name)] + name[:dot],
+                          name[dot + 1:].casefold()), path)
+    return index
+
+
+def _directories(known: frozenset[str]) -> frozenset[str]:
+    found: set[str] = set()
+    for path in known:
+        parts = path.split("/")[:-1]
+        for index in range(1, len(parts) + 1):
+            found.add("/".join(parts[:index]))
+    return frozenset(found)
+
+
+def _is_package(directory: str, index: dict) -> bool:
+    return ((f"{directory}/__init__", "py") in index
+            or (f"{directory}/__init__", "pyi") in index)
+
+
+def _package_context(source_path: str, index: dict) -> tuple[str, list[str]] | None:
+    """(search root, package components) for a file inside a package.
+
+    The package is the maximal run of consecutive package directories holding
+    the file, and the search root is the directory just above it (r04 R3-Q1:
+    `src/pkg/mod.py` -> search root `src`, package `pkg`, depth d = 1). A file
+    that is not inside a package directory — including one sitting directly in
+    a search root, and one under a namespace package with no `__init__` — has
+    no package context at all, so every relative import in it is unresolved.
     """
     directory = posixpath.dirname(source_path)
-    parts = directory.split("/") if directory else []
-    if level > len(parts):
+    if not directory or not _is_package(directory, index):
         return None
-    return "/".join(parts[: len(parts) - (level - 1)])
+    parts = directory.split("/")
+    depth = len(parts)
+    while depth > 1 and _is_package("/".join(parts[:depth - 1]), index):
+        depth -= 1
+    return "/".join(parts[:depth - 1]), parts[depth - 1:]
 
 
-def _import_resolution(entry: dict, source_path: str, known: frozenset[str]) -> dict:
-    """`resolution{status, targetPath, candidates}` for one C import record.
+def _module_matches(prefix: str, index: dict) -> list[str]:
+    """Concrete source blobs for one module path (R2-Q7: x.py or x/__init__.py)."""
+    found: list[str] = []
+    for key in ((prefix, "py"), (prefix, "pyi"),
+                (f"{prefix}/__init__", "py"), (f"{prefix}/__init__", "pyi")):
+        path = index.get(key)
+        if path is not None and path not in found:
+            found.append(path)
+    return found
 
-    status is `resolved` only for a unique target, `ambiguous` when the
-    statement can denote several known files, `unresolved` when none. A
-    `from pkg import name` record keeps both readings — an attribute of `pkg`
-    and the submodule `pkg/name` — so a genuinely ambiguous import is reported
-    as such instead of silently picking one. `import .*` wildcards carry no
-    target name and are judged on their module alone.
+
+def _import_prefixes(entry: dict, source_path: str, index: dict
+                     ) -> tuple[list[str], list[str], str | None]:
+    """Module paths this record can denote, or (·, ·, rejection reason).
+
+    Returns `(name prefixes, module prefixes, reason)`: the name prefixes are
+    the concrete paths whose source blobs count as candidates, the module
+    prefixes are the paths the record's module part alone denotes (used to
+    explain an unresolved namespace package).
+
+    Accepted rule (r04 R3-Q1): a relative import needs `1 <= level <= d` where
+    d is the package depth measured from the file's search root, and the base
+    is the package moved up `level - 1` components. `level > d` never matches,
+    even when a file with that name happens to exist at the search root or the
+    repository root. Absolute imports are tried against the repository root
+    and the file's own search root (R2-Q7), never across another search root.
+
+    A `from M import name` record only ever denotes real source blobs of
+    `M/name`; the module `M` itself is NOT a target, because `name` may be an
+    attribute or re-export that cannot be confirmed without cross-file
+    inference (R2-Q7/R48-02).
     """
     level = entry.get("level") or 0
-    base = _package_base(level, source_path) if level else ""
-    candidates: list[str] = []
-    if base is not None:
-        module = entry.get("module") or ""
-        module_rest = module.replace(".", "/")
-        prefixes: list[str] = []
-        if entry.get("kind") == "import":
-            if module_rest:
-                prefixes.append(module_rest)
-        else:
-            if module_rest:
-                prefixes.append(module_rest)
-            name = entry.get("name")
-            if name and name != "*":
-                prefixes.append(f"{module_rest}/{name}" if module_rest else name)
-        found = set()
-        for prefix in prefixes:
-            full = "/".join(part for part in (base, prefix) if part)
-            for candidate in (f"{full}.py", f"{full}/__init__.py"):
-                if candidate in known:
-                    found.add(candidate)
-        candidates = sorted(found)
+    module_rest = (entry.get("module") or "").replace(".", "/")
+    name = entry.get("name")
+    context = _package_context(source_path, index)
+    if level:
+        if context is None:
+            return [], [], "文件不在包内，相对导入没有包语境"
+        search_root, package_parts = context
+        if level > len(package_parts):
+            return [], [], (f"相对导入越出顶层包（level={level} > 包深度 {len(package_parts)}）")
+        base = "/".join(part for part in
+                        (search_root,
+                         "/".join(package_parts[:len(package_parts) - (level - 1)])) if part)
+        roots = [base]
+    else:
+        roots = [""] + ([context[0]] if context and context[0] else [])
+    module_prefixes = [target for target in
+                       ("/".join(part for part in (root, module_rest) if part) for root in roots)
+                       if target]
+    if entry.get("kind") == "import" or not name or name == "*":
+        return module_prefixes, module_prefixes, None
+    return [f"{prefix}/{name}" for prefix in module_prefixes], module_prefixes, None
+
+
+def _import_resolution(entry: dict, source_path: str, index: dict) -> dict:
+    """`resolution{status, targetPath, candidates}` for one C import record.
+
+    `resolved` requires exactly one concrete target; several candidates (for
+    example `x.py` and `x/__init__.py` both existing) stay `ambiguous` with
+    every candidate listed; nothing found is `unresolved`. Uncertain readings
+    are never promoted to a confirmed target.
+    """
+    name_prefixes, _, _ = _import_prefixes(entry, source_path, index)
+    candidates = sorted({path for prefix in name_prefixes
+                         for path in _module_matches(prefix, index)})
     if len(candidates) == 1:
         return {"status": "resolved", "targetPath": candidates[0],
                 "candidates": candidates}
     if not candidates:
         return {"status": "unresolved", "targetPath": None, "candidates": []}
     return {"status": "ambiguous", "targetPath": None, "candidates": candidates}
+
+
+def _import_reason(entry: dict, source_path: str, index: dict,
+                   directories: frozenset[str]) -> str:
+    """Human reason for an unresolved record (R2-Q7 keeps the cause)."""
+    name_prefixes, module_prefixes, rejected = _import_prefixes(entry, source_path, index)
+    if rejected is not None:
+        return rejected
+    for prefix in module_prefixes + name_prefixes:
+        # A directory that holds the module but is not a package itself is the
+        # PEP 420 namespace-package shape: it has no source entry point
+        # (R2-Q7).
+        if prefix in directories and not _is_package(prefix, index):
+            return "可能的命名空间包，无源码入口"
+    return "未找到候选源码文件"
 
 
 class ExplorerRegistry:
@@ -540,29 +638,50 @@ class ExplorerRegistry:
             reason = next((item["reason"] for item in context.skipped
                            if item["path"] == path), "该文件在本次索引中被跳过")
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
+        # The scan range must equal the parsers' own supported range, so the
+        # extension test is case-insensitive: `consumer.PY` is a Python file to
+        # parse_imports and must therefore also be scanned for dependents
+        # (R48-03, R2-Q8 "仅 .py 且在 allowed 集合的文件计入分母").
         known = frozenset(item for item in context.allowed
-                          if item.endswith((".py", ".pyi")))
+                          if item.lower().endswith((".py", ".pyi")))
+        index = _module_index(known)
+        directories = _directories(known)
         parsed = parse_imports(path, context.sources[path])
-        imports = [dict(entry, resolution=_import_resolution(entry, path, known))
+        imports = [dict(entry, resolution=_import_resolution(entry, path, index))
                    for entry in parsed["imports"]]
+        warnings = list(parsed["warnings"])
+        for entry, item in zip(parsed["imports"], imports):
+            if item["resolution"]["status"] == "unresolved":
+                warnings.append(f"{path} 第 {entry['line']} 行未解析："
+                                + _import_reason(entry, path, index, directories))
         dependents: list[dict] = []
-        unparsed: list[str] = []
+        scanned = 0
+        failed = 0
         for other in sorted(known):
+            other_parsed = parsed if other == path else parse_imports(other, context.sources[other])
+            if other_parsed["status"] != "ok":
+                failed += 1
+                continue
+            scanned += 1
             if other == path:
                 continue
-            other_parsed = parse_imports(other, context.sources[other])
-            if other_parsed["status"] != "ok":
-                unparsed.append(other)
-                continue
             for entry in other_parsed["imports"]:
-                resolution = _import_resolution(entry, other, known)
+                resolution = _import_resolution(entry, other, index)
                 if resolution["status"] == "resolved" and resolution["targetPath"] == path:
                     dependents.append({"path": other, "line": entry["line"],
                                        "end_line": entry["end_line"]})
-        warnings = list(parsed["warnings"])
-        if unparsed:
-            warnings.append(
-                f"{len(unparsed)} 个文件未能解析，dependents 仅为已解析范围内的结果")
+        # R2-Q8: the response states its own scan coverage, and any gap is
+        # reported instead of being shown as a complete scan. "Not scanned"
+        # files are the manifest's Python files that the open budget skipped.
+        unscanned = sum(1 for item in context.manifest
+                        if item.lower().endswith((".py", ".pyi"))
+                        and item not in context.allowed)
+        if failed:
+            warnings.append(f"{failed} 个文件解析失败，已解析范围内未发现导入本文件的记录"
+                            "（dependents 仅为已解析范围内的结果）")
+        if unscanned:
+            warnings.append(f"{unscanned} 个 Python 文件未纳入本次扫描（被 open 预算跳过），"
+                            "dependents 覆盖不完整，不得视为完整扫描结论")
         return {
             "schemaVersion": 1,
             "projectId": context.project_id,
@@ -571,6 +690,7 @@ class ExplorerRegistry:
             "status": parsed["status"],
             "imports": imports,
             "dependents": dependents,
+            "importScan": {"scanned": scanned, "parseFailed": failed, "total": len(known)},
             "warnings": warnings,
         }
 
@@ -642,10 +762,18 @@ class ExplorerRegistry:
             reason = next((item["reason"] for item in context.skipped
                            if item["path"] == path), "该文件在本次索引中被跳过")
             raise ExplorerError(HTTPStatus.FORBIDDEN, "FILE_SKIPPED", reason)
-        try:
-            source = read_source(context.repo_root, context.revision, path)
-        except CodeFactsError as exc:
-            raise self._code_facts_error(exc) from exc
+        if path.lower().endswith(PYTHON_SUFFIXES):
+            # Only Python sources are read through the PEP 263 reader; a
+            # browsable text file whose first line looks like a coding cookie
+            # must still answer `unsupported`, not a 500 decoding failure
+            # (R48-08). The snapshot source is taken at the pinned revision
+            # either way.
+            try:
+                source = read_source(context.repo_root, context.revision, path)
+            except CodeFactsError as exc:
+                raise self._code_facts_error(exc) from exc
+        else:
+            source = context.sources[path]
         result = parse_symbols(path, source)
         return {
             "schemaVersion": 1,

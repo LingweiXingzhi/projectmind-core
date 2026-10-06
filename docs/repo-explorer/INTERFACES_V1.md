@@ -37,6 +37,7 @@
 - `startLine` 缺省 1，`endLine` 缺省 200；单次最多 500 行（`LINE_RANGE_TOO_LARGE`）。
 - 范围裁剪到文件范围；`truncated=true` 表示文件中仍有未返回的行（包括请求窗口之前的行）。
 - 内容保留原始行尾（\r\n、\r、\n；U+2028 等字符不作为换行，行号与 Python AST 一致）。
+- 解码范围：PEP 263 编码声明只对 `.py`/`.pyi`（大小写不敏感）生效；其它可浏览文本按 UTF-8 解码。仅首行"看起来像"编码声明的普通文本文件仍可正常浏览，不会因该行被判为编码失败（R48-08）。
 - 空文件：`startLine=0, endLine=0, totalLines=0, content="", truncated=false`。
 - 非空文件 `startLine > totalLines` → 400 `LINE_RANGE_INVALID`。
 - 路径校验：仅接受 `/` 分隔的仓库内相对路径；绝对路径、反斜杠、`:`、空/`.`/`..` 段、控制字符一律 400 `PATH_INVALID`；不在清单 → 404 `PATH_NOT_IN_REVISION`；在清单但被跳过 → 403 `FILE_SKIPPED`（message 为 open 时的原因）。
@@ -55,12 +56,18 @@
 
 C 的 `repo_index/imports.py` `parse_imports` 已接入（`status="unavailable"` 占位行为撤销）：
 
-- 响应：`schemaVersion`、`projectId`、`revision`、`path`、`status`、`imports`、`dependents`、`warnings`。
-- `imports` 保留 C 的原始字段（`kind/module/level/name/alias/line/end_line`），并由 A 增加 `resolution{status, targetPath, candidates}`：`status` 为 `resolved`、`unresolved`、`ambiguous`；唯一明确目标才填 `targetPath`，否则为 null；`candidates` 为候选相对路径列表（字典序）。
-  - `resolved`：恰好一个已知候选；`ambiguous`：多个已知候选（例如 `from pkg import name` 既可指 `pkg` 的同名属性，也可指子模块 `pkg/name`）；`unresolved`：无候选。
-  - 相对导入按"搜索根 + 包层级"解析：`1 ≤ level ≤ 包深度 d`，越出顶层包/无包语境/无候选 → `unresolved`；绝对导入从仓库根解析。C 不判断模块是否存在，目标解析由 A 在所选提交的清单内完成。
-- `dependents` 每项 `{path, line, end_line}`，仅来自成功解析且 `resolution.status="resolved"` 到当前文件的导入记录；不确定的反向关系不展示成已确认依赖。
-- `status` 为当前文件的 C 解析结果：仅成功解析（含空结果）为 `ok`；语法/解码失败保留 `parse_error`。扫描范围内有文件未能解析时，warnings 注明 dependents 仅为已解析范围内的结果（界面据此显示"已解析范围内未发现"）。
+- 响应：`schemaVersion`、`projectId`、`revision`、`path`、`status`、`imports`、`dependents`、`importScan`、`warnings`。
+- `imports` 保留 C 的原始字段（`kind/module/level/name/alias/line/end_line`），并由 A 增加 `resolution{status, targetPath, candidates}`：`status` 为 `resolved`、`unresolved`、`ambiguous`；唯一明确目标才填 `targetPath`，否则为 null；`candidates` 为候选相对路径列表（字典序），每项都是清单中可打开的具体源码 blob（`x.py` 或 `x/__init__.py`）。
+  - **搜索根与包深度（r04 R3-Q1）**：文件的包深度 `d` 按其**搜索根**度量——搜索根是包含该文件的最大连续包目录链之上的那一层（`src/core/mod.py` → 搜索根 `src`、包 `core`、`d=1`；`src/core/sub/mod.py` → 包 `core.sub`、`d=2`；直接位于搜索根下的 `.py`（如 `src/tool.py`）以及 `__init__.py` 缺失的命名空间包内文件都**没有包语境**）。
+  - **相对导入**：仅允许 `1 ≤ level ≤ d`；解析 = 当前包上移 `level−1` 个包组件后拼接 module/name 组件。`level > d`（越出顶层包，**即使仓库根或搜索根内恰好存在同名文件也不命中**）、`d=0`（无包语境）、无候选 → `unresolved`。
+  - **绝对导入**：在**仓库根与该文件自身搜索根**下查找，不跨其它搜索根匹配。
+  - **不做属性/重导出推断**：`from pkg import name` 只匹配 `pkg/name` 的真实源码 blob；`pkg/name.py` 不存在而 `pkg/__init__.py` 存在时，`name` 可能是包内属性或重导出，首版不跨文件推断 → `unresolved`（**不得**把 `pkg/__init__.py` 当作 `targetPath`）。候选文件真实存在时才连接。
+  - `ambiguous`：同一模块路径同时存在 `x.py` 与 `x/__init__.py` 等，保留全部候选并显式标注歧义。
+  - 候选指向目录但该目录没有 `__init__.py`（PEP 420 命名空间包形态）→ `unresolved`，warnings 注明"可能的命名空间包，无源码入口"。
+  - 每个 `unresolved` 记录的原因（无包语境 / 越出顶层包 / 命名空间包 / 未找到候选）写入 `warnings`。
+- `dependents` 每项 `{path, line, end_line}`，仅来自成功解析且 `resolution.status="resolved"` 到当前文件的导入记录；不确定的反向关系不展示成已确认依赖。空结果的界面文案固定为"已解析范围内未发现导入本文件的记录"。
+- `importScan{scanned, parseFailed, total}`（r03 R2-Q8）：导入扫描自身的覆盖统计。分母 `total` 为 allowed 集合中扩展名（大小写不敏感）为 `.py`/`.pyi` 的文件数——与解析器支持范围一致，`consumer.PY` 同样计入并被扫描；`parseFailed` 为解析失败数。
+- `status` 为当前文件的 C 解析结果：仅成功解析（含空结果）为 `ok`；语法/解码失败保留 `parse_error`。存在解析失败或被 open 预算跳过而未纳入扫描的 Python 文件时，warnings 写明失败数与未扫描数；任一缺口存在时**不得**表述为完整扫描结论。
 - 准入与 file 相同（404 / 403 `FILE_SKIPPED`）。
 
 ## 6. GET /api/repo-explorer/changes?projectId&base&target

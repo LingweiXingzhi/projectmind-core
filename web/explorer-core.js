@@ -50,3 +50,12 @@ function buildChangeRows(changes) {
     pathUndecodable: Boolean(change.pathUndecodable),
   }));
 }
+
+function relationJumpParams(responseContext, stateContext, path) {
+  // R48-04：关系面板的跳转必须携带**产生该关系的版本上下文**。旧版本关系若
+  // 不带 context，openExplorerFile 会回落主浏览 SHA，把旧版本的导入/被依赖
+  // 跳到另一个版本的文件上；随后的分页也会继续读错版本。
+  const context = responseContext && responseContext.projectId
+    ? responseContext : stateContext;
+  return { path, startLine: 1, context };
+}
