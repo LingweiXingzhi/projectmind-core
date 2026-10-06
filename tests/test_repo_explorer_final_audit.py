@@ -78,6 +78,31 @@ class FinalAuditRegressionTests(unittest.TestCase):
             capture_output=True, check=True).stdout.decode().strip()
         tree_input += (b"040000 tree " + sub_invalid.encode("ascii") + b"\t" + b"dir-\xff" + b"\0")
         tree_input += (b"040000 tree " + sub_legal.encode("ascii") + b"\t" + b"dir-\\xff" + b"\0")
+
+        def subtree(entries: bytes) -> str:
+            return subprocess.run(
+                ["git", "-C", str(self.repo), "mktree", "-z"],
+                input=entries, capture_output=True, check=True).stdout.decode().strip()
+
+        # r25 boundary 1: ONE real directory pkg whose children mix a legal
+        # file and an invalid-byte file — the dir must not split in two.
+        pkg_ok = blob(b"print('pkg ok')\n")
+        pkg_bad = blob(b"invalid in pkg\n")
+        tree_input += (b"040000 tree " + subtree(
+            b"100644 blob " + pkg_ok.encode("ascii") + b"\t" + b"ok.py" + b"\0"
+            + b"100644 blob " + pkg_bad.encode("ascii") + b"\t" + b"bad-\xff.py" + b"\0"
+        ).encode("ascii") + b"\t" + b"pkg" + b"\0")
+        # r25 boundary 2: an undecodable dir b"\x80" whose identity contains
+        # base64 "gA==" collides with the LEGAL literal dir name "b64:gA=="
+        # unless the identity is NUL-prefixed.
+        s80 = blob(b"print('in 0x80 dir')\n")
+        tree_input += (b"040000 tree " + subtree(
+            b"100644 blob " + s80.encode("ascii") + b"\t" + b"a.py" + b"\0"
+        ).encode("ascii") + b"\t" + b"\x80" + b"\0")
+        forge = blob(b"print('forged b64 name')\n")
+        tree_input += (b"040000 tree " + subtree(
+            b"100644 blob " + forge.encode("ascii") + b"\t" + b"b.py" + b"\0"
+        ).encode("ascii") + b"\t" + b"b64:gA==" + b"\0")
         tree = subprocess.run(
             ["git", "-C", str(self.repo), "mktree", "-z"],
             input=tree_input, capture_output=True, check=True).stdout.decode().strip()
@@ -143,13 +168,13 @@ class FinalAuditRegressionTests(unittest.TestCase):
         self.assertEqual(status, 200)
         undecodable = [entry for entry in body["entries"] if entry.get("pathUndecodable")
                        and entry["kind"] == "file"]
-        # bad-\xff.py, bad-\xfe.py, a\xffb.py, dir-\xff/one.py — two.py's dir
-        # name is legal ASCII, so its raw path decodes and stays a plain path
-        self.assertEqual(len(undecodable), 4)
+        # bad-\xff.py, bad-\xfe.py, a\xffb.py, pkg/bad-\xff.py, dir-\xff/one.py,
+        # \x80/a.py — every raw path containing an invalid byte
+        self.assertEqual(len(undecodable), 6)
         identities = {entry["pathIdentity"] for entry in undecodable}
-        self.assertEqual(len(identities), 4, "different raw byte paths must not merge")
+        self.assertEqual(len(identities), 6, "different raw byte paths must not merge")
         for entry in undecodable:
-            self.assertTrue(entry["pathIdentity"].startswith("b64:"))
+            self.assertTrue(entry["pathIdentity"].startswith("\x00b64:"))
             self.assertEqual(entry["skippedReason"], "文件名不是 UTF-8，首版不支持")
 
     def test_undecodable_display_text_does_not_collide_with_legal_name(self):
@@ -163,7 +188,7 @@ class FinalAuditRegressionTests(unittest.TestCase):
         self.assertEqual(len(legal), 1)
         self.assertEqual(len(escaped), 1)
         self.assertNotIn("pathIdentity", legal[0])
-        self.assertTrue(escaped[0]["pathIdentity"].startswith("b64:"))
+        self.assertTrue(escaped[0]["pathIdentity"].startswith("\x00b64:"))
         # The two share the display text but carry different identities —
         # the escaped one must never be openable as the legal file.
         self.assertNotEqual(legal[0]["path"], escaped[0].get("pathIdentity"))
@@ -177,8 +202,8 @@ class FinalAuditRegressionTests(unittest.TestCase):
         conn.close()
         flagged = [item for item in opened["coverage"]["skipped"]
                    if item.get("pathUndecodable")]
-        self.assertEqual(len(flagged), 4)
-        self.assertEqual(len({item["pathIdentity"] for item in flagged}), 4)
+        self.assertEqual(len(flagged), 6)
+        self.assertEqual(len({item["pathIdentity"] for item in flagged}), 6)
 
     # ---- F4 residual (r24): colliding DIRECTORY display texts ----
     def test_colliding_directories_stay_distinct_with_their_own_children(self):
@@ -195,7 +220,7 @@ class FinalAuditRegressionTests(unittest.TestCase):
         legal_dirs = [entry for entry in dirs if "pathUndecodable" not in entry]
         self.assertEqual(len(escaped_dirs), 1)
         self.assertEqual(len(legal_dirs), 1)
-        self.assertTrue(escaped_dirs[0]["path"].startswith("b64:"))
+        self.assertTrue(escaped_dirs[0]["path"].startswith("\x00b64:"))
         self.assertEqual(legal_dirs[0]["path"], "dir-\\xff")
         by_parent = {}
         for entry in entries:
@@ -210,6 +235,41 @@ class FinalAuditRegressionTests(unittest.TestCase):
                              f"directory {directory['path'][:20]}… must own exactly its own child")
         self.assertEqual(sorted(children for children in by_parent.values()),
                          [["one.py"], ["two.py"]])
+
+    # ---- F4 residual (r25): dir identity by prefix, NUL-prefixed b64 ----
+    def test_one_real_directory_is_not_split_by_child_decodability(self):
+        status, body = self._get(f"/api/repo-explorer/tree?projectId={self.project_id}&revision={self.head}")
+        entries = body["entries"]
+        pkg_dirs = [entry for entry in entries
+                    if entry["kind"] == "directory"
+                    and "pkg" in (entry.get("displayPath"), entry.get("path"))]
+        self.assertEqual(len(pkg_dirs), 1, "pkg must be ONE directory node")
+        self.assertEqual(pkg_dirs[0]["path"], "pkg")
+        self.assertNotIn("pathUndecodable", pkg_dirs[0])
+        children = [entry for entry in entries if entry.get("parentPath") == "pkg"]
+        self.assertEqual(len(children), 2, "pkg owns both of its children")
+        names = sorted((entry.get("displayPath") or entry["path"]).split("/")[-1]
+                       for entry in children)
+        self.assertEqual(names, ["bad-\\xff.py", "ok.py"])
+
+    def test_forged_b64_dir_name_cannot_collide_with_undecodable_identity(self):
+        status, body = self._get(f"/api/repo-explorer/tree?projectId={self.project_id}&revision={self.head}")
+        entries = body["entries"]
+        # The undecodable dir b"\x80" (display "\x80") and the legal dir
+        # literally named "b64:gA==" must stay two distinct nodes.
+        s80 = [entry for entry in entries
+               if entry["kind"] == "directory" and entry.get("displayPath") == "\\x80"]
+        forged = [entry for entry in entries
+                  if entry["kind"] == "directory" and entry["path"] == "b64:gA=="]
+        self.assertEqual(len(s80), 1)
+        self.assertEqual(len(forged), 1)
+        self.assertTrue(s80[0]["path"].startswith("\x00"))
+        self.assertTrue(s80[0]["path"].endswith("gA=="))
+        self.assertNotIn("pathUndecodable", forged[0])
+        self.assertNotEqual(s80[0]["path"], forged[0]["path"])
+        for directory in (s80[0], forged[0]):
+            children = [entry for entry in entries if entry.get("parentPath") == directory["path"]]
+            self.assertEqual(len(children), 1, "each directory owns exactly its own child")
 
     # ---- F5 ----
     def test_object_missing_maps_to_object_missing_not_repo_unreadable(self):

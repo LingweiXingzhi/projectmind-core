@@ -226,11 +226,26 @@ def _undecodable_identity(raw_path: bytes) -> str:
 
     The backslashreplace display text could coincide with a *legal* file
     name that literally contains those characters, so the identity carried
-    by the API is the base64 of the original bytes — two different raw byte
-    paths always map to two different identities, and the Git original is
-    preserved rather than a re-escaped display string.
+    by the API prefixes the base64 of the original bytes with NUL — Git
+    paths can never contain NUL, so no legal path can ever equal an
+    undecodable identity (r25: plain "b64:" was still forgeable).
     """
-    return "b64:" + base64.b64encode(raw_path).decode("ascii")
+    return "\x00b64:" + base64.b64encode(raw_path).decode("ascii")
+
+
+def _dir_link(prefix_raw: bytes) -> str:
+    """Link identity for the directory at `prefix_raw` (终审 F4, r25).
+
+    The identity belongs to the directory prefix itself, independent of
+    whether any particular child path is decodable: a decodable prefix is
+    its own plain text (UTF-8 decoding is injective, so two different legal
+    prefixes never merge); an undecodable prefix gets the NUL-prefixed
+    base64 form that no legal path can reproduce.
+    """
+    try:
+        return prefix_raw.decode("utf-8")
+    except UnicodeError:
+        return _undecodable_identity(prefix_raw)
 
 
 def parse_name_status(raw: bytes) -> list[dict]:
@@ -560,16 +575,21 @@ class ExplorerRegistry:
                 parent_link = ""
                 for index in range(1, len(raw_segments)):
                     prefix_raw = b"/".join(raw_segments[:index])
-                    dir_link = "b64:" + base64.b64encode(prefix_raw).decode("ascii")
+                    dir_link = _dir_link(prefix_raw)
                     if dir_link not in directories:
-                        directories[dir_link] = {
+                        dir_display = prefix_raw.decode("utf-8", "backslashreplace")
+                        dir_entry = {
                             "path": dir_link,
-                            "displayPath": prefix_raw.decode("utf-8", "backslashreplace"),
+                            "displayPath": dir_display,
                             "parentPath": parent_link,
                             "kind": "directory",
                             "language": None,
-                            "pathUndecodable": True,
                         }
+                        if dir_link != dir_display:
+                            # decodable prefixes are their own plain text, so
+                            # link == display marks a legal dir name
+                            dir_entry["pathUndecodable"] = True
+                        directories[dir_link] = dir_entry
                     parent_link = dir_link
                 entry = {
                     "path": link,
