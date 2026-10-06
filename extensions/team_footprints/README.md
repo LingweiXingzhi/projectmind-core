@@ -44,6 +44,25 @@ GET `action=day&date=2026-10-06`（同 year/时区/成员条件）返回当天�
 
 A 可以先在主页放总项数/活跃天数和热力日历，再用 day 接口展开；本 PR 不编辑 A 的主页面。两个新分支分别只新增各自扩展和测试，A 接入二者时不会互相覆盖产品文件。
 
+## 依赖：IANA 时区数据库（部署数据）
+
+本扩展按所选 IANA 时区换算事件时间，默认 `Asia/Shanghai`。CPython 的 `zoneinfo` 读取**操作系统**的时区数据库；Windows 不自带，因此缺少 `tzdata` 包时任何 IANA 键都会失败：
+
+```powershell
+python -m pip install tzdata
+# 验证：
+python -c "from zoneinfo import ZoneInfo; print(ZoneInfo('Asia/Shanghai'))"
+```
+
+仓库根 `requirements.txt` 已声明该依赖（`tzdata; sys_platform == "win32"`，上游说明见 <https://docs.python.org/3/library/zoneinfo.html#data-sources>）。
+
+缺少时区数据库与"用户填了非法时区"是两回事，返回也不同：
+
+| 情况 | 响应 |
+| --- | --- |
+| 本机没有任何 IANA 数据（连 `UTC` 都无法解析） | **503**，文案说明这是部署缺口并给出安装步骤 |
+| 本机有时区数据、但所选键非法 | 400，文案为"请选择有效的 IANA 时区" |
+
 ## 验证与限制
 
 ```bash
@@ -51,6 +70,8 @@ python3 -m unittest discover -s tests -v
 node tests/check_team_footprints_ui.js
 node tests/check_continuity_ui.js
 ```
+
+测试用解释器同样需要 `tzdata`（本机两个内置解释器都缺）；缺失时相关用例会以环境原因失败，属部署缺口而非产品缺陷。
 
 本轮 Python 58 项通过（原 53 项 + 5 项），覆盖真实库的只读字节不变、无记录不建库、重复保存/同日上限、时区跨日、手填日期隔离、导入/AI 排除、问题处理、本次结束、闰年、个人过滤、仓库隔离及真实 HTTP/405。Node 执行实际日历/图表函数，检查色阶、366 天、日标签、纯文本名字、12 个趋势点和零值无 NaN；不是浏览器视觉验收。脚本语法与 Python 编译通过。本机无 Chromium，完整视觉、小屏和主页接入尚待实际验收。
 

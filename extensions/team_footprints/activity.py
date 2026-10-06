@@ -83,7 +83,17 @@ def common_dir(repo):
 
 def collect_activity(repo, timezone='Asia/Shanghai'):
     try: zone=ZoneInfo(timezone)
-    except (ZoneInfoNotFoundError,ValueError,TypeError): fail('请选择有效的 IANA 时区')
+    except (ZoneInfoNotFoundError,ValueError,TypeError):
+        # R48-06: ZoneInfo raises the same error for an unknown key AND for an
+        # interpreter without any IANA database (Windows without the `tzdata`
+        # package). Probe a key that must always exist to tell the deployment
+        # gap apart from an invalid user choice — a missing database is not
+        # "please pick a valid timezone".
+        try: ZoneInfo('UTC')
+        except (ZoneInfoNotFoundError,ValueError,TypeError):
+            fail('本机缺少 IANA 时区数据库（部署缺口）：请安装 tzdata 后重试，'
+                 '例如 python -m pip install tzdata',503)
+        fail('请选择有效的 IANA 时区')
     root=common_dir(repo); events=[]; coverage=[]; ignored=0; skipped=0
     def add(source,document,kind,actor,origin,at,note='',evidence='',event_id=None):
         nonlocal skipped

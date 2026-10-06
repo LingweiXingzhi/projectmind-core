@@ -116,6 +116,34 @@ class FootprintTests(unittest.TestCase):
             other=Path(tmp);subprocess.run(['git','init','-q',str(other)],check=True)
             self.assertEqual(summarize(collect_activity(other),2026)['total'],0)
 
+    def test_timezone_database_gap_is_distinguished_from_a_bad_key(self):
+        # R48-06: ZoneInfo raises ZoneInfoNotFoundError both for an unknown key
+        # and for an interpreter with no IANA database at all. They need
+        # different answers — missing deployment data is not "pick a valid
+        # zone", and the message must name the installation step.
+        import extensions.team_footprints.activity as activity
+        real = activity.ZoneInfo
+
+        def only_utc(key):
+            if key == 'UTC':
+                return real('UTC')
+            raise activity.ZoneInfoNotFoundError(key)
+
+        with patch.object(activity, 'ZoneInfo', only_utc):
+            with self.assertRaises(ExtensionError) as bad_key:
+                handle(self.context, 'GET', {'year': '2026', 'timezone': 'Not/AZone'})
+        self.assertEqual(bad_key.exception.status, 400)
+        self.assertIn('有效的 IANA 时区', str(bad_key.exception))
+
+        def nothing(key):
+            raise activity.ZoneInfoNotFoundError(key)
+
+        with patch.object(activity, 'ZoneInfo', nothing):
+            with self.assertRaises(ExtensionError) as gap:
+                handle(self.context, 'GET', {'year': '2026'})
+        self.assertEqual(gap.exception.status, 503)
+        self.assertIn('tzdata', str(gap.exception))
+
     def test_inherited_git_environment_cannot_redirect_the_record_lookup(self):
         # R35-D1: the explicit repo argument always wins. A hostile inherited
         # GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR naming a DIFFERENT real

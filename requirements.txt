@@ -1,0 +1,19 @@
+# ProjectMind runtime dependencies.
+#
+# The application itself needs only Python 3.10+ and Git, with one exception:
+#
+#   tzdata — the IANA time zone database.
+#
+# CPython's zoneinfo module reads the operating system's time zone database.
+# Windows ships none, so without this package *every* IANA key — including the
+# team-footprints default "Asia/Shanghai" — raises ZoneInfoNotFoundError and the
+# extension answers 503 with a deployment-gap message instead of a calendar.
+# A time zone database is required deployment data, not a test-only extra.
+#
+# Install (no Windows time zone data present):
+#   python -m pip install tzdata
+# Verify:
+#   python -c "from zoneinfo import ZoneInfo; print(ZoneInfo('Asia/Shanghai'))"
+#
+# Upstream note: https://docs.python.org/3/library/zoneinfo.html#data-sources
+tzdata; sys_platform == "win32"
