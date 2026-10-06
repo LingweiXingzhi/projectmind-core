@@ -196,10 +196,30 @@ def generate(parent=None):
     return manifest
 
 
-def _clear_readonly(func, path, _exc_info):
-    # Git object files are written read-only; clear the bit before unlink (Windows).
-    os.chmod(path, stat.S_IWRITE)
-    func(path)
+def _is_reparse_point(path):
+    try:
+        attributes = os.lstat(path).st_file_attributes
+    except (OSError, AttributeError):
+        return False
+    return bool(attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+
+
+def _make_cleanup_handler(root):
+    # Bound the retry to the owned root: only a permission failure is retried,
+    # only for a plain file or directory inside the fixture, and never through a
+    # link or reparse point. Every other error propagates unchanged.
+    def handler(func, path, exc):
+        if not isinstance(exc, PermissionError):
+            raise exc
+        candidate = Path(path)
+        if candidate.is_symlink() or _is_reparse_point(path):
+            raise exc
+        resolved = Path(os.path.realpath(path))
+        if resolved != root and root not in resolved.parents:
+            raise exc
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    return handler
 
 
 def cleanup(manifest):
@@ -209,7 +229,7 @@ def cleanup(manifest):
         # Guard against a changed manifest redirecting deletion into a foreign root.
         saved = json.loads((root / 'manifest.json').read_text())
         if saved != manifest: raise ValueError('Manifest changed; refusing cleanup')
-        shutil.rmtree(root, onexc=_clear_readonly)
+        shutil.rmtree(root, onexc=_make_cleanup_handler(root))
     else: raise ValueError('Not an owned generated fixture; refusing cleanup')
 
 

@@ -1,8 +1,11 @@
 """D tool self-checks, never product acceptance."""
 import json
+import os
 from pathlib import Path
+import stat
 import tempfile
 import unittest
+import fixture
 from fixture import generate, cleanup, git, tracked, blob, SYMBOLS, IMPORTS
 
 
@@ -62,6 +65,48 @@ class FixtureTests(unittest.TestCase):
             changed = dict(self.m, repository=folder)
             with self.assertRaises(ValueError): cleanup(changed)
         self.assertTrue(self.repo.exists())
+
+
+class CleanupRetryBoundaryTests(unittest.TestCase):
+    """R40-C1: the read-only retry stays inside the owned root and only for permission errors."""
+
+    def _owned_root(self, folder):
+        root = Path(folder).resolve() / 'projectmind-d-fixture-handler'
+        root.mkdir()
+        return root
+
+    def test_non_permission_errors_are_never_retried(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            handler = fixture._make_cleanup_handler(root)
+            calls = []
+            with self.assertRaises(OSError):
+                handler(lambda path: calls.append(path), str(root / 'object.bin'), OSError('boom'))
+            self.assertEqual(calls, [])
+
+    def test_paths_outside_the_owned_root_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            outside = Path(folder).resolve() / 'outside.txt'
+            outside.write_text('canary', encoding='utf-8')
+            handler = fixture._make_cleanup_handler(root)
+            calls = []
+            with self.assertRaises(PermissionError):
+                handler(lambda path: calls.append(path), str(outside), PermissionError('denied'))
+            self.assertEqual(calls, [])
+            self.assertTrue(outside.exists())
+
+    def test_readonly_file_inside_root_is_cleared_and_retried(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._owned_root(folder)
+            target = root / 'object.bin'
+            target.write_bytes(b'x')
+            os.chmod(target, stat.S_IREAD)
+            handler = fixture._make_cleanup_handler(root)
+            removed = []
+            handler(lambda path: (os.unlink(path), removed.append(path)), str(target), PermissionError('denied'))
+            self.assertEqual(removed, [str(target)])
+            self.assertFalse(target.exists())
 
 
 if __name__ == '__main__': unittest.main()
