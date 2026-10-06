@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "role": "D",
+  "generatedAt": "2026-10-06T05:50:45.341827+00:00",
+  "target": {
+    "checkout": null,
+    "head": null,
+    "baseUrl": null,
+    "launchCommand": null
+  },
+  "fixture": {
+    "format": "projectmind-repo-explorer-fixture-v1",
+    "root": "/tmp/projectmind-d-fixture-849jr9ny",
+    "repository": "/tmp/projectmind-d-fixture-849jr9ny/first/sample",
+    "secondRepository": "/tmp/projectmind-d-fixture-849jr9ny/second/sample",
+    "baseRevision": "cbb97e25faa459c32e17e567a899d4761d3d0102",
+    "targetRevision": "fbbe597de0788e735b985c9627f4fed0127abd22",
+    "secondRevision": "6cec9af7b433970eaa47eede3b7588507f5840d9",
+    "basePaths": {
+      "DO_NOT_EXECUTE.py": "100644",
+      "binary.bin": "100644",
+      "broken.py": "100644",
+      "dual.py": "100644",
+      "dual/__init__.py": "100644",
+      "empty.py": "100644",
+      "invalid-encoding.py": "100644",
+      "long.txt": "100644",
+      "notes.txt": "100644",
+      "outside-link": "120000",
+      "oversize.py": "100644",
+      "pkg/__init__.py": "100644",
+      "pkg/moved.py": "100644",
+      "pkg/old.py": "100644",
+      "pkg/service.py": "100644",
+      "pkg/utils.py": "100644",
+      "src/consumer.py": "100644",
+      "src/srcpkg/__init__.py": "100644",
+      "src/srcpkg/helper.py": "100644",
+      "unsupported.js": "100644",
+      "vendor/submodule": "160000"
+    },
+    "targetPaths": {
+      "DO_NOT_EXECUTE.py": "100644",
+      "binary.bin": "100644",
+      "broken.py": "100644",
+      "dual.py": "100644",
+      "dual/__init__.py": "100644",
+      "empty.py": "100644",
+      "invalid-encoding.py": "100644",
+      "long.txt": "100644",
+      "notes.txt": "100644",
+      "outside-link": "120000",
+      "oversize.py": "100644",
+      "pkg/__init__.py": "100644",
+      "pkg/new.py": "100644",
+      "pkg/relocated.py": "100644",
+      "pkg/service.py": "100644",
+      "pkg/utils.py": "100644",
+      "src/consumer.py": "100644",
+      "src/srcpkg/__init__.py": "100644",
+      "src/srcpkg/helper.py": "100644",
+      "unsupported.js": "100644",
+      "vendor/submodule": "160000"
+    },
+    "secondPaths": {
+      "pkg/service.py": "100644",
+      "second-only.txt": "100644"
+    },
+    "expectedChanges": [
+      {
+        "status": "A",
+        "path": "pkg/new.py",
+        "oldPath": null
+      },
+      {
+        "status": "D",
+        "path": "pkg/old.py",
+        "oldPath": null
+      },
+      {
+        "status": "R",
+        "path": "pkg/relocated.py",
+        "oldPath": "pkg/moved.py"
+      },
+      {
+        "status": "M",
+        "path": "pkg/service.py",
+        "oldPath": null
+      }
+    ],
+    "environment": {
+      "git": "git version 2.51.1"
+    },
+    "facts": {
+      "sourceExecuted": false,
+      "mapJson": false
+    }
+  },
+  "http": [
+    {
+      "id": "D01",
+      "name": "无地图打开独立仓库，固定实测 SHA",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D02",
+      "name": "真实目录、提交原文、空文件、行范围、工作区隔离",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D03",
+      "name": "函数/方法/嵌套/异步定义、完整范围与 parser",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D04",
+      "name": "静态导入字段、明确目标、反向关系、缺失与歧义",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D05",
+      "name": "第二版本增改删/rename 与旧版本读取",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D06",
+      "name": "同名第二仓库不混用目录、符号、关系及缓存",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D07",
+      "name": "路径/行号/版本/身份受控拒绝，旧证据授权不放宽",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D08",
+      "name": "二进制/编码/大小/类型/解析错误明确处理",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    },
+    {
+      "id": "D08-PARSER",
+      "name": "无解析器时明确 unavailable（独立降级实例）",
+      "status": "NOT_RUN",
+      "severity": null,
+      "detail": "A 集成路径、完整 HEAD 和启动命令尚未交付；未向任何服务发送请求",
+      "requests": [],
+      "reproduce": "Start the recorded exact A checkout/HEAD and repeat these method/URL/body requests"
+    }
+  ],
+  "degradedRequests": [],
+  "ui": [
+    {
+      "step": "展开目录",
+      "status": "NOT_RUN",
+      "detail": "未实际操作 A 确切 HEAD 的界面；HTTP 不替代 UI 验收"
+    },
+    {
+      "step": "打开文件",
+      "status": "NOT_RUN",
+      "detail": "未实际操作 A 确切 HEAD 的界面；HTTP 不替代 UI 验收"
+    },
+    {
+      "step": "点击函数看源码",
+      "status": "NOT_RUN",
+      "detail": "未实际操作 A 确切 HEAD 的界面；HTTP 不替代 UI 验收"
+    },
+    {
+      "step": "从静态导入跳转",
+      "status": "NOT_RUN",
+      "detail": "未实际操作 A 确切 HEAD 的界面；HTTP 不替代 UI 验收"
+    },
+    {
+      "step": "比较提交",
+      "status": "NOT_RUN",
+      "detail": "未实际操作 A 确切 HEAD 的界面；HTTP 不替代 UI 验收"
+    },
+    {
+      "step": "切换项目",
+      "status": "NOT_RUN",
+      "detail": "未实际操作 A 确切 HEAD 的界面；HTTP 不替代 UI 验收"
+    }
+  ],
+  "productAcceptance": "NOT_RUN",
+  "toolReadiness": "READY",
+  "limits": [
+    "No product implementation modified",
+    "No fixture source executed",
+    "No main operation or remote publication"
+  ]
+}

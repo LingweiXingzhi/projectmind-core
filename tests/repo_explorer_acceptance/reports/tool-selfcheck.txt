@@ -1,0 +1,17 @@
+test_actual_urllib_transport_error_contract_and_schema (test_tools.AcceptanceToolTests.test_actual_urllib_transport_error_contract_and_schema) ... ok
+test_coverage_bad_types_and_wrong_project_never_pass (test_tools.AcceptanceToolTests.test_coverage_bad_types_and_wrong_project_never_pass) ... ok
+test_failure_has_severity_expected_actual_and_reproduction (test_tools.AcceptanceToolTests.test_failure_has_severity_expected_actual_and_reproduction) ... ok
+test_manifest_corruption_refused (test_tools.AcceptanceToolTests.test_manifest_corruption_refused) ... ok
+test_no_service_never_counts_not_run_as_pass (test_tools.AcceptanceToolTests.test_no_service_never_counts_not_run_as_pass) ... ok
+test_relations_oracle_never_resolves_uncertain_target (test_tools.AcceptanceToolTests.test_relations_oracle_never_resolves_uncertain_target) ... ok
+test_symbols_oracle_rejects_legacy_null_end_stale_and_fabricated (test_tools.AcceptanceToolTests.test_symbols_oracle_rejects_legacy_null_end_stale_and_fabricated) ... ok
+test_cleanup_refuses_redirected_root_and_fixture_parent_repo (test_tools.FixtureTests.test_cleanup_refuses_redirected_root_and_fixture_parent_repo) ... ok
+test_fixed_line_oracles_can_be_checked_without_product_parser (test_tools.FixtureTests.test_fixed_line_oracles_can_be_checked_without_product_parser) ... ok
+test_isolated_same_name_repositories_no_map_no_execution (test_tools.FixtureTests.test_isolated_same_name_repositories_no_map_no_execution) ... ok
+test_rebuild_same_git_shas (test_tools.FixtureTests.test_rebuild_same_git_shas) ... ok
+test_two_actual_commits_and_fixed_changes (test_tools.FixtureTests.test_two_actual_commits_and_fixed_changes) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 1.456s
+
+OK
