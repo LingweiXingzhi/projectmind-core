@@ -9,10 +9,13 @@ from extensions.worklog.store import now, identifier, repository_storage_folder,
 from extensions.continuity.model import MAX_PACKAGE, STATES, REVIEW_FIELDS, task, checklist, scope, ready_missing, validate_packet
 
 EVENT_STATES = {'ready': 'ready', 'receive': 'receiving', 'start': 'active', 'block': 'blocked',
-                'resume': 'active', 'complete': 'completed'}
-ALLOWED = {'draft': {'ready', 'question', 'note'}, 'ready': {'receive', 'question', 'note'},
-           'receiving': {'start', 'block', 'question', 'note'}, 'active': {'block', 'complete', 'question', 'note'},
-           'blocked': {'resume', 'question', 'note'}, 'completed': {'note'}}
+                'resume': 'active', 'claim': 'active', 'finish_session': 'ready', 'complete': 'completed'}
+# Keep legacy events valid; the UI exposes four user actions instead of these transitions.
+ALLOWED = {'draft': {'ready', 'claim', 'block', 'finish_session', 'complete', 'question', 'note'},
+           'ready': {'receive', 'claim', 'block', 'finish_session', 'complete', 'question', 'note'},
+           'receiving': {'start', 'claim', 'block', 'finish_session', 'complete', 'question', 'note'},
+           'active': {'block', 'finish_session', 'complete', 'question', 'note'},
+           'blocked': {'resume', 'claim', 'finish_session', 'complete', 'question', 'note'}, 'completed': {'note'}}
 
 
 class Store:
@@ -110,12 +113,36 @@ class Store:
                 if not isinstance(review, dict) or set(review) != REVIEW_FIELDS or any(type(v) is not bool for v in review.values()) or not all(review.values()):
                     fail('请完成四项接手检查，再标记继续工作')
                 record['review'] = {'checks': review, 'actor': actor, 'at': now(), 'status': 'participant_report'}
-            if kind in ('block', 'question', 'complete') and not note.strip():
+            if kind == 'claim':
+                review = data.get('review', {})
+                if not isinstance(review, dict) or not set(review).issubset(REVIEW_FIELDS) or any(type(v) is not bool for v in review.values()):
+                    fail('接手检查记录须为勾选项；未检查的内容不能自动算通过')
+                record['review'] = {'checks': review, 'actor': actor, 'at': now(), 'status': 'participant_report'}
+                if record['state'] == 'blocked' and not note.strip():
+                    fail('请说明问题如何处理，或为何现在可以继续')
+            if kind in ('block', 'question', 'complete', 'finish_session') and not note.strip():
                 fail('请写清问题、阻塞或完成结果')
-            if kind == 'complete' and (not evidence.strip() or any(c['state'] != 'done' for c in record['checklist'])):
-                fail('完成前请记录验证依据，并完成所有清单项')
+            if kind == 'complete':
+                pending = [c['text'] for c in record['checklist'] if c['state'] != 'done']
+                if pending:
+                    fail('任务尚有未完成项：' + '、'.join(pending) + '。可返回清单处理，或选择“结束本次接手”保留这些事项。')
+                if not evidence.strip():
+                    fail('请填写任务完成的验证依据；若只是暂时结束，请选择“结束本次接手”。')
+            # A session ending leaves the task open. Save the next person's entry point
+            # atomically with the event; existing materials and unfinished items stay intact.
+            continuation = {}
+            for key, limit, label in [('stopPoint', 4000, '停止位置'), ('nextAction', 2000, '下一步')]:
+                if key in data or kind == 'finish_session':
+                    continuation[key] = text(data.get(key, ''), limit, label, True).strip()
+                    if not continuation[key]:
+                        fail('结束本次接手前请填写' + label)
+            if continuation:
+                if record['state'] == 'completed':
+                    fail('已完成任务只能补充历史说明，不能改写停止位置', 409)
+                record['task'] = task({**record['task'], **continuation})
             event = {'kind': kind, 'actor': actor, 'origin': origin, 'note': note, 'evidence': evidence,
                      'at': now(), 'status': 'ai_candidate' if origin == 'ai' else 'participant_report'}
+            event.update(continuation)
             record['events'].append(event)
             if kind in EVENT_STATES:
                 record['state'] = EVENT_STATES[kind]
