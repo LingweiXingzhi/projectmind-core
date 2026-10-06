@@ -106,6 +106,22 @@ class GitHubExperimentTests(unittest.TestCase):
         missing=self.ref('commit/'+'f'*40)
         self.assertEqual(handle(self.context,'POST',{'action':'verify_references','references':[missing]})['references'][0]['localState'],'missing')
 
+    def test_log_page_is_served_as_exact_utf8_text(self):
+        # R48-07: the page is UTF-8 on disk. Reading it with the locale default
+        # codec (cp936 with UTF-8 mode off) raised UnicodeDecodeError and
+        # surfaced as a 500; the answer must be the exact file text.
+        import inspect
+        page = Path(inspect.getfile(handle)).with_name('worklog.html')
+        raw = page.read_bytes()
+        self.assertTrue(any(ord(char) > 127 for char in raw.decode('utf-8')),
+                        "fixture assumption: the page carries non-ASCII content")
+        with self.assertRaises(UnicodeDecodeError):
+            raw.decode('cp936')
+        # the endpoint serves the page as UTF-8 text (universal newlines),
+        # which is exactly what an explicit encoding read produces.
+        self.assertEqual(handle(self.context, 'GET', {'action': 'log_page'})['html'],
+                         page.read_text(encoding='utf-8'))
+
     def test_inherited_git_environment_cannot_redirect_the_experimental_store(self):
         # R35-D1: both experimental stores resolve their common directory from
         # the explicit repo argument. A hostile inherited GIT_DIR /

@@ -77,7 +77,9 @@ def extra(context, method, data):
             db.execute('UPDATE history SET document=? WHERE id=? AND version=1', (document, item['id']))
         return {'entry': item, 'note': '已复制到独立实验日志；原记录及附件未改。'}
     if method == 'GET' and action == 'log_page':
-        return {'html': Path(__file__).with_name('worklog.html').read_text()}
+        # R48-07: the page is UTF-8 on disk; a locale default codec (cp936 with
+        # UTF-8 mode off) would raise UnicodeDecodeError and surface as a 500.
+        return {'html': Path(__file__).with_name('worklog.html').read_text(encoding='utf-8')}
     if action.startswith('log_'):
         store = logs_store(context.repo); key = action[4:]
         if method == 'GET':
