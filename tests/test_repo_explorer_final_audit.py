@@ -325,6 +325,73 @@ class FinalAuditRegressionTests(unittest.TestCase):
         self.assertEqual(status, 500)
         self.assertEqual(body["error"]["code"], "OBJECT_MISSING")
 
+    # ---- F5 残留（r30 专项复核）：cat-file 失败不得一律误判为对象缺失 ----
+    def _patch_cat_file_failure(self, *, probe_missing: bool):
+        """Patch facts._git so only the blob cat-file data call fails (as a
+        generic repo_unreadable CodeFactsError, exactly what _git raises for
+        timeout/OSError/non-zero exit), and facts._object_missing to a fixed
+        probe verdict. Real git still answers ls-tree and everything else."""
+        from extensions.code_facts import facts
+
+        real_git = facts._git
+        real_probe = facts._object_missing
+
+        def failing_git(repo, *args):
+            if args[0] == "cat-file" and args[1] == "blob":
+                raise facts.CodeFactsError("无法读取指定 Git 仓库、提交或对象")
+            return real_git(repo, *args)
+
+        facts._git = failing_git
+        facts._object_missing = lambda root, oid: True if probe_missing else False
+        self.addCleanup(setattr, facts, "_git", real_git)
+        self.addCleanup(setattr, facts, "_object_missing", real_probe)
+
+    def _symbols_via_http(self):
+        status, body = self._get(f"/api/repo-explorer/symbols?projectId={self.project_id}"
+                                 f"&revision={self.head}&path=alpha.py")
+        return status, body
+
+    def test_cat_file_failure_inconclusive_probe_maps_to_repo_unreadable(self):
+        # r30 acceptance: a cat-file data-call failure whose cause is NOT a
+        # confirmed missing object (timeout / spawn OSError / generic non-zero
+        # exit all surface as _git's repo_unreadable CodeFactsError) must
+        # reach the symbols chain as REPO_UNREADABLE, never OBJECT_MISSING —
+        # when the existence probe cannot confirm the object is gone.
+        self._patch_cat_file_failure(probe_missing=False)
+        status, body = self._symbols_via_http()
+        self.assertEqual(status, 500)
+        self.assertEqual(body["error"]["code"], "REPO_UNREADABLE")
+
+    def test_cat_file_probe_confirmed_missing_maps_to_object_missing(self):
+        # When git's own existence probe confirms the object is gone (e.g.
+        # deleted between ls-tree and cat-file), OBJECT_MISSING is correct.
+        self._patch_cat_file_failure(probe_missing=True)
+        status, body = self._symbols_via_http()
+        self.assertEqual(status, 500)
+        self.assertEqual(body["error"]["code"], "OBJECT_MISSING")
+
+    def test_object_missing_probe_tristate_never_lies(self):
+        # The probe itself must be tri-state at the unit level: only a
+        # completed git process with non-zero exit counts as missing; a
+        # spawn OSError or timeout is inconclusive (None), which the
+        # collector maps to repo_unreadable — never object_missing.
+        import subprocess as sp
+        from extensions.code_facts import facts
+        real_run = facts.subprocess.run
+        try:
+            facts.subprocess.run = lambda args, **kw: (_ for _ in ()).throw(
+                sp.TimeoutExpired(cmd="git", timeout=10))
+            self.assertIsNone(facts._object_missing(self.repo, "0" * 40))
+            facts.subprocess.run = lambda args, **kw: (_ for _ in ()).throw(
+                OSError("injected"))
+            self.assertIsNone(facts._object_missing(self.repo, "0" * 40))
+            facts.subprocess.run = lambda args, **kw: type("R", (), {"returncode": 1})()
+            self.assertTrue(facts._object_missing(self.repo, "0" * 40))
+            facts.subprocess.run = lambda args, **kw: type("R", (), {"returncode": 0})()
+            self.assertFalse(facts._object_missing(self.repo, "0" * 40))
+        finally:
+            facts.subprocess.run = real_run
+
     # ---- F5 残留（专项复核）：kind 结构化分类，禁止自然语言关键词猜测 ----
     def test_f5_classification_is_kind_based_not_text_based(self):
         from extensions.code_facts.facts import CodeFactsError

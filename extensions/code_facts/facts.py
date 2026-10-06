@@ -51,6 +51,29 @@ def _git(repo: Path, *args: str) -> bytes:
     return result.stdout
 
 
+def _object_missing(root: Path, oid: str) -> bool | None:
+    """Dedicated existence probe (r30 F5 residual): ``git cat-file -e``.
+
+    Returns True only when git itself completed and confirmed the object
+    absent; False when git confirmed it present; None when the probe is
+    inconclusive (git could not be spawned or timed out) — inconclusive
+    probes must never be the basis for object_missing classification.
+    """
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_NO_LAZY_FETCH": "1", "LC_ALL": "C"})
+    try:
+        result = subprocess.run(
+            ["git", "--no-lazy-fetch", "--no-pager", "-C", str(root),
+             "cat-file", "-e", oid],
+            stdin=subprocess.DEVNULL, capture_output=True, timeout=10, env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode == 0:
+        return False
+    return True
+
+
 def repository_root(repo: Path | str) -> Path:
     try:
         root = Path(repo).expanduser().resolve(strict=True)
@@ -171,11 +194,16 @@ def collect_code_facts(repo: Path | str, revision: str, paths: list[str] | None 
             raise CodeFactsError("本次 Python 内容超过 16 MiB，请缩小文件范围", kind="budget")
         try:
             raw = _git(root, "cat-file", "blob", oid.decode("ascii"))
-        except CodeFactsError as exc:
-            # ls-tree 已成功、尺寸已知，此处的 cat-file 失败按对象缺失分类
-            # （终审 F5）；仓库级故障早在 ls-tree 一步以 repo_unreadable 暴露。
-            raise CodeFactsError("指定提交的对象在本地不可用，请先补全仓库；提取不会自动获取对象",
-                                 kind="object_missing") from exc
+        except CodeFactsError:
+            # r30 F5 残留：cat-file 失败原因不唯一（超时、启动 OSError、
+            # 一般非零退出都可能），一律按对象缺失会误分类。只有当独立
+            # 存在性探针确证对象缺失时才归 object_missing；其余保持原始
+            # repo_unreadable 分类（超时/启动失败/非零退出 → REPO_UNREADABLE）。
+            if _object_missing(root, oid.decode("ascii")) is True:
+                raise CodeFactsError(
+                    "指定提交的对象在本地不可用，请先补全仓库；提取不会自动获取对象",
+                    kind="object_missing")
+            raise
         try:
             encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
             source = raw.decode(encoding)
