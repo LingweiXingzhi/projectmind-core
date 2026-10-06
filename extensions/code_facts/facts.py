@@ -16,7 +16,20 @@ SHA_PATTERN = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
 
 
 class CodeFactsError(ValueError):
-    """Expected input or repository error, safe to show to a local user."""
+    """Expected input or repository error, safe to show to a local user.
+
+    `kind` is a stable machine-readable classification (终审 F5)：callers
+    must branch on kind, never on message text. One of:
+      "invalid_input"    — bad repo/path/paths argument
+      "revision_invalid" — revision not a full commit SHA
+      "budget"           — file-count or total-size budget exceeded
+      "object_missing"   — a referenced Git object is not locally available
+      "repo_unreadable"  — Git itself failed (transport/environment/unknown)
+    """
+
+    def __init__(self, message: str, kind: str = "repo_unreadable") -> None:
+        super().__init__(message)
+        self.kind = kind
 
 
 def _git(repo: Path, *args: str) -> bytes:
@@ -42,12 +55,12 @@ def repository_root(repo: Path | str) -> Path:
     try:
         root = Path(repo).expanduser().resolve(strict=True)
     except (OSError, TypeError, ValueError) as exc:
-        raise CodeFactsError("仓库路径无效") from exc
+        raise CodeFactsError("仓库路径无效", kind="invalid_input") from exc
     if not root.is_dir():
-        raise CodeFactsError("仓库路径必须是目录")
+        raise CodeFactsError("仓库路径必须是目录", kind="invalid_input")
     actual = Path(os.fsdecode(_git(root, "rev-parse", "--show-toplevel").rstrip(b"\n"))).resolve()
     if actual != root:
-        raise CodeFactsError("请提供 Git 仓库根目录，而非子目录")
+        raise CodeFactsError("请提供 Git 仓库根目录，而非子目录", kind="invalid_input")
     return root
 
 
@@ -61,7 +74,7 @@ def _paths(paths: list[str] | None) -> list[str] | None:
     if paths is None:
         return None
     if not isinstance(paths, list) or len(paths) > MAX_FILES:
-        raise CodeFactsError("paths 必须是最多 2000 项的路径列表")
+        raise CodeFactsError("paths 必须是最多 2000 项的路径列表", kind="invalid_input")
     result = []
     for path in paths:
         if (
@@ -69,7 +82,8 @@ def _paths(paths: list[str] | None) -> list[str] | None:
             or any(ord(char) < 32 or ord(char) == 127 for char in path)
             or any(part in ("", ".", "..") for part in path.split("/"))
         ):
-            raise CodeFactsError("路径须为仓库内相对文件路径，使用 /，不能含 .. 或控制字符")
+            raise CodeFactsError("路径须为仓库内相对文件路径，使用 /，不能含 .. 或控制字符",
+                                 kind="invalid_input")
         if path not in result:
             result.append(path)
     return result
@@ -104,12 +118,14 @@ def collect_code_facts(repo: Path | str, revision: str, paths: list[str] | None 
     Invalid inputs reject the request; unsupported/unparseable files are skipped.
     """
     if not isinstance(revision, str) or not SHA_PATTERN.fullmatch(revision):
-        raise CodeFactsError("revision 必须是完整的 40 或 64 位小写 Git 提交 SHA")
+        raise CodeFactsError("revision 必须是完整的 40 或 64 位小写 Git 提交 SHA",
+                             kind="revision_invalid")
     requested = _paths(paths)
     root = repository_root(repo)
     resolved = _git(root, "rev-parse", "--verify", revision + "^{commit}").decode("ascii").strip()
     if resolved != revision:
-        raise CodeFactsError("revision 必须直接指向提交，不能是标签对象")
+        raise CodeFactsError("revision 必须直接指向提交，不能是标签对象",
+                             kind="revision_invalid")
     raw_tree = _git(root, "ls-tree", "-r", "-z", "--long", revision)
     tree = {}
     for record in raw_tree.split(b"\0"):
@@ -121,12 +137,13 @@ def collect_code_facts(repo: Path | str, revision: str, paths: list[str] | None 
         tree[path] = (mode, object_type, oid, size, raw_path)
     if requested is not None:
         if any(path not in tree for path in requested):
-            raise CodeFactsError("所选文件在指定提交中不存在；请核对提交和相对路径")
+            raise CodeFactsError("所选文件在指定提交中不存在；请核对提交和相对路径",
+                                 kind="invalid_input")
         selected = sorted(requested)
     else:
         selected = sorted(tree)
     if len(selected) > MAX_FILES:
-        raise CodeFactsError("本次文件超过 2000 个，请通过 paths 缩小范围")
+        raise CodeFactsError("本次文件超过 2000 个，请通过 paths 缩小范围", kind="budget")
     files, skipped = [], []
     total_bytes = 0
     for path in selected:
@@ -141,7 +158,9 @@ def collect_code_facts(repo: Path | str, revision: str, paths: list[str] | None 
         if reason is None and not path.endswith(".py"):
             reason = "首版仅支持 .py Python 文件"
         if reason is None and not size.isdigit():
-            raise CodeFactsError("指定提交的对象在本地不可用，请先补全仓库；提取不会自动获取对象")
+            # ls-tree 对本地缺失的对象报 "-" 尺寸——真·对象缺失（终审 F5）。
+            raise CodeFactsError("指定提交的对象在本地不可用，请先补全仓库；提取不会自动获取对象",
+                                 kind="object_missing")
         if reason is None and int(size) > MAX_FILE_BYTES:
             reason = "文件超过首版 1 MiB 上限"
         if reason:
@@ -149,8 +168,14 @@ def collect_code_facts(repo: Path | str, revision: str, paths: list[str] | None 
             continue
         total_bytes += int(size)
         if total_bytes > MAX_TOTAL_BYTES:
-            raise CodeFactsError("本次 Python 内容超过 16 MiB，请缩小文件范围")
-        raw = _git(root, "cat-file", "blob", oid.decode("ascii"))
+            raise CodeFactsError("本次 Python 内容超过 16 MiB，请缩小文件范围", kind="budget")
+        try:
+            raw = _git(root, "cat-file", "blob", oid.decode("ascii"))
+        except CodeFactsError as exc:
+            # ls-tree 已成功、尺寸已知，此处的 cat-file 失败按对象缺失分类
+            # （终审 F5）；仓库级故障早在 ls-tree 一步以 repo_unreadable 暴露。
+            raise CodeFactsError("指定提交的对象在本地不可用，请先补全仓库；提取不会自动获取对象",
+                                 kind="object_missing") from exc
         try:
             encoding, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
             source = raw.decode(encoding)

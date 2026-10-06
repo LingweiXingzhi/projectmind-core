@@ -302,7 +302,7 @@ class FinalAuditRegressionTests(unittest.TestCase):
         proc = subprocess.run(
             ["node", "-e", harness, str(ROOT / "web" / "explorer-core.js"),
              json.dumps(entries, ensure_ascii=False)],
-            capture_output=True, text=True, timeout=60)
+            capture_output=True, text=True, encoding="utf-8", timeout=60)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         roots = json.loads(proc.stdout)
         self.assertEqual(len(roots), 2)
@@ -324,6 +324,36 @@ class FinalAuditRegressionTests(unittest.TestCase):
                                  f"&revision={self.head}&path=alpha.py")
         self.assertEqual(status, 500)
         self.assertEqual(body["error"]["code"], "OBJECT_MISSING")
+
+    # ---- F5 残留（专项复核）：kind 结构化分类，禁止自然语言关键词猜测 ----
+    def test_f5_classification_is_kind_based_not_text_based(self):
+        from extensions.code_facts.facts import CodeFactsError
+        classify = ExplorerRegistry._code_facts_error
+        # 专项复核钉死的四个误分类反例：即使展示文本里出现"对象"/"不可用"
+        # 字样，也绝不能映射 OBJECT_MISSING（旧实现按中文关键词组合判断）。
+        for message in ("对象元数据格式错误", "服务暂时不可用",
+                        "无关对象元数据暂时不可用", "完全无关的错误"):
+            with self.subTest(message=message):
+                mapped = classify(CodeFactsError(message))
+                self.assertEqual(mapped.status, 500, message)
+                self.assertEqual(mapped.code, "REPO_UNREADABLE", message)
+        # 结构化 kind → 稳定错误码映射。
+        self.assertEqual(
+            classify(CodeFactsError("指定提交的对象在本地不可用", kind="object_missing")).code,
+            "OBJECT_MISSING")
+        self.assertEqual(
+            classify(CodeFactsError("revision 必须是完整的提交 SHA", kind="revision_invalid")).code,
+            "REVISION_INVALID")
+        self.assertEqual(
+            classify(CodeFactsError("本次内容超过 16 MiB", kind="budget")).code,
+            "BUDGET_EXCEEDED")
+        self.assertEqual(
+            classify(CodeFactsError("无法读取指定 Git 仓库", kind="repo_unreadable")).code,
+            "REPO_UNREADABLE")
+        # invalid input 落既有兜底错误（与修复前行为一致）。
+        self.assertEqual(
+            classify(CodeFactsError("仓库路径无效", kind="invalid_input")).code,
+            "REPO_UNREADABLE")
 
 
 if __name__ == "__main__":

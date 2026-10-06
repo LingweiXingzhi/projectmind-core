@@ -35,3 +35,18 @@ function buildTreeNodes(entries, query) {
   };
   return roots.filter(keep);
 }
+
+function buildChangeRows(changes) {
+  // F4（changes 侧）：每条 change entry 一行，永不按展示 path 合并或去重。
+  // 行 key 取 machine identity（identity/oldIdentity），两个不同 raw byte
+  // path 即使展示文本完全相同，key 也必然不同（后端保证 identity 唯一）。
+  return changes.map((change) => ({
+    key: change.identity || change.path,
+    oldKey: change.oldIdentity || change.oldPath || null,
+    status: change.status,
+    path: change.path,
+    oldPath: change.oldPath || null,
+    display: change.oldPath ? `${change.oldPath} → ${change.path}` : change.path,
+    pathUndecodable: Boolean(change.pathUndecodable),
+  }));
+}

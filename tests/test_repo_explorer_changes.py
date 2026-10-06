@@ -113,20 +113,30 @@ class ChangesEndpointTests(unittest.TestCase):
         # B3B5-07: errors="replace" would collapse distinct invalid names
         # into one string; backslashreplace keeps them distinct and the
         # entry is flagged so the UI refuses to open them.
+        # 终审 F4（changes 侧）：entry 另带 raw bytes 派生的 machine
+        # identity（与 tree 同一 helper：可解码=明文自身，不可解码=NUL+b64）。
         from repo_index.explorer import parse_name_status
         raw = b"M\0ok.py\0M\0bad-\xff.py\0R100\0bad-\xff-old.py\0renamed.py\0"
         changes = parse_name_status(raw)
-        self.assertEqual(changes[0], {"status": "M", "path": "ok.py", "oldPath": None})
+        self.assertEqual(changes[0], {"status": "M", "path": "ok.py",
+                                      "identity": "ok.py", "oldPath": None})
         self.assertEqual(changes[1]["path"], r"bad-\xff.py")
         self.assertTrue(changes[1]["pathUndecodable"])
+        self.assertTrue(changes[1]["identity"].startswith("\x00b64:"))
+        self.assertNotEqual(changes[1]["identity"], changes[1]["path"])
         self.assertEqual(changes[2]["status"], "R")
         self.assertEqual(changes[2]["path"], "renamed.py")
         self.assertEqual(changes[2]["oldPath"], r"bad-\xff-old.py")
+        self.assertEqual(changes[2]["identity"], "renamed.py")
+        self.assertEqual(changes[2]["newIdentity"], "renamed.py")
+        self.assertEqual(changes[2]["newPath"], "renamed.py")
+        self.assertTrue(changes[2]["oldIdentity"].startswith("\x00b64:"))
         self.assertTrue(changes[2]["pathUndecodable"])
         # Two distinct invalid names never collapse.
         raw2 = b"M\0bad-\xfe.py\0M\0bad-\xff.py\0"
         parsed2 = parse_name_status(raw2)
         self.assertNotEqual(parsed2[0]["path"], parsed2[1]["path"])
+        self.assertNotEqual(parsed2[0]["identity"], parsed2[1]["identity"])
 
 
 if __name__ == "__main__":

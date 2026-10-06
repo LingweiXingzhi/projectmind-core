@@ -398,13 +398,17 @@ function renderChanges(result) {
     return;
   }
   const list = explorerElement("ul", "explorer-change-list");
-  for (const change of result.changes) {
+  // F4：行构建走纯函数 buildChangeRows（explorer-core.js）——每条 entry
+  // 一行、永不按展示 path 合并；行 key = machine identity，展示文本相同
+  // 的碰撞 entry 各自保留（dataset.changeKey 可区分）。
+  for (const change of buildChangeRows(result.changes)) {
     const item = explorerElement("li", "explorer-change-item");
+    item.dataset.changeKey = change.key;
+    if (change.oldKey) item.dataset.changeOldKey = change.oldKey;
     item.appendChild(explorerElement("span",
       `explorer-change-pill is-${change.status}`,
       CHANGE_STATUS_LABELS[change.status] || change.status));
-    item.appendChild(explorerElement("code", "explorer-change-path",
-      change.oldPath ? `${change.oldPath} → ${change.path}` : change.path));
+    item.appendChild(explorerElement("code", "explorer-change-path", change.display));
     if (change.pathUndecodable) {
       // 非 UTF-8 文件名：backslashreplace 表示不可寻址，禁止错误跳转（B3B5-07）。
       item.appendChild(explorerElement("span", "explorer-skip-pill",

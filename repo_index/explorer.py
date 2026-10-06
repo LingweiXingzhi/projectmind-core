@@ -249,6 +249,17 @@ def _dir_link(prefix_raw: bytes) -> str:
 
 
 def parse_name_status(raw: bytes) -> list[dict]:
+    """Parse `git diff --name-status -z -M` output with machine identity.
+
+    终审 F4（changes 侧）：展示文本（path/oldPath）与机器身份（identity/
+    oldIdentity/newIdentity）分离。身份由 raw Git path bytes 派生，且与
+    tree 使用同一底层 helper `_dir_link`——不得另造不兼容编码：
+    - 可解码路径：身份就是其自身明文（UTF-8 解码单射，两个合法路径永不合并）；
+    - 不可解码路径：NUL 前缀 base64 身份（Git 路径不含 NUL，任何合法
+      路径都无法复现，backslashreplace 展示文本也无法伪造）。
+    因此两个不同 raw byte path 即使展示文本完全相同，身份也必然不同，
+    entry 不会被覆盖、折叠或去重；rename 两侧身份分别记录。
+    """
     parts = [part for part in raw.split(b"\0") if part]
     changes: list[dict] = []
     index = 0
@@ -256,17 +267,34 @@ def parse_name_status(raw: bytes) -> list[dict]:
         code = parts[index]
         index += 1
         if code.startswith((b"R", b"C")):
+            old_raw, new_raw = parts[index], parts[index + 1]
+            index += 2
             # _decode_git_path's second element IS the "undecodable" flag
             # (False = decoded fine); never double-negate it.
-            old_path, old_broken = _decode_git_path(parts[index])
-            path, path_broken = _decode_git_path(parts[index + 1])
-            index += 2
-            entry = {"status": code[:1].decode("ascii"), "path": path, "oldPath": old_path}
+            old_path, old_broken = _decode_git_path(old_raw)
+            path, path_broken = _decode_git_path(new_raw)
+            entry = {
+                "status": code[:1].decode("ascii"),
+                # path/identity 是 rename 的新侧；newPath/newIdentity 与之
+                # 同值，让 rename 记录按专项复核要求自描述两侧身份。
+                "path": path,
+                "identity": _dir_link(new_raw),
+                "newPath": path,
+                "newIdentity": _dir_link(new_raw),
+                "oldPath": old_path,
+                "oldIdentity": _dir_link(old_raw),
+            }
             undecodable = old_broken or path_broken
         else:
-            path, path_broken = _decode_git_path(parts[index])
+            raw_path = parts[index]
             index += 1
-            entry = {"status": code.decode("ascii"), "path": path, "oldPath": None}
+            path, path_broken = _decode_git_path(raw_path)
+            entry = {
+                "status": code.decode("ascii"),
+                "path": path,
+                "identity": _dir_link(raw_path),
+                "oldPath": None,
+            }
             undecodable = path_broken
         if undecodable:
             entry["pathUndecodable"] = True
@@ -458,7 +486,12 @@ class ExplorerRegistry:
         """File changes between two full commit SHAs of this project's repo
         (task book §6.6): raw Git name-status letters with rename detection;
         nothing silently dropped. The task-book signature carries projectId,
-        base and target only — no revision parameter."""
+        base and target only — no revision parameter.
+
+        终审 F4：每个 entry 携带 machine identity（identity，rename 另有
+        oldIdentity/newIdentity），由 raw Git path bytes 派生并与 tree 的
+        身份规则同一 helper——展示文本相同的碰撞 entry 依赖身份保持独立。
+        """
         context = self._get_by_id(project_id)
         base_sha = self._resolve_pinned_commit(context.repo_root, base, "base")
         target_sha = self._resolve_pinned_commit(context.repo_root, target, "target")
@@ -545,16 +578,17 @@ class ExplorerRegistry:
 
     @staticmethod
     def _code_facts_error(exc: CodeFactsError) -> ExplorerError:
-        message = str(exc)
-        if "revision" in message:
-            return ExplorerError(HTTPStatus.BAD_REQUEST, "REVISION_INVALID", message)
-        if "2000" in message or "16 MiB" in message or "1 MiB" in message:
-            return ExplorerError(HTTPStatus.BAD_REQUEST, "BUDGET_EXCEEDED", message)
-        if "对象" in message and "不可用" in message:
-            # 终审 F5：对象缺失是明确的一类失败（仓库未补全对象），不得
-            # 混入 REPO_UNREADABLE。
-            return ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "OBJECT_MISSING", message)
-        return ExplorerError(HTTPStatus.INTERNAL_SERVER_ERROR, "REPO_UNREADABLE", message)
+        """终审 F5：按 CodeFactsError.kind 这一稳定机器可读分类映射，
+        不做任何自然语言关键词猜测。invalid_input / repo_unreadable 及
+        未知 kind 一律落 REPO_UNREADABLE（与既有兜底行为一致）。"""
+        mapping = {
+            "revision_invalid": (HTTPStatus.BAD_REQUEST, "REVISION_INVALID"),
+            "budget": (HTTPStatus.BAD_REQUEST, "BUDGET_EXCEEDED"),
+            "object_missing": (HTTPStatus.INTERNAL_SERVER_ERROR, "OBJECT_MISSING"),
+        }
+        status, code = mapping.get(getattr(exc, "kind", None),
+                                   (HTTPStatus.INTERNAL_SERVER_ERROR, "REPO_UNREADABLE"))
+        return ExplorerError(status, code, str(exc))
 
     # -- tree ----------------------------------------------------------------
     def tree(self, project_id: str, revision: str) -> dict:
