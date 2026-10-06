@@ -71,14 +71,6 @@ function resetFilePane(message) {
   if (search.value) search.value = "";
 }
 
-function splitPhysicalLines(text) {
-  // 与接口一致：仅按 CRLF/CR/LF 物理换行切分（B1-b-04），U+2028 不算换行。
-  if (text === "") return [];
-  const lines = text.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g);
-  if (lines && lines[lines.length - 1] === "") lines.pop();
-  return lines.map((line) => line.replace(/[\r\n]+$/, ""));
-}
-
 // ---------- 模式探测：无地图时仓库浏览成为主视图 ----------
 async function detectModeAndInitExplorer() {
   let noMap = false;
@@ -211,26 +203,6 @@ async function refreshTree() {
     document.getElementById("explorer-tree").replaceChildren(
       explorerElement("div", "explorer-empty", `目录读取失败：${error.message}`));
   }
-}
-
-function buildTreeNodes(entries, query) {
-  const byPath = new Map();
-  const roots = [];
-  for (const entry of entries) {
-    const node = { ...entry, children: [] };
-    byPath.set(entry.path, node);
-    const parent = entry.parentPath ? byPath.get(entry.parentPath) : null;
-    if (parent) parent.children.push(node); else roots.push(node);
-  }
-  if (!query) return roots;
-  const needle = query.toLowerCase();
-  const keep = (node) => {
-    // 搜索按展示文本匹配（F4：非 UTF-8 条目的 path 是 base64 身份链接值）
-    const self = ((node.displayPath || node.path)).toLowerCase().includes(needle);
-    node.children = node.children.filter(keep);
-    return self || node.children.length > 0;
-  };
-  return roots.filter(keep);
 }
 
 function renderTree(query) {

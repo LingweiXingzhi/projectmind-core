@@ -13,6 +13,7 @@ F5: the code-facts collector's object-missing failure maps to
 """
 import json
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -24,6 +25,8 @@ from pathlib import Path
 
 from app import make_handler
 from repo_index.explorer import ExplorerRegistry
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_git(repo: Path, *args: str, data: bytes | None = None) -> str:
@@ -270,6 +273,44 @@ class FinalAuditRegressionTests(unittest.TestCase):
         for directory in (s80[0], forged[0]):
             children = [entry for entry in entries if entry.get("parentPath") == directory["path"]]
             self.assertEqual(len(children), 1, "each directory owns exactly its own child")
+
+    # ---- F4 residual (r26): children may sort BEFORE their parent ----
+    def test_tree_builder_links_children_that_sort_before_parents(self):
+        # The NUL-prefixed identity sorts before the plain parent dir, so the
+        # frontend tree builder must link in two passes. Harness evals the
+        # pure decision file (web/explorer-core.js) the same way the UI-01
+        # regression exercises web/evidence-links.js.
+        if shutil.which("node") is None:
+            self.skipTest("node is not available for the pure-function harness")
+        harness = (
+            "const fs = require('fs');\n"
+            "eval(fs.readFileSync(process.argv[1], 'utf8'));\n"
+            "const entries = JSON.parse(process.argv[2]);\n"
+            "const roots = buildTreeNodes(entries);\n"
+            "const flat = (node) => ({ path: node.path, displayPath: node.displayPath,\n"
+            "  children: node.children.map(flat) });\n"
+            "console.log(JSON.stringify(roots.map(flat)));\n"
+        )
+        entries = [
+            # deliberately child-first: the NUL identity sorts before "pkg"
+            {"path": "\x00b64:cGtnL2JhZC3Iny5weQ==", "displayPath": "pkg/bad-\xff.py",
+             "parentPath": "pkg", "kind": "file"},
+            {"path": "\x00b64:YmFk", "displayPath": "bad-root.py",
+             "parentPath": "", "kind": "file"},
+            {"path": "pkg", "kind": "directory", "parentPath": ""},
+        ]
+        proc = subprocess.run(
+            ["node", "-e", harness, str(ROOT / "web" / "explorer-core.js"),
+             json.dumps(entries, ensure_ascii=False)],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        roots = json.loads(proc.stdout)
+        self.assertEqual(len(roots), 2)
+        pkg = next(node for node in roots if node["path"] == "pkg")
+        self.assertEqual([child["displayPath"] for child in pkg["children"]],
+                         ["pkg/bad-\xff.py"])
+        self.assertEqual(sorted(node["path"] for node in roots),
+                         ["\x00b64:YmFk", "pkg"])
 
     # ---- F5 ----
     def test_object_missing_maps_to_object_missing_not_repo_unreadable(self):

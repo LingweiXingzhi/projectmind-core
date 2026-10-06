@@ -630,6 +630,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "/view.js": ("view.js", "text/javascript; charset=utf-8"),
                     "/evidence-links.js": ("evidence-links.js", "text/javascript; charset=utf-8"),
                     "/review.js": ("review.js", "text/javascript; charset=utf-8"),
+                    "/explorer-core.js": ("explorer-core.js", "text/javascript; charset=utf-8"),
                     "/explorer.js": ("explorer.js", "text/javascript; charset=utf-8"),
                     "/extensions.js": ("extensions.js", "text/javascript; charset=utf-8"),
                     "/extension.js": ("extension.js", "text/javascript; charset=utf-8"),
