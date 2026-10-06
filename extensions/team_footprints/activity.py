@@ -1,6 +1,7 @@
 """Read existing SQLite snapshots without creating or modifying business stores."""
 import hashlib
 import json
+import os
 import sqlite3
 import subprocess
 from contextlib import closing
@@ -68,7 +69,13 @@ def documents(path, table):
 
 
 def common_dir(repo):
-    result=subprocess.run(['git','-C',str(repo),'rev-parse','--git-common-dir'],capture_output=True,text=True,timeout=5)
+    # R35-D1: the explicit repo argument always wins. Inherited GIT_*
+    # environment (GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR, ...) is stripped
+    # from the subprocess, so it can never silently redirect the record
+    # lookup into another repository's stores — the same rule the worklog and
+    # continuity stores already apply.
+    env={key:value for key,value in os.environ.items() if not key.startswith('GIT_')}
+    result=subprocess.run(['git','-C',str(repo),'rev-parse','--git-common-dir'],capture_output=True,text=True,timeout=5,env=env)
     if result.returncode: fail('无法定位当前项目记录目录')
     p=Path(result.stdout.strip())
     return (p if p.is_absolute() else Path(repo)/p).resolve()

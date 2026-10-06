@@ -1,5 +1,6 @@
 """Experimental log store, physically separate from all existing records."""
 import json
+import os
 import subprocess
 from pathlib import Path
 from extensions.worklog.store import Store as OriginalStore, fail
@@ -7,7 +8,11 @@ from extensions.continuity_github.references import references
 
 
 def common_dir(repo):
-    r = subprocess.run(['git', '-C', str(repo), 'rev-parse', '--git-common-dir'], capture_output=True, text=True, timeout=5)
+    # R35-D1: strip inherited GIT_* (GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR
+    # / ...) so the explicit repo argument always wins; the experimental store
+    # must never be redirected into another repository by the environment.
+    env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    r = subprocess.run(['git', '-C', str(repo), 'rev-parse', '--git-common-dir'], capture_output=True, text=True, timeout=5, env=env)
     if r.returncode:
         fail('无法定位实验记录目录')
     path = Path(r.stdout.strip())

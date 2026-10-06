@@ -1,7 +1,11 @@
 import copy
 import json
+import os
+import subprocess
+import tempfile
 import threading
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 from urllib.request import urlopen, Request
@@ -108,8 +112,25 @@ class FootprintTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as error: urlopen(req)
             self.assertEqual(error.exception.code,405)
         finally: server.shutdown();server.server_close();thread.join()
-        import tempfile, subprocess
-        from pathlib import Path
         with tempfile.TemporaryDirectory() as tmp:
             other=Path(tmp);subprocess.run(['git','init','-q',str(other)],check=True)
             self.assertEqual(summarize(collect_activity(other),2026)['total'],0)
+
+    def test_inherited_git_environment_cannot_redirect_the_record_lookup(self):
+        # R35-D1: the explicit repo argument always wins. A hostile inherited
+        # GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR naming a DIFFERENT real
+        # repository must not redirect the footprint read into that
+        # repository's stores (it would read someone else's records, or fail
+        # to locate the directory at all).
+        self.log()
+        with tempfile.TemporaryDirectory() as tmp:
+            other=Path(tmp)/'other';other.mkdir()
+            subprocess.run(['git','init','-q',str(other)],check=True)
+            hostile={'GIT_DIR':str(other/'.git'),'GIT_WORK_TREE':str(other),
+                     'GIT_COMMON_DIR':str(other/'.git')}
+            with patch.dict(os.environ,hostile):
+                result=handle(self.context,'GET',{'year':'2026'})
+            self.assertEqual(result['metrics']['log'],1)
+            self.assertTrue(any(c['available'] for c in result['coverage']))
+            self.assertFalse((other/'.git'/'projectmind-worklog').exists())
+            self.assertFalse((other/'.git'/'projectmind-continuity').exists())

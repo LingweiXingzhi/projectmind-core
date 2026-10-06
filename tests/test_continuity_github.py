@@ -2,9 +2,13 @@ import base64
 import copy
 import hashlib
 import json
+import os
+import subprocess
+import tempfile
 import threading
 import unittest
 from http.server import ThreadingHTTPServer
+from unittest.mock import patch
 from urllib.request import urlopen, Request
 from pathlib import Path
 import test_continuity as fixtures
@@ -100,6 +104,27 @@ class GitHubExperimentTests(unittest.TestCase):
         self.assertEqual(handle(self.context,'POST',{'action':'verify_references','references':[wrong]})['references'][0]['localState'],'repository_unconfirmed')
         missing=self.ref('commit/'+'f'*40)
         self.assertEqual(handle(self.context,'POST',{'action':'verify_references','references':[missing]})['references'][0]['localState'],'missing')
+
+    def test_inherited_git_environment_cannot_redirect_the_experimental_store(self):
+        # R35-D1: both experimental stores resolve their common directory from
+        # the explicit repo argument. A hostile inherited GIT_DIR /
+        # GIT_WORK_TREE / GIT_COMMON_DIR naming a DIFFERENT real repository
+        # must not redirect them, and must never make them write there.
+        self.save_log()
+        with tempfile.TemporaryDirectory() as tmp:
+            other = Path(tmp) / 'other'
+            other.mkdir()
+            subprocess.run(['git', 'init', '-q', str(other)], check=True)
+            hostile = {'GIT_DIR': str(other / '.git'), 'GIT_WORK_TREE': str(other),
+                       'GIT_COMMON_DIR': str(other / '.git')}
+            with patch.dict(os.environ, hostile):
+                log_store, task_store = logs(self.repo), tasks(self.repo)
+            self.assertEqual(log_store.path,
+                             self.repo / '.git' / 'projectmind-worklog-github' / 'records.sqlite3')
+            self.assertEqual(task_store.path,
+                             self.repo / '.git' / 'projectmind-continuity-github' / 'records.sqlite3')
+            self.assertFalse((other / '.git' / 'projectmind-worklog-github').exists())
+            self.assertFalse((other / '.git' / 'projectmind-continuity-github').exists())
 
     def test_imported_file_references_and_http_discovery(self):
         raw=b'# MD log'
