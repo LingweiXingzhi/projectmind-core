@@ -120,6 +120,31 @@ class OpenEndpointTests(ExplorerServerHarness):
             self.assertEqual(status, 400, repr(bad))
             self.assertEqual(body["error"]["code"], "REPO_INVALID", repr(bad))
 
+    def test_post_body_shorter_than_declared_is_never_dispatched(self):
+        # B4B6-02: a declared Content-Length with an early EOF must answer a
+        # controlled 408, not dispatch the short body to the endpoint.
+        import socket
+        with socket.create_connection(("127.0.0.1", self._port), timeout=10) as sock:
+            payload = b'{"repoPath": "C:/nonexistent"}'
+            request = (b"POST /api/repo-explorer/open HTTP/1.1\r\n"
+                       b"Host: 127.0.0.1\r\n"
+                       b"Content-Type: application/json\r\n"
+                       + f"Content-Length: {len(payload) + 50}\r\n".encode()
+                       + b"\r\n" + payload)
+            sock.sendall(request)
+            sock.shutdown(socket.SHUT_WR)
+            response = b""
+            while True:
+                try:
+                    part = sock.recv(4096)
+                except (ConnectionResetError, OSError):
+                    break
+                if not part:
+                    break
+                response += part
+        self.assertIn(b"408", response.split(b"\r\n")[0])
+        self.assertIn(b"REQUEST_INCOMPLETE", response)
+
     def test_open_survives_gitlink_entries(self):
         # B1-a-01: gitlinks report "-" as size in ls-tree --long; open must
         # classify the submodule instead of failing on int("-").

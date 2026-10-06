@@ -1,6 +1,6 @@
 # Repo Explorer 接口文档 · schemaVersion 1
 
-状态：与提交 2f8f03f6d15d3aa6f216bb20d5ce4ffd63c20214 一致（ feat/repo-explorer-main-v1）。
+状态：与提交 939cb59082f90bc30f6a2d30fa439b3a424bec1a（feat/repo-explorer-main-v1 HEAD）一致。其中 `capabilities.changes=true` 自提交 4f2d3da30cd16b7790c33b346f997f63debd71d5 起生效（此前该值为 false 且 changes 接口尚未交付）。
 本文档是任务书《PROJECTMIND_REPO_EXPLORER_4_PERSON_PLAN.md》§6 的落地版本。所有新接口都在 `/api/repo-explorer/` 前缀下；现有 `/api/snapshot`、`/api/evidence`、`/api/compare`、`/api/export`、`/api/explain`、`/api/extensions*` 的语义不变。
 
 ## 通用约定

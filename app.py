@@ -385,6 +385,12 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                           "message": "仅接受本服务来源的请求"}}
 
     class Handler(BaseHTTPRequestHandler):
+        # Bounded socket I/O for every request on this connection (r21
+        # B4B6-01): a client that declares a body and never sends it can no
+        # longer wedge a worker thread; idle keep-alive connections are
+        # closed by the same timeout and simply re-established by browsers.
+        timeout = 30
+
         def _explorer_access_allowed(self) -> tuple[bool, dict | None]:
             """Loopback Host + same-service Origin only (accepted R2-Q4)."""
             port = self.server.server_address[1]
@@ -423,8 +429,9 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
         def consume_body(self) -> bytes | None:
             """Read the declared request body up front so early error
             responses never race the client's send (Windows aborts such
-            connections with WinError 10053). None means the declared size
-            is unreasonable; the caller answers 413 and closes."""
+            connections with WinError 10053). None means the declared body
+            could not be read in full (too large, timed out, or early EOF);
+            the caller answers a controlled error and closes. B4B6-01/02."""
             try:
                 length = int(self.headers.get("Content-Length", "0") or "0")
             except ValueError:
@@ -433,10 +440,17 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 return None
             data = bytearray()
             while len(data) < length:
-                chunk = self.rfile.read(min(65536, length - len(data)))
+                try:
+                    chunk = self.rfile.read(min(65536, length - len(data)))
+                except TimeoutError:
+                    return None
                 if not chunk:
                     break
                 data.extend(chunk)
+            if len(data) != length:
+                # Early EOF: a short body must never be dispatched as if it
+                # were the declared one (B4B6-02).
+                return None
             return bytes(data)
 
         def do_GET(self) -> None:
@@ -636,8 +650,9 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             body = self.consume_body()
             if body is None:
                 self.close_connection = True
-                self.send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
-                               {"error": {"code": "REQUEST_TOO_LARGE", "message": "请求体过大"}})
+                self.send_json(HTTPStatus.REQUEST_TIMEOUT,
+                               {"error": {"code": "REQUEST_INCOMPLETE",
+                                          "message": "请求体不完整或读取超时，连接已关闭"}})
                 return
             if path == "/api/repo-explorer/open":
                 if explorer_registry is None:
