@@ -1,0 +1,23 @@
+{
+  "protected_code_modified": false,
+  "protected_shared_state_modified": false,
+  "main_modified": false,
+  "main_merged": false,
+  "main_pushed": false,
+  "manual_service_ports": [
+    18820,
+    18821,
+    18822,
+    18823
+  ],
+  "boundary_violation": true,
+  "violation": "Unchanged existing unittest HTTP fixtures were executed with bind port 0 (system-assigned ephemeral ports); the B-only allocation restriction was not applied to those listeners. Exact allocated port numbers were not retained. This is an audit-process deviation, not a product-code change.",
+  "impact": "Loopback test servers in own sandbox; tests shut down their own servers. No evidence of protected process interruption or shared-state changes. Do not erase or rerun to conceal deviation.",
+  "missing_scope": [
+    "Windows <WINDOWS_WORKSPACE> repositories/worktree inventory and Temp legacy path",
+    "Windows original navigation/state files not found in pinned archive",
+    "live Grilling continuity/session"
+  ],
+  "browser_downloads": "NOT_RUN; UI enabled and preview tested, JSON body saved via API",
+  "cleanup": "No audit/sandbox roots removed; PID inspection blocked, own runtime processes not killed; status in own-process-stop.json"
+}

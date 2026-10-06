@@ -1,0 +1,1 @@
+{"path": "pkg/service.py", "language": "python", "status": "ok", "symbols": [{"name": "Service", "qualified_name": "Service", "kind": "class", "start_line": 1, "end_line": 4, "docstring": null}, {"name": "run", "qualified_name": "Service.run", "kind": "method", "start_line": 2, "end_line": 4, "docstring": "执行处理。"}], "warnings": []}

@@ -1,0 +1,10 @@
+[
+  {
+    "stage": "first usable delivery",
+    "sha": "6e81e715cfd46b840cc9b3f01b007778a1637f21"
+  },
+  {
+    "stage": "complete B contract/tests/docs",
+    "sha": "c3e08a9f41248d32f1c22383204aa99f44a08056"
+  }
+]

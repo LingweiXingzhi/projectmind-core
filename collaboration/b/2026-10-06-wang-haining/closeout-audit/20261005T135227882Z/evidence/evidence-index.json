@@ -1,0 +1,820 @@
+[
+  {
+    "EVIDENCE_ID": "EV01",
+    "OBJECT_OR_CAPABILITY": "固定源码与Git拓扑",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5",
+      "Core_D_history": "8f00be38532f3f5e9823aec8cbf430038cc9ff4b",
+      "C": "65a7c480e7fa2656e55771c3cc001cf8117f59ad",
+      "CA": "9ea23491d1849f21bad9f60c1c1ca8df55bb5936",
+      "D": "2ed56da28403d5703cb6e3ec3af20bbc1e7360eb",
+      "A30": "13c7ca8c7f64fce4c57fd49a48bb5c1b0b023a5e",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "archive": "b97e1bbe9742feeb1cf21ddda27bfb8a698c2eb9"
+    },
+    "SCENARIO": "TXT指定SHA和10个独立clone",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "TXT指定SHA和10个独立clone",
+    "ACTION_OR_COMMAND": "audit_setup.py / clone --no-hardlinks --no-checkout / rev-parse / merge-base",
+    "EXPECTED_RESULT": "每个指定ref能解析到TXT期望完整SHA；验证副本common-dir独立；拓扑独立测量",
+    "ACTUAL_RESULT": "10fixed SHA match；BCD与UI互不包含；B/C/D是BCD祖先",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/versions.json",
+        "sha256": "f00e861ba9f9e7cec2040fba619ea6b1ad90e6c60be5d2fb370920e17aaadab9"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/topology.json",
+        "sha256": "96717a1c0522edecbde2b9db74a2c1989c86bdb0b1828cb80e23c354514654bd"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/sandbox-source-integrity.json",
+        "sha256": "d17a44576896ab3437acdca7d1c1af6113669992a89807658ff3918aa0f5d59b"
+      }
+    ],
+    "LIMITS": "固定副本不是Windows原件",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV02",
+    "OBJECT_OR_CAPABILITY": "远端核验",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "Core23heads和Model2heads",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "Core23heads和Model2heads",
+    "ACTION_OR_COMMAND": "GitHub connector GET refs/heads / fixed Model main tree",
+    "EXPECTED_RESULT": "前后远端HEAD与所审固定版本对应；差异如实记录，不fetch/push",
+    "ACTUAL_RESULT": "Core前后23heads一致；Model draft与main引用一致；main仅README",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/remote-heads-start.json",
+        "sha256": "aa055ee138812e10d8f026c978655a74121e31754b53ddda13aea33260f241dc"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/remote-heads-end.json",
+        "sha256": "13ec52aea1fb5c9a8eadc2eca75656e91d73b8877b97906420435516718bd07d"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/remote-comparison.json",
+        "sha256": "4639c4d7e7ba976fe01bc341fdd2e6dff5a1d590199ec50185ec99b6d3f28c19"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/model-remote-end.json",
+        "sha256": "d42f3f33121845c2d9658c411e2020d034664127580bc7cf7ea90217cbda99df"
+      }
+    ],
+    "LIMITS": "不证明观察之间没有短暂变化；无fetch/push",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV03",
+    "OBJECT_OR_CAPABILITY": "保护完整性",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5"
+    },
+    "SCENARIO": "两个Mac原仓库",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "两个Mac原仓库",
+    "ACTION_OR_COMMAND": "start/end file hashes、HEAD/refs/status/index/worktree登记比较",
+    "EXPECTED_RESULT": "受保护仓库HEAD/refs/登记/index/文件内容前后相同；运行源码无修改",
+    "ACTUAL_RESULT": "所有记录字段相同；10运行源码tracked/untracked clean",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/protected-start.json",
+        "sha256": "702dec91ba93c1e4ae1eacf85d1838d2155789f1bb6d77d80abf39fcfdf2a9fc"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/protected-end.json",
+        "sha256": "cf324c25845337c2040d3d582a1377c031c6bda3800da7430177d21dcca0fce4"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/protected-comparison.json",
+        "sha256": "1fb5ba0090da41a32cf0c784bbb54e4fd0dad8dfa67c15f0ef537d5762127dff"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/sandbox-source-integrity.json",
+        "sha256": "d17a44576896ab3437acdca7d1c1af6113669992a89807658ff3918aa0f5d59b"
+      }
+    ],
+    "LIMITS": "不覆盖队友Windows实体",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV04",
+    "OBJECT_OR_CAPABILITY": "无地图bootstrap与辅助启动",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "safe target新repo；无map和手工map两个场景",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "safe target新repo；无map和手工map两个场景",
+    "ACTION_OR_COMMAND": "prepare_runtime.py / app.py --repo；辅助后显式--map/--port",
+    "EXPECTED_RESULT": "分别观察新repo无map的启动结果；辅助map后能运行真实服务并明确fixture",
+    "ACTUAL_RESULT": "4版本无mapexit2 requires --map；手工map后18820–23运行",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/runtime-config.json",
+        "sha256": "72dcf0f86a2c6d07fd62edd89ac49e1cca4bf7dd49075f59fc94892d00292a25"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/processes.json",
+        "sha256": "4ed2d6bd79c8c7a57648c888cc19f32e3b11ff33e4e1d53504667a187b07d091"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/no-map-main.txt",
+        "sha256": "bd3b9abe2c86eee18d27502551e9f9c9fa4dbd6d0e4a863450372acebb0da0ea"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/no-map-B.txt",
+        "sha256": "bd3b9abe2c86eee18d27502551e9f9c9fa4dbd6d0e4a863450372acebb0da0ea"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/no-map-BCD.txt",
+        "sha256": "bd3b9abe2c86eee18d27502551e9f9c9fa4dbd6d0e4a863450372acebb0da0ea"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/no-map-UI.txt",
+        "sha256": "bd3b9abe2c86eee18d27502551e9f9c9fa4dbd6d0e4a863450372acebb0da0ea"
+      }
+    ],
+    "LIMITS": "SETUP_ASSISTANCE：地图手工fixture；非自动导入生成",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV05",
+    "OBJECT_OR_CAPABILITY": "完整现有测试",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "sandbox；Python3.12.14+Node；源码不修改",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "sandbox；Python3.12.14+Node；源码不修改",
+    "ACTION_OR_COMMAND": "run_existing_tests.py / python -m unittest discover -s tests -v",
+    "EXPECTED_RESULT": "不改现有测试或产品；保留每版原始pass/fail/error/skip及命令log",
+    "ACTUAL_RESULT": "main12pass；B41pass+1fail；BCD250pass+14skip+1fail；UI202pass+14skip+1fail",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/existing-test-results.json",
+        "sha256": "26724e22bda36e75145b5246eccaf7f6f06ca75036a3c743cbd28a0188cff6a4"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/tests-main.log",
+        "sha256": "818c1334d85486f55dab2ab895697d3c41ee9736c5e6dc1adecbbc09dadcc58e"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/tests-B.log",
+        "sha256": "a06e290cd0619db6f7e74b725b70a5f1c3367a7c5c189fa7905669f33ed26dfd"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/tests-BCD.log",
+        "sha256": "0deae6ec0700dcde43c838b08b43ee46d5b5681d831b738f0c1781674a78ed4d"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/tests-UI.log",
+        "sha256": "7fb6f667665ff9bde93dbafdce724ab6001e09c232b917353f4fa31e64502968"
+      }
+    ],
+    "LIMITS": "raw结果；自动HTTP fixture port0分配偏差见EV24",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV06",
+    "OBJECT_OR_CAPABILITY": "真实B/CA依赖补验",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d"
+    },
+    "SCENARIO": "REAL_B_ROOT/REAL_CA_ROOT指向BCD fixed sandbox",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "REAL_B_ROOT/REAL_CA_ROOT指向BCD fixed sandbox",
+    "ACTION_OR_COMMAND": "运行 test_real_b_integration / test_real_ca_integration",
+    "EXPECTED_RESULT": "Mac映射真实B/CA源根后执行此前因路径缺失未运行的consumer契约",
+    "ACTUAL_RESULT": "15pass、0skip",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/real-dependencies-BCD.log",
+        "sha256": "0ec262a6b5348d115f0a4f1d623f2677804316a800e29b4cb6d1cbeb711f90f2"
+      }
+    ],
+    "LIMITS": "1项之前已通过；不可重复相加成整套重跑结果",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV07",
+    "OBJECT_OR_CAPABILITY": "partial-clone夹具前提",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "own safe repo allowFilter + file:// clone",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "own safe repo allowFilter + file:// clone",
+    "ACTION_OR_COMMAND": "partial_clone_probe.py",
+    "EXPECTED_RESULT": "必须先建立真实缺失blob夹具，才能判定缺对象时不自动fetch/写pack行为",
+    "ACTUAL_RESULT": "filtering not recognized by server, ignoring；缺blob列表为空",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/partial-clone-probe.json",
+        "sha256": "91107bf06fb524006f70531275b6b715602982faef7b1697968894e80cb65ffa"
+      }
+    ],
+    "LIMITS": "missing-object no-fetch行为本轮NOT_VERIFIED；非B已证实bug",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV08",
+    "OBJECT_OR_CAPABILITY": "接受矩阵",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d"
+    },
+    "SCENARIO": "同fixed BCD实际B/CA依赖",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "同fixed BCD实际B/CA依赖",
+    "ACTION_OR_COMMAND": "run_proofs.py -> tests/acceptance_matrix.py",
+    "EXPECTED_RESULT": "全部30场景按现有oracle检查，两轮稳定，不把mock结果冒充用户链",
+    "ACTUAL_RESULT": "30/30 PASS stable true，两轮",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/matrix-BCD.json",
+        "sha256": "2890b554c5220ba30c7893f9dad073316d0cbc3e3ab86715aafc41e83640ccab"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/matrix-BCD.log",
+        "sha256": "04b2d104a618c4902e6eca374b030cdba1ec7c64e38dcc370c35da85f34b0881"
+      }
+    ],
+    "LIMITS": "含fixture/mock；非普通UI全链；UI版本未跑该矩阵",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV09",
+    "OBJECT_OR_CAPABILITY": "语义变异",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d"
+    },
+    "SCENARIO": "预定义6突变，仅sandbox副本",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "预定义6突变，仅sandbox副本",
+    "ACTION_OR_COMMAND": "run_proofs.py -> tests/mutation_runner.py；harness保留clone输出",
+    "EXPECTED_RESULT": "baseline有效、语义突变有效、guard实际失败；仅此计SEMANTIC_CAUGHT",
+    "ACTUAL_RESULT": "6/6 SEMANTIC_CAUGHT",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/mutation-BCD.json",
+        "sha256": "10b06a4774c2b0ee807dd832a2afab74baaa9fb4dd8d9cdc4e455cb0d84b98ab"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/mutation-BCD.log",
+        "sha256": "be51a8f2f4d6bfba3edf0a4107d5fedf2f75272a5a62821667fbf8ef2797280a"
+      }
+    ],
+    "LIMITS": "未改运行源码/保护代码/finding；测试guard不等于产品Demo",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV10",
+    "OBJECT_OR_CAPABILITY": "Core真实Git接口",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "base b3b8… / target91570… / manual map",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "base b3b8… / target91570… / manual map",
+    "ACTION_OR_COMMAND": "http_audit.py GET snapshot/compare/evidence/export",
+    "EXPECTED_RESULT": "固定真实Git比较2变化；仅声明路径可读出处，拒绝未声明路径；export真实",
+    "ACTUAL_RESULT": "2变化；declared user.py200，undeclared new_tools.py400按设计；export200",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-results.json",
+        "sha256": "56f3a7ebe2c6752134e8212651c149abad87952bede5525cd238544a49623de1"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-main/snapshot.json",
+        "sha256": "7fc50c8800eb4f955058fda3ee359e803721e505764ff2ca73d74d0f870b7e1f"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/compare.json",
+        "sha256": "95a72269e9c8f2d43632b611d1be292decaea57c6d5d244b66194cccaae32671"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-UI/evidence-map-declared.json",
+        "sha256": "33afc8cedbcbd26917bb7639fac3df5fd80b0c885a8e7f60e44bd07581df15bf"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-UI/evidence-undeclared-new-file.json",
+        "sha256": "22e157d0936a6bace587eb70326727ed9fb32f15da3accefa7de637f9480be5c"
+      }
+    ],
+    "LIMITS": "真实产品合成目标；map职责人工，不是代码存在性证明",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV11",
+    "OBJECT_OR_CAPABILITY": "B facts与输入边界",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "full target SHA，None/user.py/[]/missing.py/HEAD",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "full target SHA，None/user.py/[]/missing.py/HEAD",
+    "ACTION_OR_COMMAND": "http_audit.py POST /api/extensions/code_facts",
+    "EXPECTED_RESULT": "facts绑定完整commit；名称/类型/1-based定义行准确；选择/空选择边界清楚；非法输入400",
+    "ACTUAL_RESULT": "full33files34defs；selected1file2defs；[]0；missing/HEAD400；load_user1/fetch_user4",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-full.json",
+        "sha256": "f2b2149cd84f0a22f3077b0a6efc61c14ac06c84d0d27aaec0c6037ec795d15c"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-selected.json",
+        "sha256": "8a3981c1932b8c9bd2182188f3b6731f00c73d8b99b24fa0e0959d2a3b5d7a22"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-empty.json",
+        "sha256": "2cad6204262700d495e671d44d43ada807abb4a907efabd491677746d61e4daa"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-missing.json",
+        "sha256": "dd34d0da5caa5da560853ef74aa0797b8fa13a8d8b3e948c5ec39cec65eacf62"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/code-facts-head.json",
+        "sha256": "de3f655223cd58678cb30033801c7545cdc595d49e3cf6bbafc56fa6f553b0f7"
+      }
+    ],
+    "LIMITS": "Python定义事实；非职责、非任意语言保证",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV12",
+    "OBJECT_OR_CAPABILITY": "B读取范围",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d"
+    },
+    "SCENARIO": "None、[user.py]、[]，同Git tree",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "None、[user.py]、[]，同Git tree",
+    "ACTION_OR_COMMAND": "b_scope_and_ca_probe.py observer _git，不改返回",
+    "EXPECTED_RESULT": "以实际Git命令和读取字节区分目录枚举与源码blob/AST处理，不推导token节省",
+    "ACTUAL_RESULT": "全部ls-tree34rows；对应33/1/0 Python源码blob读取",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/B-scan-scope.json",
+        "sha256": "151e3cf2b90a67c1f03dc1ef1ec8176addbb50c0457c396babc629f74f5108f1"
+      }
+    ],
+    "LIMITS": "tree枚举不是全源码重读；无缓存、时延、token节省证明",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV13",
+    "OBJECT_OR_CAPABILITY": "B→C门控与规则候选",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "same target repo/pins/map；installed/supplied/mismatch/missingmap/prior REJECTED",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "same target repo/pins/map；installed/supplied/mismatch/missingmap/prior REJECTED",
+    "ACTION_OR_COMMAND": "http_audit.py POST map_proposal",
+    "EXPECTED_RESULT": "同版本真实B消费生成可追溯候选；错版本/缺map明确拒绝；候选与正式决定分离",
+    "ACTUAL_RESULT": "1 NODE_ADD helper line3 PROPOSED INFERENCE low；mismatch400/missingmap400；REJECTED请求200 empty",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-installed-B.json",
+        "sha256": "f76ab2d5163ce83928733c55ab546eabdddf77a3b59f056cc942fedd5e829d00"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-supplied-B.json",
+        "sha256": "a075d8bf52a5d5408d0401a8e829155e257fd9a8749839f309b9d32ef5b3d85c"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-mismatched-B.json",
+        "sha256": "10a42ae27fbbbb568e91e3f9c2bc71f079803896d4f38062b37fa47ed6d05052"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-missing-map.json",
+        "sha256": "1eccaca33af85a5dd0d4651e7843eba1f2fd4fc6ec0919ce59d195db0cf5ddb6"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/C-review-not-persisted.json",
+        "sha256": "c4dd2ecb9c47d4a9c1bb3f7deb744e5f333837551fbd8140fcfbacf7461546c1"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-UI/proposal-installed-B.json",
+        "sha256": "f76ab2d5163ce83928733c55ab546eabdddf77a3b59f056cc942fedd5e829d00"
+      }
+    ],
+    "LIMITS": "不是LLM；prior input不是保存正式决定；供方仓库身份非JSON字段",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV14",
+    "OBJECT_OR_CAPABILITY": "CA HTTP预算失败",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "实际生成完整pack，compact UTF8，code facts map proposal audit",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "实际生成完整pack，compact UTF8，code facts map proposal audit",
+    "ACTION_OR_COMMAND": "followup_http.py validate_context / C with pack",
+    "EXPECTED_RESULT": "完整产品context包能够经当前HTTP入口验证/消费；失败须测量实际UTF8字节和host预算",
+    "ACTUAL_RESULT": "BCD68841/69731bytes，UI68828/69718bytes，均400 Invalid request size；host65536",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-followup.json",
+        "sha256": "e06c7a01610c598af9654d614c3b3012ecc1a1cbf69722fce1f9a735b98b0130"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/CA-validation-utf8.json",
+        "sha256": "bb983eafb8f0795e24eb284b4b24d7574c50ecd4058d41557bee3b86a63ee6fb"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/proposal-with-CA-utf8.json",
+        "sha256": "3206cb41f1f192d22d5f6ebdf80a8084e85273709ea4b2c05bb5f73f1d02c7f0"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-UI/CA-validation-utf8.json",
+        "sha256": "396aa6aa51aa7cfc96d5f0d6d44077f9a1452dbffba3b07ac08fee2e3f5531f3"
+      }
+    ],
+    "LIMITS": "只对该任务/registry/pack；不泛化所有pack失败",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV15",
+    "OBJECT_OR_CAPABILITY": "CA Python旁路",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d"
+    },
+    "SCENARIO": "同实际pack，绕过HTTP",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "同实际pack，绕过HTTP",
+    "ACTION_OR_COMMAND": "direct validate_context_pack + engine.suggest_map",
+    "EXPECTED_RESULT": "直接调用真实validator及C，区分语义验证能力和HTTP运输失败，不补算用户成功",
+    "ACTUAL_RESULT": "validation成功；C request context_mode FULL；1proposal",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/CA-direct-python.json",
+        "sha256": "f608bfc0e6f4f97394b633e8ff5ec2230cb29dcf7e48b49d42771a6101b60e9d"
+      }
+    ],
+    "LIMITS": "DEVELOPER_ONLY_CONTINUATION，不补算HTTP用户链成功",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV16",
+    "OBJECT_OR_CAPABILITY": "D实际保存与交接",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "own common-dir DB；TEST_HUMAN_REVIEW；same targetSHA",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "own common-dir DB；TEST_HUMAN_REVIEW；same targetSHA",
+    "ACTION_OR_COMMAND": "http_audit.py + followup_http.py save/create/ready/receive/start/export/valid handoff",
+    "EXPECTED_RESULT": "自有DB实际保存日志/接续事件/草稿，版本正确、可导出；TEST人审不升级正式批准",
+    "ACTUAL_RESULT": "有效请求200；continuity v4 active；UI再读到实际保存的记录",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/worklog-save.json",
+        "sha256": "b1023c8e75294ba1475477eb644fd34dd185e0ee8c40b70fd1eccaae76d75fa2"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-create.json",
+        "sha256": "61f4f9d3fd6ceb7e1649144608ea9646a4686c01b72d2a8974ff9b0cea4bec0b"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-start.json",
+        "sha256": "2505bec59cf1b8abdb29a821c16c41ccab4513224b5259deb2727470d545bdc0"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/continuity-export.json",
+        "sha256": "f195db5eef00a705814a815b2816016ec9ca8dd8de6316a368b983793b698127"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-BCD/handoff-valid-input.json",
+        "sha256": "d878bd2b3b4a7f321a14e0630f41b06d3f268db6636c7097f8cda22a119bacef"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json",
+        "sha256": "38192140d8a1d1deb3d10e554e92acf05a0b217f80ea15d35de65b3a3f8eb79e"
+      }
+    ],
+    "LIMITS": "最初harness workNotes形状错400，修输入200不是修产品；非正式人审批准",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV17",
+    "OBJECT_OR_CAPABILITY": "真浏览器",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "同safe target/map，各自服务；cua_repl",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "同safe target/map，各自服务；cua_repl",
+    "ACTION_OR_COMMAND": "native click/input；读取已渲染AX/DOM",
+    "EXPECTED_RESULT": "通过真实UI输入/点击看到结果；各版本分别记录，未操作下载/录入不记PASS",
+    "ACTUAL_RESULT": "main Compare成功；BCD C按钮缺base；UI审查/证据原文/B搜索错误/日志接续读取/交接预览成功",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/browser-observations.json",
+        "sha256": "0bcba90cb1bf9cf3abe221609cf08dd81b2ced2d64c479299e3c94fd9b1b3055"
+      }
+    ],
+    "LIMITS": "浏览器下载NOT_RUN；D创建事件由API执行；截图仅工具内显示，未声称落盘",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV18",
+    "OBJECT_OR_CAPABILITY": "fresh receiver",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d"
+    },
+    "SCENARIO": "产品实际export packet + metadata + 两引用blob；fork_turns none",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "产品实际export packet + metadata + 两引用blob；fork_turns none",
+    "ACTION_OR_COMMAND": "只允许恢复子Agent，不继承聊天",
+    "EXPECTED_RESULT": "无历史receiver只读所允材料，恢复7类事实与状态；缺资料正确保留UNKNOWN，记录真实读取范围",
+    "ACTUAL_RESULT": "身份SHA和两个Git blob事实正确；未全repo重读；C提案body/id、6待决具体定义UNKNOWN",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/recovery-validation.json",
+        "sha256": "ca9e456fb60f07a67f1f7c55a5c2648b9f2d4c7267c0ed4901c334c75ec20fb2"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/recovery-receiver-result.json",
+        "sha256": "c30f7d9ef8b11abd35e46606bf11193438fd569f5ffc7120f1ab4c5e88a5307e"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json",
+        "sha256": "38192140d8a1d1deb3d10e554e92acf05a0b217f80ea15d35de65b3a3f8eb79e"
+      }
+    ],
+    "LIMITS": "只测BCD包；UI未独立receiver；无token成本证明",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV19",
+    "OBJECT_OR_CAPABILITY": "代码实现路径与边界",
+    "SOURCE_TYPE": "CODE_INSPECTION",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "fixed checkout selected source files",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "fixed checkout selected source files",
+    "ACTION_OR_COMMAND": "读取源码匹配行/hash；diff --name-status BCD..UI",
+    "EXPECTED_RESULT": "关键存在/缺失结论来自明确SHA源码路径、hash与实际消费连接；不从缺按钮猜无后端",
+    "ACTUAL_RESULT": "host65536；Btree；C wanted paths/prior/map；D common-dir SQLite；无正式架构发布写入链",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/source-inspection.json",
+        "sha256": "d4fa3053fdb8ef3d5a5e9256cb764f26be37ac1cc2d8d3c1e0ca10b925bbf8d1"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/module-byte-identities.json",
+        "sha256": "c861f4030a04f27bf836fa903f6f88e5ae3d13c69da127b02f2ec0dd3b57c576"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/version-file-differences.json",
+        "sha256": "13cfc859aa91c4ade41b8b231d5c129bae1cecc29d4a999609b11dede13c739f"
+      }
+    ],
+    "LIMITS": "相同选中文件hash不等于两个整个版本等价",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV20",
+    "OBJECT_OR_CAPABILITY": "历史repair/review",
+    "SOURCE_TYPE": "HISTORICAL_REPORT",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "archive": "b97e1bbe9742feeb1cf21ddda27bfb8a698c2eb9"
+    },
+    "SCENARIO": "归档报告/状态/cursor/log",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "归档报告/状态/cursor/log",
+    "ACTION_OR_COMMAND": "只读固定archive，不执行历史指令",
+    "EXPECTED_RESULT": "保存历史report/review与本轮结果来源差异，不自动修改旧finding",
+    "ACTUAL_RESULT": "历史14 CLOSED_BY_CODEX/HOST-01 deferred；265=263pass+2errors；matrix30/30/semantic6/6",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/historical-documents.json",
+        "sha256": "181868e5dea79d0521fd826bdd349cf6ec05d3693c4618820cf186420bd080d4"
+      }
+    ],
+    "LIMITS": "原Windows文件不可核实；本轮未重开旧finding",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV21",
+    "OBJECT_OR_CAPABILITY": "D1-D6未决来源",
+    "SOURCE_TYPE": "HISTORICAL_REPORT",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "archive": "b97e1bbe9742feeb1cf21ddda27bfb8a698c2eb9"
+    },
+    "SCENARIO": "明确HUMAN_DECISIONS.md",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "明确HUMAN_DECISIONS.md",
+    "ACTION_OR_COMMAND": "只读原文，分开正式待决与TEST人审",
+    "EXPECTED_RESULT": "指定D1-D6分别记录原问题/政策/决定触发；只统计有依据OPEN，不替人决定",
+    "ACTUAL_RESULT": "6 DECISION_REQUIRED；无resolved evidence；本轮OPEN6",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/historical-documents.json",
+        "sha256": "181868e5dea79d0521fd826bdd349cf6ec05d3693c4618820cf186420bd080d4"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/human-decisions.json",
+        "sha256": "7f12211548a148c72f63aea1e285dbf237d409b167f8b8d028c3e75080ae7619"
+      }
+    ],
+    "LIMITS": "计固定归档未决；不声称群里没做新决定",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV22",
+    "OBJECT_OR_CAPABILITY": "Model意图与批准状态",
+    "SOURCE_TYPE": "CODE_INSPECTION",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "Model draft": "0635b5f8514a73f278be0c1658257d5a075b2b9a",
+      "Model main": "a507f0cedcf79862f15586bf7a43be7d90d9843b"
+    },
+    "SCENARIO": "Model draft0635…/main a507… fixed refs",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "Model draft0635…/main a507… fixed refs",
+    "ACTION_OR_COMMAND": "authorized fetch_file fixed docs；main tree read",
+    "EXPECTED_RESULT": "定位Model实际ref与批准状态；区分负责人意图/AI草稿/正式数据，给原文hash",
+    "ACTUAL_RESULT": "文档说无正式批准schema；main仅README；另5旧命名空间结论待填写",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/model-documents.json",
+        "sha256": "b00d05ee49ad141c3a65810e1003ad31bea6219cdae0655358620b14b1e69769"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/model-document-hashes.json",
+        "sha256": "d745c40566934ae3d750c3476a45b13b6712ea6aa3ce8ac453d5b33f0b2195e9"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/model-remote-end.json",
+        "sha256": "d42f3f33121845c2d9658c411e2020d034664127580bc7cf7ea90217cbda99df"
+      }
+    ],
+    "LIMITS": "draft是产品理解来源，不冻结正式Model；blob/file hash见artifact",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV23",
+    "OBJECT_OR_CAPABILITY": "Grilling历史/当前分开",
+    "SOURCE_TYPE": "HISTORICAL_REPORT",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "archive": "b97e1bbe9742feeb1cf21ddda27bfb8a698c2eb9"
+    },
+    "SCENARIO": "session json与当前供应skill catalog",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "session json与当前供应skill catalog",
+    "ACTION_OR_COMMAND": "只读，无启动/恢复",
+    "EXPECTED_RESULT": "历史ACTIVE/continuity不当当前LIVE；检查缺失前提，不启动或恢复Grilling",
+    "ACTUAL_RESULT": "历史ACTIVE/round0/continuity true；缺subject/scope/who/ADR/end；READY NO",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/historical-documents.json",
+        "sha256": "181868e5dea79d0521fd826bdd349cf6ec05d3693c4618820cf186420bd080d4"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/grilling-observation.json",
+        "sha256": "051a8f37fe97a249323ff0eab4d95334a15e71e9296201e13f4ba2aa10933d94"
+      }
+    ],
+    "LIMITS": "live NOT_VERIFIED；catalog没该skill不证明队友机器卸载",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV24",
+    "OBJECT_OR_CAPABILITY": "审计过程边界与限制",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "B": "80e091acefd278fda03e188a125147b0aa5eedc5",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "TXT端口限制/Windows原件/own PID",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "TXT端口限制/Windows原件/own PID",
+    "ACTION_OR_COMMAND": "执行log/源码bind port0/ps失败/protected比较",
+    "EXPECTED_RESULT": "只写自有输出/sandbox，不改保护代码状态；所有监听遵守B端口范围，偏差如实记录",
+    "ACTUAL_RESULT": "手工18820–23合规；测试port0未约束；Windows现场不可用；ps blocked未杀PID",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/audit-boundary.json",
+        "sha256": "695213c258cc1597cddfbde2e5e91f0142d0d8a9b2337973828d7dc1c33c11fd"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/own-process-stop.json",
+        "sha256": "5eacdabcfc5cd946dfd8ea8274547d211ce0ac6f81bea48751dc1df686f2d024"
+      }
+    ],
+    "LIMITS": "BOUNDARY_VIOLATION YES是端口流程；无保护代码/状态修改；精确临时端口未留存",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV25",
+    "OBJECT_OR_CAPABILITY": "map与状态不混淆",
+    "SOURCE_TYPE": "REPRODUCED_THIS_RUN",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "实际manual map hash，D capture和SQLite",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "实际manual map hash，D capture和SQLite",
+    "ACTION_OR_COMMAND": "http_audit.py hash-before/after + packet + store检查",
+    "EXPECTED_RESULT": "实际map字节与D capture对应；candidate/review/log不偷写正式map；hash不冒充批准版本",
+    "ACTUAL_RESULT": "map字节不变；capture hash同实际字节且confirmedForRevision null",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/http-results.json",
+        "sha256": "56f3a7ebe2c6752134e8212651c149abad87952bede5525cd238544a49623de1"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/recovery-packet-BCD.json",
+        "sha256": "38192140d8a1d1deb3d10e554e92acf05a0b217f80ea15d35de65b3a3f8eb79e"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/runtime-config.json",
+        "sha256": "72dcf0f86a2c6d07fd62edd89ac49e1cca4bf7dd49075f59fc94892d00292a25"
+      }
+    ],
+    "LIMITS": "内容hash不等于已批准map版本；本机共享不等于远程",
+    "VERIFICATION_STATUS": "VERIFIED"
+  },
+  {
+    "EVIDENCE_ID": "EV26",
+    "OBJECT_OR_CAPABILITY": "文档漂移",
+    "SOURCE_TYPE": "CODE_INSPECTION",
+    "SOURCE_SHA_OR_FILE_HASH": {
+      "main": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "BCD": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "UI": "d4e3f2a71f07af358bd6d0e262bfc210c420084b"
+    },
+    "SCENARIO": "standards当前措辞与fixed实现",
+    "ENVIRONMENT": "macOS/Git2.50.1/Python3.12.14; own sandbox, no external LLM",
+    "INPUT": "standards当前措辞与fixed实现",
+    "ACTION_OR_COMMAND": "逐行对照真实API/UI",
+    "EXPECTED_RESULT": "文档漂移有具体语句/固定版本/当前反证；按根因去重，不混不同历史scope",
+    "ACTUAL_RESULT": "2项：main无产品代码陈述旧；BCD业务仍提案陈述旧",
+    "ARTIFACT_PATH": [
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/documentation-drift.json",
+        "sha256": "02b6d60c630026a14d05236b7c2003d204386489ae4b9347db20da197551886e"
+      },
+      {
+        "path": "closeout-audit/20261005T135227882Z/evidence/source-inspection.json",
+        "sha256": "d4fa3053fdb8ef3d5a5e9256cb764f26be37ac1cc2d8d3c1e0ca10b925bbf8d1"
+      }
+    ],
+    "LIMITS": "旧PROPOSED形状、有限scope历史观察不自动列矛盾",
+    "VERIFICATION_STATUS": "VERIFIED"
+  }
+]

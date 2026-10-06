@@ -1,0 +1,122 @@
+{
+  "recordedAt": "2026-10-05T23:53:58.008Z",
+  "sourceType": "REPRODUCED_THIS_RUN",
+  "mechanism": "cua_repl native browser interactions; observed accessibility and rendered DOM; no inferred UI success from HTML alone",
+  "browser": "Codex In-app Browser id 2",
+  "tabs": [
+    "3 (own audit tab)"
+  ],
+  "targetRevision": "91570b87c302eae0f7c0c27541832f6a5a0cd4d2",
+  "map": "manually prepared TEST_FIXTURE; not formal Project Model",
+  "observations": [
+    {
+      "version": "UI",
+      "sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "entry": "/",
+      "actions": [
+        "open root",
+        "click 变更审查",
+        "click 生成审查包"
+      ],
+      "actual": "审查包已生成：2个变化文件，1个候选提案; new_tools.py 未声明为地图证据路径，无证据视图; user.py fixed-revision evidence; NODE_ADD PROPOSED human_required; DEGRADED_NO_CONTEXT",
+      "limits": "No acceptance/rejection or formal model-write controls observed among rendered review controls. This establishes the inspected page only."
+    },
+    {
+      "version": "UI",
+      "sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "entry": "/ext/code_facts",
+      "actions": [
+        "input user.py",
+        "extract",
+        "search fetch",
+        "input missing.py",
+        "extract"
+      ],
+      "actual": "user.py: load_user/function/line1 and fetch_user/async_function/line4; search leaves fetch_user; missing.py clear Chinese error, old result removed and download disabled",
+      "limits": "Download enabled after success but browser download NOT_RUN; default destination outside audit root. API JSON was saved separately."
+    },
+    {
+      "version": "UI",
+      "sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "entry": "/ -> 协作交接 -> 工作日志",
+      "actions": [
+        "open collaboration",
+        "click TEST_HUMAN_REVIEW log"
+      ],
+      "actual": "record read in UI; pinned target SHA displayed; contributor record unverified; no formal D1-D6 decision or model approval",
+      "limits": "Record created by API this run, not a browser-created record."
+    },
+    {
+      "version": "UI",
+      "sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "entry": "/ -> 协作交接 -> 延续上下文",
+      "actions": [
+        "open continuity",
+        "select Safe audit handoff",
+        "click 证据与日志"
+      ],
+      "actual": "active version4, pinned targetSHA, completed/nextAction visible; map applicability UNKNOWN; A new_tools.py/M user.py; 1 contributor log; participant checklist not independent approval",
+      "limits": "ready/receive/start transitions performed by API; browser verifies rendered stored record, not transitions via form."
+    },
+    {
+      "version": "UI",
+      "sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "entry": "/ -> 协作交接 -> 交接包",
+      "actions": [
+        "replace default Core locator with https://example.invalid/audit-B/test.git",
+        "set base SHA",
+        "click 生成交接包"
+      ],
+      "actual": "successful preview, 2nodes/2changes/0AIcandidates; map UNKNOWN; new_tools.py unmapped; code evidence and next steps present",
+      "limits": "No download or clipboard performed; source locator does not switch running repository; default Core URL required correcting for this test."
+    },
+    {
+      "version": "UI",
+      "sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "entry": "/ext/context_authority",
+      "actions": [
+        "navigate observed CA sidebar href"
+      ],
+      "actual": "CURRENT/CONFLICTS/RAW CLAIMS inspector rendered current state with provenance, UNKNOWN/unverifiable partition",
+      "limits": "No normal task-context-pack generation/validation form observed; backend calls tested separately."
+    },
+    {
+      "version": "BCD",
+      "sha": "1cc2fd8cb890aa94e48bb9957d846411dc2c9d4d",
+      "entry": "/ -> /ext/map_proposal",
+      "actions": [
+        "open BCD root",
+        "click Map Proposal link",
+        "click 运行并查看结果"
+      ],
+      "actual": "legacy map root renders; generic C page fails base_revision 缺失：请求必须携带完整 pin，不得从 snapshot 补值",
+      "limits": "Manual POST supplied pins/map works; cannot substitute it for this failed user path."
+    },
+    {
+      "version": "UI",
+      "sha": "d4e3f2a71f07af358bd6d0e262bfc210c420084b",
+      "entry": "/ node details",
+      "actions": [
+        "click 查看该提交中的原文"
+      ],
+      "actual": "user.py Git blob rendered exact load_user and async fetch_user bodies at target SHA",
+      "limits": "declared evidence only; new_tools.py undeclared path intentionally rejected by Core API."
+    },
+    {
+      "version": "main",
+      "sha": "7484d44ddeac3c054ca3ba68f92293d965bb615c",
+      "entry": "/",
+      "actions": [
+        "open root",
+        "click 比较变化"
+      ],
+      "actual": "2 changes A new_tools.py/M user.py; user node marked review; only project_summary extension; AI explain disabled because keys absent",
+      "limits": "No LLM configured or invoked; no browser export download."
+    }
+  ],
+  "screenshotEvidence": "A screenshot was emitted inline during review UI check; no saved screenshot artifact is claimed. Accessibility observations are tool-session records, with this observation index saved for traceability.",
+  "operationalLimits": [
+    "Browser creation/navigation sometimes stalled for long wall-clock periods; testing timestamps span Oct5-Oct6 Shanghai. This is not CPU or token-cost evidence.",
+    "No original product repo used as runtime target; every API/UI target is own sandbox."
+  ]
+}
