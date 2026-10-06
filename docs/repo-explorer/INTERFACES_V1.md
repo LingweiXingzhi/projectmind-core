@@ -61,8 +61,11 @@ C 的 `repo_index/imports.py` `parse_imports` 已接入（`status="unavailable"`
   - **搜索根与包深度（r04 R3-Q1）**：文件的包深度 `d` 按其**搜索根**度量——搜索根是包含该文件的最大连续包目录链之上的那一层（`src/core/mod.py` → 搜索根 `src`、包 `core`、`d=1`；`src/core/sub/mod.py` → 包 `core.sub`、`d=2`；直接位于搜索根下的 `.py`（如 `src/tool.py`）以及 `__init__.py` 缺失的命名空间包内文件都**没有包语境**）。
   - **相对导入**：仅允许 `1 ≤ level ≤ d`；解析 = 当前包上移 `level−1` 个包组件后拼接 module/name 组件。`level > d`（越出顶层包，**即使仓库根或搜索根内恰好存在同名文件也不命中**）、`d=0`（无包语境）、无候选 → `unresolved`。
   - **绝对导入**：在**仓库根与该文件自身搜索根**下查找，不跨其它搜索根匹配。
-  - **不做属性/重导出推断**：`from pkg import name` 只匹配 `pkg/name` 的真实源码 blob；`pkg/name.py` 不存在而 `pkg/__init__.py` 存在时，`name` 可能是包内属性或重导出，首版不跨文件推断 → `unresolved`（**不得**把 `pkg/__init__.py` 当作 `targetPath`）。候选文件真实存在时才连接。
-  - `ambiguous`：同一模块路径同时存在 `x.py` 与 `x/__init__.py` 等，保留全部候选并显式标注歧义。
+  - **`from M import name` 的判定顺序（r03 R2-Q7）**：
+    1. `M/name` 若真实存在（`name.py` 或 `name/__init__.py`）→ 按名称读法连接（唯一 → `resolved`，多个 → `ambiguous`）。
+    2. 否则该语句的依赖是**模块 `M` 自身**：`M.py` 与 `M/__init__.py` 只有一个是具体源码 blob 且是**普通模块文件** → `resolved` 到它（例如 `from .utils import helper` → `pkg/utils.py`）；两者同时存在 → `ambiguous` 并列出两者（同名文件与同名包并存）；都没有 → `unresolved`。
+    3. **唯一不能确认的情形**：模块 `M` 的具体源码 blob 只有包 `__init__.py`。此时 `name` 可能是 `__init__` 内定义的属性或重导出，首版不做跨文件推断 → `unresolved`，原因"可能是包属性或重导出"，**不得**把 `__init__.py` 当作 `targetPath`。`import M` 与 `from M import *` 不受此限制（它们的目标就是模块本身）。
+  - `ambiguous`：同上——同一模块名下 `x.py` 与 `x/__init__.py` 并存时保留全部候选并显式标注歧义。
   - 候选指向目录但该目录没有 `__init__.py`（PEP 420 命名空间包形态）→ `unresolved`，warnings 注明"可能的命名空间包，无源码入口"。
   - 每个 `unresolved` 记录的原因（无包语境 / 越出顶层包 / 命名空间包 / 未找到候选）写入 `warnings`。
 - `dependents` 每项 `{path, line, end_line}`，仅来自成功解析且 `resolution.status="resolved"` 到当前文件的导入记录；不确定的反向关系不展示成已确认依赖。空结果的界面文案固定为"已解析范围内未发现导入本文件的记录"。

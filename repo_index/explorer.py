@@ -382,13 +382,14 @@ def _module_matches(prefix: str, index: dict) -> list[str]:
 
 
 def _import_prefixes(entry: dict, source_path: str, index: dict
-                     ) -> tuple[list[str], list[str], str | None]:
-    """Module paths this record can denote, or (·, ·, rejection reason).
+                     ) -> tuple[list[str], list[str], bool, str | None]:
+    """Module paths this record can denote, or (·, ·, ·, rejection reason).
 
-    Returns `(name prefixes, module prefixes, reason)`: the name prefixes are
-    the concrete paths whose source blobs count as candidates, the module
-    prefixes are the paths the record's module part alone denotes (used to
-    explain an unresolved namespace package).
+    Returns `(name prefixes, module prefixes, has_name, reason)`: the name
+    prefixes describe the `M/name` submodule reading, the module prefixes
+    describe the module `M` itself, and `has_name` is True only for a
+    `from M import name` record (a plain import or a wildcard has no name
+    reading and may resolve straight to a package `__init__`).
 
     Accepted rule (r04 R3-Q1): a relative import needs `1 <= level <= d` where
     d is the package depth measured from the file's search root, and the base
@@ -397,10 +398,13 @@ def _import_prefixes(entry: dict, source_path: str, index: dict
     repository root. Absolute imports are tried against the repository root
     and the file's own search root (R2-Q7), never across another search root.
 
-    A `from M import name` record only ever denotes real source blobs of
-    `M/name`; the module `M` itself is NOT a target, because `name` may be an
-    attribute or re-export that cannot be confirmed without cross-file
-    inference (R2-Q7/R48-02).
+    The name part wins when it names a real submodule; otherwise the module's
+    own source blobs are what the statement depends on (r03 R2-Q7: "只有候选
+    文件真实存在才连接… 歧义（同名文件与同名包并存）保留 ambiguous"). The one
+    case that must stay unresolved is a module whose only source blob is a
+    package `__init__` — `from pkg import name` may then be an attribute or
+    re-export defined there, and the first version does no cross-file
+    inference. `has_name` marks that distinction for the caller.
     """
     level = entry.get("level") or 0
     module_rest = (entry.get("module") or "").replace(".", "/")
@@ -408,10 +412,10 @@ def _import_prefixes(entry: dict, source_path: str, index: dict
     context = _package_context(source_path, index)
     if level:
         if context is None:
-            return [], [], "文件不在包内，相对导入没有包语境"
+            return [], [], False, "文件不在包内，相对导入没有包语境"
         search_root, package_parts = context
         if level > len(package_parts):
-            return [], [], (f"相对导入越出顶层包（level={level} > 包深度 {len(package_parts)}）")
+            return [], [], False, (f"相对导入越出顶层包（level={level} > 包深度 {len(package_parts)}）")
         base = "/".join(part for part in
                         (search_root,
                          "/".join(package_parts[:len(package_parts) - (level - 1)])) if part)
@@ -422,42 +426,64 @@ def _import_prefixes(entry: dict, source_path: str, index: dict
                        ("/".join(part for part in (root, module_rest) if part) for root in roots)
                        if target]
     if entry.get("kind") == "import" or not name or name == "*":
-        return module_prefixes, module_prefixes, None
-    return [f"{prefix}/{name}" for prefix in module_prefixes], module_prefixes, None
+        return module_prefixes, module_prefixes, False, None
+    return ([f"{prefix}/{name}" for prefix in module_prefixes], module_prefixes, True, None)
 
 
-def _import_resolution(entry: dict, source_path: str, index: dict) -> dict:
-    """`resolution{status, targetPath, candidates}` for one C import record.
-
-    `resolved` requires exactly one concrete target; several candidates (for
-    example `x.py` and `x/__init__.py` both existing) stay `ambiguous` with
-    every candidate listed; nothing found is `unresolved`. Uncertain readings
-    are never promoted to a confirmed target.
-    """
-    name_prefixes, _, _ = _import_prefixes(entry, source_path, index)
-    candidates = sorted({path for prefix in name_prefixes
-                         for path in _module_matches(prefix, index)})
+def _unique_or_ambiguous(candidates: list[str]) -> dict:
     if len(candidates) == 1:
         return {"status": "resolved", "targetPath": candidates[0],
                 "candidates": candidates}
-    if not candidates:
-        return {"status": "unresolved", "targetPath": None, "candidates": []}
     return {"status": "ambiguous", "targetPath": None, "candidates": candidates}
 
 
-def _import_reason(entry: dict, source_path: str, index: dict,
-                   directories: frozenset[str]) -> str:
-    """Human reason for an unresolved record (R2-Q7 keeps the cause)."""
-    name_prefixes, module_prefixes, rejected = _import_prefixes(entry, source_path, index)
+def _import_decision(entry: dict, source_path: str, index: dict,
+                     directories: frozenset[str]) -> tuple[dict, str | None]:
+    """`(resolution, reason)` for one C import record.
+
+    Accepted rule (r03 R2-Q7, exercised by D's independent fixture oracle):
+
+    1. the name reading wins when `M/name` names real source blobs;
+    2. otherwise the module `M` is the dependency: a single plain module file
+       resolves, two candidates (`M.py` and `M/__init__.py` both existing) stay
+       `ambiguous` with both listed, and nothing found is `unresolved`;
+    3. a module whose ONLY source blob is a package `__init__` is the one case
+       that cannot confirm `name` at all — `from pkg import name` may be an
+       attribute or re-export defined there, so it is `unresolved` and never a
+       target (no cross-file inference);
+    4. a module path that names a directory without `__init__.py` is the
+       PEP 420 namespace-package shape: unresolved, with that stated reason.
+    """
+    name_prefixes, module_prefixes, has_name, rejected = _import_prefixes(
+        entry, source_path, index)
     if rejected is not None:
-        return rejected
-    for prefix in module_prefixes + name_prefixes:
+        return {"status": "unresolved", "targetPath": None, "candidates": []}, rejected
+    named = sorted({path for prefix in name_prefixes
+                    for path in _module_matches(prefix, index)})
+    if named:
+        return _unique_or_ambiguous(named), None
+    modules = sorted({path for prefix in module_prefixes
+                      for path in _module_matches(prefix, index)})
+    for prefix in name_prefixes + module_prefixes:
         # A directory that holds the module but is not a package itself is the
-        # PEP 420 namespace-package shape: it has no source entry point
-        # (R2-Q7).
+        # PEP 420 namespace-package shape: it has no source entry point, and
+        # that reason must win over the attribute reading below.
         if prefix in directories and not _is_package(prefix, index):
-            return "可能的命名空间包，无源码入口"
-    return "未找到候选源码文件"
+            return ({"status": "unresolved", "targetPath": None, "candidates": []},
+                    "可能的命名空间包，无源码入口")
+    if not modules:
+        return {"status": "unresolved", "targetPath": None, "candidates": []}, "未找到候选源码文件"
+    if len(modules) > 1:
+        return {"status": "ambiguous", "targetPath": None, "candidates": modules}, None
+    if has_name and posixpath.basename(modules[0]).startswith("__init__."):
+        return ({"status": "unresolved", "targetPath": None, "candidates": []},
+                "可能是包属性或重导出")
+    return {"status": "resolved", "targetPath": modules[0], "candidates": modules}, None
+
+
+def _import_resolution(entry: dict, source_path: str, index: dict,
+                       directories: frozenset[str]) -> dict:
+    return _import_decision(entry, source_path, index, directories)[0]
 
 
 class ExplorerRegistry:
@@ -647,13 +673,13 @@ class ExplorerRegistry:
         index = _module_index(known)
         directories = _directories(known)
         parsed = parse_imports(path, context.sources[path])
-        imports = [dict(entry, resolution=_import_resolution(entry, path, index))
-                   for entry in parsed["imports"]]
+        imports = []
         warnings = list(parsed["warnings"])
-        for entry, item in zip(parsed["imports"], imports):
-            if item["resolution"]["status"] == "unresolved":
-                warnings.append(f"{path} 第 {entry['line']} 行未解析："
-                                + _import_reason(entry, path, index, directories))
+        for entry in parsed["imports"]:
+            resolution, reason = _import_decision(entry, path, index, directories)
+            imports.append(dict(entry, resolution=resolution))
+            if reason is not None:
+                warnings.append(f"{path} 第 {entry['line']} 行未解析：{reason}")
         dependents: list[dict] = []
         scanned = 0
         failed = 0
@@ -666,7 +692,7 @@ class ExplorerRegistry:
             if other == path:
                 continue
             for entry in other_parsed["imports"]:
-                resolution = _import_resolution(entry, other, index)
+                resolution = _import_resolution(entry, other, index, directories)
                 if resolution["status"] == "resolved" and resolution["targetPath"] == path:
                     dependents.append({"path": other, "line": entry["line"],
                                        "end_line": entry["end_line"]})

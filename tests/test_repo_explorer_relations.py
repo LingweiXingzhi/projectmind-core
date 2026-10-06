@@ -37,7 +37,7 @@ from app import make_handler
 from repo_index.explorer import ExplorerRegistry
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED_PYTHON_FILES = 19  # .py/.PY files the open budget indexed (huge.py is over 1 MiB)
+ALLOWED_PYTHON_FILES = 24  # .py/.PY files the open budget indexed (huge.py is over 1 MiB)
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -69,6 +69,15 @@ class RelationsEndpointTests(unittest.TestCase):
         write("pkg/thing.py", "VALUE = 2\n")
         write("pkg/thing/__init__.py", "VALUE = 3\n")
         write("pkg/ambiguous.py", "from . import thing\n")
+        # `from M import name` where only the plain module M exists: the module
+        # IS the dependency (D's fixture oracle expects exactly this).
+        write("pkg/utils.py", "def helper(value):\n    return value + 1\n")
+        write("pkg/frommodule.py", "from .utils import helper as h\n")
+        # …and where M exists both as a module and as a package, the statement
+        # denotes two real source blobs -> ambiguous (D's `dual` case).
+        write("dual.py", "thing = 1\n")
+        write("dual/__init__.py", "thing = 2\n")
+        write("pkg/dualconsumer.py", "from dual import thing\n")
         # a namespace package: a directory with no `__init__.py`
         write("pkg/ns/inner.py", "VALUE = 4\n")
         # `pkg/ns` is a directory with no `__init__.py` and no `pkg/ns.py`, so
@@ -164,6 +173,27 @@ class RelationsEndpointTests(unittest.TestCase):
         status, dependents = self._relations("pkg/__init__.py")
         self.assertEqual(status, 200)
         self.assertEqual(dependents["dependents"], [])
+
+    def test_from_module_import_resolves_to_the_module_itself(self):
+        # r03 R2-Q7 "只有候选文件真实存在才连接": `from .utils import helper`
+        # depends on the module `pkg/utils.py`, which is a plain module file.
+        status, body = self._relations("pkg/frommodule.py")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["imports"][0]["resolution"],
+                         {"status": "resolved", "targetPath": "pkg/utils.py",
+                          "candidates": ["pkg/utils.py"]})
+        status, dependents = self._relations("pkg/utils.py")
+        self.assertEqual(dependents["dependents"],
+                         [{"path": "pkg/frommodule.py", "line": 1, "end_line": 1}])
+
+    def test_module_existing_as_file_and_package_is_ambiguous(self):
+        # The same module name as a plain file AND as a package: two real
+        # source blobs, so both stay listed and nothing is confirmed.
+        status, body = self._relations("pkg/dualconsumer.py")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["imports"][0]["resolution"],
+                         {"status": "ambiguous", "targetPath": None,
+                          "candidates": ["dual.py", "dual/__init__.py"]})
 
     def test_same_name_module_file_and_package_stay_ambiguous(self):
         status, body = self._relations("pkg/ambiguous.py")
