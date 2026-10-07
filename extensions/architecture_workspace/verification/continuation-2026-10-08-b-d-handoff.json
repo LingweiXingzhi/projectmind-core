@@ -1,0 +1,1283 @@
+{
+  "fixtureOnly": true,
+  "result": "PASS_COMPONENT_REHEARSAL",
+  "dSourceRef": "c8b942a8d724b1bd0509f61b2db6ec642a117181",
+  "verifiedConsumerBlobs": {
+    "extensions/handoff/architecture.py": "cb967fde8d43e505faea790208aab78d98230e92",
+    "extensions/continuity/inspection.py": "0b419f3e7c9e71c3ac04dfe3ecda83f49606a255",
+    "extensions/continuity/model.py": "d6365b0a2d7bb3cbf9b97a72dc0d555116639031"
+  },
+  "realAUi": "NOT_RUN_BY_THIS_SMOKE",
+  "realCInference": "NOT_RUN",
+  "realDHandoff": "PASS_COMPONENT_ONLY",
+  "realDFixTask": "NOT_RUN_BY_THIS_SMOKE",
+  "publicDeployment": "NOT_RUN",
+  "humanActor": "TEST_ONLY_SIMULATED_HUMAN",
+  "checks": {
+    "actualBPublishedEnvelope": true,
+    "actualDConsumerFunctions": true,
+    "sixFieldVersionRefEqual": true,
+    "originalEnvelopeUnchanged": true,
+    "secondCloneGitBytesEqual": true,
+    "planningNullBindings": true,
+    "planningSourceFetchedLocally": true,
+    "foreignRepoRejected": true,
+    "dirtyWorktreePreserved": true,
+    "missingSourceRejected": true,
+    "codeWorktreesUnchanged": true,
+    "noFormalMapWriteByD": true
+  },
+  "handoff": {
+    "schemaVersion": "architecture_handoff_v1",
+    "workspaceId": "workspace-b-d-fixture",
+    "versionEnvelope": {
+      "version": {
+        "schemaVersion": "architecture_version_v1",
+        "mapId": "map-5e9aed80865907b9640377841cd48cb8",
+        "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+        "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+        "verifiedCodeRevision": null,
+        "status": "confirmed_cognition",
+        "graph": {
+          "edges": [
+            {
+              "evidenceIds": [
+                "goal-demo"
+              ],
+              "from": "node-demo",
+              "id": "edge-helper",
+              "label": "Delegates",
+              "to": "node-helper",
+              "type": "functional_collaboration"
+            }
+          ],
+          "evidence": [
+            {
+              "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+              "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+              "id": "code-demo",
+              "kind": "code",
+              "lineEnd": 2,
+              "lineStart": 1,
+              "path": "demo.py",
+              "reason": "Actual fixture Git bytes"
+            },
+            {
+              "content": "Demonstrate B version lifecycle",
+              "id": "goal-demo",
+              "kind": "user_goal",
+              "reason": "Synthetic test requirement"
+            }
+          ],
+          "nodes": [
+            {
+              "evidenceIds": [
+                "goal-demo",
+                "code-demo"
+              ],
+              "id": "node-demo",
+              "implementationStatus": "unknown",
+              "interfaces": [
+                {
+                  "description": "Test contract",
+                  "evidenceIds": [
+                    "goal-demo",
+                    "code-demo"
+                  ],
+                  "id": "interface-demo",
+                  "kind": "code_entry",
+                  "name": "demo"
+                }
+              ],
+              "responsibility": "Test demonstration",
+              "title": "Fixture function"
+            },
+            {
+              "evidenceIds": [
+                "goal-demo"
+              ],
+              "id": "node-helper",
+              "implementationStatus": "planned",
+              "interfaces": [],
+              "responsibility": "Planned collaboration",
+              "title": "Fixture helper"
+            }
+          ],
+          "processes": [
+            {
+              "evidenceIds": [],
+              "id": "process-demo",
+              "kind": "expected",
+              "steps": [
+                {
+                  "allowedFailures": [
+                    "invalid input"
+                  ],
+                  "branches": [],
+                  "condition": "",
+                  "evidenceIds": [
+                    "goal-demo",
+                    "code-demo"
+                  ],
+                  "id": "step-demo",
+                  "inputs": [],
+                  "nextStepIds": [],
+                  "nodeId": "node-demo",
+                  "outputs": [
+                    "result"
+                  ],
+                  "title": "Human corrected fixture step"
+                }
+              ],
+              "title": "Expected process"
+            }
+          ],
+          "schemaVersion": "architecture_graph_v1"
+        },
+        "reviewCoverage": {
+          "edges": [
+            "edge-helper"
+          ],
+          "evidence": [
+            "code-demo",
+            "goal-demo"
+          ],
+          "nodes": [
+            "node-demo",
+            "node-helper"
+          ],
+          "processes": [
+            "process-demo"
+          ],
+          "scope": "all"
+        },
+        "limits": [
+          "Isolated fixture, not real ProjectMind owner approval",
+          "核查仅适用于列明覆盖；不证明运行时全流程"
+        ],
+        "origin": "rule_based",
+        "confirmation": {
+          "nodes": {
+            "confirmed": [
+              "node-demo",
+              "node-helper"
+            ],
+            "unconfirmed": []
+          },
+          "edges": {
+            "confirmed": [
+              "edge-helper"
+            ],
+            "unconfirmed": []
+          },
+          "processes": {
+            "confirmed": [
+              "process-demo"
+            ],
+            "unconfirmed": []
+          },
+          "evidence": {
+            "confirmed": [
+              "code-demo",
+              "goal-demo"
+            ],
+            "unconfirmed": []
+          }
+        },
+        "review": {
+          "actor": "TEST_ONLY_SIMULATED_HUMAN",
+          "actorIdentity": "local_operator_declaration",
+          "afterGraph": {
+            "edges": [
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "from": "node-demo",
+                "id": "edge-helper",
+                "label": "Delegates",
+                "to": "node-helper",
+                "type": "functional_collaboration"
+              }
+            ],
+            "evidence": [
+              {
+                "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+                "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+                "id": "code-demo",
+                "kind": "code",
+                "lineEnd": 2,
+                "lineStart": 1,
+                "path": "demo.py",
+                "reason": "Actual fixture Git bytes"
+              },
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo",
+                  "code-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "unknown",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "code_entry",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Test demonstration",
+                "title": "Fixture function"
+              },
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-helper",
+                "implementationStatus": "planned",
+                "interfaces": [],
+                "responsibility": "Planned collaboration",
+                "title": "Fixture helper"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Human corrected fixture step"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "appliedOperations": [
+            {
+              "op": "node.add",
+              "operationId": "op-helper",
+              "source": "rule_based",
+              "value": {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-helper",
+                "implementationStatus": "planned",
+                "interfaces": [],
+                "responsibility": "Planned collaboration",
+                "title": "Fixture helper"
+              }
+            },
+            {
+              "op": "edge.add",
+              "operationId": "op-collaboration",
+              "source": "rule_based",
+              "value": {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "from": "node-demo",
+                "id": "edge-helper",
+                "label": "Delegates",
+                "to": "node-helper",
+                "type": "functional_collaboration"
+              }
+            },
+            {
+              "changes": {
+                "title": "Human corrected fixture step"
+              },
+              "id": "step-demo",
+              "op": "step.update",
+              "operationId": "op-step",
+              "processId": "process-demo",
+              "source": "human"
+            }
+          ],
+          "beforeGraph": null,
+          "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+          "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+          "decision": "accept",
+          "draftId": "draft-9fad6392dc696ac2d0e60ca1f8d54064",
+          "draftRevision": 2,
+          "expectedMapRevision": null,
+          "limits": [
+            "Isolated fixture, not real ProjectMind owner approval"
+          ],
+          "mapId": "map-5e9aed80865907b9640377841cd48cb8",
+          "origin": "rule_based",
+          "previewDigest": "sha256:0ec500ee6372c5a724c5ae9ba63a16f5e1c46099be344dfb7e085d56970b2119",
+          "proposalId": "fixture-bootstrap",
+          "reason": "TEST ONLY: simulated local operator decision",
+          "rejectedCandidates": [
+            {
+              "candidateId": "candidate-title",
+              "proposalId": "fixture-distinct-patch",
+              "reason": "TEST ONLY: no evidence supports replacing the existing fixture title"
+            }
+          ],
+          "reviewCoverage": {
+            "edges": [
+              "edge-helper"
+            ],
+            "evidence": [
+              "code-demo",
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo",
+              "node-helper"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "reviewId": "review-4e4891b3326787e161473f51a4b8e626",
+          "reviewedAt": 1791391467.566106,
+          "verifiedCodeRevision": null,
+          "verifyCode": false,
+          "workspaceId": "workspace-d4121feec8dcd2890235535182bb0a09"
+        },
+        "mapRevision": "sha256:12ef2c6286292d54d5251c088b27bbf1ab3a3c04214fa7bb622f483ff71c5288"
+      },
+      "provenance": {
+        "mapSourceRevision": "db02a798c20ccc0755d1ce04e869cd113e1480d0",
+        "sourceKind": "git_commit"
+      }
+    },
+    "sources": {
+      "code": "https://example.invalid/projectmind-b-fixture.git",
+      "architecture": "https://example.invalid/projectmind-b-architecture-fixture.git"
+    },
+    "task": {
+      "state": "pending",
+      "nextAction": "核查来源与固定版本"
+    },
+    "references": {
+      "candidates": [],
+      "reviews": [],
+      "deviations": [],
+      "logs": []
+    },
+    "trust": "untrusted_until_local_git_check",
+    "limits": [
+      "传输摘要仅检查内容一致，不认证来源或操作者。",
+      "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。"
+    ],
+    "transportDigest": "sha256:56a27fa65a1a8cbf31396dc23eeb804e800c13bc601a982eebaf756d8d66f004"
+  },
+  "receiverCheck": {
+    "status": "same_version_git_checked",
+    "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+    "mapId": "map-5e9aed80865907b9640377841cd48cb8",
+    "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+    "mapRevision": "sha256:12ef2c6286292d54d5251c088b27bbf1ab3a3c04214fa7bb622f483ff71c5288",
+    "mapSourceRevision": "db02a798c20ccc0755d1ce04e869cd113e1480d0",
+    "verifiedCodeRevision": null,
+    "reviewCoverage": {
+      "edges": [
+        "edge-helper"
+      ],
+      "evidence": [
+        "code-demo",
+        "goal-demo"
+      ],
+      "nodes": [
+        "node-demo",
+        "node-helper"
+      ],
+      "processes": [
+        "process-demo"
+      ],
+      "scope": "all"
+    },
+    "graphStatus": "confirmed_cognition",
+    "versionEnvelope": {
+      "version": {
+        "schemaVersion": "architecture_version_v1",
+        "mapId": "map-5e9aed80865907b9640377841cd48cb8",
+        "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+        "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+        "verifiedCodeRevision": null,
+        "status": "confirmed_cognition",
+        "graph": {
+          "edges": [
+            {
+              "evidenceIds": [
+                "goal-demo"
+              ],
+              "from": "node-demo",
+              "id": "edge-helper",
+              "label": "Delegates",
+              "to": "node-helper",
+              "type": "functional_collaboration"
+            }
+          ],
+          "evidence": [
+            {
+              "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+              "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+              "id": "code-demo",
+              "kind": "code",
+              "lineEnd": 2,
+              "lineStart": 1,
+              "path": "demo.py",
+              "reason": "Actual fixture Git bytes"
+            },
+            {
+              "content": "Demonstrate B version lifecycle",
+              "id": "goal-demo",
+              "kind": "user_goal",
+              "reason": "Synthetic test requirement"
+            }
+          ],
+          "nodes": [
+            {
+              "evidenceIds": [
+                "goal-demo",
+                "code-demo"
+              ],
+              "id": "node-demo",
+              "implementationStatus": "unknown",
+              "interfaces": [
+                {
+                  "description": "Test contract",
+                  "evidenceIds": [
+                    "goal-demo",
+                    "code-demo"
+                  ],
+                  "id": "interface-demo",
+                  "kind": "code_entry",
+                  "name": "demo"
+                }
+              ],
+              "responsibility": "Test demonstration",
+              "title": "Fixture function"
+            },
+            {
+              "evidenceIds": [
+                "goal-demo"
+              ],
+              "id": "node-helper",
+              "implementationStatus": "planned",
+              "interfaces": [],
+              "responsibility": "Planned collaboration",
+              "title": "Fixture helper"
+            }
+          ],
+          "processes": [
+            {
+              "evidenceIds": [],
+              "id": "process-demo",
+              "kind": "expected",
+              "steps": [
+                {
+                  "allowedFailures": [
+                    "invalid input"
+                  ],
+                  "branches": [],
+                  "condition": "",
+                  "evidenceIds": [
+                    "goal-demo",
+                    "code-demo"
+                  ],
+                  "id": "step-demo",
+                  "inputs": [],
+                  "nextStepIds": [],
+                  "nodeId": "node-demo",
+                  "outputs": [
+                    "result"
+                  ],
+                  "title": "Human corrected fixture step"
+                }
+              ],
+              "title": "Expected process"
+            }
+          ],
+          "schemaVersion": "architecture_graph_v1"
+        },
+        "reviewCoverage": {
+          "edges": [
+            "edge-helper"
+          ],
+          "evidence": [
+            "code-demo",
+            "goal-demo"
+          ],
+          "nodes": [
+            "node-demo",
+            "node-helper"
+          ],
+          "processes": [
+            "process-demo"
+          ],
+          "scope": "all"
+        },
+        "limits": [
+          "Isolated fixture, not real ProjectMind owner approval",
+          "核查仅适用于列明覆盖；不证明运行时全流程"
+        ],
+        "origin": "rule_based",
+        "confirmation": {
+          "nodes": {
+            "confirmed": [
+              "node-demo",
+              "node-helper"
+            ],
+            "unconfirmed": []
+          },
+          "edges": {
+            "confirmed": [
+              "edge-helper"
+            ],
+            "unconfirmed": []
+          },
+          "processes": {
+            "confirmed": [
+              "process-demo"
+            ],
+            "unconfirmed": []
+          },
+          "evidence": {
+            "confirmed": [
+              "code-demo",
+              "goal-demo"
+            ],
+            "unconfirmed": []
+          }
+        },
+        "review": {
+          "actor": "TEST_ONLY_SIMULATED_HUMAN",
+          "actorIdentity": "local_operator_declaration",
+          "afterGraph": {
+            "edges": [
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "from": "node-demo",
+                "id": "edge-helper",
+                "label": "Delegates",
+                "to": "node-helper",
+                "type": "functional_collaboration"
+              }
+            ],
+            "evidence": [
+              {
+                "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+                "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+                "id": "code-demo",
+                "kind": "code",
+                "lineEnd": 2,
+                "lineStart": 1,
+                "path": "demo.py",
+                "reason": "Actual fixture Git bytes"
+              },
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo",
+                  "code-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "unknown",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "code_entry",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Test demonstration",
+                "title": "Fixture function"
+              },
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-helper",
+                "implementationStatus": "planned",
+                "interfaces": [],
+                "responsibility": "Planned collaboration",
+                "title": "Fixture helper"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Human corrected fixture step"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "appliedOperations": [
+            {
+              "op": "node.add",
+              "operationId": "op-helper",
+              "source": "rule_based",
+              "value": {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-helper",
+                "implementationStatus": "planned",
+                "interfaces": [],
+                "responsibility": "Planned collaboration",
+                "title": "Fixture helper"
+              }
+            },
+            {
+              "op": "edge.add",
+              "operationId": "op-collaboration",
+              "source": "rule_based",
+              "value": {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "from": "node-demo",
+                "id": "edge-helper",
+                "label": "Delegates",
+                "to": "node-helper",
+                "type": "functional_collaboration"
+              }
+            },
+            {
+              "changes": {
+                "title": "Human corrected fixture step"
+              },
+              "id": "step-demo",
+              "op": "step.update",
+              "operationId": "op-step",
+              "processId": "process-demo",
+              "source": "human"
+            }
+          ],
+          "beforeGraph": null,
+          "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+          "codeRevision": "779d1d51735cd1c4bef824db7b54c770658dbd65",
+          "decision": "accept",
+          "draftId": "draft-9fad6392dc696ac2d0e60ca1f8d54064",
+          "draftRevision": 2,
+          "expectedMapRevision": null,
+          "limits": [
+            "Isolated fixture, not real ProjectMind owner approval"
+          ],
+          "mapId": "map-5e9aed80865907b9640377841cd48cb8",
+          "origin": "rule_based",
+          "previewDigest": "sha256:0ec500ee6372c5a724c5ae9ba63a16f5e1c46099be344dfb7e085d56970b2119",
+          "proposalId": "fixture-bootstrap",
+          "reason": "TEST ONLY: simulated local operator decision",
+          "rejectedCandidates": [
+            {
+              "candidateId": "candidate-title",
+              "proposalId": "fixture-distinct-patch",
+              "reason": "TEST ONLY: no evidence supports replacing the existing fixture title"
+            }
+          ],
+          "reviewCoverage": {
+            "edges": [
+              "edge-helper"
+            ],
+            "evidence": [
+              "code-demo",
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo",
+              "node-helper"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "reviewId": "review-4e4891b3326787e161473f51a4b8e626",
+          "reviewedAt": 1791391467.566106,
+          "verifiedCodeRevision": null,
+          "verifyCode": false,
+          "workspaceId": "workspace-d4121feec8dcd2890235535182bb0a09"
+        },
+        "mapRevision": "sha256:12ef2c6286292d54d5251c088b27bbf1ab3a3c04214fa7bb622f483ff71c5288"
+      },
+      "provenance": {
+        "mapSourceRevision": "db02a798c20ccc0755d1ce04e869cd113e1480d0",
+        "sourceKind": "git_commit"
+      }
+    },
+    "formalMapWritten": false,
+    "limits": [
+      "传输摘要仅检查内容一致，不认证来源或操作者。",
+      "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。",
+      "只证明指定 Git 内容一致，未认证人审身份，也不证明新代码符合期望。"
+    ]
+  },
+  "planningHandoff": {
+    "schemaVersion": "architecture_handoff_v1",
+    "workspaceId": "workspace-b-d-planning",
+    "versionEnvelope": {
+      "version": {
+        "schemaVersion": "architecture_version_v1",
+        "mapId": "map-e6301845951228d9324902c081e9b799",
+        "codeRepoId": null,
+        "codeRevision": null,
+        "verifiedCodeRevision": null,
+        "status": "confirmed_design",
+        "graph": {
+          "edges": [],
+          "evidence": [
+            {
+              "content": "Demonstrate B version lifecycle",
+              "id": "goal-demo",
+              "kind": "user_goal",
+              "reason": "Synthetic test requirement"
+            }
+          ],
+          "nodes": [
+            {
+              "evidenceIds": [
+                "goal-demo"
+              ],
+              "id": "node-demo",
+              "implementationStatus": "planned",
+              "interfaces": [
+                {
+                  "description": "Test contract",
+                  "evidenceIds": [
+                    "goal-demo"
+                  ],
+                  "id": "interface-demo",
+                  "kind": "team_contract",
+                  "name": "demo"
+                }
+              ],
+              "responsibility": "Test demonstration",
+              "title": "Fixture function"
+            }
+          ],
+          "processes": [
+            {
+              "evidenceIds": [],
+              "id": "process-demo",
+              "kind": "expected",
+              "steps": [
+                {
+                  "allowedFailures": [
+                    "invalid input"
+                  ],
+                  "branches": [],
+                  "condition": "",
+                  "evidenceIds": [
+                    "goal-demo"
+                  ],
+                  "id": "step-demo",
+                  "inputs": [],
+                  "nextStepIds": [],
+                  "nodeId": "node-demo",
+                  "outputs": [
+                    "result"
+                  ],
+                  "title": "Demonstrate"
+                }
+              ],
+              "title": "Expected process"
+            }
+          ],
+          "schemaVersion": "architecture_graph_v1"
+        },
+        "reviewCoverage": {
+          "edges": [],
+          "evidence": [
+            "goal-demo"
+          ],
+          "nodes": [
+            "node-demo"
+          ],
+          "processes": [
+            "process-demo"
+          ],
+          "scope": "all"
+        },
+        "limits": [
+          "Isolated fixture, not real ProjectMind owner approval",
+          "核查仅适用于列明覆盖；不证明运行时全流程"
+        ],
+        "origin": "rule_based",
+        "confirmation": {
+          "nodes": {
+            "confirmed": [
+              "node-demo"
+            ],
+            "unconfirmed": []
+          },
+          "edges": {
+            "confirmed": [],
+            "unconfirmed": []
+          },
+          "processes": {
+            "confirmed": [
+              "process-demo"
+            ],
+            "unconfirmed": []
+          },
+          "evidence": {
+            "confirmed": [
+              "goal-demo"
+            ],
+            "unconfirmed": []
+          }
+        },
+        "review": {
+          "actor": "TEST_ONLY_SIMULATED_HUMAN",
+          "actorIdentity": "local_operator_declaration",
+          "afterGraph": {
+            "edges": [],
+            "evidence": [
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "planned",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "team_contract",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Test demonstration",
+                "title": "Fixture function"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Demonstrate"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "appliedOperations": [],
+          "beforeGraph": null,
+          "codeRepoId": null,
+          "codeRevision": null,
+          "decision": "accept",
+          "draftId": "draft-d0cc7d5b00ca0fca49cb61a739dced05",
+          "draftRevision": 1,
+          "expectedMapRevision": null,
+          "limits": [
+            "Isolated fixture, not real ProjectMind owner approval"
+          ],
+          "mapId": "map-e6301845951228d9324902c081e9b799",
+          "origin": "rule_based",
+          "previewDigest": "sha256:844480057bc6a3f6172413e9866fb23bf73a5d3f84719aa34acdc19800202a86",
+          "proposalId": "fixture-planning-bootstrap",
+          "reason": "TEST ONLY: simulated local operator decision",
+          "rejectedCandidates": [],
+          "reviewCoverage": {
+            "edges": [],
+            "evidence": [
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "reviewId": "review-377027eb89d330a765c4d260563eb9fd",
+          "reviewedAt": 1791391468.0034728,
+          "verifiedCodeRevision": null,
+          "verifyCode": false,
+          "workspaceId": "workspace-648de654b88d1674a7dd026ceb356845"
+        },
+        "mapRevision": "sha256:e250ba690e083bf1ea2e83f8748d4be4f901681dba976d048dd97dfa4c9db704"
+      },
+      "provenance": {
+        "mapSourceRevision": "99c4281e65b490acf10a4dbad3b4df91045e3daa",
+        "sourceKind": "git_commit"
+      }
+    },
+    "sources": {
+      "code": null,
+      "architecture": "https://example.invalid/projectmind-b-architecture-fixture.git"
+    },
+    "task": {
+      "state": "pending",
+      "nextAction": "核查来源与固定版本"
+    },
+    "references": {
+      "candidates": [],
+      "reviews": [],
+      "deviations": [],
+      "logs": []
+    },
+    "trust": "untrusted_until_local_git_check",
+    "limits": [
+      "传输摘要仅检查内容一致，不认证来源或操作者。",
+      "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。"
+    ],
+    "transportDigest": "sha256:b6a41da445caad6d3d6a9f64fc2ca89a0815bdb3bb5f92ac3836197eb74fce58"
+  },
+  "planningReceiverCheck": {
+    "status": "same_version_git_checked",
+    "codeRepoId": null,
+    "mapId": "map-e6301845951228d9324902c081e9b799",
+    "codeRevision": null,
+    "mapRevision": "sha256:e250ba690e083bf1ea2e83f8748d4be4f901681dba976d048dd97dfa4c9db704",
+    "mapSourceRevision": "99c4281e65b490acf10a4dbad3b4df91045e3daa",
+    "verifiedCodeRevision": null,
+    "reviewCoverage": {
+      "edges": [],
+      "evidence": [
+        "goal-demo"
+      ],
+      "nodes": [
+        "node-demo"
+      ],
+      "processes": [
+        "process-demo"
+      ],
+      "scope": "all"
+    },
+    "graphStatus": "confirmed_design",
+    "versionEnvelope": {
+      "version": {
+        "schemaVersion": "architecture_version_v1",
+        "mapId": "map-e6301845951228d9324902c081e9b799",
+        "codeRepoId": null,
+        "codeRevision": null,
+        "verifiedCodeRevision": null,
+        "status": "confirmed_design",
+        "graph": {
+          "edges": [],
+          "evidence": [
+            {
+              "content": "Demonstrate B version lifecycle",
+              "id": "goal-demo",
+              "kind": "user_goal",
+              "reason": "Synthetic test requirement"
+            }
+          ],
+          "nodes": [
+            {
+              "evidenceIds": [
+                "goal-demo"
+              ],
+              "id": "node-demo",
+              "implementationStatus": "planned",
+              "interfaces": [
+                {
+                  "description": "Test contract",
+                  "evidenceIds": [
+                    "goal-demo"
+                  ],
+                  "id": "interface-demo",
+                  "kind": "team_contract",
+                  "name": "demo"
+                }
+              ],
+              "responsibility": "Test demonstration",
+              "title": "Fixture function"
+            }
+          ],
+          "processes": [
+            {
+              "evidenceIds": [],
+              "id": "process-demo",
+              "kind": "expected",
+              "steps": [
+                {
+                  "allowedFailures": [
+                    "invalid input"
+                  ],
+                  "branches": [],
+                  "condition": "",
+                  "evidenceIds": [
+                    "goal-demo"
+                  ],
+                  "id": "step-demo",
+                  "inputs": [],
+                  "nextStepIds": [],
+                  "nodeId": "node-demo",
+                  "outputs": [
+                    "result"
+                  ],
+                  "title": "Demonstrate"
+                }
+              ],
+              "title": "Expected process"
+            }
+          ],
+          "schemaVersion": "architecture_graph_v1"
+        },
+        "reviewCoverage": {
+          "edges": [],
+          "evidence": [
+            "goal-demo"
+          ],
+          "nodes": [
+            "node-demo"
+          ],
+          "processes": [
+            "process-demo"
+          ],
+          "scope": "all"
+        },
+        "limits": [
+          "Isolated fixture, not real ProjectMind owner approval",
+          "核查仅适用于列明覆盖；不证明运行时全流程"
+        ],
+        "origin": "rule_based",
+        "confirmation": {
+          "nodes": {
+            "confirmed": [
+              "node-demo"
+            ],
+            "unconfirmed": []
+          },
+          "edges": {
+            "confirmed": [],
+            "unconfirmed": []
+          },
+          "processes": {
+            "confirmed": [
+              "process-demo"
+            ],
+            "unconfirmed": []
+          },
+          "evidence": {
+            "confirmed": [
+              "goal-demo"
+            ],
+            "unconfirmed": []
+          }
+        },
+        "review": {
+          "actor": "TEST_ONLY_SIMULATED_HUMAN",
+          "actorIdentity": "local_operator_declaration",
+          "afterGraph": {
+            "edges": [],
+            "evidence": [
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "planned",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "team_contract",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Test demonstration",
+                "title": "Fixture function"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Demonstrate"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "appliedOperations": [],
+          "beforeGraph": null,
+          "codeRepoId": null,
+          "codeRevision": null,
+          "decision": "accept",
+          "draftId": "draft-d0cc7d5b00ca0fca49cb61a739dced05",
+          "draftRevision": 1,
+          "expectedMapRevision": null,
+          "limits": [
+            "Isolated fixture, not real ProjectMind owner approval"
+          ],
+          "mapId": "map-e6301845951228d9324902c081e9b799",
+          "origin": "rule_based",
+          "previewDigest": "sha256:844480057bc6a3f6172413e9866fb23bf73a5d3f84719aa34acdc19800202a86",
+          "proposalId": "fixture-planning-bootstrap",
+          "reason": "TEST ONLY: simulated local operator decision",
+          "rejectedCandidates": [],
+          "reviewCoverage": {
+            "edges": [],
+            "evidence": [
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "reviewId": "review-377027eb89d330a765c4d260563eb9fd",
+          "reviewedAt": 1791391468.0034728,
+          "verifiedCodeRevision": null,
+          "verifyCode": false,
+          "workspaceId": "workspace-648de654b88d1674a7dd026ceb356845"
+        },
+        "mapRevision": "sha256:e250ba690e083bf1ea2e83f8748d4be4f901681dba976d048dd97dfa4c9db704"
+      },
+      "provenance": {
+        "mapSourceRevision": "99c4281e65b490acf10a4dbad3b4df91045e3daa",
+        "sourceKind": "git_commit"
+      }
+    },
+    "formalMapWritten": false,
+    "limits": [
+      "传输摘要仅检查内容一致，不认证来源或操作者。",
+      "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。",
+      "只证明指定 Git 内容一致，未认证人审身份，也不证明新代码符合期望。"
+    ]
+  },
+  "denials": {
+    "differentSource": "STALE_CONTEXT",
+    "dirtyArchitecture": "DIRTY_WORKSPACE",
+    "unavailableFixedSource": "STALE_CONTEXT"
+  },
+  "limits": [
+    "Component fixture evidence is not product T01–T28 acceptance.",
+    "A routes, login, real AI and real owner approval are not proved here."
+  ]
+}

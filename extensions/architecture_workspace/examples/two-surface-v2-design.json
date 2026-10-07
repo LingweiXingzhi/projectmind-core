@@ -1,0 +1,321 @@
+{
+  "status": "DESIGN_ONLY",
+  "implemented": false,
+  "apiVersion": "b-surfaces-v2-candidate",
+  "note": "Illustrative identities and SHA; no real code, approval or Git publication proof.",
+  "proposalFromC": {
+    "proposalId": "proposal-demo",
+    "kind": "patch",
+    "basis": {
+      "workspaceId": "workspace-demo",
+      "mapId": "map-demo",
+      "mode": "existing_project",
+      "codeRepoId": "repo-demo",
+      "codeRevision": "1111111111111111111111111111111111111111",
+      "baseMapRevision": null,
+      "draftId": "draft-demo",
+      "draftRevision": 1
+    },
+    "generation": {
+      "source": "rule_based",
+      "runId": "run-demo",
+      "fixtureOnly": true
+    },
+    "candidates": [
+      {
+        "candidateId": "candidate-responsibility",
+        "operations": [
+          {
+            "operationId": "operation-responsibility",
+            "source": "rule_based",
+            "op": "node.update",
+            "id": "node-demo",
+            "changes": {
+              "responsibility": "Read fixed Git evidence"
+            }
+          }
+        ]
+      },
+      {
+        "candidateId": "candidate-step",
+        "operations": [
+          {
+            "operationId": "operation-step",
+            "source": "rule_based",
+            "op": "step.update",
+            "processId": "process-demo",
+            "id": "step-demo",
+            "changes": {
+              "title": "Proposed step wording"
+            }
+          }
+        ]
+      },
+      {
+        "candidateId": "candidate-remove",
+        "operations": [
+          {
+            "operationId": "operation-remove",
+            "source": "rule_based",
+            "op": "node.remove",
+            "id": "node-demo"
+          }
+        ]
+      }
+    ],
+    "unknowns": [
+      "No real source or runtime observation is included in this design example."
+    ],
+    "apiVersion": "b-surfaces-v2-candidate",
+    "proposalDigest": "sha256:6d9094fa35229d64dc5e22d33554dc479193f48e0c023a173139b0f306411db7"
+  },
+  "saveFromA": {
+    "requestId": "request-demo",
+    "context": {
+      "workspaceId": "workspace-demo",
+      "mapId": "map-demo",
+      "mode": "existing_project",
+      "codeRepoId": "repo-demo",
+      "codeRevision": "1111111111111111111111111111111111111111",
+      "baseMapRevision": null,
+      "draftId": "draft-demo",
+      "draftRevision": 1
+    },
+    "proposalId": "proposal-demo",
+    "selection": [
+      {
+        "candidateId": "candidate-responsibility",
+        "decision": "accept",
+        "operationIds": [
+          "operation-responsibility"
+        ]
+      },
+      {
+        "candidateId": "candidate-step",
+        "decision": "modify",
+        "operationIds": [
+          "operation-step"
+        ],
+        "reason": "User corrected the expected step wording"
+      },
+      {
+        "candidateId": "candidate-remove",
+        "decision": "reject",
+        "operationIds": [],
+        "reason": "Keep the functional boundary"
+      }
+    ],
+    "operations": [
+      {
+        "operationId": "operation-responsibility",
+        "source": "rule_based",
+        "op": "node.update",
+        "id": "node-demo",
+        "changes": {
+          "responsibility": "Read fixed Git evidence"
+        }
+      },
+      {
+        "operationId": "operation-step",
+        "source": "human",
+        "op": "step.update",
+        "processId": "process-demo",
+        "id": "step-demo",
+        "changes": {
+          "title": "User corrected step wording"
+        }
+      }
+    ],
+    "apiVersion": "b-surfaces-v2-candidate",
+    "proposalDigest": "sha256:6d9094fa35229d64dc5e22d33554dc479193f48e0c023a173139b0f306411db7"
+  },
+  "readViewToA": {
+    "requestId": "request-view",
+    "status": "unconfirmed",
+    "context": {
+      "workspaceId": "workspace-demo",
+      "mapId": "map-demo",
+      "mode": "existing_project",
+      "codeRepoId": "repo-demo",
+      "codeRevision": "1111111111111111111111111111111111111111",
+      "baseMapRevision": null,
+      "draftId": "draft-demo",
+      "draftRevision": 2
+    },
+    "data": {
+      "reviewRequired": true,
+      "canPublish": false,
+      "currentVersionRef": null,
+      "draftStatus": "unconfirmed"
+    },
+    "apiVersion": "b-surfaces-v2-candidate"
+  },
+  "conflictToA": {
+    "requestId": "request-old-client",
+    "error": {
+      "code": "REVISION_CONFLICT",
+      "message": "Reload the draft and preview the intended changes."
+    },
+    "currentContext": {
+      "workspaceId": "workspace-demo",
+      "mapId": "map-demo",
+      "mode": "existing_project",
+      "codeRepoId": "repo-demo",
+      "codeRevision": "1111111111111111111111111111111111111111",
+      "baseMapRevision": null,
+      "draftId": "draft-demo",
+      "draftRevision": 2
+    },
+    "apiVersion": "b-surfaces-v2-candidate"
+  },
+  "importRequestFromD": {
+    "requestId": "request-import",
+    "targetWorkspaceId": "workspace-other-client",
+    "versionRef": {
+      "codeRepoId": "repo-demo",
+      "mapId": "map-demo",
+      "codeRevision": "1111111111111111111111111111111111111111",
+      "mapRevision": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "mapSourceRevision": "3333333333333333333333333333333333333333",
+      "verifiedCodeRevision": null
+    },
+    "expectedMapRevision": null,
+    "sourceRegistrationId": "source-architecture-demo",
+    "note": "Registered source is resolved by the server; this request does not authorize import.",
+    "apiVersion": "b-surfaces-v2-candidate"
+  },
+  "planningContext": {
+    "workspaceId": "workspace-planning",
+    "mapId": "map-planning",
+    "mode": "planning",
+    "codeRepoId": null,
+    "codeRevision": null,
+    "baseMapRevision": null,
+    "draftId": null,
+    "draftRevision": null
+  },
+  "proposalBootstrapFromC": {
+    "apiVersion": "b-surfaces-v2-candidate",
+    "proposalId": "proposal-planning-demo",
+    "kind": "bootstrap",
+    "basis": {
+      "workspaceId": "workspace-planning",
+      "mapId": "map-planning",
+      "mode": "planning",
+      "codeRepoId": null,
+      "codeRevision": null,
+      "baseMapRevision": null,
+      "draftId": null,
+      "draftRevision": null
+    },
+    "generation": {
+      "source": "rule_based",
+      "runId": "run-planning-demo",
+      "fixtureOnly": true
+    },
+    "candidates": [
+      {
+        "candidateId": "candidate-design",
+        "graph": {
+          "schemaVersion": "architecture_graph_v1",
+          "nodes": [
+            {
+              "id": "node-planned",
+              "title": "Versioned design",
+              "responsibility": "Plan a maintainable design lifecycle",
+              "implementationStatus": "planned",
+              "interfaces": [],
+              "evidenceIds": [
+                "goal-planned"
+              ]
+            }
+          ],
+          "edges": [],
+          "evidence": [
+            {
+              "id": "goal-planned",
+              "kind": "user_goal",
+              "content": "A user can maintain and review a design before code exists.",
+              "reason": "Illustrative planning goal"
+            }
+          ],
+          "processes": []
+        }
+      }
+    ],
+    "unknowns": [
+      "No implementation or real model generation is proven by this example."
+    ],
+    "proposalDigest": "sha256:a9f4369d61194922bbef498c1345a09c8a4956e5a68cf3d2a5bedf3e6fdd010d"
+  },
+  "prepareFromA": {
+    "apiVersion": "b-surfaces-v2-candidate",
+    "requestId": "request-prepare-design",
+    "context": {
+      "workspaceId": "workspace-planning",
+      "mapId": "map-planning",
+      "mode": "planning",
+      "codeRepoId": null,
+      "codeRevision": null,
+      "baseMapRevision": null,
+      "draftId": null,
+      "draftRevision": null
+    },
+    "proposalId": "proposal-planning-demo",
+    "proposalDigest": "sha256:a9f4369d61194922bbef498c1345a09c8a4956e5a68cf3d2a5bedf3e6fdd010d",
+    "selectedCandidateId": "candidate-design",
+    "graph": {
+      "schemaVersion": "architecture_graph_v1",
+      "nodes": [
+        {
+          "id": "node-planned",
+          "title": "Versioned design",
+          "responsibility": "Plan a maintainable design lifecycle",
+          "implementationStatus": "planned",
+          "interfaces": [],
+          "evidenceIds": [
+            "goal-planned"
+          ]
+        }
+      ],
+      "edges": [],
+      "evidence": [
+        {
+          "id": "goal-planned",
+          "kind": "user_goal",
+          "content": "A user can maintain and review a design before code exists.",
+          "reason": "Illustrative planning goal"
+        }
+      ],
+      "processes": []
+    },
+    "origin": "rule_based"
+  },
+  "publishedViewToA": {
+    "apiVersion": "b-surfaces-v2-candidate",
+    "requestId": "request-published-view",
+    "status": "published",
+    "context": {
+      "workspaceId": "workspace-demo",
+      "mapId": "map-demo",
+      "mode": "existing_project",
+      "codeRepoId": "repo-demo",
+      "codeRevision": "1111111111111111111111111111111111111111",
+      "baseMapRevision": null,
+      "draftId": "draft-demo",
+      "draftRevision": 2
+    },
+    "data": {
+      "currentVersionRef": {
+        "codeRepoId": "repo-demo",
+        "mapId": "map-demo",
+        "codeRevision": "1111111111111111111111111111111111111111",
+        "mapRevision": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "mapSourceRevision": "3333333333333333333333333333333333333333",
+        "verifiedCodeRevision": null
+      },
+      "draftStatus": "published",
+      "canEditThisDraft": false
+    }
+  }
+}

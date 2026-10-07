@@ -1,0 +1,96 @@
+test_pending_publication_cannot_be_rejected_by_an_older_preview (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_pending_publication_cannot_be_rejected_by_an_older_preview) ... FAIL
+test_process_exit_before_atomic_replace_is_recoverable (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_process_exit_before_atomic_replace_is_recoverable) ... FAIL
+test_reimport_own_version_preserves_original_immutable_envelope (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_reimport_own_version_preserves_original_immutable_envelope) ... ERROR
+test_publication_lock_open_failure_has_controlled_error (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_publication_lock_open_failure_has_controlled_error) ... ERROR
+test_operation_action_rejects_ignored_fields_without_partial_edit (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_operation_action_rejects_ignored_fields_without_partial_edit) ... FAIL
+
+======================================================================
+ERROR: test_reimport_own_version_preserves_original_immutable_envelope (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_reimport_own_version_preserves_original_immutable_envelope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 586, in test_reimport_own_version_preserves_original_immutable_envelope
+    imported = self.service.import_git_version(self.ws["workspaceId"],
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "CHECKOUT/extensions/architecture_workspace/schema.py", line 28, in guarded
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "CHECKOUT/extensions/architecture_workspace/service.py", line 493, in import_git_version
+    Store.put(db, "version", workspace_id + "/" + map_revision, envelope, immutable=True)
+  File "CHECKOUT/extensions/architecture_workspace/storage.py", line 62, in put
+    require(canonical(previous) == body, "VERSION_CONFLICT")
+  File "CHECKOUT/extensions/architecture_workspace/errors.py", line 35, in require
+    raise WorkspaceError(code, detail)
+extensions.architecture_workspace.errors.WorkspaceError: 不可变版本内容不能覆盖
+
+======================================================================
+ERROR: test_publication_lock_open_failure_has_controlled_error (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_publication_lock_open_failure_has_controlled_error)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 603, in test_publication_lock_open_failure_has_controlled_error
+    self.assert_error("PUBLICATION_FAILED", lambda: self.publish(draft, review))
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 161, in assert_error
+    fn()
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 603, in <lambda>
+    self.assert_error("PUBLICATION_FAILED", lambda: self.publish(draft, review))
+                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 155, in publish
+    return self.service.publish_reviewed_graph(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "CHECKOUT/extensions/architecture_workspace/schema.py", line 28, in guarded
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "CHECKOUT/extensions/architecture_workspace/service.py", line 445, in publish_reviewed_graph
+    source = self.publisher.publish(journal)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "CHECKOUT/extensions/architecture_workspace/git_publication.py", line 131, in publish
+    lock = sqlite3.connect(self.repo / ".git/architecture-publication-lock.sqlite",
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "PYTHON_RUNTIME/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "PYTHON_RUNTIME/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "PYTHON_RUNTIME/lib/python3.12/unittest/mock.py", line 1204, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 600, in connect
+    raise sqlite3.OperationalError("TEST lock cannot open")
+sqlite3.OperationalError: TEST lock cannot open
+
+======================================================================
+FAIL: test_pending_publication_cannot_be_rejected_by_an_older_preview (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_pending_publication_cannot_be_rejected_by_an_older_preview)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 553, in test_pending_publication_cannot_be_rejected_by_an_older_preview
+    self.assert_error("VERSION_CONFLICT", lambda: self.review(draft, older, decision="reject"))
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 160, in assert_error
+    with self.assertRaises(WorkspaceError) as caught:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: WorkspaceError not raised
+
+======================================================================
+FAIL: test_process_exit_before_atomic_replace_is_recoverable (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_process_exit_before_atomic_replace_is_recoverable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 579, in test_process_exit_before_atomic_replace_is_recoverable
+    self.assertEqual(git(self.arch, "status", "--porcelain", "--untracked-files=all"), "")
+AssertionError: '?? versions/map-e18d95858e46046c5ae4c94c34e90785/.publication-y27e3o8p' != ''
+- ?? versions/map-e18d95858e46046c5ae4c94c34e90785/.publication-y27e3o8p
+
+
+======================================================================
+FAIL: test_operation_action_rejects_ignored_fields_without_partial_edit (tests.test_archloop_b_service.ArchitectureWorkspaceTests.test_operation_action_rejects_ignored_fields_without_partial_edit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 612, in test_operation_action_rejects_ignored_fields_without_partial_edit
+    self.assert_error("INVALID_INPUT", lambda: self.update(draft, [op]))
+  File "CHECKOUT/tests/test_archloop_b_service.py", line 160, in assert_error
+    with self.assertRaises(WorkspaceError) as caught:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: WorkspaceError not raised
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.480s
+
+FAILED (failures=3, errors=2)
