@@ -3,5 +3,7 @@
 from .errors import WorkspaceError
 from .service import WorkspaceService
 from .review import HumanReviewGateway
+from .surfaces import UserWorkspaceAPI, CollaborationAPI
 
-__all__ = ["WorkspaceService", "WorkspaceError", "HumanReviewGateway"]
+__all__ = ["WorkspaceService", "WorkspaceError", "HumanReviewGateway",
+           "UserWorkspaceAPI", "CollaborationAPI"]

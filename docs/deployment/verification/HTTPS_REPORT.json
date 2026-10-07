@@ -1,0 +1,157 @@
+{
+  "schemaVersion": "local_https_rehearsal_v1",
+  "fixtureOnly": true,
+  "backend": "actual Waitress CLI",
+  "proxy": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=",
+  "localCertificateAndHostnameVerified": true,
+  "codeGitUnchanged": true,
+  "publicNetwork": "NOT_RUN",
+  "realTeamApproval": "NOT_RUN",
+  "browser": "NOT_RUN_NOT_A_BROWSER_HARNESS",
+  "requests": 24,
+  "observations": [
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    }
+  ],
+  "publishedFixtures": [
+    {
+      "context": "existing_project",
+      "mapRevision": "sha256:a420f845adce9932ac6ae9cf6f672b350d09cb5c767df77c6fa66dd69c21ed97",
+      "mapSourceRevision": "5b07c1bb8570fc20129b286ceca1822558f1e595",
+      "codeRevision": "29dd87f30bbb3952be939941c91ad28f706009c2"
+    },
+    {
+      "context": "planning",
+      "mapRevision": "sha256:44db6b8fb84106822f188958dd91d02ba8f187e5aad069cc2e22d7a90921e06b",
+      "mapSourceRevision": "3579520153c47f30fcc8fdea576683c4567575cb",
+      "codeRevision": null
+    }
+  ],
+  "crossSessionConfirmRejected": true,
+  "crossSessionPublishRejected": true,
+  "csrfRejected": true,
+  "wrongOriginRejected": true,
+  "trustedActorFromSession": true,
+  "planningNoFakeCodeSHA": true,
+  "secondServingProcessRejected": true,
+  "sourceLocalSHA": "c949398334367773289038695e42816541b511a0",
+  "sourceTree": "fa339ed193b10476e8714e828c1d9f859c4ec945"
+}

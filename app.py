@@ -340,7 +340,7 @@ def load_sample_graph() -> dict:
 
 def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None,
                  explorer_registry: ExplorerRegistry | None = None,
-                 archloop_service: WorkbenchService | None = None):
+                 archloop_service: WorkbenchService | None = None, public_origin: str | None = None):
     # R2-Q1 (B1-b-02): in no-map mode no extension module may even be
     # imported — ExtensionHost construction exec_module()s every extension,
     # so the no-map instance loads none at all instead of blocking later.
@@ -416,6 +416,19 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
 
         def _explorer_access_allowed(self) -> tuple[bool, dict | None]:
             """Loopback Host + same-service Origin only (accepted R2-Q4)."""
+            if public_origin is not None:
+                # Only the authenticated WSGI boundary supplies this Python
+                # object; no HTTP identity/forwarded header creates it.
+                operator = getattr(self, "trusted_operator", None)
+                if not isinstance(operator, dict) or not operator.get("browserSession"):
+                    return False, {"error": {"code": "REQUEST_FORBIDDEN", "message": "需要受保护的浏览器会话"}}
+                from urllib.parse import urlsplit
+                if self.headers.get("Host") != urlsplit(public_origin).netloc:
+                    return False, {"error": {"code": "FORBIDDEN_HOST", "message": "入口主机不匹配"}}
+                origin = self.headers.get("Origin")
+                if origin != public_origin and (self.command != "GET" or origin is not None):
+                    return False, origin_rejected_payload()
+                return True, None
             port = self.server.server_address[1]
             host = self.headers.get("Host", "")
             if host not in (f"127.0.0.1:{port}", f"localhost:{port}"):
@@ -645,6 +658,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 "peer": self.client_address[0] if self.client_address else "",
                 "host": self.headers.get("Host", ""),
                 "origin": self.headers.get("Origin", ""),
+                **getattr(self, "trusted_operator", {}),
             }
 
         def do_GET(self) -> None:

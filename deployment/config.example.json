@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "projectmind_deploy_v1",
+  "publicOrigin": "https://projectmind.example.invalid",
+  "accountsFile": "/etc/projectmind/accounts.json",
+  "dataRoot": "/var/lib/projectmind/state",
+  "codeRepositories": ["/srv/projectmind/code/target"],
+  "architectureRepo": "/var/lib/projectmind/architecture",
+  "architectureBranch": "architecture/candidates/team"
+}
