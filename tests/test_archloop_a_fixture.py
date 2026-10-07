@@ -69,8 +69,7 @@ class FixtureLoopTests(unittest.TestCase):
         self.workspace_id = envelope["workspace"]["workspaceId"]
         generated = self.service.generate(self.workspace_id,
                                           {"mode": "dev_sample", "sampleGraph": SAMPLE})
-        self.service.apply_candidate(self.workspace_id,
-                                     {"graph": generated["graph"], "origin": generated["origin"]})
+        self.service.apply_candidate(self.workspace_id, {"candidateId": generated["candidateId"]})
 
     def test_full_change_correction_rebind_cycle(self) -> None:
         old_head = run_git(self.repo, "rev-parse", "HEAD")

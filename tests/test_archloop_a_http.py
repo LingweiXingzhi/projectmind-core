@@ -93,13 +93,13 @@ class ArchLoopHTTPTests(unittest.TestCase):
         workspace_id = envelope["workspace"]["workspaceId"]
         self.assertIsNone(envelope["identity"]["codeRevision"])
 
-        status, sample = self.request("GET", "/api/archloop/sample-graph")
+        status, sample = self.request("GET", "/api/archloop/sample-graph?context=planning")
         status, generated = self.request("POST", f"/api/archloop/workspaces/{workspace_id}/generate",
                                          {"mode": "dev_sample", "sampleGraph": sample["graph"]})
         self.assertEqual(generated["status"], "dev_sample")
 
         status, applied = self.request("POST", f"/api/archloop/workspaces/{workspace_id}/apply-candidate",
-                                       {"graph": generated["graph"], "origin": generated["origin"]})
+                                       {"candidateId": generated["candidateId"]})
         self.assertEqual(status, 200)
         draft_revision = applied["identity"]["draftRevision"]
 
@@ -128,11 +128,18 @@ class ArchLoopHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(preview["origin"], "dev_sample")
 
+        # applying the correction by proposalId with its own basis revision
+        status, corrected = self.request("POST", f"/api/archloop/workspaces/{workspace_id}/apply-correction", {
+            "proposalId": preview["proposalId"],
+            "expectedDraftRevision": preview["baseDraftRevision"],
+        })
+        self.assertEqual(status, 200)
+
         status, review = self.request("POST", f"/api/archloop/workspaces/{workspace_id}/review", {
-            "expectedMapRevision": edited["draft"]["graph"]["mapRevision"],
+            "expectedMapRevision": corrected["draft"]["graph"]["mapRevision"],
             "decision": "accept", "actor": "http-tester", "reason": "测试",
         })
-        # dev-sample draft: publishing is refused outright (403), no version.
+        # sample-derived draft: publishing is refused outright (403), no version.
         self.assertEqual(status, 403)
         self.assertEqual(review["error"]["code"], "DEV_SAMPLE_DISABLED")
 
@@ -144,7 +151,32 @@ class ArchLoopHTTPTests(unittest.TestCase):
 
         status, reopened = self.request("GET", f"/api/archloop/workspaces/{workspace_id}")
         self.assertEqual(status, 200)
-        self.assertEqual(reopened["identity"]["draftRevision"], new_revision)
+        self.assertEqual(reopened["identity"]["draftRevision"], corrected["identity"]["draftRevision"])
+
+    def test_recheck_is_post_only(self) -> None:
+        # MID-1 finding 12: the mutating recheck must not be reachable via an
+        # unprotected GET.
+        status, envelope = self.request("POST", "/api/archloop/workspaces",
+                                        {"context": "planning", "title": "POSTonly", "goals": "目标"})
+        workspace_id = envelope["workspace"]["workspaceId"]
+        status, refused = self.request("GET", f"/api/archloop/workspaces/{workspace_id}/recheck")
+        self.assertEqual(status, 404)  # GET removed: recheck is POST-only now
+        status, guarded = self.request("POST", f"/api/archloop/workspaces/{workspace_id}/recheck", {})
+        self.assertEqual(status, 400)  # planning workspace has no bound code
+        self.assertEqual(guarded["error"]["code"], "VALIDATION_FAILED")
+
+    def test_bad_input_returns_json_error_not_crash(self) -> None:
+        # MID-1 finding 10: malformed bodies get machine-coded JSON errors.
+        status, payload = self.request("POST", "/api/archloop/workspaces",
+                                       {"context": "existing_project", "title": "x",
+                                        "repoPath": "G:/definitely/not/a/repo"})
+        self.assertEqual(status, 500)
+        self.assertIn(payload["error"]["code"], ("INTERNAL", "BACKEND_UNAVAILABLE"))
+        status, payload2 = self.request("POST", "/api/archloop/workspaces",
+                                        {"context": "existing_project", "title": {"nested": "object"},
+                                         "repoPath": None})
+        self.assertEqual(status, 400)
+        self.assertEqual(payload2["error"]["code"], "BAD_REQUEST")
 
     def test_legacy_snapshot_still_works(self) -> None:
         status, snapshot = self.request("GET", "/api/snapshot", origin=None)
@@ -170,6 +202,7 @@ class ArchLoopHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(result["status"], "NOT_RUN_AWAITING_CONFIGURATION")
         self.assertNotIn("graph", result)
+        self.assertNotIn("candidateId", result)
 
 
 if __name__ == "__main__":

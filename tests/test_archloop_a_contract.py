@@ -48,6 +48,17 @@ class RevisionIdentityTests(unittest.TestCase):
         changed["nodes"][0]["process"] = list(reversed(changed["nodes"][0]["process"]))
         self.assertNotEqual(base, semantic_revision(changed))
 
+    def test_assumptions_and_provenance_change_revision(self) -> None:
+        # MID-1 finding 7: assumptions and provenance are semantic fields
+        graph = sample_graph()
+        base = semantic_revision(graph)
+        with_assumption = sample_graph()
+        with_assumption["nodes"][0]["assumptions"] = ["假设：单机部署"]
+        self.assertNotEqual(base, semantic_revision(with_assumption))
+        with_provenance = sample_graph()
+        with_provenance["nodes"][0]["provenance"] = "human_input"
+        self.assertNotEqual(base, semantic_revision(with_provenance))
+
 
 class GraphValidationTests(unittest.TestCase):
     def test_valid_graph_passes(self) -> None:

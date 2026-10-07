@@ -1,7 +1,9 @@
 """Workspace and draft persistence for the architecture workbench.
 
 Storage stays small and testable (contract: no graph database). Roots are
-explicit; writes are atomic; draft updates are CAS-guarded by draftRevision.
+explicit; writes are atomic with unique temp names; every mutating workspace
+operation runs under a per-workspace in-process lock so a CAS check and its
+save cannot interleave with another writer (audit MID-1 finding 1).
 
 IMPORTANT (CONTRACT_V1 seam): this local store is the workbench's own draft
 workspace and the `dev_sample` backend's backing store. It never claims to be
@@ -15,11 +17,26 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
+import uuid
 from pathlib import Path
 
 from .contract import ContractError, ID_PATTERN
 
 WORKSPACE_DIR = re.compile(r"^ws_[0-9]{14}_[a-z0-9]{6}$")
+
+_locks_guard = threading.Lock()
+_locks_by_workspace: dict[str, threading.Lock] = {}
+
+
+def workspace_lock(workspace_id: str) -> threading.Lock:
+    """One lock per workspace id for the process lifetime."""
+    with _locks_guard:
+        lock = _locks_by_workspace.get(workspace_id)
+        if lock is None:
+            lock = threading.Lock()
+            _locks_by_workspace[workspace_id] = lock
+        return lock
 
 
 class DraftStore:
@@ -100,7 +117,9 @@ class DraftStore:
     @staticmethod
     def _write_json(path: Path, value: dict) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
+        # unique temp name: two writers on one workspace must never share a
+        # tmp file (audit MID-1 finding 1)
+        tmp = path.with_suffix(path.suffix + f".{uuid.uuid4().hex[:8]}.tmp")
         with open(tmp, "w", encoding="utf-8") as handle:
             json.dump(value, handle, ensure_ascii=False, indent=1)
             handle.flush()

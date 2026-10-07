@@ -16,6 +16,8 @@
     selectedNodeId: null,
     correctionPreview: null,
     busy: false,
+    lastGenerateStatus: null, // survives re-renders (MID-1 finding 11)
+    lastGenerateError: false,
   };
 
   function el(tag, className, content) {
@@ -162,6 +164,16 @@
     renderWorkspace();
   }
 
+  function setGenStatus(message, isError) {
+    state.lastGenerateStatus = message;
+    state.lastGenerateError = Boolean(isError);
+    const target = document.getElementById("arch-generate-status");
+    if (target) {
+      target.textContent = message;
+      target.classList.toggle("error", Boolean(isError));
+    }
+  }
+
   function renderWorkspace() {
     const envelope = state.envelope;
     if (!envelope) return;
@@ -175,14 +187,19 @@
     const banner = document.getElementById("arch-sample-banner");
     if (envelope.backend && envelope.backend.origin === "dev_sample") {
       banner.hidden = false;
-      banner.textContent = `演示数据：${envelope.backend.labeled}。真实版本后端接入前，这里不会产生正式认知版本。`;
+      banner.textContent = `演示数据：${envelope.backend.labeled}`;
     } else {
       banner.hidden = true;
     }
 
-    const generation = envelope.generation || {};
+    // The latest action's status (incl. machine codes) survives re-renders;
+    // only the initial idle hint is derived (MID-1 finding 11).
     const genStatus = document.getElementById("arch-generate-status");
-    if (!state.pendingCandidate && !graph()) {
+    if (state.lastGenerateStatus !== null) {
+      genStatus.textContent = state.lastGenerateStatus;
+      genStatus.classList.toggle("error", state.lastGenerateError);
+    } else {
+      const generation = envelope.generation || {};
       genStatus.textContent = generation.configured
         ? `已就绪：模型 ${generation.model}。点击生成候选图。`
         : (generation.note || "AI 未配置。");
@@ -556,17 +573,17 @@
     if (!state.envelope || state.busy) return;
     state.busy = true;
     renderWorkspace();
-    setStatus("arch-generate-status", "正在调用已配置模型生成候选图…（最长约 1 分钟）");
+    setGenStatus("正在调用已配置模型生成候选图…（最长约 1 分钟）");
     try {
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, {});
       if (result.status === "ai_generated") {
         state.pendingCandidate = result;
         showCandidateForApply(result, "AI 候选图已生成。请检查后点击「应用到草稿」。");
       } else {
-        setStatus("arch-generate-status", `${result.status}：${result.note}`, true);
+        setGenStatus(`${result.status}：${result.note}`, true);
       }
     } catch (error) {
-      setStatus("arch-generate-status", `生成失败（${error.code}）：${error.message}`, true);
+      setGenStatus(`生成失败（${error.code}）：${error.message}`, true);
     } finally {
       state.busy = false;
       renderWorkspace();
@@ -577,9 +594,10 @@
     if (!state.envelope || state.busy) return;
     state.busy = true;
     renderWorkspace();
-    setStatus("arch-generate-status", "正在载入演示样例…");
+    setGenStatus("正在载入演示样例…");
     try {
-      const sample = await api("GET", "/api/archloop/sample-graph");
+      const planning = state.envelope.workspace.context === "planning";
+      const sample = await api("GET", `/api/archloop/sample-graph?context=${planning ? "planning" : "existing_project"}`);
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`,
         { mode: "dev_sample", sampleGraph: sample.graph });
       if (result.status === "dev_sample") {
@@ -589,10 +607,10 @@
         banner.hidden = false;
         banner.textContent = "演示数据：当前候选是明确标注的开发样例，用于验证界面交互，不代表 AI 分析结果。";
       } else {
-        setStatus("arch-generate-status", `${result.status}：${result.note}`, true);
+        setGenStatus(`${result.status}：${result.note}`, true);
       }
     } catch (error) {
-      setStatus("arch-generate-status", `载入失败（${error.code}）：${error.message}`, true);
+      setGenStatus(`载入失败（${error.code}）：${error.message}`, true);
     } finally {
       state.busy = false;
       renderWorkspace();
@@ -600,28 +618,29 @@
   });
 
   function showCandidateForApply(result, message) {
-    const genStatus = document.getElementById("arch-generate-status");
-    genStatus.textContent = message;
+    setGenStatus(message);
     const area = document.getElementById("arch-review-result");
     area.replaceChildren();
     const apply = el("button", "button primary", "应用到草稿");
     apply.type = "button";
     apply.addEventListener("click", async () => {
       try {
+        // apply by candidateId: the server-stored candidate (with its real
+        // origin) is the only thing that can become a draft
         const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/apply-candidate`,
-          { graph: result.graph, origin: result.origin });
+          { candidateId: result.candidateId, expectedDraftRevision: state.envelope.identity.draftRevision });
         state.pendingCandidate = null;
         openEnvelope(envelope);
-        setStatus("arch-generate-status", result.status === "dev_sample"
+        setGenStatus(result.status === "dev_sample"
           ? "演示候选已作为草稿（标注保留）。"
           : "AI 候选已应用为草稿（全部节点仍为候选状态）。");
       } catch (error) {
-        setStatus("arch-generate-status", `应用失败：${error.message}`, true);
+        setGenStatus(`应用失败（${error.code}）：${error.message}`, true);
       }
     });
     const discard = el("button", "button ghost", "放弃该候选");
     discard.type = "button";
-    discard.addEventListener("click", () => { state.pendingCandidate = null; area.replaceChildren(); setStatus("arch-generate-status", "候选已放弃。"); });
+    discard.addEventListener("click", () => { state.pendingCandidate = null; area.replaceChildren(); setGenStatus("候选已放弃。"); });
     area.append(el("p", "ai-provenance", result.note), apply, discard);
   }
 
@@ -659,6 +678,12 @@
     area.replaceChildren();
     const preview = state.correctionPreview;
     if (!preview) return;
+    // a preview based on an older draft revision is void (MID-1 finding 9)
+    if (preview.baseDraftRevision !== state.envelope.identity.draftRevision) {
+      state.correctionPreview = null;
+      area.append(el("div", "review-notice", "纠正预览已过期（草稿在此期间发生了变化）；请重新生成预览。"));
+      return;
+    }
     const label = el("div", "ai-candidate-label", preview.origin === "dev_sample"
       ? "演示纠正预览 · 非真实 AI 输出" : "纠正预览");
     area.append(label);
@@ -671,8 +696,19 @@
     const apply = el("button", "button primary", "应用到草稿");
     apply.type = "button";
     apply.addEventListener("click", async () => {
-      const ok = await applyOps(preview.operations, "纠正已应用到草稿。");
-      if (ok) { state.correctionPreview = null; renderCorrectionPreview(); }
+      try {
+        // apply by proposalId with the preview's own basis revision; the
+        // server re-checks expiry under the workspace lock
+        const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/apply-correction`,
+          { proposalId: preview.proposalId, expectedDraftRevision: preview.baseDraftRevision });
+        state.correctionPreview = null;
+        state.envelope = envelope;
+        setStatus("arch-draft-status", "纠正已应用到草稿。");
+        renderCorrectionPreview();
+        renderWorkspace();
+      } catch (error) {
+        setStatus("arch-draft-status", `应用失败（${error.code}）：${error.message}`, true);
+      }
     });
     const discard = el("button", "button ghost", "放弃纠正");
     discard.type = "button";
@@ -754,7 +790,9 @@
     renderWorkspace();
     setStatus("arch-generate-status", "正在检查代码变化…");
     try {
-      const result = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/recheck`);
+      // POST: recheck mutates workspace state, so it sits behind the same
+      // loopback/Origin protection as every other write (MID-1 finding 12)
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/recheck`, {});
       const area = document.getElementById("arch-recheck-result");
       area.replaceChildren();
       area.append(el("p", "ai-provenance", `${short(result.oldCodeRevision)} → ${short(result.newCodeRevision)}${result.changed ? "（代码已前进）" : "（无变化）"}`));
@@ -772,15 +810,15 @@
             const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,
               { expectedNewCodeRevision: result.newCodeRevision, actor, note: "复核后回挂" });
             state.envelope = envelope;
-            setStatus("arch-generate-status", "已回挂到新提交（本地记录；verifiedCodeRevision 仍为空，等待独立验证）。");
+            setGenStatus("已回挂到新提交（本地记录；verifiedCodeRevision 仍为空，等待独立验证）。");
             renderWorkspace();
           } catch (error) {
-            setStatus("arch-generate-status", `回挂失败（${error.code}）：${error.message}`, true);
+            setGenStatus(`回挂失败（${error.code}）：${error.message}`, true);
           }
         });
         area.append(rebind);
       }
-      setStatus("arch-generate-status", result.changed ? "代码有新提交，请复核列出的节点。" : "代码没有新提交。");
+      setGenStatus(result.changed ? "代码有新提交，请复核列出的节点。" : "代码没有新提交。");
     } catch (error) {
       setStatus("arch-generate-status", `复核失败（${error.code}）：${error.message}`, true);
     } finally {

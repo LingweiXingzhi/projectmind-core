@@ -1,10 +1,16 @@
-"""Workbench service tests (A role): drafts, corrections, review, recheck."""
+"""Workbench service tests (A role): drafts, corrections, review, recheck.
+
+Includes the red/green evidence for the MID-1 audit findings: CAS races,
+candidate expiry, sample-origin laundering, evidence honesty, process
+reference cascades and preview expiry.
+"""
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -55,6 +61,20 @@ def dev_sample_graph() -> dict:
     }
 
 
+def planning_sample_graph() -> dict:
+    """Requirement-based sample for planning workspaces (no code facts)."""
+    return {
+        "nodes": [
+            {"id": "n_a", "title": "样例A", "summary": "样例职责", "status": "candidate",
+             "provenance": "rule_based", "entryPoints": [], "interfaces": [],
+             "evidence": [{"path": "需求.md", "reason": "样例需求依据", "kind": "requirement"}], "process": []},
+            {"id": "n_b", "title": "样例B", "summary": "样例职责B", "status": "candidate",
+             "provenance": "rule_based", "entryPoints": [], "interfaces": [], "evidence": [], "process": []},
+        ],
+        "edges": [],
+    }
+
+
 class WorkspaceLifecycleTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -67,6 +87,11 @@ class WorkspaceLifecycleTests(unittest.TestCase):
             "context": "existing_project", "title": "示例",
             "repoPath": str(self.repo), "description": "说明",
         })
+
+    def apply_sample(self, workspace_id: str) -> dict:
+        generated = self.service.generate(workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        return self.service.apply_candidate(workspace_id, {"candidateId": generated["candidateId"]})
 
     def test_existing_workspace_binds_stable_identity(self) -> None:
         envelope = self.create_existing()
@@ -107,6 +132,98 @@ class WorkspaceLifecycleTests(unittest.TestCase):
             self.service.generate(envelope["workspace"]["workspaceId"], {"mode": "dev_sample"})
         self.assertEqual(caught.exception.code, "DEV_SAMPLE_DISABLED")
 
+    def test_planning_rejects_code_fact_evidence(self) -> None:
+        # MID-1 finding 5 (green: rejected outright)
+        envelope = self.service.create_workspace({"context": "planning", "title": "规划", "goals": "目标"})
+        bad = dev_sample_graph()
+        bad["nodes"][0]["evidence"] = [{"path": "somewhere.py", "reason": "伪造代码事实", "kind": "code_fact"}]
+        with self.assertRaises(ContractError) as caught:
+            self.service.generate(envelope["workspace"]["workspaceId"],
+                                  {"mode": "dev_sample", "sampleGraph": bad})
+        self.assertEqual(caught.exception.code, "VALIDATION_FAILED")
+
+    def test_unverifiable_code_fact_downgrades_to_unknown(self) -> None:
+        # MID-1 finding 5 (paths not at the bound revision lose code_fact)
+        envelope = self.create_existing()
+        graph = dev_sample_graph()
+        graph["nodes"][0]["evidence"].append({"path": "ghost.py", "reason": "模型声称", "kind": "code_fact"})
+        result = self.service.generate(envelope["workspace"]["workspaceId"],
+                                       {"mode": "dev_sample", "sampleGraph": graph})
+        node = result["graph"]["nodes"][0]
+        kinds = {item["path"]: item["kind"] for item in node["evidence"]}
+        self.assertEqual(kinds["entry.py"], "code_fact")      # real file stays a fact
+        self.assertEqual(kinds["ghost.py"], "unknown")        # invented path downgraded
+        downgraded = result["graph"].get("evidenceDowngrades")
+        self.assertTrue(downgraded and downgraded[0]["path"] == "ghost.py")
+
+
+class CandidateApplicationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.service = service_with_git(Path(self.tmp.name))
+        self.repo = tiny_repo(Path(self.tmp.name))
+        envelope = self.service.create_workspace({
+            "context": "existing_project", "title": "示例",
+            "repoPath": str(self.repo), "description": "说明",
+        })
+        self.workspace_id = envelope["workspace"]["workspaceId"]
+
+    def test_apply_requires_stored_candidate_id(self) -> None:
+        # no candidate stored yet
+        with self.assertRaises(ContractError) as empty:
+            self.service.apply_candidate(self.workspace_id, {"candidateId": "cand_missing"})
+        self.assertEqual(empty.exception.code, "VALIDATION_FAILED")
+        self.service.generate(self.workspace_id, {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        with self.assertRaises(ContractError) as caught:
+            self.service.apply_candidate(self.workspace_id, {"candidateId": "cand_missing"})
+        self.assertEqual(caught.exception.code, "STALE_CONTEXT")
+
+    def test_apply_cas_on_existing_draft(self) -> None:
+        # MID-1 finding 2: a stale candidate application must not overwrite
+        generated = self.service.generate(self.workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        self.service.apply_candidate(self.workspace_id, {"candidateId": generated["candidateId"]})
+        envelope = self.service.load_draft(self.workspace_id)
+        self.service.apply_ops(self.workspace_id, {
+            "expectedDraftRevision": envelope["identity"]["draftRevision"],
+            "operations": [{"type": "update_node", "nodeId": "n_a", "fields": {"summary": "手工编辑"}}],
+        })
+        fresh = self.service.generate(self.workspace_id,
+                                      {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        with self.assertRaises(ContractError) as caught:
+            self.service.apply_candidate(self.workspace_id, {"candidateId": fresh["candidateId"]})
+        self.assertEqual(caught.exception.code, "REVISION_CONFLICT")
+        result = self.service.apply_candidate(self.workspace_id, {
+            "candidateId": fresh["candidateId"],
+            "expectedDraftRevision": self.service.load_draft(self.workspace_id)["identity"]["draftRevision"],
+        })
+        self.assertEqual(result["draft"]["graph"]["nodes"][0]["summary"], "样例职责")
+
+    def test_candidate_source_revision_must_match_binding(self) -> None:
+        # MID-1 finding 4: the candidate's generation basis is frozen; a
+        # workspace bound to another revision gets STALE_CONTEXT.
+        generated = self.service.generate(self.workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        self.assertEqual(generated["sourceCodeRevision"], run_git(self.repo, "rev-parse", "HEAD"))
+        record = self.service.store.load_workspace(self.workspace_id)
+        record["identity"]["codeRevision"] = "a" * 40
+        self.service.store.save_workspace_record(record)
+        with self.assertRaises(ContractError) as caught:
+            self.service.apply_candidate(self.workspace_id, {"candidateId": generated["candidateId"]})
+        self.assertEqual(caught.exception.code, "STALE_CONTEXT")
+        self.assertIn("candidateBasis", caught.exception.details)
+
+    def test_generation_meta_persists_unknowns(self) -> None:
+        # MID-1 finding 8: unknowns/openQuestions survive into the draft
+        generated = self.service.generate(self.workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        result = self.service.apply_candidate(self.workspace_id, {"candidateId": generated["candidateId"]})
+        meta = result["draft"]["generationMeta"]
+        self.assertEqual(meta["origin"], "dev_sample")
+        self.assertEqual(meta["generatedFromCodeRevision"], generated["sourceCodeRevision"])
+        self.assertTrue(meta["unknowns"])
+
 
 class DraftEditingTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -117,14 +234,17 @@ class DraftEditingTests(unittest.TestCase):
             "context": "planning", "title": "设计", "goals": "目标",
         })
         self.workspace_id = envelope["workspace"]["workspaceId"]
-        result = self.service.generate(self.workspace_id,
-                                       {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
-        self.service.apply_candidate(self.workspace_id, {"graph": result["graph"], "origin": result["origin"]})
+        generated = self.service.generate(self.workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": planning_sample_graph()})
+        self.service.apply_candidate(self.workspace_id, {"candidateId": generated["candidateId"]})
         self.envelope = self.service.load_draft(self.workspace_id)
 
     @property
     def draft_revision(self) -> str:
         return self.envelope["identity"]["draftRevision"]
+
+    def refresh(self) -> None:
+        self.envelope = self.service.load_draft(self.workspace_id)
 
     def test_wrong_expected_revision_conflicts(self) -> None:
         with self.assertRaises(ContractError) as caught:
@@ -134,6 +254,36 @@ class DraftEditingTests(unittest.TestCase):
             })
         self.assertEqual(caught.exception.code, "REVISION_CONFLICT")
 
+    def test_concurrent_writers_cas_exactly_one_wins(self) -> None:
+        # MID-1 finding 1 (red→green): two writers racing on the same revision
+        # must end with exactly one success and no lost lock window.
+        outcomes = {"ok": 0, "conflict": 0}
+        barrier = threading.Barrier(2)
+
+        def writer(tag):
+            barrier.wait()
+            try:
+                self.service.apply_ops(self.workspace_id, {
+                    "expectedDraftRevision": self.draft_revision,
+                    "operations": [{"type": "update_node", "nodeId": "n_a",
+                                    "fields": {"summary": f"并发写 {tag}"}}],
+                })
+                outcomes["ok"] += 1
+            except ContractError as exc:
+                if exc.code == "REVISION_CONFLICT":
+                    outcomes["conflict"] += 1
+
+        threads = [threading.Thread(target=writer, args=(tag,)) for tag in ("甲", "乙")]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(outcomes["ok"], 1)
+        self.assertEqual(outcomes["conflict"], 1)
+        self.refresh()
+        final_summary = self.envelope["draft"]["graph"]["nodes"][0]["summary"]
+        self.assertIn(final_summary, ("并发写 甲", "并发写 乙"))
+
     def test_direct_edit_updates_draft_and_identity(self) -> None:
         result = self.service.apply_ops(self.workspace_id, {
             "expectedDraftRevision": self.draft_revision,
@@ -142,19 +292,31 @@ class DraftEditingTests(unittest.TestCase):
         self.assertEqual(result["draft"]["graph"]["nodes"][0]["summary"], "新职责")
         self.assertNotEqual(result["identity"]["draftRevision"], self.draft_revision)
 
-    def test_remove_referenced_node_requires_force(self) -> None:
+    def test_remove_node_with_process_references(self) -> None:
+        # MID-1 finding 6: process references block removal and force cleans.
+        process = [{"stepId": "s1", "title": "产出", "detail": "", "inputs": [],
+                    "outputs": ["node:n_a"], "branches": [], "next": []}]
         self.service.apply_ops(self.workspace_id, {
             "expectedDraftRevision": self.draft_revision,
-            "operations": [{"type": "add_edge",
-                            "edge": {"from": "n_a", "to": "n_b", "type": "static_reference", "label": "引用"}}],
+            "operations": [{"type": "update_process", "nodeId": "n_b", "process": process}],
         })
-        self.envelope = self.service.load_draft(self.workspace_id)
+        self.refresh()
         with self.assertRaises(ContractError) as caught:
             self.service.apply_ops(self.workspace_id, {
                 "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
                 "operations": [{"type": "remove_node", "nodeId": "n_a"}],
             })
         self.assertEqual(caught.exception.code, "VALIDATION_FAILED")
+        result = self.service.apply_ops(self.workspace_id, {
+            "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
+            "operations": [{"type": "remove_node", "nodeId": "n_a", "force": True}],
+        })
+        ids = {node["id"] for node in result["draft"]["graph"]["nodes"]}
+        self.assertNotIn("n_a", ids)
+        for node in result["draft"]["graph"]["nodes"]:
+            for step in node.get("process", []):
+                for entry in step.get("outputs", []) + step.get("inputs", []):
+                    self.assertNotIn("n_a", entry.split(":", 1)[-1])
 
     def test_process_reorder_keeps_step_ids(self) -> None:
         process = [
@@ -165,7 +327,7 @@ class DraftEditingTests(unittest.TestCase):
             "expectedDraftRevision": self.draft_revision,
             "operations": [{"type": "update_process", "nodeId": "n_a", "process": process}],
         })
-        self.envelope = self.service.load_draft(self.workspace_id)
+        self.refresh()
         result = self.service.apply_ops(self.workspace_id, {
             "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
             "operations": [{"type": "update_process", "nodeId": "n_a", "process": list(reversed(process))}],
@@ -195,41 +357,84 @@ class CorrectionReviewRecheckTests(unittest.TestCase):
             "repoPath": str(self.repo), "description": "说明",
         })
         self.workspace_id = envelope["workspace"]["workspaceId"]
-        result = self.service.generate(self.workspace_id,
-                                       {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
-        self.service.apply_candidate(self.workspace_id, {"graph": result["graph"], "origin": result["origin"]})
+        generated = self.service.generate(self.workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        self.service.apply_candidate(self.workspace_id, {"candidateId": generated["candidateId"]})
         self.envelope = self.service.load_draft(self.workspace_id)
 
-    def test_correction_preview_dev_sample_is_labeled(self) -> None:
-        preview = self.service.correction_preview(self.workspace_id, {
+    def refresh(self) -> None:
+        self.envelope = self.service.load_draft(self.workspace_id)
+
+    def preview(self, **overrides) -> dict:
+        payload = {
             "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
             "instruction": "职责不对",
             "selectedNodeIds": ["n_a"],
             "mode": "dev_sample",
-        })
+        }
+        payload.update(overrides)
+        return self.service.correction_preview(self.workspace_id, payload)
+
+    def test_correction_preview_dev_sample_is_labeled(self) -> None:
+        preview = self.preview()
         self.assertEqual(preview["origin"], "dev_sample")
         self.assertTrue(preview["operations"])
         self.assertIn("演示", preview["note"])
 
     def test_correction_preview_production_without_c_is_unavailable(self) -> None:
         with self.assertRaises(ContractError) as caught:
-            self.service.correction_preview(self.workspace_id, {
-                "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
-                "instruction": "职责不对",
-                "selectedNodeIds": ["n_a"],
-                "mode": "production",
-            })
+            self.preview(mode="production")
         self.assertEqual(caught.exception.code, "BACKEND_UNAVAILABLE")
 
     def test_correction_preview_stale_revision_conflicts(self) -> None:
         with self.assertRaises(ContractError) as caught:
-            self.service.correction_preview(self.workspace_id, {
-                "expectedDraftRevision": "old",
-                "instruction": "职责不对",
-                "selectedNodeIds": ["n_a"],
-                "mode": "dev_sample",
-            })
+            self.preview(expectedDraftRevision="old")
         self.assertEqual(caught.exception.code, "REVISION_CONFLICT")
+
+    def test_apply_correction_by_proposal_and_expiry(self) -> None:
+        # MID-1 finding 9: the preview is applied by proposalId and expires
+        # when the draft moved on — regeneration is the only way forward.
+        preview = self.preview()
+        # direct edit moves the draft forward behind the preview's back
+        self.service.apply_ops(self.workspace_id, {
+            "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
+            "operations": [{"type": "update_node", "nodeId": "n_b", "fields": {"summary": "别的修改"}}],
+        })
+        with self.assertRaises(ContractError) as caught:
+            self.service.apply_correction(self.workspace_id, {
+                "proposalId": preview["proposalId"],
+                "expectedDraftRevision": preview["baseDraftRevision"],
+            })
+        self.assertEqual(caught.exception.code, "STALE_CONTEXT")
+        # a stale preview cannot be smuggled through with another basis value
+        with self.assertRaises(ContractError):
+            self.service.apply_correction(self.workspace_id, {
+                "proposalId": preview["proposalId"],
+                "expectedDraftRevision": self.service.load_draft(self.workspace_id)["identity"]["draftRevision"],
+            })
+        # regenerate on the current draft, then apply
+        self.refresh()
+        fresh_preview = self.preview()
+        result = self.service.apply_correction(self.workspace_id, {
+            "proposalId": fresh_preview["proposalId"],
+            "expectedDraftRevision": fresh_preview["baseDraftRevision"],
+        })
+        self.assertIn("演示纠正", result["draft"]["graph"]["nodes"][0]["summary"])
+
+    def test_sample_correction_marks_draft_origin(self) -> None:
+        # MID-1 finding 3 (part 2): sample-derived edits keep the sample mark.
+        preview = self.preview()
+        self.envelope = self.service.apply_correction(self.workspace_id, {
+            "proposalId": preview["proposalId"],
+            "expectedDraftRevision": preview["baseDraftRevision"],
+        })
+        self.assertEqual(self.envelope["draft"]["origin"], "dev_sample")
+        with self.assertRaises(ContractError) as caught:
+            self.service.submit_review(self.workspace_id, {
+                "expectedMapRevision": self.envelope["draft"]["graph"]["mapRevision"],
+                "decision": "accept", "actor": "tester", "origin": "dev_sample",
+            })
+        self.assertEqual(caught.exception.code, "DEV_SAMPLE_DISABLED")
 
     def test_review_records_decision_but_produces_no_version(self) -> None:
         map_revision = self.envelope["draft"]["graph"]["mapRevision"]
@@ -241,10 +446,9 @@ class CorrectionReviewRecheckTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "DEV_SAMPLE_DISABLED")
 
     def test_review_on_real_origin_draft_is_refused_until_b_lands(self) -> None:
-        # Simulate the AI-configured path: apply_candidate stores the origin it
-        # was given; a draft with a non-sample origin must reach the B seam and
-        # be refused there with BACKEND_UNAVAILABLE, recording the decision.
-        self.envelope["draft"]["origin"] = "ai_candidate"
+        # Simulate the AI-configured path: the draft with a non-sample origin
+        # must reach the B seam and be refused there with BACKEND_UNAVAILABLE,
+        # recording the decision.
         record = self.service.store.load_workspace(self.workspace_id)
         record["draft"]["origin"] = "ai_candidate"
         self.service.store.save_workspace_record(record)
@@ -263,16 +467,6 @@ class CorrectionReviewRecheckTests(unittest.TestCase):
         envelope = self.service.load_draft(self.workspace_id)
         self.assertIsNone(envelope["identity"]["mapSourceRevision"])
         self.assertIsNone(envelope["identity"]["verifiedCodeRevision"])
-
-    def test_review_rejects_dev_sample_origin(self) -> None:
-        self.envelope["draft"]["origin"] = "dev_sample"
-        self.service.store.save_workspace_record(self.service.store.load_workspace(self.workspace_id))
-        with self.assertRaises(ContractError) as caught:
-            self.service.submit_review(self.workspace_id, {
-                "expectedMapRevision": self.envelope["draft"]["graph"]["mapRevision"],
-                "decision": "accept", "actor": "tester", "origin": "dev_sample",
-            })
-        self.assertEqual(caught.exception.code, "DEV_SAMPLE_DISABLED")
 
     def test_recheck_detects_new_commit_and_stale_nodes(self) -> None:
         old_head = run_git(self.repo, "rev-parse", "HEAD")

@@ -60,7 +60,8 @@ def semantic_revision(graph: dict) -> str:
     """mapRevision: immutable identity over canonical semantic content.
 
     Layout-only fields (positions) are excluded so dragging a node never
-    mints a new map revision; responsibilities/relations/process do.
+    mints a new map revision; responsibilities, provenance, assumptions,
+    relations, evidence and process do.
     """
     semantic = {
         "nodes": sorted(
@@ -70,6 +71,8 @@ def semantic_revision(graph: dict) -> str:
                     "title": node.get("title"),
                     "summary": node.get("summary"),
                     "status": node.get("status"),
+                    "provenance": node.get("provenance"),
+                    "assumptions": node.get("assumptions", []),
                     "entryPoints": node.get("entryPoints", []),
                     "interfaces": node.get("interfaces", []),
                     "evidence": sorted(

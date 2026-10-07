@@ -495,10 +495,30 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 return
             if method == "GET" and parts == ["sample-graph"]:
                 sample = load_sample_graph()
+                context = query.get("context", "existing_project")
+                if context == "planning":
+                    # planning has no repository: evidence becomes requirement
+                    # basis instead of unverifiable code facts
+                    for node in sample.get("nodes", []):
+                        for item in node.get("evidence", []):
+                            if item.get("kind", "code_fact") == "code_fact":
+                                item["kind"] = "requirement"
+                                item["reason"] = f"{item.get('reason', '')}（planning 样例：需求依据）"
                 self.send_json(HTTPStatus.OK, {
                     "labeled": "演示数据 · ProjectMind 自身职责样例候选",
                     "origin": "dev_sample",
+                    "context": context,
                     "graph": sample,
+                })
+                return
+            if method == "GET" and parts == ["legacy-map"]:
+                if map_path is None:
+                    raise ContractError("NOT_FOUND", "本实例未配置人工地图")
+                curated = load_map(map_path)
+                self.send_json(HTTPStatus.OK, {
+                    "labeled": "legacy 人工演示图（只读兼容来源）",
+                    "origin": "curated_demo",
+                    "legacyMap": curated,
                 })
                 return
             if method == "GET" and parts == ["workspaces"]:
@@ -516,9 +536,6 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if method == "GET" and rest == ["diff"]:
                     self.send_json(HTTPStatus.OK, archloop_service.draft_diff(workspace_id))
                     return
-                if method == "GET" and rest == ["recheck"]:
-                    self.send_json(HTTPStatus.OK, archloop_service.recheck(workspace_id))
-                    return
                 if method == "GET" and rest == ["impact"]:
                     node_id = query.get("nodeId", "")
                     self.send_json(HTTPStatus.OK, archloop_service.node_impact(workspace_id, node_id))
@@ -535,14 +552,25 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if method == "POST" and rest == ["correction-preview"]:
                     self.send_json(HTTPStatus.OK, archloop_service.correction_preview(workspace_id, body or {}))
                     return
+                if method == "POST" and rest == ["apply-correction"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.apply_correction(workspace_id, body or {}))
+                    return
                 if method == "POST" and rest == ["review"]:
                     self.send_json(HTTPStatus.OK, archloop_service.submit_review(workspace_id, body or {}))
+                    return
+                # recheck is a state-mutating read: POST-only so the missing
+                # cross-site GET protection can never reach it (MID-1 #12)
+                if method == "POST" and rest == ["recheck"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.recheck(workspace_id))
                     return
                 if method == "POST" and rest == ["fix-task"]:
                     self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}))
                     return
                 if method == "POST" and rest == ["rebind"]:
                     self.send_json(HTTPStatus.OK, archloop_service.rebind_code_revision(workspace_id, body or {}))
+                    return
+                if method == "POST" and rest == ["import-legacy"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.import_legacy_map(workspace_id, body or {}))
                     return
             raise ContractError("NOT_FOUND", f"未知 archloop 路由: {method} {path}")
 
@@ -557,7 +585,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self._handle_archloop("GET", request)
                 except ContractError as exc:
                     self.send_json(exc.status, archloop_error_payload(exc))
-                except (ValueError, KeyError) as exc:
+                except (ValueError, KeyError, AttributeError) as exc:
                     self.send_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "BAD_REQUEST", "message": str(exc)}})
                 except (GitError, OSError, json.JSONDecodeError) as exc:
                     self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL", "message": str(exc)}})
@@ -784,9 +812,15 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self._handle_archloop("POST", parsed, payload_request)
                 except ContractError as exc:
                     self.send_json(exc.status, archloop_error_payload(exc))
-                except (ValueError, TypeError, json.JSONDecodeError) as exc:
+                except (ValueError, TypeError, AttributeError, KeyError, json.JSONDecodeError) as exc:
                     self.send_json(HTTPStatus.BAD_REQUEST,
                                    {"error": {"code": "BAD_REQUEST", "message": str(exc)}})
+                except (GitError, OSError) as exc:
+                    self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR,
+                                   {"error": {"code": "INTERNAL", "message": str(exc)}})
+                except Exception as exc:  # never leak an unhandled archloop fault
+                    self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR,
+                                   {"error": {"code": "INTERNAL", "message": f"{type(exc).__name__}: {exc}"}})
                 return
             if path == "/api/repo-explorer/open":
                 if explorer_registry is None:

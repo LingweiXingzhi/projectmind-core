@@ -48,7 +48,9 @@ def apply_operation(graph: dict, op: dict) -> dict:
         _ensure(node_id in index_by_id, "NOT_FOUND", f"节点不存在: {node_id}")
         fields = op.get("fields")
         _ensure(isinstance(fields, dict) and fields, "VALIDATION_FAILED", "update_node 需要 fields")
-        allowed = {"title", "summary", "status", "entryPoints", "interfaces", "evidence"}
+        # provenance is deliberately NOT editable here: laundering an AI or
+        # rule candidate into human input must go through review, not an op.
+        allowed = {"title", "summary", "status", "assumptions", "entryPoints", "interfaces", "evidence"}
         _ensure(set(fields) <= allowed, "VALIDATION_FAILED", f"可更新字段: {sorted(allowed)}")
         if "status" in fields:
             _ensure(fields["status"] in NODE_STATUS, "VALIDATION_FAILED", "status 不合法")
@@ -56,11 +58,28 @@ def apply_operation(graph: dict, op: dict) -> dict:
     elif kind == "remove_node":
         node_id = op.get("nodeId")
         _ensure(node_id in index_by_id, "NOT_FOUND", f"节点不存在: {node_id}")
-        _ensure(op.get("force") is True or not [e for e in edges if e["from"] == node_id or e["to"] == node_id],
-                "VALIDATION_FAILED",
-                "节点仍被关系引用；先删除关系或传 force（界面会先展示影响）")
-        nodes = [node for node in nodes if node["id"] != node_id]
-        edges = [edge for edge in edges if edge["from"] != node_id and edge["to"] != node_id]
+        edge_refs = [e for e in edges if e["from"] == node_id or e["to"] == node_id]
+        process_refs = []
+        for node in nodes:
+            for step in node.get("process", []):
+                refs = [entry for entry in step.get("outputs", []) + step.get("inputs", [])
+                        if isinstance(entry, str) and entry.split(":", 1)[-1] == node_id]
+                if refs:
+                    process_refs.append({"nodeId": node["id"], "stepId": step.get("stepId"), "refs": refs})
+        if edge_refs or process_refs:
+            _ensure(op.get("force") is True, "VALIDATION_FAILED",
+                    f"节点仍被 {len(edge_refs)} 条关系与 {len(process_refs)} 处过程引用；先删除或传 force（界面先展示影响）")
+            if op.get("force") is True:
+                nodes = [node for node in nodes if node["id"] != node_id]
+                edges = [edge for edge in edges if edge["from"] != node_id and edge["to"] != node_id]
+                # cascade-clean dangling process references (finding 6)
+                for node in nodes:
+                    for step in node.get("process", []):
+                        for key in ("outputs", "inputs"):
+                            step[key] = [entry for entry in step.get(key, [])
+                                         if not (isinstance(entry, str) and entry.split(":", 1)[-1] == node_id)]
+        else:
+            nodes = [node for node in nodes if node["id"] != node_id]
         next_graph["nodes"], next_graph["edges"] = nodes, edges
     elif kind == "add_edge":
         edge = op.get("edge")
@@ -129,7 +148,8 @@ def diff_graphs(base: dict, target: dict) -> dict:
         elif new is None:
             changed_nodes.append({"id": node_id, "change": "removed", "title": old.get("title")})
         else:
-            fields = [key for key in ("title", "summary", "status", "entryPoints", "interfaces", "evidence", "process")
+            fields = [key for key in ("title", "summary", "status", "provenance", "assumptions",
+                                      "entryPoints", "interfaces", "evidence", "process")
                       if old.get(key) != new.get(key)]
             changed_nodes.append({"id": node_id, "change": "updated", "title": new.get("title"), "fields": fields})
     base_edges = {(e["from"], e["to"], e["type"], e["label"]) for e in base.get("edges", [])}
