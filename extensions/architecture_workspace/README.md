@@ -27,6 +27,9 @@ Git SHA、正常交换包、三种机器错误和第二 clone 的读取结果；
 NOT_RUN/A_REVIEW_PENDING；不称为实际公共 HTTP/UI 或 C/D 产品联调。
 接入步骤见 A_C_D_INTEGRATION_GUIDE.md，公共差异见 CONTRACT_GAPS_FOR_A.md。
 
+两侧接口的重新设计见 TWO_SURFACE_INTERFACE_V2_DESIGN.md：B↔A 操作面与
+B↔C/D 协作面。它是待 A 审查的设计候选，尚未实现；现有 V1 运行接口保持。
+
 ## 服务与隔离
 
 `WorkspaceService(explicit_absolute_data_root, code_repositories=[...],
