@@ -1098,14 +1098,20 @@ class WorkbenchService:
                 raise ContractError("VALIDATION_FAILED", "人审预览需要 actor（本机操作者声明）")
             self._ensure_synced(record, backend_b)
             session = backend_b.create_session(actor, meta)
-            result = backend_b.preview_review(record, {
+            # the coverage key is forwarded only when the caller actually named
+            # one: "absent" (use the default) and "explicit null" (a malformed
+            # declaration) must not collapse into the same request
+            # (BATCH-3 A-05)
+            preview_request = {
                 "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
                 "reason": request.get("reason", ""),
-                "coverage": request.get("coverage"),
                 "limits": request.get("limits"),
                 "verifyCode": request.get("verifyCode"),
                 "rejectedCandidates": request.get("rejectedCandidates"),
-            }, meta)
+            }
+            if "coverage" in request:
+                preview_request["coverage"] = request["coverage"]
+            result = backend_b.preview_review(record, preview_request, meta)
             b_draft = backend_b.draft_state(record)
             record["backendB"]["lastPreview"] = {
                 "previewDigest": result["previewDigest"],

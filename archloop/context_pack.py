@@ -30,21 +30,51 @@ EXCLUDED_NAME_PATTERNS = (
 CONTENT_SECRET_PATTERNS = (
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
     r"\bsk-[A-Za-z0-9]{24,}\b",
-    r"\b(OPENAI|PROJECTMIND|ANTHROPIC|GITHUB|AWS)[A-Z_]*KEY\s*[:=]\s*['\"][^'\"]{16,}['\"]",
-    # The key name may itself be quoted and prefixed (dict/JSON/config style):
-    # {"api_key": "…"} and {"SYNTHETIC_TEST_CREDENTIAL": "…"} must be caught
-    # exactly like api_key = "…" (BATCH-2 GEN-01).
-    r"['\"]?(?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?key|secret[_-]?key|private[_-]?key|"
-    r"api[_-]?secret|password|passwd|secret|token|credential|key)['\"]?\s*[:=]\s*"
-    r"['\"][^'\"]{16,}['\"]",
 )
+# A key/value pair with a quoted value. The key name may itself be quoted
+# ({"api_key": "…"}) and may be prefixed (OPENAI_API_KEY, clientSecret), so
+# {"api_key": "…"} is caught exactly like api_key = "…" (BATCH-2 GEN-01).
+KEY_VALUE_PATTERN = re.compile(
+    r"['\"]?([A-Za-z0-9_][A-Za-z0-9_.\-]*)['\"]?\s*[:=]\s*(['\"])([^'\"]{16,})\2")
+# credential words, matched as whole name components (never as substrings)
+SECRET_KEY_COMPONENTS = ("key", "token", "secret", "password", "passwd", "credential", "credentials")
+SECRET_ANYWHERE_COMPONENTS = ("secret", "password", "passwd", "credential", "credentials")
 # documentation placeholders are not credentials (a README shows how to set a key)
 PLACEHOLDER_MARKERS = ("你的", "<", ">", "your", "xxx", "example", "placeholder",
                        "changeme", "todo", "redacted", "*", "…")
 
 
+def _key_name_is_secret(name: str) -> bool:
+    """True when the field NAME reads as a credential field.
+
+    Components decide, not substrings: snake/kebab/camelCase boundaries are
+    split and the LAST component must be a credential word (`api_key`,
+    `accessToken`, `CLIENT_SECRET`, `KEY`); a "secret"/"password"-class word is
+    honoured anywhere (`secret_key_base`). Substrings like `monkey`, `keynote`
+    or `service_name` must NOT count — a substring match would exclude ordinary
+    configuration files from the pack (BATCH-3 GEN-01).
+    """
+    if not name:
+        return False
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name)
+    parts = [part.lower() for part in re.split(r"[^A-Za-z0-9]+", spaced) if part]
+    if not parts:
+        return False
+    if parts[-1] in SECRET_KEY_COMPONENTS:
+        return True
+    return any(part in SECRET_ANYWHERE_COMPONENTS for part in parts)
+
+
 def _looks_like_secret(text: str) -> bool:
-    for match in re.finditer("|".join(CONTENT_SECRET_PATTERNS), text, re.I):
+    for pattern in CONTENT_SECRET_PATTERNS:
+        for match in re.finditer(pattern, text, re.I):
+            fragment = match.group(0).lower()
+            if any(marker in fragment for marker in PLACEHOLDER_MARKERS):
+                continue
+            return True
+    for match in KEY_VALUE_PATTERN.finditer(text):
+        if not _key_name_is_secret(match.group(1)):
+            continue
         fragment = match.group(0).lower()
         if any(marker in fragment for marker in PLACEHOLDER_MARKERS):
             continue

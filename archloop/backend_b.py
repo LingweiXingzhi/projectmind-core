@@ -425,14 +425,21 @@ def b_to_a_graph(b_graph: dict, packet: dict | None = None) -> dict:
                 recorded_target = next((pair[1] for pair in recorded if pair and pair[0] == condition), None)
                 if condition in fallbacks:
                     filled = fallbacks[condition]
-                    if filled is not None and target != filled:
+                    if filled is None:
+                        # legacy carrier (condition only): we cannot tell whether
+                        # the placeholder is still in place, so B's current value
+                        # must win — trusting the recorded intent here is exactly
+                        # what resurrected a stale target over a real B edit
+                        # (BATCH-3 A-01)
+                        chosen = target
+                    elif target != filled:
                         # B edited the target since our auto-fill: B's real data
                         # wins — restoring the old placeholder would silently
                         # undo the edit on the next sync (BATCH-2 A-01)
                         chosen = target
                     else:
-                        # still our placeholder (or the filled value is unknown):
-                        # keep the recorded A intent (None drops the target)
+                        # still our placeholder: keep the recorded A intent
+                        # (None drops the target)
                         chosen = recorded_target
                 else:
                     chosen = target
@@ -899,14 +906,16 @@ class BackendB:
         if verify_code and not draft["codeRepoId"]:
             raise ContractError("VALIDATION_FAILED",
                                 "规划工作区没有代码，不能做代码核查；请以 verifyCode=false 确认设计")
-        supplied = request.get("coverage")
-        if supplied is None:
+        if "coverage" not in request:
+            # the default coverage is selected only when the caller supplied
+            # none at all: an explicit null (or any other malformed value) is
+            # the caller's malformed declaration and must be refused
+            # (BATCH-2 A-05, BATCH-3 A-05)
             coverage = coverage_for(record, draft["graph"], verify_code)
         else:
             # an explicit coverage must be honoured or rejected: falling back to
             # the default would widen the review scope the caller declared
-            # (BATCH-2 A-05)
-            coverage = sanitize_coverage(supplied, draft["graph"])
+            coverage = sanitize_coverage(request.get("coverage"), draft["graph"])
         limits = request.get("limits") or ["核查仅适用于列明覆盖；未列出的对象与证据未核查"]
         return self._wrap(
             self.gateway.preview_review, binding["draftId"], auth=auth,

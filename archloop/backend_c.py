@@ -224,13 +224,53 @@ def _incremental_ops_to_a(base_graph: dict, c_operations: list) -> tuple[list, l
     C's raw shape produced candidates that every apply path rejected with
     VALIDATION_FAILED (BATCH-2 C-INCREMENTAL-01).
 
-    Only operations that really apply to `base_graph` are returned; anything
-    C proposed that has no counterpart in this draft is reported as a warning
-    instead of as a broken operation.
+    The returned operations are applicable **in the order they are emitted**,
+    which is enforced here by simulating them on a working copy:
+    - several changes to one node are merged into ONE update (a later update
+      must not resurrect an earlier file's evidence — BATCH-3 C-INCREMENTAL-01);
+    - a node still referenced by a relation is not removed (removing it would
+      fail the graph contract); the change is reported as a warning instead;
+    - derived ids that collide are made unique, and a collision that cannot be
+      resolved becomes a warning, never a failing operation.
+    Anything C proposed that has no applicable counterpart is reported as a
+    warning instead of as a broken operation.
     """
+    import copy as _copy
+    from . import ops as ops_module
+
+    base_graph = _copy.deepcopy(base_graph)
     nodes_by_id = {node["id"]: node for node in base_graph.get("nodes", []) or []}
+    referenced = set()
+    for edge in base_graph.get("edges", []) or []:
+        referenced.add(edge.get("from"))
+        referenced.add(edge.get("to"))
     operations: list = []
     warnings: list = []
+
+    def emit(operation: dict, working: dict) -> bool:
+        """Append only operations that really apply to the accumulated graph."""
+        try:
+            return_target = ops_module.apply_operation(working, operation)
+        except ContractError as exc:
+            warnings.append({"change": operation.get("type"),
+                             "reason": f"候选操作在草稿上无法应用（{exc.code}）：{exc}"})
+            return False
+        working.clear()
+        working.update(return_target)
+        operations.append(operation)
+        return True
+
+    working: dict = {"nodes": base_graph.get("nodes", []), "edges": base_graph.get("edges", [])}
+    # file path -> node ids whose evidence names it (the "modified" targets)
+    evidence_paths = {}
+    for node in base_graph.get("nodes", []) or []:
+        for item in node.get("evidence", []) or []:
+            if item.get("path"):
+                evidence_paths.setdefault(item["path"], set()).add(node["id"])
+    merged_updates: dict = {}          # node id -> {paths, reasons}
+    planned_adds: list = []            # emitted before updates/removals
+    planned_removes: list = []         # emitted last
+    taken_ids = set(nodes_by_id)
     for operation in c_operations or []:
         kind = operation.get("op")
         if kind == "add_node":
@@ -240,62 +280,96 @@ def _incremental_ops_to_a(base_graph: dict, c_operations: list) -> tuple[list, l
                 warnings.append({"change": operation.get("nodeId"),
                                  "reason": "C 增量给出的节点 ID 不合法；未转成可应用操作"})
                 continue
-            if node_id in nodes_by_id:
+            unique_id = node_id
+            suffix = 2
+            while unique_id in taken_ids:
+                unique_id = f"{node_id}_{suffix}"
+                suffix += 1
+                if suffix > 50:
+                    unique_id = ""
+                    break
+            if not unique_id:
                 warnings.append({"change": node_id,
-                                 "reason": f"草稿中已有节点 {node_id}；新增候选跳过（不覆盖现有草稿）"})
+                                 "reason": f"新增候选的节点 ID 无法唯一化（{node_id} 已占用）"})
                 continue
-            operations.append({
+            if unique_id != node_id:
+                warnings.append({"change": node_id,
+                                 "reason": f"节点 ID 已占用，新增候选改用 {unique_id}"})
+            taken_ids.add(unique_id)
+            planned_adds.append({
                 "type": "add_node",
                 "node": {
-                    "id": node_id,
-                    "title": data.get("title") or node_id,
+                    "id": unique_id,
+                    "title": data.get("title") or unique_id,
                     "summary": data.get("role") or "（C 增量候选未填写职责）",
                     "status": "candidate",
                     "provenance": "rule_based",
                     "entryPoints": [], "interfaces": [], "assumptions": [], "process": [],
-                    "evidence": _evidence_from_c(data.get("evidence"), node_id),
+                    "evidence": _evidence_from_c(data.get("evidence"), unique_id),
                 },
                 "reason": "C 规则增量：新增代码文件对应的职责候选"})
         elif kind == "update_node":
             path = operation.get("file")
             matched = [node_id for node_id, node in nodes_by_id.items()
-                       if any(item.get("path") == path for item in node.get("evidence", []) or [])]
+                       if node_id in evidence_paths.get(path, set())]
             if not matched:
                 warnings.append({"change": path,
                                  "reason": "草稿中没有节点的证据引用该文件；只登记变化，不产生操作"})
                 continue
             for node_id in matched:
-                node = nodes_by_id[node_id]
-                refreshed = []
-                for item in node.get("evidence", []) or []:
-                    if item.get("path") == path and item.get("kind", "code_fact") == "code_fact":
-                        # the fixed revision this fact was checked against no
-                        # longer contains the file as reviewed: it must be
-                        # re-checked before it counts again
-                        refreshed.append({**item, "kind": "unknown",
-                                          "reason": f"{item.get('reason', '')}"
-                                                    f"（源码文件在目标提交中已修改，需按新提交复核）"})
-                    else:
-                        refreshed.append(item)
-                if refreshed == (node.get("evidence") or []):
-                    warnings.append({"change": path,
-                                     "reason": f"节点 {node_id} 的证据没有可刷新的代码事实"})
-                    continue
-                operations.append({
-                    "type": "update_node", "nodeId": node_id, "fields": {"evidence": refreshed},
-                    "reason": operation.get("reason") or f"源码文件 {path} 发生修改，需更新事实证据"})
+                entry = merged_updates.setdefault(node_id, {"paths": [], "reason": ""})
+                if path not in entry["paths"]:
+                    entry["paths"].append(path)
+                entry["reason"] = operation.get("reason") or entry["reason"]
         elif kind == "remove_node":
             node_id = _clean_id(operation.get("nodeId"), "")
             if node_id not in nodes_by_id:
                 warnings.append({"change": operation.get("nodeId"),
                                  "reason": f"草稿中没有节点 {node_id}；删除候选跳过（不猜测新建）"})
                 continue
-            operations.append({
-                "type": "remove_node", "nodeId": node_id,
-                "reason": operation.get("reason") or "源码文件已在目标提交中删除"})
+            if node_id in referenced:
+                warnings.append({"change": node_id,
+                                 "reason": f"节点 {node_id} 仍被关系引用；删除候选跳过"
+                                           "（请先处理关系，避免不可应用的破坏性操作）"})
+                continue
+            planned_removes.append({"type": "remove_node", "nodeId": node_id,
+                                    "reason": operation.get("reason") or "源码文件已在目标提交中删除"})
         else:
             warnings.append({"change": kind,
                              "reason": "C 增量返回了适配层不认识的操作；未转成可应用操作"})
+    # emission order is adds -> updates -> removes: every operation is checked
+    # against the accumulated graph, so a statement C contradicted itself about
+    # (modified AND deleted) still degrades to a warning instead of a failure
+    # (BATCH-3 C-INCREMENTAL-01)
+    for operation in planned_adds:
+        emit(operation, working)
+    # one merged evidence refresh per node: applying them keeps every earlier
+    # file's downgrade
+    for node_id, entry in merged_updates.items():
+        node = nodes_by_id[node_id]
+        paths = set(entry["paths"])
+        refreshed = []
+        changed = False
+        for item in node.get("evidence", []) or []:
+            if item.get("path") in paths and item.get("kind", "code_fact") == "code_fact":
+                changed = True
+                # the fixed revision this fact was checked against no longer
+                # contains the file as reviewed: it must be re-checked before
+                # it counts again
+                refreshed.append({**item, "kind": "unknown",
+                                  "reason": f"{item.get('reason', '')}"
+                                            f"（源码文件在目标提交中已修改，需按新提交复核）"})
+            else:
+                refreshed.append(item)
+        if not changed:
+            warnings.append({"change": "/".join(sorted(paths)),
+                             "reason": f"节点 {node_id} 的证据没有可刷新的代码事实"})
+            continue
+        emit({"type": "update_node", "nodeId": node_id, "fields": {"evidence": refreshed},
+              "reason": entry["reason"] or f"源码文件 {'/'.join(sorted(paths))} 发生修改，需更新事实证据"},
+             working)
+    for operation in planned_removes:
+        emit(operation, working)
     return operations, warnings
 
 

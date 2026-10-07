@@ -272,9 +272,20 @@ class IncrementalConversionRepairTests(unittest.TestCase):
             {"op": "remove_node", "nodeId": "node_missing"},
             {"op": "update_node", "file": "other.py", "changes": {"evidence_refresh": True}},
             {"op": "add_node", "nodeId": "node_svc", "data": {}}])
-        self.assertEqual(operations, [])
-        self.assertEqual(len(warnings), 3)
-        self.assertTrue(all(item.get("reason") for item in warnings))
+        # the id collision is resolved by a unique derived id (BATCH-3), so the
+        # add is emitted under a new id instead of being dropped
+        self.assertEqual([op["type"] for op in operations], ["add_node"])
+        self.assertEqual(operations[0]["node"]["id"], "node_svc_2")
+        reasons = " ".join(item.get("reason", "") for item in warnings)
+        self.assertIn("没有节点", reasons)          # the missing removal target
+        self.assertIn("没有节点的证据引用", reasons)  # the unmatched modification
+        self.assertIn("已占用", reasons)             # the renamed add
+        continue_ops = _incremental_ops_to_a(base, [
+            {"op": "remove_node", "nodeId": "node_missing"},
+            {"op": "update_node", "file": "other.py", "changes": {"evidence_refresh": True}},
+            {"op": "weird_op", "nodeId": "node_svc"}])
+        self.assertEqual(continue_ops[0], [])
+        self.assertEqual(len(continue_ops[1]), 3)
 
     def test_service_incremental_proposal_returns_applicable_ops(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -395,20 +406,85 @@ class AcceptanceCriteriaRepairTests(unittest.TestCase):
         self.assertEqual(status, "PASS")
 
     def test_t24_requires_this_repository_and_real_coverage(self) -> None:
-        status, evidence = self_coverage_verdict(200, {
-            "graph": {"nodes": [{"id": "n1"}]},
-            "contextCoverage": {"codeRevision": "a" * 40, "trackedFiles": 2}}, "G:/somewhere/demo-repo")
+        revision = "a" * 40
+        good_identity = {"repoPath": None, "codeRevision": revision}
+        good_body = {"graph": {"nodes": [{"id": "n1"}]},
+                     "contextCoverage": {"codeRevision": revision, "trackedFiles": 320,
+                                         "pythonFiles": 120, "filesIncluded": 48}}
+        # too little coverage: not ProjectMind itself
+        status, evidence = self_coverage_verdict(
+            200, {"graph": {"nodes": [{"id": "n1"}]},
+                  "contextCoverage": {"codeRevision": revision, "trackedFiles": 2,
+                                      "pythonFiles": 2}},
+            "G:/somewhere/demo-repo", identity={"repoPath": "G:/somewhere/demo-repo",
+                                                "codeRevision": revision},
+            revision_exists=True, expected_revision=revision, expected_tracked=2,
+            expected_python=2)
         self.assertEqual(status, "FAIL")
         self.assertEqual(evidence["trackedFiles"], 2)
-        status, _ = self_coverage_verdict(200, {
-            "graph": {"nodes": [{"id": "n1"}]},
-            "contextCoverage": {"codeRevision": "a" * 40, "trackedFiles": 320,
-                                "filesIncluded": 48}}, "G:/projectmind-core")
+        # bound repo + real revision + the repository's own tree counts: PASS
+        status, _ = self_coverage_verdict(200, good_body, str(REPO_ROOT),
+                                          identity=good_identity, revision_exists=True,
+                                          expected_revision=revision, expected_tracked=320,
+                                          expected_python=120)
         self.assertEqual(status, "PASS")
-        status, _ = self_coverage_verdict(200, {"graph": {"nodes": []},
-                                                "contextCoverage": {"trackedFiles": 320}},
-                                          "G:/projectmind-core")
+        # counts that do not match this repository's real tree are refused
+        status, _ = self_coverage_verdict(200, good_body, str(REPO_ROOT),
+                                          identity=good_identity, revision_exists=True,
+                                          expected_revision=revision, expected_tracked=999,
+                                          expected_python=120)
         self.assertEqual(status, "FAIL")
+
+    def test_t24_rejects_placeholder_missing_or_mismatched_revisions(self) -> None:
+        # "HEAD" is not a pinned commit
+        status, _ = self_coverage_verdict(
+            200, {"graph": {"nodes": [{"id": "n1"}]},
+                  "contextCoverage": {"codeRevision": "HEAD", "trackedFiles": 320,
+                                      "pythonFiles": 120}},
+            str(REPO_ROOT), identity={"repoPath": None, "codeRevision": "HEAD"},
+            revision_exists=False, expected_revision="HEAD", expected_tracked=320,
+            expected_python=120)
+        self.assertEqual(status, "FAIL")
+        # a full SHA that does not exist in the bound repository
+        status, _ = self_coverage_verdict(
+            200, {"graph": {"nodes": [{"id": "n1"}]},
+                  "contextCoverage": {"codeRevision": "b" * 40, "trackedFiles": 320,
+                                      "pythonFiles": 120}},
+            str(REPO_ROOT), identity={"repoPath": None, "codeRevision": "b" * 40},
+            revision_exists=False, expected_revision="b" * 40, expected_tracked=320,
+            expected_python=120)
+        self.assertEqual(status, "FAIL")
+        # identity and coverage disagree
+        status, _ = self_coverage_verdict(
+            200, {"graph": {"nodes": [{"id": "n1"}]},
+                  "contextCoverage": {"codeRevision": "c" * 40, "trackedFiles": 320,
+                                      "pythonFiles": 120}},
+            str(REPO_ROOT), identity={"repoPath": None, "codeRevision": "d" * 40},
+            revision_exists=True, expected_revision="d" * 40, expected_tracked=320,
+            expected_python=120)
+        self.assertEqual(status, "FAIL")
+        # another repository bound under the name
+        status, _ = self_coverage_verdict(
+            200, {"graph": {"nodes": [{"id": "n1"}]},
+                  "contextCoverage": {"codeRevision": "e" * 40, "trackedFiles": 320,
+                                      "pythonFiles": 120}},
+            str(REPO_ROOT), identity={"repoPath": "G:/other/projectmind-core",
+                                      "codeRevision": "e" * 40}, revision_exists=True,
+            expected_revision="e" * 40, expected_tracked=320, expected_python=120)
+        self.assertEqual(status, "FAIL")
+
+    def test_t21_needs_a_complete_comparison(self) -> None:
+        # BATCH-3: a content mismatch with a missing/null revision match is not
+        # proof (the version identity itself was never confirmed)
+        status, _ = handover_tamper_verdict(200, {"handoverComparison": {
+            "contentMatches": False, "revisionMatches": None, "mapIdMatches": None}})
+        self.assertEqual(status, "FAIL")
+        status, _ = handover_tamper_verdict(200, {"handoverComparison": {
+            "contentMatches": False, "revisionMatches": True, "mapIdMatches": False}})
+        self.assertEqual(status, "FAIL")
+        status, _ = handover_tamper_verdict(200, {"handoverComparison": {
+            "contentMatches": False, "revisionMatches": True, "mapIdMatches": True}})
+        self.assertEqual(status, "PASS")
 
 
 if __name__ == "__main__":

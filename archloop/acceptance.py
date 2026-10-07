@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import subprocess
 import sys
 import time
@@ -27,6 +29,29 @@ ORIGIN_FALLBACK = None
 # the repository this runner itself lives in: T24 must cover THIS project's
 # tracked files, not whichever demo repository happens to be bound
 REPO_ROOT = Path(__file__).resolve().parents[1]
+FULL_SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
+
+
+def _same_path(left: str, right: str) -> bool:
+    """True when two paths name the same real location (case/separator safe)."""
+    try:
+        return Path(left).resolve() == Path(right).resolve()
+    except OSError:
+        return os.path.normcase(os.path.normpath(str(left))) == \
+            os.path.normcase(os.path.normpath(str(right)))
+
+
+def _git_object_exists(repo: str, revision: str) -> bool:
+    """Real check: the named revision must be a commit in that repository."""
+    if not isinstance(revision, str) or FULL_SHA_PATTERN.fullmatch(revision) is None:
+        return False
+    try:
+        probe = subprocess.run(["git", "-C", str(repo), "cat-file", "-e", revision + "^{commit}"],
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return probe.returncode == 0
 
 
 def _request(base_url: str, method: str, path: str, payload: dict | None = None,
@@ -89,8 +114,12 @@ def handover_tamper_verdict(status, body) -> tuple[str, dict]:
     comparison = body.get("handoverComparison")
     code = ((body.get("error") or {}).get("code")
             if isinstance(body.get("error"), dict) else None)
+    # the comparison must be complete and consistent: a content mismatch alone
+    # is only tamper detection when the version identity itself still matches
+    # (BATCH-3 ACCEPTANCE-01)
     detected = (isinstance(comparison, dict) and comparison.get("contentMatches") is False
-                and comparison.get("revisionMatches") is not False)
+                and comparison.get("revisionMatches") is True
+                and comparison.get("mapIdMatches") is True)
     refused_as_tamper = status != 200 and code == "EVIDENCE_MISMATCH"
     evidence = {"http": status, "code": code, "comparison": comparison,
                 "packageMapIdMismatch": body.get("packageMapIdMismatch"),
@@ -98,23 +127,69 @@ def handover_tamper_verdict(status, body) -> tuple[str, dict]:
     return ("PASS" if (detected or refused_as_tamper) else "FAIL"), evidence
 
 
-def self_coverage_verdict(status, body, repo: str) -> tuple[str, dict]:
+def _git_tracked_counts(repo: str, revision: str) -> tuple[int | None, int | None]:
+    """(tracked files, python files) of this repository at `revision`, or None.
+
+    The workspace API deliberately does not echo the bound repository path, so
+    T24 proves the binding with the tree it read: the coverage counts must equal
+    this repository's real tree at the same revision — no other repository (or
+    a placeholder revision) can satisfy that (BATCH-3 ACCEPTANCE-01).
+    """
+    try:
+        listing = subprocess.run(["git", "-C", str(repo), "ls-tree", "-r", "-z", "--name-only",
+                                  revision], capture_output=True, text=True, encoding="utf-8",
+                                 errors="replace", timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None, None
+    if listing.returncode != 0:
+        return None, None
+    paths = [part for part in listing.stdout.split("\0") if part]
+    return len(paths), sum(1 for path in paths if path.endswith(".py"))
+
+
+def self_coverage_verdict(status, body, repo: str, identity: dict | None = None,
+                          revision_exists: bool | None = None, expected_revision: str | None = None,
+                          expected_tracked: int | None = None,
+                          expected_python: int | None = None) -> tuple[str, dict]:
     """T24 criteria: ProjectMind's own repository really covered.
 
-    The candidate must come from a workspace bound to THIS project's repository,
-    pinned to a commit, with a real number of tracked files behind the coverage
-    record — the demo repository used elsewhere in the run does not qualify as
-    "ProjectMind itself" (BATCH-2 ACCEPTANCE-01).
+    The candidate must come from a workspace bound to a *real* full commit of
+    THIS project (the runner confirms the revision exists and computes the
+    tree's file counts locally): identity revision, coverage revision and the
+    local HEAD must agree, and the coverage's tracked/python counts must equal
+    this repository's real tree at that revision with a real number of files.
+    A placeholder like "HEAD", a nonexistent SHA, another repository or an
+    identity that disagrees with the coverage does not qualify as "ProjectMind
+    itself" (BATCH-2 + BATCH-3 ACCEPTANCE-01).
     """
     body = body or {}
+    identity = identity or {}
     coverage = body.get("contextCoverage") or {}
     nodes = (body.get("graph") or {}).get("nodes") or []
     tracked = coverage.get("trackedFiles") or 0
-    ok = (status == 200 and bool(nodes) and bool(coverage.get("codeRevision")) and tracked >= 50)
-    evidence = {"repo": repo, "codeRevision": coverage.get("codeRevision"), "trackedFiles": tracked,
-                "filesIncluded": coverage.get("filesIncluded"), "nodes": len(nodes), "http": status,
-                "error": body.get("error"),
-                "note": "绑定仓库即本次被验收的 ProjectMind 代码；正式图内容仍由负责人在界面批准"}
+    python_files = coverage.get("pythonFiles")
+    identity_repo = identity.get("repoPath")
+    identity_revision = identity.get("codeRevision")
+    revision_matches = (isinstance(identity_revision, str)
+                        and coverage.get("codeRevision") == identity_revision
+                        and (expected_revision is None or identity_revision == expected_revision))
+    repo_matches = True if not identity_repo else _same_path(identity_repo, repo)
+    tree_matches = (expected_tracked is not None and tracked == expected_tracked
+                    and (expected_python is None or python_files == expected_python))
+    ok = (status == 200 and bool(nodes) and tracked >= 50
+          and FULL_SHA_PATTERN.fullmatch(str(identity_revision or "")) is not None
+          and revision_matches and repo_matches and tree_matches and revision_exists is True)
+    evidence = {"repo": repo, "identityRepoPath": identity_repo, "workspaceRevision": identity_revision,
+                "coverageRevision": coverage.get("codeRevision"), "localHead": expected_revision,
+                "revisionExistsInGit": revision_exists,
+                "revisionMatchesCoverage": revision_matches, "repoMatchesBinding": repo_matches,
+                "trackedFiles": tracked, "localTrackedFiles": expected_tracked,
+                "pythonFiles": python_files, "localPythonFiles": expected_python,
+                "treeMatchesRepository": tree_matches,
+                "filesIncluded": coverage.get("filesIncluded"),
+                "nodes": len(nodes), "http": status, "error": body.get("error"),
+                "note": "绑定仓库即本次被验收的 ProjectMind 代码（其文件数与本仓库该提交的真实文件树一致）；"
+                        "正式图内容仍由负责人在界面批准"}
     return ("PASS" if ok else "FAIL"), evidence
 
 
@@ -461,9 +536,18 @@ class Acceptance:
                         {"http": status, "error": (self_ws or {}).get("error"),
                          "repo": str(REPO_ROOT)})
         else:
+            self_identity = (self_ws or {}).get("identity") or {}
             status, rule = self.call("POST", f"/api/archloop/workspaces/{self_id}/generate",
                                      {"mode": "rule_based"})
-            t24_status, t24_evidence = self_coverage_verdict(status, rule, str(REPO_ROOT))
+            local_head = self_identity.get("codeRevision")
+            exists = _git_object_exists(str(REPO_ROOT), local_head)
+            tracked_local, python_local = (None, None)
+            if exists:
+                tracked_local, python_local = _git_tracked_counts(str(REPO_ROOT), local_head)
+            t24_status, t24_evidence = self_coverage_verdict(
+                status, rule, str(REPO_ROOT), identity=self_identity, revision_exists=exists,
+                expected_revision=local_head, expected_tracked=tracked_local,
+                expected_python=python_local)
             self.record("T24", "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）",
                         t24_status, t24_evidence)
 
