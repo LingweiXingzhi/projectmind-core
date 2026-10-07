@@ -3,7 +3,7 @@
 
 ## 架构工作台（本轮新增主入口）
 
-启动后默认进入「架构工作台」：<http://127.0.0.1:8765>。它覆盖一条完整闭环：
+启动后默认进入 Overview：<http://127.0.0.1:8765>。左侧 Architecture 打开架构工作台，Repository 浏览仓库，Changes 审查变化，Handoff / Worklog / Decisions 进入协作记录。⌘K（Windows/Linux：Ctrl+K）搜索页面、工作区和节点；⌘J / Ctrl+J 聚焦节点纠正。详见 [UI 重构与验收说明](docs/ui-redesign/README.md)。架构工作台覆盖以下闭环：
 
 1. **两种入口**：「分析已有项目」输入仓库路径与情况说明，绑定固定提交的代码事实；「规划新项目」输入目标与约束，允许没有代码 SHA（planning 工作区不伪造代码版本）。
 2. **生成候选图**：已配置 AI 时调用模型起草功能候选（`ai_generated`，全部为待确认候选）；未配置时如实显示 `NOT_RUN_AWAITING_CONFIGURATION`，不会用规则结果冒充 AI。「载入演示候选（样例）」是明确标注的演示数据，只用于验证界面。

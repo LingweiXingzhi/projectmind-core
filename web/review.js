@@ -121,30 +121,35 @@ async function renderChanges(base, target, changes, declaredPaths) {
     const display = change.oldPath ? `${change.oldPath} → ${change.path}` : change.path;
     const path = document.createElement("span");
     if (targets.length) {
-      path.textContent = display + " · 证据：";
+      const evidenceDetails=document.createElement('details');
+      const summary=document.createElement('summary');summary.textContent=display;
+      evidenceDetails.append(summary);
+      const sources=document.createElement('div');sources.className='review-file-sources';
+      evidenceDetails.append(sources);path.append(evidenceDetails);
       targets.forEach((item, index) => {
         const revision = item.revision === "base" ? base : target;
-        if (index) path.append(document.createTextNode(" + "));
+        if (index) sources.append(document.createTextNode(" · "));
         const link = document.createElement("a");
         link.href = `/api/evidence?path=${encodeURIComponent(item.path)}&revision=${encodeURIComponent(revision)}`;
         link.target = "_blank";
         link.rel = "noopener";
         link.textContent = `${item.path}@${item.revision}`;
-        path.append(link);
+        sources.append(link);
       });
     } else {
-      path.textContent = display + " · 未声明为地图证据路径，无证据视图";
+      path.textContent = display;
+      path.title="未声明为地图证据路径；现有证据接口不能读取该路径。可在 Repository 查看。";
     }
     const badge = document.createElement("span");
     badge.className = "review-fact-badge";
     if (skipped.has(change.path)) {
-      badge.textContent = "B: skipped";
+      badge.textContent = "未解析";badge.title="B: skipped，不能据此判断不存在";
       badge.classList.add("warn");
     } else if (factPaths.has(change.path)) {
-      badge.textContent = "B: 已声明";
+      badge.textContent = "事实";badge.title="B: 已声明的固定版本代码事实";
       badge.classList.add("ok");
     } else {
-      badge.textContent = "B: 无条目 ≠ 不存在";
+      badge.textContent = "无条目";badge.title="B 没有声明条目，不代表不存在";
     }
     row.append(code, path, badge);
     reviewChanges.append(row);
