@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import subprocess
 from pathlib import Path
 
 from .contract import ContractError, ID_PATTERN, is_full_sha
@@ -20,6 +21,46 @@ from .contract import ContractError, ID_PATTERN, is_full_sha
 STATUSES = ("queued", "received", "in_progress", "submitted", "verification_pending",
             "verified", "rejected")
 TASK_DIR = "fix-tasks"
+
+
+def _commit_in_repo(repo_path, commit: str):
+    """True/False when the bound repository can be checked, None when there is none.
+
+    A SHA that only *looks* like a commit is not a delivered fix: verified must
+    be able to point at a real commit object (BATCH-2 FIX-01).
+    """
+    if not repo_path:
+        return None
+    try:
+        probe = subprocess.run(
+            ["git", "-C", str(repo_path), "cat-file", "-e", f"{commit}^{{commit}}"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return probe.returncode == 0
+
+
+def _verification_evidence(value) -> list:
+    """Verified needs *recorded* results: a non-empty list of named entries.
+
+    A boolean, a bare string or any other scalar is a claim, not evidence, and
+    must never be stored as the verification result (BATCH-2 FIX-01).
+    """
+    if not isinstance(value, list) or not value:
+        raise ContractError("VALIDATION_FAILED",
+                            "verified 需要列明的验证证据（非空列表：用例/命令/结果）；"
+                            "提交存在不代表偏差消失")
+    cleaned = []
+    for item in value:
+        if isinstance(item, dict) and item:
+            cleaned.append(item)
+        elif isinstance(item, str) and item.strip():
+            cleaned.append(item.strip())
+        else:
+            raise ContractError("VALIDATION_FAILED",
+                                "验证证据的每一项都必须是非空对象或非空字符串；"
+                                "布尔值/空项不能作为证据")
+    return cleaned
 
 
 def _now() -> str:
@@ -119,14 +160,24 @@ def update_task(data_root: Path, workspace_id: str, task_id: str, request: dict)
         commit = request.get("commitSha")
         if not is_full_sha(commit):
             raise ContractError("VALIDATION_FAILED", "verified 需要完整的实施提交 SHA")
-        if not request.get("verificationEvidence"):
-            raise ContractError("VALIDATION_FAILED", "verified 需要验证证据；提交存在不代表偏差消失")
+        evidence = _verification_evidence(request.get("verificationEvidence"))
         if request.get("confirmedBy") != actor:
             raise ContractError("VALIDATION_FAILED",
                                 "verified 需要操作者本人确认（confirmedBy 必须等于 actor）")
+        repo_path = (task.get("takeover") or {}).get("repoPath")
+        exists = _commit_in_repo(repo_path, commit)
+        if exists is None:
+            raise ContractError("VALIDATION_FAILED",
+                                "该任务没有可核实的代码仓库（takeover.repoPath 缺失或不可读）；"
+                                "无法确认提交存在时不会写入 verified")
+        if not exists:
+            raise ContractError("NOT_FOUND",
+                                f"提交 {commit[:12]} 在任务绑定的仓库中不存在；"
+                                "verified 需要真实存在的提交，格式合法的 SHA 不算交付")
         task["verification"] = {
             "commitSha": commit,
-            "evidence": request["verificationEvidence"],
+            "evidence": evidence,
+            "evidenceType": "recorded_results",
             "verifiedAt": _now(),
             "verifiedBy": actor,
             "scope": request.get("verificationScope", "仅限列明的核查范围"),

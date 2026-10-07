@@ -285,6 +285,50 @@ class WorkbenchService:
             graph["evidenceDowngrades"] = downgraded
         return graph
 
+    @staticmethod
+    def _context_pack_summary(context_pack: dict, source_revision: str) -> dict:
+        """The persisted summary of one built pack.
+
+        It keeps what the correction payload and C's bootstrap read (symbols,
+        imports, excerpts, docs, coverage) plus what the pack deliberately did
+        NOT read (skipped/excluded), so a later correction never has to fall
+        back to a bare path list (BATCH-2 CORRECTION-01).
+        """
+        return {
+            "packVersion": 2,
+            "codeRevision": source_revision,
+            "coverage": context_pack.get("coverage"),
+            "entryPoints": context_pack.get("entryPoints", [])[:40],
+            "limits": list(context_pack.get("limits", []) or []),
+            "docs": [{"path": item["path"], "excerpt": item.get("excerpt", "")}
+                     for item in context_pack.get("docs", [])[:6]],
+            "skipped": list(context_pack.get("skipped", []) or [])[:50],
+            "excluded": list(context_pack.get("excluded", []) or [])[:50],
+            "files": [{"path": item["path"],
+                       "symbols": item.get("symbols", [])[:40],
+                       "imports": item.get("imports", [])[:40],
+                       "excerpt": item.get("excerpt", ""),
+                       "truncated": bool(item.get("truncated"))}
+                      for item in context_pack.get("files", [])],
+            "at": _utcnow(),
+        }
+
+    def _active_context_pack(self, record: dict) -> dict | None:
+        """The controlled pack for the workspace's *current* code binding.
+
+        Built from the pinned revision whenever a correction needs it, so a
+        correction can never send the model excerpts from a revision the draft
+        has already left (BATCH-2 CORRECTION-01). Planning workspaces (and
+        workspaces whose binding was never a real commit) get None: there are
+        no code facts to include.
+        """
+        identity = record["identity"]
+        repo_path = identity.get("repoPath")
+        revision = identity.get("codeRevision")
+        if not repo_path or not revision:
+            return None
+        return context_pack_module.build_context_pack(repo_path, revision)
+
     def generate(self, workspace_id: str, request: dict) -> dict:
         with workspace_lock(workspace_id):
             record = self.store.load_workspace(workspace_id)
@@ -307,14 +351,7 @@ class WorkbenchService:
                     "trackedFiles": probe.get("trackedFiles", [])[:400],
                     "contextPack": context_pack,
                 }
-                record["lastContextPack"] = {
-                    "codeRevision": source_revision,
-                    "coverage": context_pack["coverage"],
-                    "entryPoints": context_pack["entryPoints"][:40],
-                    "files": [{"path": item["path"], "symbols": item.get("symbols", [])[:40]}
-                              for item in context_pack["files"]],
-                    "at": _utcnow(),
-                }
+                record["lastContextPack"] = self._context_pack_summary(context_pack, source_revision)
             if mode == "rule_based":
                 # explicit rule-based route (C's engine), never labeled as AI
                 candidate = backend_c.bootstrap_candidate(record["context"], record)
@@ -555,8 +592,10 @@ class WorkbenchService:
             else:
                 # real model correction: bounded operations validated by the op
                 # engine; without a configured model this is NOT_RUN, never a
-                # silent fallback to a demo note.
-                context_pack = record.get("lastContextPack") if request.get(
+                # silent fallback to a demo note. The source context is built
+                # from the *current* binding, not from a cached summary of an
+                # older revision (BATCH-2 CORRECTION-01).
+                context_pack = self._active_context_pack(record) if request.get(
                     "includeSourceContext", True) else None
                 reply = correction_module.correct_with_model(record, draft, instruction,
                                                              selected, context_pack)
@@ -1472,6 +1511,16 @@ class WorkbenchService:
                                     {"expected": expected, "head": probe["head"]})
             old = identity.get("codeRevision")
             identity["codeRevision"] = expected
+            # the cached context summary describes the OLD revision: rebuild it
+            # for the new binding (and never keep a stale one when the new
+            # revision cannot be read) so corrections and C's bootstrap stop
+            # reading facts from a revision the workspace has left
+            # (BATCH-2 CORRECTION-01)
+            try:
+                refreshed_pack = context_pack_module.build_context_pack(identity["repoPath"], expected)
+                record["lastContextPack"] = self._context_pack_summary(refreshed_pack, expected)
+            except Exception:
+                record["lastContextPack"] = None
             record["updatedAt"] = _utcnow()
             self.store.save_workspace_record(record)
             self.store.append_history(workspace_id, {

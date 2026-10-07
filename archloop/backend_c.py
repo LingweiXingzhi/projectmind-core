@@ -216,9 +216,92 @@ def deviations_for(graph: dict, observed_traces: list) -> dict:
     return result
 
 
+def _incremental_ops_to_a(base_graph: dict, c_operations: list) -> tuple[list, list]:
+    """Convert C's raw incremental patch into CONTRACT_V1 operations.
+
+    C answers in its own patch vocabulary (`op`/`data`/`changes`); the workbench
+    applies CONTRACT_V1 operations (`type`/`node`/`fields`/`nodeId`). Returning
+    C's raw shape produced candidates that every apply path rejected with
+    VALIDATION_FAILED (BATCH-2 C-INCREMENTAL-01).
+
+    Only operations that really apply to `base_graph` are returned; anything
+    C proposed that has no counterpart in this draft is reported as a warning
+    instead of as a broken operation.
+    """
+    nodes_by_id = {node["id"]: node for node in base_graph.get("nodes", []) or []}
+    operations: list = []
+    warnings: list = []
+    for operation in c_operations or []:
+        kind = operation.get("op")
+        if kind == "add_node":
+            node_id = _clean_id(operation.get("nodeId"), "")
+            data = operation.get("data") or {}
+            if not node_id:
+                warnings.append({"change": operation.get("nodeId"),
+                                 "reason": "C 增量给出的节点 ID 不合法；未转成可应用操作"})
+                continue
+            if node_id in nodes_by_id:
+                warnings.append({"change": node_id,
+                                 "reason": f"草稿中已有节点 {node_id}；新增候选跳过（不覆盖现有草稿）"})
+                continue
+            operations.append({
+                "type": "add_node",
+                "node": {
+                    "id": node_id,
+                    "title": data.get("title") or node_id,
+                    "summary": data.get("role") or "（C 增量候选未填写职责）",
+                    "status": "candidate",
+                    "provenance": "rule_based",
+                    "entryPoints": [], "interfaces": [], "assumptions": [], "process": [],
+                    "evidence": _evidence_from_c(data.get("evidence"), node_id),
+                },
+                "reason": "C 规则增量：新增代码文件对应的职责候选"})
+        elif kind == "update_node":
+            path = operation.get("file")
+            matched = [node_id for node_id, node in nodes_by_id.items()
+                       if any(item.get("path") == path for item in node.get("evidence", []) or [])]
+            if not matched:
+                warnings.append({"change": path,
+                                 "reason": "草稿中没有节点的证据引用该文件；只登记变化，不产生操作"})
+                continue
+            for node_id in matched:
+                node = nodes_by_id[node_id]
+                refreshed = []
+                for item in node.get("evidence", []) or []:
+                    if item.get("path") == path and item.get("kind", "code_fact") == "code_fact":
+                        # the fixed revision this fact was checked against no
+                        # longer contains the file as reviewed: it must be
+                        # re-checked before it counts again
+                        refreshed.append({**item, "kind": "unknown",
+                                          "reason": f"{item.get('reason', '')}"
+                                                    f"（源码文件在目标提交中已修改，需按新提交复核）"})
+                    else:
+                        refreshed.append(item)
+                if refreshed == (node.get("evidence") or []):
+                    warnings.append({"change": path,
+                                     "reason": f"节点 {node_id} 的证据没有可刷新的代码事实"})
+                    continue
+                operations.append({
+                    "type": "update_node", "nodeId": node_id, "fields": {"evidence": refreshed},
+                    "reason": operation.get("reason") or f"源码文件 {path} 发生修改，需更新事实证据"})
+        elif kind == "remove_node":
+            node_id = _clean_id(operation.get("nodeId"), "")
+            if node_id not in nodes_by_id:
+                warnings.append({"change": operation.get("nodeId"),
+                                 "reason": f"草稿中没有节点 {node_id}；删除候选跳过（不猜测新建）"})
+                continue
+            operations.append({
+                "type": "remove_node", "nodeId": node_id,
+                "reason": operation.get("reason") or "源码文件已在目标提交中删除"})
+        else:
+            warnings.append({"change": kind,
+                             "reason": "C 增量返回了适配层不认识的操作；未转成可应用操作"})
+    return operations, warnings
+
+
 def incremental_candidate(base_graph: dict, base_code_revision: str, target_code_revision: str,
                           facts_diff: dict) -> dict:
-    """C's incremental proposal -> A operations for review (read-only)."""
+    """C's incremental proposal -> CONTRACT_V1 operations for review (read-only)."""
     module = _candidates_module()
     graph_input = {"mapRevision": base_graph.get("mapRevision"),
                    "codeRevision": base_code_revision,
@@ -229,11 +312,12 @@ def incremental_candidate(base_graph: dict, base_code_revision: str, target_code
         raise ContractError("STALE_CONTEXT" if reply.get("errorCode") == "STALE_CONTEXT"
                             else "BACKEND_UNAVAILABLE",
                             reply.get("message") or "C 增量提案返回失败")
+    operations, conversion_warnings = _incremental_ops_to_a(base_graph, reply.get("operations", []))
     return {"proposalId": reply.get("proposalId"), "kind": "rule_based",
             "baseMapRevision": reply.get("baseMapRevision"),
             "targetCodeRevision": reply.get("targetCodeRevision"),
-            "operations": reply.get("operations", []),
-            "warnings": list(reply.get("warnings", []) or []),
+            "operations": operations,
+            "warnings": list(reply.get("warnings", []) or []) + conversion_warnings,
             "labeled": "C 规则增量候选：按文件变化定位待复核对象，不代表认知已更新"}
 
 

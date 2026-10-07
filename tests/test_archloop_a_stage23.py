@@ -211,7 +211,8 @@ class FixTaskTests(unittest.TestCase):
                                          {"status": "verified", "actor": "实施者", "commitSha": commit})
         verified = self.service.update_fix_task(self.workspace_id, task["taskId"], {
             "status": "verified", "actor": "负责人", "confirmedBy": "负责人",
-            "commitSha": commit, "verificationEvidence": "重新执行验收用例，B 已被调用",
+            "commitSha": commit,
+            "verificationEvidence": [{"case": "重新执行验收用例", "result": "B 已被调用"}],
             "verificationScope": "仅覆盖该过程步骤"})
         self.assertEqual(verified["status"], "verified")
         markdown = self.service.fix_task_markdown(self.workspace_id, task["taskId"])

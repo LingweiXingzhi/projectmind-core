@@ -24,6 +24,9 @@ import urllib.request
 from pathlib import Path
 
 ORIGIN_FALLBACK = None
+# the repository this runner itself lives in: T24 must cover THIS project's
+# tracked files, not whichever demo repository happens to be bound
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _request(base_url: str, method: str, path: str, payload: dict | None = None,
@@ -46,6 +49,75 @@ def _request(base_url: str, method: str, path: str, payload: dict | None = None,
             return exc.code, {"error": {"code": "NON_JSON", "message": raw[:400]}}
 
 
+def ai_generation_verdict(status, payload) -> tuple[str, dict]:
+    """T01 criteria: what counts as a real AI first graph.
+
+    Only the real generation envelope passes: status ai_generated, origin
+    ai_generated, a non-empty graph and ai_candidate provenance on every node.
+    A 200 carrying AI_GENERATION_FAILED (or an empty graph) is NOT a generated
+    first graph, and an unconfigured server is NOT_RUN (BATCH-2 ACCEPTANCE-01).
+    """
+    payload = payload or {}
+    graph = payload.get("graph") or {}
+    nodes = graph.get("nodes") or []
+    evidence = {"http": status, "status": payload.get("status"), "origin": payload.get("origin"),
+                "model": payload.get("model"), "nodes": len(nodes),
+                "mapRevision": graph.get("mapRevision"), "note": payload.get("note"),
+                "error": (payload.get("error") or {}).get("code")
+                if isinstance(payload.get("error"), dict) else None}
+    if payload.get("status") == "NOT_RUN_AWAITING_CONFIGURATION":
+        return "NOT_RUN", evidence
+    ok = (status == 200 and payload.get("status") == "ai_generated"
+          and payload.get("origin") == "ai_generated" and nodes
+          and all(node.get("provenance") == "ai_candidate" for node in nodes))
+    return ("PASS" if ok else "FAIL"), evidence
+
+
+def handover_tamper_verdict(status, body) -> tuple[str, dict]:
+    """T21 criteria: what counts as "the tampered package was detected".
+
+    Detection is demonstrated either by the content comparison itself
+    (handoverComparison.contentMatches == False while the revision still
+    matches — the package content was changed, not the version) or by a refusal
+    whose machine code is about content integrity (EVIDENCE_MISMATCH). A refusal
+    for an unrelated reason — e.g. STALE_CONTEXT because the map identity
+    already belongs to another workspace, which is what the first run recorded —
+    proves nothing about tamper detection and must not be a PASS
+    (BATCH-2 ACCEPTANCE-01).
+    """
+    body = body or {}
+    comparison = body.get("handoverComparison")
+    code = ((body.get("error") or {}).get("code")
+            if isinstance(body.get("error"), dict) else None)
+    detected = (isinstance(comparison, dict) and comparison.get("contentMatches") is False
+                and comparison.get("revisionMatches") is not False)
+    refused_as_tamper = status != 200 and code == "EVIDENCE_MISMATCH"
+    evidence = {"http": status, "code": code, "comparison": comparison,
+                "packageMapIdMismatch": body.get("packageMapIdMismatch"),
+                "error": body.get("error")}
+    return ("PASS" if (detected or refused_as_tamper) else "FAIL"), evidence
+
+
+def self_coverage_verdict(status, body, repo: str) -> tuple[str, dict]:
+    """T24 criteria: ProjectMind's own repository really covered.
+
+    The candidate must come from a workspace bound to THIS project's repository,
+    pinned to a commit, with a real number of tracked files behind the coverage
+    record — the demo repository used elsewhere in the run does not qualify as
+    "ProjectMind itself" (BATCH-2 ACCEPTANCE-01).
+    """
+    body = body or {}
+    coverage = body.get("contextCoverage") or {}
+    nodes = (body.get("graph") or {}).get("nodes") or []
+    tracked = coverage.get("trackedFiles") or 0
+    ok = (status == 200 and bool(nodes) and bool(coverage.get("codeRevision")) and tracked >= 50)
+    evidence = {"repo": repo, "codeRevision": coverage.get("codeRevision"), "trackedFiles": tracked,
+                "filesIncluded": coverage.get("filesIncluded"), "nodes": len(nodes), "http": status,
+                "error": body.get("error"),
+                "note": "绑定仓库即本次被验收的 ProjectMind 代码；正式图内容仍由负责人在界面批准"}
+    return ("PASS" if ok else "FAIL"), evidence
+
+
 class Acceptance:
     def __init__(self, base_url: str, repo: str, arch_repo: str | None = None):
         self.base_url = base_url.rstrip("/")
@@ -55,6 +127,9 @@ class Acceptance:
         self.results: list[dict] = []
         self.workspace_id: str | None = None
         self.planning_id: str | None = None
+        # (http, body) of the tamper comparison captured while the workspace
+        # still matched the published version (recorded as T21); None = not run
+        self.tamper_result = None
 
     # ---------- helpers ----------
     def record(self, item: str, title: str, status: str, evidence) -> None:
@@ -99,14 +174,8 @@ class Acceptance:
         # T01 real-AI first graph
         status, payload = self.call("POST", f"/api/archloop/workspaces/{ws}/generate",
                                     {"mode": "production"})
-        if status == 200 and payload.get("status") == "NOT_RUN_AWAITING_CONFIGURATION":
-            self.record("T01", "已有项目经真实 AI 生成初图", "NOT_RUN",
-                        {"note": payload.get("note"), "http": status})
-        elif status == 200:
-            self.record("T01", "已有项目经真实 AI 生成初图", "PASS",
-                        {"status": payload.get("status"), "nodes": len(payload.get("graph", {}).get("nodes", []))})
-        else:
-            self.record("T01", "已有项目经真实 AI 生成初图", "FAIL", {"http": status, "body": payload})
+        t01_status, t01_evidence = ai_generation_verdict(status, payload)
+        self.record("T01", "已有项目经真实 AI 生成初图", t01_status, t01_evidence)
 
         # T02 function graph (not a file tree) via the labeled rule engine
         status, generated = self.call("POST", f"/api/archloop/workspaces/{ws}/generate",
@@ -216,6 +285,15 @@ class Acceptance:
                         "PASS" if status == 200 and detail.get("version", {}).get("mapRevision") == version["mapRevision"]
                         else "FAIL", {"http": status})
 
+        # Tamper comparison while the workspace still matches the version just
+        # published: it must run before the code binding moves, because after
+        # that the version service refuses the import with REVISION_CONFLICT —
+        # a refusal that demonstrates nothing about content tampering (and the
+        # reader import also drops the "published here" identity view, so it
+        # runs after the T12/T12b assertions). The result is recorded at the
+        # T21 position below (BATCH-2 ACCEPTANCE-01).
+        self.tamper_result = None
+
         # T12 three identities stay separate
         status, envelope = self.call("GET", f"/api/archloop/workspaces/{ws}")
         identity = envelope["identity"]
@@ -226,6 +304,21 @@ class Acceptance:
         self.record("T12b", "发布事实在草稿未变时可见（核查 SHA 不为空）",
                     "PASS" if identity.get("verifiedCodeRevision") else "FAIL",
                     {"verifiedCodeRevision": identity.get("verifiedCodeRevision")})
+
+        if version.get("mapRevision"):
+            status, package_now = self.call("GET", f"/api/archloop/workspaces/{ws}/handover")
+            tampered_now = json.loads(json.dumps(package_now or {}))
+            if tampered_now.get("graph"):
+                tampered_now["graph"]["nodes"][0]["summary"] = "被改过的交接包"
+            status, bad_now = self.call("POST", "/api/archloop/import-handover",
+                                        {"package": tampered_now, "repoPath": self.repo,
+                                         "workspaceId": ws,
+                                         # the version service CAS-guards the reader:
+                                         # it must name the revision it believes is
+                                         # current, which right after publish is the
+                                         # published version itself
+                                         "expectedMapRevision": package_now.get("mapRevision")})
+            self.tamper_result = (status, bad_now)
 
         # T13 evidence jump to the fixed revision
         status, evidence = self.call("GET", f"/api/repo-explorer/open", {
@@ -314,7 +407,9 @@ class Acceptance:
             status, verified = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task['taskId']}",
                                          {"status": "verified", "actor": "验收负责人",
                                           "confirmedBy": "验收负责人", "commitSha": after,
-                                          "verificationEvidence": "重新执行验收用例并通过"})
+                                          "verificationEvidence": [
+                                              {"case": "重新执行验收用例", "result": "通过"},
+                                              {"evidence": "实施提交在验收仓库中真实存在"}]})
             self.record("T19b", "人确认核查结论后关闭偏差（限定核查范围）",
                         "PASS" if status == 200 and verified.get("status") == "verified" else "FAIL",
                         {"status": (verified or {}).get("status"),
@@ -331,12 +426,18 @@ class Acceptance:
         tampered = json.loads(json.dumps(handover or {}))
         if tampered.get("graph"):
             tampered["graph"]["nodes"][0]["summary"] = "被改过的交接包"
-        status, bad = self.call("POST", "/api/archloop/import-handover",
-                                {"package": tampered, "repoPath": self.repo})
-        self.record("T21", "被改过的交接包/错误来源被识别（以 Git 版本为准）",
-                    "PASS" if status != 200 or (bad.get("handoverComparison") or {}).get("contentMatches") is False
-                    else "FAIL", {"http": status, "comparison": (bad or {}).get("handoverComparison"),
-                                  "error": (bad or {}).get("error")})
+        # the tamper comparison itself was captured right after the publish
+        # (see above): by this point the workspace has moved on and the version
+        # service would refuse the import for a reason that proves nothing about
+        # content tampering. A refusal for an unrelated reason is NOT evidence
+        # of tamper detection and must not pass (BATCH-2 ACCEPTANCE-01).
+        if self.tamper_result is not None:
+            t21_status, t21_evidence = handover_tamper_verdict(*self.tamper_result)
+            t21_evidence["at"] = "publish 后立即（工作区仍与该版本一致时）"
+        else:
+            t21_status, t21_evidence = "NOT_RUN", "本次运行没有产生可核对的已发布版本"
+        self.record("T21", "被改过的交接包被内容指纹比对识别（以 Git 版本为准）",
+                    t21_status, t21_evidence)
 
         # T22 AI not configured degrades honestly
         self.record("T22", "AI 未配置时诚实降级（NOT_RUN，不用样例冒充）",
@@ -346,13 +447,25 @@ class Acceptance:
         self.record("T23", "真实 AI 候选与证据验证", "NOT_RUN",
                     "本机没有 OPENAI_API_KEY / PROJECTMIND_AI_MODEL；T01 的同一路径会在配置后原样运行")
 
-        # T24 ProjectMind self graph coverage
-        status, rule = self.call("POST", f"/api/archloop/workspaces/{ws}/generate", {"mode": "rule_based"})
-        self.record("T24", "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）",
-                    "PASS" if status == 200 and rule.get("graph", {}).get("nodes") else "FAIL",
-                    {"nodes": len((rule or {}).get("graph", {}).get("nodes", [])),
-                     "coverage": (rule or {}).get("contextCoverage"),
-                     "note": "正式图内容仍由负责人在界面批准"})
+        # T24 ProjectMind self graph coverage: bind a workspace to THIS
+        # repository (the code under audit) and require real coverage of its
+        # tracked files at a pinned commit — the demo workspace used elsewhere
+        # in this run is not ProjectMind itself (BATCH-2 ACCEPTANCE-01)
+        status, self_ws = self.call("POST", "/api/archloop/workspaces", {
+            "context": "existing_project", "title": "自身覆盖（T24）",
+            "repoPath": str(REPO_ROOT),
+            "description": "ProjectMind 自身职责候选覆盖：读取本仓库固定提交的代码事实。"})
+        self_id = (self_ws or {}).get("workspace", {}).get("workspaceId")
+        if status != 200 or not self_id:
+            self.record("T24", "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）", "FAIL",
+                        {"http": status, "error": (self_ws or {}).get("error"),
+                         "repo": str(REPO_ROOT)})
+        else:
+            status, rule = self.call("POST", f"/api/archloop/workspaces/{self_id}/generate",
+                                     {"mode": "rule_based"})
+            t24_status, t24_evidence = self_coverage_verdict(status, rule, str(REPO_ROOT))
+            self.record("T24", "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）",
+                        t24_status, t24_evidence)
 
         # T25 legacy explorer / read-only proposals / CA untouched
         status, legacy = self.call("GET", "/api/archloop/legacy-map")

@@ -286,11 +286,13 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
                 fallback = targets[0] if targets else step["id"]
                 for branch in step["branches"]:
                     if not branch.get("nextStepId"):
-                        # the target was auto-filled, not user intent: mark it so
-                        # the reverse projection knows this is a placeholder
+                        # the target was auto-filled, not user intent: record the
+                        # condition AND the value it was filled with, so the
+                        # reverse projection can tell "our placeholder is still
+                        # in place" from "B edited the target since" (BATCH-2 A-01)
                         branch["nextStepId"] = fallback
                         meta["branchFallbacks"].setdefault(step["id"], []).append(
-                            branch.get("condition"))
+                            [branch.get("condition"), fallback])
             b_processes.append({"id": "process-" + node_id,
                                 "title": f"{node.get('title') or node_id} 的期望过程",
                                 "kind": "expected", "steps": steps, "evidenceIds": []})
@@ -410,14 +412,30 @@ def b_to_a_graph(b_graph: dict, packet: dict | None = None) -> dict:
             branches = [branch.get("condition", "") for branch in step.get("branches", []) or []]
             branch_targets = {}
             recorded = (meta.get("branchTargets", {}) or {}).get(b_step_id, []) or []
-            fallback_conditions = set((meta.get("branchFallbacks", {}) or {}).get(b_step_id, []) or [])
+            fallbacks = {}
+            for entry_item in (meta.get("branchFallbacks", {}) or {}).get(b_step_id, []) or []:
+                if isinstance(entry_item, (list, tuple)) and len(entry_item) == 2:
+                    fallbacks[entry_item[0]] = entry_item[1]
+                else:
+                    # legacy record (condition only): the filled value is unknown
+                    fallbacks[entry_item] = None
             for branch in step.get("branches", []) or []:
                 condition = branch.get("condition")
                 target = branch.get("nextStepId")
                 recorded_target = next((pair[1] for pair in recorded if pair and pair[0] == condition), None)
-                # B may have edited the target since: only a target we know we
-                # auto-filled is replaced by the recorded intent (A-01)
-                chosen = recorded_target if condition in fallback_conditions else target
+                if condition in fallbacks:
+                    filled = fallbacks[condition]
+                    if filled is not None and target != filled:
+                        # B edited the target since our auto-fill: B's real data
+                        # wins — restoring the old placeholder would silently
+                        # undo the edit on the next sync (BATCH-2 A-01)
+                        chosen = target
+                    else:
+                        # still our placeholder (or the filled value is unknown):
+                        # keep the recorded A intent (None drops the target)
+                        chosen = recorded_target
+                else:
+                    chosen = target
                 if chosen:
                     branch_targets[condition] = reverse_ids.get(chosen, chosen)
             entry = {
@@ -579,15 +597,22 @@ def diff_to_operations(old_b_graph: dict, new_b_graph: dict) -> list:
     return operations
 
 
-def sanitize_coverage(coverage, b_graph: dict) -> dict | None:
+def sanitize_coverage(coverage, b_graph: dict) -> dict:
     """Client-supplied coverage may not claim the machine metadata carrier.
 
     The carrier is never human-reviewed content, so it is removed from the
     evidence list; when that breaks an "all" claim the scope is downgraded to
     "partial" and the adjustment is reported (BATCH-1B A-05).
+
+    A supplied coverage that is malformed is a client error, never a reason to
+    fall back to the (wider) default coverage: silently replacing it would
+    expand the confirmation scope the caller asked for (BATCH-2 A-05). Only an
+    absent coverage (the caller passes None) selects the default.
     """
     if not isinstance(coverage, dict):
-        return None
+        raise ContractError("VALIDATION_FAILED",
+                            "coverage 必须是对象（nodes/edges/processes/evidence/scope）；"
+                            "格式错误的显式覆盖不会退回默认覆盖，请修正或省略 coverage")
     known = {key: {item["id"] for item in b_graph.get(key, []) or []}
              for key in ("nodes", "edges", "processes", "evidence")}
     carriers = {item["id"] for item in b_graph.get("evidence", []) or []
@@ -595,9 +620,10 @@ def sanitize_coverage(coverage, b_graph: dict) -> dict | None:
                 and str(item.get("unknownReason", "")).startswith(META_REASON_PREFIX)}
     sanitized = {}
     for key in ("nodes", "edges", "processes", "evidence"):
-        values = coverage.get(key)
+        values = coverage.get(key, [])
         if not isinstance(values, list):
-            return None
+            raise ContractError("VALIDATION_FAILED",
+                                f"coverage.{key} 必须是列表；格式错误的显式覆盖不会退回默认覆盖")
         kept = [value for value in values if isinstance(value, str) and value in known[key]]
         if len(kept) != len(values):
             # unknown ids must not silently fall back to the default coverage
@@ -873,8 +899,14 @@ class BackendB:
         if verify_code and not draft["codeRepoId"]:
             raise ContractError("VALIDATION_FAILED",
                                 "规划工作区没有代码，不能做代码核查；请以 verifyCode=false 确认设计")
-        coverage = sanitize_coverage(request.get("coverage"), draft["graph"]) or \
-            coverage_for(record, draft["graph"], verify_code)
+        supplied = request.get("coverage")
+        if supplied is None:
+            coverage = coverage_for(record, draft["graph"], verify_code)
+        else:
+            # an explicit coverage must be honoured or rejected: falling back to
+            # the default would widen the review scope the caller declared
+            # (BATCH-2 A-05)
+            coverage = sanitize_coverage(supplied, draft["graph"])
         limits = request.get("limits") or ["核查仅适用于列明覆盖；未列出的对象与证据未核查"]
         return self._wrap(
             self.gateway.preview_review, binding["draftId"], auth=auth,

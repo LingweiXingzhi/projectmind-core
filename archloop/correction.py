@@ -90,12 +90,23 @@ def correct_with_model(record: dict, draft: dict, instruction: str, selected: li
         "context": {"mode": record.get("context")},
     }
     if context_pack:
+        # the controlled pack is sent as it was built: excerpts, docs and the
+        # record of what was skipped/excluded are part of the input, not a
+        # bare path list (BATCH-2 CORRECTION-01)
         payload["sourceContext"] = {
             "codeRevision": context_pack.get("codeRevision"),
             "files": [{"path": item["path"], "symbols": item.get("symbols", [])[:20],
-                       "imports": item.get("imports", [])[:20]} for item in context_pack.get("files", [])[:20]],
+                       "imports": item.get("imports", [])[:20],
+                       "excerpt": item.get("excerpt", ""),
+                       "truncated": bool(item.get("truncated"))}
+                      for item in context_pack.get("files", [])[:20]],
+            "docs": [{"path": item["path"], "excerpt": item.get("excerpt", "")}
+                     for item in context_pack.get("docs", [])[:6]],
             "entryPoints": context_pack.get("entryPoints", [])[:20],
             "coverage": context_pack.get("coverage"),
+            "skipped": context_pack.get("skipped", [])[:50],
+            "excluded": context_pack.get("excluded", [])[:50],
+            "limits": context_pack.get("limits", []),
         }
     try:
         raw = ai_transport.call_model(CORRECTION_INSTRUCTIONS, payload,

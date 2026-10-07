@@ -30,8 +30,13 @@ EXCLUDED_NAME_PATTERNS = (
 CONTENT_SECRET_PATTERNS = (
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
     r"\bsk-[A-Za-z0-9]{24,}\b",
-    r"\b(OPENAI|PROJECTMIND|ANTHROPIC|GITHUB|AWS)[A-Z_]*KEY\s*=\s*['\"][^'\"]{16,}['\"]",
-    r"\b(api[_-]?key|password|passwd|secret)\s*[:=]\s*['\"][^'\"]{16,}['\"]",
+    r"\b(OPENAI|PROJECTMIND|ANTHROPIC|GITHUB|AWS)[A-Z_]*KEY\s*[:=]\s*['\"][^'\"]{16,}['\"]",
+    # The key name may itself be quoted and prefixed (dict/JSON/config style):
+    # {"api_key": "…"} and {"SYNTHETIC_TEST_CREDENTIAL": "…"} must be caught
+    # exactly like api_key = "…" (BATCH-2 GEN-01).
+    r"['\"]?(?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?key|secret[_-]?key|private[_-]?key|"
+    r"api[_-]?secret|password|passwd|secret|token|credential|key)['\"]?\s*[:=]\s*"
+    r"['\"][^'\"]{16,}['\"]",
 )
 # documentation placeholders are not credentials (a README shows how to set a key)
 PLACEHOLDER_MARKERS = ("你的", "<", ">", "your", "xxx", "example", "placeholder",
