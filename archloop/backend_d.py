@@ -92,9 +92,14 @@ def _normalize_evidence(items, *, version: dict) -> list[dict]:
 def _normalize_expected_process_ref(value, *, graph: dict) -> dict:
     """Accept A's `<nodeId>/<stepId>` shorthand or D's frozen dict shape."""
     processes = {process.get("id"): process for process in graph.get("processes", []) or []}
+    # A page graphs carry each node's expected process in `process` (B-shaped
+    # graphs use `steps`); both shapes are read so the same reference works on
+    # either side of the projection
     steps_by_node = {}
     for node in graph.get("nodes", []) or []:
-        steps_by_node[node.get("id")] = {step.get("stepId") for step in node.get("steps", []) or []}
+        steps = node.get("process") if isinstance(node.get("process"), list) else node.get("steps", [])
+        steps_by_node[node.get("id")] = {step.get("stepId") or step.get("id")
+                                         for step in (steps or []) if isinstance(step, dict)}
     if isinstance(value, dict):
         process_id = str(value.get("processId") or "").strip()
         step_ids = value.get("stepIds")
@@ -146,13 +151,21 @@ def _derive_scope(request: dict, evidence: list[dict]) -> list[str]:
 
 
 def _normalize_scope(paths) -> list[str]:
-    """Same normalization D applies, so A cannot claim an unsafe scope path."""
+    """Same normalization D applies, so A cannot claim an unsafe scope path.
+
+    Paths are POSIX-relative on the wire: on Windows `Path()` would inject
+    backslashes and D's evidence_path guard rightly refuses them.
+    """
+    from pathlib import PurePosixPath
     cleaned = []
     for path in paths:
         raw = str(path).strip().replace("\\", "/")
         if raw.startswith("/") or ":" in raw or ".." in raw.split("/"):
             raise ContractError("VALIDATION_FAILED", f"范围路径不安全: {path!r}")
-        cleaned.append(str(Path(raw)))
+        normalized = str(PurePosixPath(raw))
+        if normalized in ("", "."):
+            raise ContractError("VALIDATION_FAILED", f"范围路径不安全: {path!r}")
+        cleaned.append(normalized)
     return sorted(set(cleaned))
 
 
@@ -280,7 +293,11 @@ class BackendD:
     def _handoff_packet(self, record: dict, envelope: dict, request: dict) -> dict:
         from extensions.handoff.architecture import build_version_handoff
         identity = record.get("identity") or {}
-        sources = {"code": self._code_source(identity), "architecture": None}
+        # D re-reads both clones and compares their real locators: the packet
+        # must name the architecture and code sources exactly as Git reports
+        # them, or the handoff stays an untrusted draft (SOURCE_REQUIRED).
+        sources = {"code": self._code_source(identity),
+                   "architecture": self._architecture_source()}
         references = {"candidates": [], "reviews": list(record.get("history", [])[-20:]),
                       "deviations": [{"id": item.get("id"), "status": item.get("status", "open")}
                                      for item in (record.get("deviations") or []) if isinstance(item, dict)],
@@ -288,6 +305,15 @@ class BackendD:
         return build_version_handoff(envelope, workspace_id=record["workspaceId"], sources=sources,
                                      task={"state": "pending", "nextAction": "接手并实施修正，回挂提交后再核验"},
                                      references=references)
+
+    def _architecture_source(self) -> str | None:
+        if not self.architecture_repo:
+            return None
+        try:
+            from extensions.handoff.architecture import source_locator
+            return source_locator(self.architecture_repo)
+        except Exception:
+            return None
 
     def _code_source(self, identity: dict) -> str | None:
         repo_path = identity.get("repoPath")

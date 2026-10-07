@@ -90,6 +90,26 @@
     return result;
   }
 
+  // The operator is declared once in the workbench form and bound to the
+  // server-side write session; a prompt-based declaration cannot be bound to
+  // a session and is unavailable in some host webviews.
+  function operatorValue(required = true) {
+    const input = document.getElementById("arch-operator-input");
+    const value = input ? input.value.trim() : "";
+    if (!value && required) {
+      setStatus("arch-review-status",
+        "请先填写本机操作者（声明）：它绑定本机会话，是人审与修正任务的 actor（非身份认证）。", true);
+      if (input) input.focus();
+      return null;
+    }
+    return value;
+  }
+
+  function fieldValue(id) {
+    const input = document.getElementById(id);
+    return input ? input.value.trim() : "";
+  }
+
   function setStatus(id, message, isError) {
     const target = document.getElementById(id);
     if (!target) return;
@@ -522,20 +542,27 @@
     const rows = [];
     const rebuild = () => {
       section.replaceChildren(el("h4", "section-title", `期望过程 · ${steps.length} 步（步骤 ID 保持稳定）`));
+      // edits commit on every keystroke as well as on blur: relying on
+      // `change` alone loses text when the field never loses focus before the
+      // save button is used (observed in a real browser session)
+      const onEdit = (element, handler) => {
+        element.addEventListener("input", handler);
+        element.addEventListener("change", handler);
+      };
       steps.forEach((step, index) => {
         const row = el("div", "arch-step-row");
         const idTag = el("code", "arch-step-id", step.stepId);
         const titleInput = el("input");
         titleInput.value = step.title;
-        titleInput.addEventListener("change", () => { step.title = titleInput.value; });
+        onEdit(titleInput, () => { step.title = titleInput.value; });
         const detailInput = el("input");
         detailInput.value = step.detail || "";
         detailInput.placeholder = "这一步发生什么";
-        detailInput.addEventListener("change", () => { step.detail = detailInput.value; });
+        onEdit(detailInput, () => { step.detail = detailInput.value; });
         const lists = el("input");
         lists.value = [step.inputs, step.outputs, step.branches].map((list) => list.join("/")).join(" | ");
         lists.placeholder = "输入/输出/分支，用 | 分隔";
-        lists.addEventListener("change", () => {
+        onEdit(lists, () => {
           const [inputs, outputs, branches] = lists.value.split("|").map((part) => part.split("/").map((item) => item.trim()).filter(Boolean));
           step.inputs = inputs || []; step.outputs = outputs || []; step.branches = branches || [];
         });
@@ -838,9 +865,9 @@
 
   document.getElementById("arch-review-preview-button").addEventListener("click", async () => {
     if (!state.envelope || !graph() || state.busy) return;
-    const actor = window.prompt("人审预览：请输入操作者（本机操作者声明，绑定本机会话）");
+    const actor = operatorValue();
     if (!actor) return;
-    const reason = window.prompt("审阅理由（将随预览与版本一起记录）") || "";
+    const reason = fieldValue("arch-review-reason-input");
     state.busy = true; renderWorkspace();
     setStatus("arch-review-status", "正在生成人审预览…");
     try {
@@ -988,10 +1015,17 @@
       setStatus("arch-review-status", "该节点没有代码证据路径，无法创建可核查的修正任务。", true);
       return;
     }
-    const deviation = window.prompt("偏差描述：期望过程与实际观察有什么差异？");
-    if (!deviation) return;
-    const acceptance = window.prompt("验收标准（实施者提交什么算修复）") || "";
-    const actor = window.prompt("创建修正任务：请输入操作者（本机操作者声明，绑定本机会话）");
+    const deviation = fieldValue("arch-deviation-input");
+    if (!deviation) {
+      setStatus("arch-review-status", "请先填写偏差描述（期望过程与实际观察的差异）。", true);
+      return;
+    }
+    const acceptance = fieldValue("arch-acceptance-input");
+    if (!acceptance) {
+      setStatus("arch-review-status", "请先填写验收条件；没有验收条件的任务不能派发。", true);
+      return;
+    }
+    const actor = operatorValue();
     if (!actor) return;
     state.busy = true;
     renderWorkspace();
@@ -1075,7 +1109,7 @@
         const rebind = el("button", "button ghost", "复核完成后回挂到当前 HEAD");
         rebind.type = "button";
         rebind.addEventListener("click", async () => {
-          const actor = window.prompt("回挂需要复核人（本机操作者声明）");
+          const actor = operatorValue();
           if (!actor) return;
           try {
             const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,

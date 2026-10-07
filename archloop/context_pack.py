@@ -71,8 +71,16 @@ def _key_name_is_secret(name: str) -> bool:
     parts = [part.lower() for part in re.split(r"[^A-Za-z0-9]+", spaced) if part]
     if not parts:
         return False
-    if parts[-1] in SECRET_KEY_COMPONENTS or parts[-1] in SECRET_COMPOUND_COMPONENTS:
+    last = parts[-1]
+    if last in SECRET_KEY_COMPONENTS or last in SECRET_COMPOUND_COMPONENTS:
         return True
+    # an all-caps or unseparated name (`CLIENTAPIKEY`, `myapikey`) has no casing
+    # boundary at all: a known compound credential word as its suffix still
+    # decides, while ordinary words (`monkey`, `turkey`) never match a compound
+    if len(last) > 6:
+        for compound in SECRET_COMPOUND_COMPONENTS:
+            if last.endswith(compound) and len(last) > len(compound):
+                return True
     return any(part in SECRET_ANYWHERE_COMPONENTS for part in parts)
 
 
