@@ -145,10 +145,18 @@ def main():
               "cSnapshot": service.graph_snapshot(ws["workspaceId"]),
               "secondCloneEqual": imported["version"] == version["version"],
               "legacyImport": legacy_result}
+    # Import lazily: the consumer example reuses this module's fixture graph.
+    from .consumer_contract import exercise_consumers
+    consumers = exercise_consumers(service, output=root / "consumer-contract",
+                 code_repo=code, architecture_repo=architecture, code_repo_id=repo_id,
+                 code_revision=revision, test_fixture_only=True)
+    (root / "CONSUMER_CONTRACT.json").write_text(
+        json.dumps(consumers, ensure_ascii=False, indent=2) + "\n")
     assert set(conflicts) == {"REVISION_CONFLICT", "STALE_CONTEXT", "EVIDENCE_MISMATCH"}
     (root / "FUNCTION_SMOKE.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({"result": "PASS", "secondCloneEqual": True, "conflicts": list(conflicts),
-                      "legacyImport": legacy_result}, ensure_ascii=False))
+                      "legacyImport": legacy_result, "consumerCalls": len(consumers["calls"]),
+                      "consumerContract": "A_REVIEW_PENDING"}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

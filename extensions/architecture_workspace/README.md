@@ -22,6 +22,11 @@ Git SHA、正常交换包、三种机器错误和第二 clone 的读取结果；
 可追加 `--legacy-code-repo /absolute/projectmind-checkout`，仅导入其旧六节点
 地图为 unconfirmed，不审核、不发布该旧图。
 
+该命令还生成 CONSUMER_CONTRACT.json：A/C/D 角色夹具对 B 的 17 次实际
+调用、接受/修改/拒绝、4 类机器错误与第二 clone。令牌已移除，保留
+NOT_RUN/A_REVIEW_PENDING；不称为实际公共 HTTP/UI 或 C/D 产品联调。
+接入步骤见 A_C_D_INTEGRATION_GUIDE.md，公共差异见 CONTRACT_GAPS_FOR_A.md。
+
 ## 服务与隔离
 
 `WorkspaceService(explicit_absolute_data_root, code_repositories=[...],

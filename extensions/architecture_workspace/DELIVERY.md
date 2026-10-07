@@ -17,6 +17,9 @@ INTEGRATED=PENDING；D_VERIFIED=PENDING；CONTRACT_V1_A_REVIEW=PENDING；
 SELF_REVIEW_2026-10-07.md。下方 37/641 项为首交付历史记录，
 后续自查以该报告与 verification/self-review-* 的实际日志为准。
 
+下一阶段的 B 接入准备见 CONSUMER_STAGE_DELIVERY.md：46 项 B 测试、
+17 次实际消费者调用、A/C/D 指南与合同差异表；公共合同/实际三方联调仍待完成。
+
 ## Files Changed
 
 仅 extensions/architecture_workspace/** 与 tests/test_archloop_b_service.py。
