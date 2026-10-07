@@ -37,6 +37,8 @@ NOT_RUN/A_REVIEW_PENDING；不称为实际公共 HTTP/UI 或 C/D 产品联调。
 B↔C/D 协作面。设计阶段记录保持；后续实现见 TWO_SURFACE_IMPLEMENTATION.md。新的可选 Python facade、
 候选校验和原子选择已实现，公共合同仍待 A 审查；现有 V1 保持兼容。
 当前 A/C 分支差异见 AC_ALIGNMENT_2026-10-07.md。
+本轮实现与实际验证见 TWO_SURFACE_DELIVERY_2026-10-07.md：127 B 测试、
+731 全仓测试（22 skipped）通过；其中 14 项真实 socket 检查和 21 次 CLI 调用。
 
 ## 服务与隔离
 
