@@ -1,0 +1,15 @@
+[
+  {
+    "case": "wrong_workspace",
+    "accepted": true,
+    "requested": "workspace-unrelated",
+    "actual": "workspace-fixture"
+  },
+  {
+    "case": "out_of_scope_commit_then_revert",
+    "accepted": true,
+    "status": "verification_pending",
+    "intermediateCommit": "1fddebe50ad509c53852eef19908eaafdf06f14d",
+    "submitted": "3d32ca540ce894434d2cabf32b72f6a757f9f991"
+  }
+]

@@ -1,0 +1,353 @@
+{
+  "schemaVersion": "architecture_handoff_v1",
+  "workspaceId": "workspace-fixture",
+  "versionEnvelope": {
+    "version": {
+      "schemaVersion": "architecture_version_v1",
+      "mapId": "map-fixture",
+      "mapRevision": "sha256:1e535b8c077338aba76d7d22163200469035eb27836214b0046db63f47107d67",
+      "codeRepoId": "repo-d1e316215a868ed17930b570a252c08967c4f92817f15b24565a33dcfb942978",
+      "codeRevision": "b409a98e019a9de492cd542cca72990d181657a8",
+      "verifiedCodeRevision": null,
+      "status": "confirmed_cognition",
+      "graph": {
+        "schemaVersion": "architecture_graph_v1",
+        "nodes": [
+          {
+            "id": "node-A",
+            "title": "A",
+            "responsibility": "fixture responsibility A",
+            "implementationStatus": "unknown",
+            "interfaces": [],
+            "evidenceIds": [
+              "goal-process"
+            ]
+          },
+          {
+            "id": "node-B",
+            "title": "B",
+            "responsibility": "fixture responsibility B",
+            "implementationStatus": "unknown",
+            "interfaces": [],
+            "evidenceIds": [
+              "goal-process"
+            ]
+          },
+          {
+            "id": "node-C",
+            "title": "C",
+            "responsibility": "fixture responsibility C",
+            "implementationStatus": "unknown",
+            "interfaces": [],
+            "evidenceIds": [
+              "goal-process"
+            ]
+          }
+        ],
+        "edges": [],
+        "evidence": [
+          {
+            "id": "code-flow",
+            "kind": "code",
+            "reason": "real fixture source",
+            "path": "flow.py",
+            "codeRepoId": "repo-d1e316215a868ed17930b570a252c08967c4f92817f15b24565a33dcfb942978",
+            "codeRevision": "b409a98e019a9de492cd542cca72990d181657a8",
+            "lineStart": 1,
+            "lineEnd": 4
+          },
+          {
+            "id": "goal-process",
+            "kind": "user_goal",
+            "reason": "test requirement",
+            "content": "Expected A then B then C"
+          }
+        ],
+        "processes": [
+          {
+            "id": "process-ABC",
+            "title": "Expected fixture process",
+            "kind": "expected",
+            "evidenceIds": [
+              "goal-process"
+            ],
+            "steps": [
+              {
+                "id": "step-A",
+                "nodeId": "node-A",
+                "title": "A",
+                "inputs": [],
+                "outputs": [],
+                "condition": "",
+                "branches": [],
+                "nextStepIds": [
+                  "step-B"
+                ],
+                "allowedFailures": [],
+                "evidenceIds": [
+                  "goal-process"
+                ]
+              },
+              {
+                "id": "step-B",
+                "nodeId": "node-B",
+                "title": "B",
+                "inputs": [],
+                "outputs": [],
+                "condition": "",
+                "branches": [],
+                "nextStepIds": [
+                  "step-C"
+                ],
+                "allowedFailures": [],
+                "evidenceIds": [
+                  "goal-process"
+                ]
+              },
+              {
+                "id": "step-C",
+                "nodeId": "node-C",
+                "title": "C",
+                "inputs": [],
+                "outputs": [],
+                "condition": "",
+                "branches": [],
+                "nextStepIds": [],
+                "allowedFailures": [],
+                "evidenceIds": [
+                  "goal-process"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "reviewCoverage": {
+        "scope": "all",
+        "nodes": [
+          "node-A",
+          "node-B",
+          "node-C"
+        ],
+        "edges": [],
+        "processes": [
+          "process-ABC"
+        ],
+        "evidence": [
+          "code-flow",
+          "goal-process"
+        ]
+      },
+      "limits": [
+        "TEST_ONLY_SIMULATED_HUMAN",
+        "核查仅适用于列明覆盖；不证明运行时全流程"
+      ],
+      "review": {
+        "draftId": "draft-fixture",
+        "draftRevision": 1,
+        "workspaceId": "workspace-fixture",
+        "mapId": "map-fixture",
+        "expectedMapRevision": null,
+        "codeRepoId": "repo-d1e316215a868ed17930b570a252c08967c4f92817f15b24565a33dcfb942978",
+        "codeRevision": "b409a98e019a9de492cd542cca72990d181657a8",
+        "proposalId": "proposal-fixture",
+        "actor": "TEST_ONLY_SIMULATED_HUMAN",
+        "reason": "TEST ONLY fixture",
+        "beforeGraph": null,
+        "afterGraph": {
+          "schemaVersion": "architecture_graph_v1",
+          "nodes": [
+            {
+              "id": "node-A",
+              "title": "A",
+              "responsibility": "fixture responsibility A",
+              "implementationStatus": "unknown",
+              "interfaces": [],
+              "evidenceIds": [
+                "goal-process"
+              ]
+            },
+            {
+              "id": "node-B",
+              "title": "B",
+              "responsibility": "fixture responsibility B",
+              "implementationStatus": "unknown",
+              "interfaces": [],
+              "evidenceIds": [
+                "goal-process"
+              ]
+            },
+            {
+              "id": "node-C",
+              "title": "C",
+              "responsibility": "fixture responsibility C",
+              "implementationStatus": "unknown",
+              "interfaces": [],
+              "evidenceIds": [
+                "goal-process"
+              ]
+            }
+          ],
+          "edges": [],
+          "evidence": [
+            {
+              "id": "code-flow",
+              "kind": "code",
+              "reason": "real fixture source",
+              "path": "flow.py",
+              "codeRepoId": "repo-d1e316215a868ed17930b570a252c08967c4f92817f15b24565a33dcfb942978",
+              "codeRevision": "b409a98e019a9de492cd542cca72990d181657a8",
+              "lineStart": 1,
+              "lineEnd": 4
+            },
+            {
+              "id": "goal-process",
+              "kind": "user_goal",
+              "reason": "test requirement",
+              "content": "Expected A then B then C"
+            }
+          ],
+          "processes": [
+            {
+              "id": "process-ABC",
+              "title": "Expected fixture process",
+              "kind": "expected",
+              "evidenceIds": [
+                "goal-process"
+              ],
+              "steps": [
+                {
+                  "id": "step-A",
+                  "nodeId": "node-A",
+                  "title": "A",
+                  "inputs": [],
+                  "outputs": [],
+                  "condition": "",
+                  "branches": [],
+                  "nextStepIds": [
+                    "step-B"
+                  ],
+                  "allowedFailures": [],
+                  "evidenceIds": [
+                    "goal-process"
+                  ]
+                },
+                {
+                  "id": "step-B",
+                  "nodeId": "node-B",
+                  "title": "B",
+                  "inputs": [],
+                  "outputs": [],
+                  "condition": "",
+                  "branches": [],
+                  "nextStepIds": [
+                    "step-C"
+                  ],
+                  "allowedFailures": [],
+                  "evidenceIds": [
+                    "goal-process"
+                  ]
+                },
+                {
+                  "id": "step-C",
+                  "nodeId": "node-C",
+                  "title": "C",
+                  "inputs": [],
+                  "outputs": [],
+                  "condition": "",
+                  "branches": [],
+                  "nextStepIds": [],
+                  "allowedFailures": [],
+                  "evidenceIds": [
+                    "goal-process"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "appliedOperations": [],
+        "rejectedCandidates": [],
+        "reviewCoverage": {
+          "scope": "all",
+          "nodes": [
+            "node-A",
+            "node-B",
+            "node-C"
+          ],
+          "edges": [],
+          "processes": [
+            "process-ABC"
+          ],
+          "evidence": [
+            "code-flow",
+            "goal-process"
+          ]
+        },
+        "limits": [
+          "TEST_ONLY_SIMULATED_HUMAN"
+        ],
+        "verifyCode": false,
+        "origin": "manual",
+        "reviewId": "review-fixture",
+        "decision": "accept",
+        "reviewedAt": 1,
+        "previewDigest": "sha256:09416222ba66a7088e1acc7978fc291824afa3b194b3628476c510492c8fa272",
+        "verifiedCodeRevision": null,
+        "actorIdentity": "local_operator_declaration"
+      },
+      "origin": "manual",
+      "confirmation": {
+        "nodes": {
+          "confirmed": [
+            "node-A",
+            "node-B",
+            "node-C"
+          ],
+          "unconfirmed": []
+        },
+        "edges": {
+          "confirmed": [],
+          "unconfirmed": []
+        },
+        "processes": {
+          "confirmed": [
+            "process-ABC"
+          ],
+          "unconfirmed": []
+        },
+        "evidence": {
+          "confirmed": [
+            "code-flow",
+            "goal-process"
+          ],
+          "unconfirmed": []
+        }
+      }
+    },
+    "provenance": {
+      "mapSourceRevision": "a7b8e554bfa7e451d2276cc80388ab42d5df592d",
+      "sourceKind": "git_commit"
+    }
+  },
+  "sources": {
+    "code": "https://example.invalid/archloop/code.git",
+    "architecture": "https://example.invalid/archloop/architecture.git"
+  },
+  "task": {
+    "state": "pending",
+    "nextAction": "核查来源与固定版本"
+  },
+  "references": {
+    "candidates": [],
+    "reviews": [],
+    "deviations": [],
+    "logs": []
+  },
+  "trust": "untrusted_until_local_git_check",
+  "limits": [
+    "传输摘要仅检查内容一致，不认证来源或操作者。",
+    "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。"
+  ],
+  "transportDigest": "sha256:7604badb071b0e134840ba474094729cd6ffbe8e6559da3b145f79d160d7b9ce"
+}
