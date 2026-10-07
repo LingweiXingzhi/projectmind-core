@@ -188,6 +188,7 @@
                   <div class="compare-heading"><div><h2>自然语言纠正</h2><p>选中节点或区域，描述要改什么；预览确认后才应用到草稿。</p></div></div>
                   <div class="compare-controls">
                     <label class="arch-wide">纠正说明<input id="arch-correction-input" type="text" spellcheck="false" placeholder="例如：这块的职责说错了，它只负责 X" /></label>
+                    <label>纠正方式<select id="arch-correction-mode"><option value="production">真实 AI（未配置时如实返回 NOT_RUN）</option><option value="rule_based">规则纠正（C 引擎，标注 rule_based）</option></select></label>
                     <button class="button primary" id="arch-correction-button" type="button" disabled>生成纠正预览</button>
                     <button class="button ghost" id="arch-deviations-button" type="button" disabled title="C 规则引擎：无追踪证据时为 UNKNOWN">过程偏差检查（规则）</button>
                     <button class="button ghost" id="arch-incremental-button" type="button" disabled>代码变化→认知候选（规则）</button>

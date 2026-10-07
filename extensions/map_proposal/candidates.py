@@ -329,7 +329,10 @@ def detect_process_deviations(graph: dict, observed_traces: list) -> dict:
                 deviations.append({
                     "deviationId": f"dev_{target_id}_{prior or 'start'}_{missing[0]}",
                     "nodeId": target_id,
-                    "type": "incomplete_chain",
+                    # an executed step whose declared successor did not run is
+                    # the classic bypass; a chain that never started at its
+                    # first step is an incomplete chain
+                    "type": "bypassed_step" if prior else "incomplete_chain",
                     "expectedStep": missing[0],
                     "priorStep": prior,
                     "missingSteps": missing,

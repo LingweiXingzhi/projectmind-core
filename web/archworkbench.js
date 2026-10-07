@@ -837,10 +837,13 @@
       // production path only: the real model when configured, otherwise C's
       // rule engine (labeled rule_based). The dev-sample path is reachable
       // solely through the explicitly labeled sample button (FINAL-UI-01).
+      const modeSelect = document.getElementById("arch-correction-mode");
+      const mode = modeSelect ? modeSelect.value : "production";
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/correction-preview`, {
         expectedDraftRevision: currentDraftRevision(),
         instruction,
         selectedNodeIds: [state.selectedNodeId],
+        mode,
       });
       state.correctionPreview = result;
       renderCorrectionPreview();
