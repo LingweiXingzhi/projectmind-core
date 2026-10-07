@@ -1,0 +1,10 @@
+Command: python -m unittest discover -s tests -q
+----------------------------------------------------------------------
+Ran 663 tests in 89.228s
+
+OK (skipped=14)
+
+Final UI browser acceptance: 22 PASS; 0 JavaScript exceptions.
+Targeted evidence tests: 5 PASS. Repo Explorer HTTP boundary: 6 PASS.
+JavaScript node --check: PASS. git diff --check: PASS.
+Python backends and API definitions: no modifications.

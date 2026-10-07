@@ -8,7 +8,48 @@
   const stage = document.getElementById("arch-map-stage");
   const details = document.getElementById("arch-details-content");
   const NODE_W = 200;
-  const NODE_H = 150;
+  const NODE_H = 132;
+  let inspectorTab = 'overview';
+  let canvasTab = 'canvas';
+  let zoom = 1;
+  let nodePositions = {};
+  let workspacePaths={};
+  try{workspacePaths=JSON.parse(localStorage.getItem('projectmind:workspace-paths')||'{}')||{};}catch(e){}
+  function rememberPath(id,path){workspacePaths[id]=path;try{localStorage.setItem('projectmind:workspace-paths',JSON.stringify(workspacePaths));}catch(e){}}
+
+  const correctionCard = document.getElementById('arch-correction-card');
+  const inspector = details.closest('.details');
+  inspector.append(correctionCard);
+  function emitWorkspace() { document.dispatchEvent(new CustomEvent('projectmind:workspace', {detail:state.envelope})); }
+  function positionKey(){return `projectmind:arch-layout:${state.envelope?.workspace.workspaceId}`;}
+  function setZoom(value){zoom=Math.max(.4,Math.min(1.6,value));stage.style.transform=`scale(${zoom})`;document.getElementById('canvas-zoom').textContent=`${Math.round(zoom*100)}%`;}
+  document.getElementById('canvas-zoom-in').onclick=()=>setZoom(zoom+.1);
+  document.getElementById('canvas-zoom-out').onclick=()=>setZoom(zoom-.1);
+  document.getElementById('canvas-fit').onclick=()=>{const scroll=document.getElementById('arch-canvas-scroll');setZoom(Math.min(1,(scroll.clientWidth-60)/(parseFloat(stage.style.width)||720)));scroll.scrollLeft=scroll.scrollTop=0;};
+  let pan=null;
+  const scroll=document.getElementById('arch-canvas-scroll');
+  scroll.addEventListener('pointerdown',e=>{if(e.target.closest('.map-node')||e.button!==0)return;pan={x:e.clientX,y:e.clientY,left:scroll.scrollLeft,top:scroll.scrollTop};scroll.setPointerCapture(e.pointerId);scroll.style.cursor='grabbing';});
+  scroll.addEventListener('pointermove',e=>{if(pan){scroll.scrollLeft=pan.left+pan.x-e.clientX;scroll.scrollTop=pan.top+pan.y-e.clientY;}});
+  for(const type of ['pointerup','pointercancel'])scroll.addEventListener(type,()=>{pan=null;scroll.style.cursor='';});
+  for(const tab of document.querySelectorAll('[data-arch-tab]'))tab.onclick=()=>{canvasTab=tab.dataset.archTab;renderCanvasTab();};
+  function renderCanvasTab(){
+    for(const tab of document.querySelectorAll('[data-arch-tab]'))tab.classList.toggle('active',tab.dataset.archTab===canvasTab);
+    const mapCard=stage.closest('.map-card');mapCard.hidden=canvasTab!=='canvas';
+    document.getElementById('arch-outline').hidden=canvasTab!=='outline';
+    document.getElementById('arch-history-card').hidden=canvasTab!=='versions';
+  }
+  document.getElementById('arch-new-workspace').onclick=()=>{document.getElementById('view-arch').classList.remove('has-workspace');document.getElementById('arch-entry-card').hidden=false;document.getElementById('arch-history-card').hidden=false;document.getElementById('arch-workspace').hidden=true;document.getElementById('arch-entry-card').scrollIntoView({block:'start'});};
+  document.getElementById('arch-add-node').onclick=async()=>{
+    if(!requireDraft())return;
+    const form=await workspaceDialog('新增架构节点',[['title','名称'],['summary','职责说明','textarea']], '添加到草稿');if(!form)return;
+    const title=form.title;
+    const id=`n_${Date.now().toString(36)}`;
+    const ok=await applyOps([{type:'add_node',node:{id,title:title.trim(),summary:form.summary||'待补充职责',status:'candidate',provenance:'human_input',entryPoints:[],interfaces:[],evidence:[],process:[]}}],'节点已添加到草稿。');
+    if(ok){state.selectedNodeId=id;inspectorTab='edit';renderWorkspace();}
+  };
+  document.addEventListener('projectmind:open-workspace',async event=>{try{openEnvelope(await api('GET',`/api/archloop/workspaces/${encodeURIComponent(event.detail)}`));}catch(error){setStatus('arch-create-status',error.message,true);}});
+  document.addEventListener('projectmind:select-node',event=>{if(graph()?.nodes.some(n=>n.id===event.detail)){state.selectedNodeId=event.detail;inspectorTab='overview';renderWorkspace();}});
+
 
   const state = {
     envelope: null,        // workspace envelope from the server
@@ -31,6 +72,18 @@
     const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
     for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, String(value));
     return node;
+  }
+
+
+  function workspaceDialog(title, fields, action='继续') {
+    return new Promise(resolve=>{
+      const dialog=el('dialog','workspace-dialog');const form=el('form');form.method='dialog';
+      form.append(el('h2',null,title));const inputs={};
+      for(const [id,label,type] of fields){const input=el(type==='textarea'?'textarea':'input');input.name=id;input.required=['title','actor','deviation','repoPath'].includes(id);if(type==='textarea')input.rows=3;input.setAttribute('aria-label',label);inputs[id]=input;form.append(labeledField(label,input));}
+      const buttons=el('div','dialog-actions');const cancel=el('button','button ghost','取消');cancel.type='button';cancel.onclick=()=>dialog.close('cancel');const submit=el('button','button primary',action);submit.type='submit';buttons.append(cancel,submit);form.append(buttons);dialog.append(form);document.body.append(dialog);
+      form.addEventListener('submit',event=>{event.preventDefault();if(!form.reportValidity())return;dialog.close('submit');});
+      dialog.addEventListener('close',()=>{resolve(dialog.returnValue==='submit'?Object.fromEntries(Object.entries(inputs).map(([id,input])=>[id,input.value.trim()])):null);dialog.remove();},{once:true});dialog.showModal();Object.values(inputs)[0]?.focus();
+    });
   }
 
   function short(sha) { return sha ? String(sha).slice(0, 12) : "—"; }
@@ -97,6 +150,7 @@
     setStatus("arch-create-status", "正在创建工作区并读取仓库…");
     try {
       const result = await api("POST", "/api/archloop/workspaces", payload);
+      rememberPath(result.workspace.workspaceId,payload.repoPath);
       openEnvelope(result);
       await loadHistory();
       setStatus("arch-create-status", `工作区已创建：${result.workspace.workspaceId}（代码 ${short(result.identity.codeRevision)}）`);
@@ -134,7 +188,7 @@
       const card = document.getElementById("arch-history-card");
       const list = document.getElementById("arch-history-list");
       list.replaceChildren();
-      card.hidden = result.workspaces.length === 0;
+      card.hidden = Boolean(state.envelope) ? canvasTab!=="versions" : result.workspaces.length === 0;
       for (const workspace of result.workspaces) {
         const row = el("div", "arch-history-row");
         row.append(el("strong", null, workspace.title || workspace.workspaceId),
@@ -155,13 +209,22 @@
 
   function openEnvelope(envelope) {
     state.envelope = envelope;
+    try { const saved=JSON.parse(localStorage.getItem(positionKey())||'{}');nodePositions=Object.fromEntries(Object.entries(saved||{}).filter(([id,p])=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<10000&&p.y<10000)); } catch(e){nodePositions={};}
+    try { localStorage.setItem('projectmind:last-workspace',envelope.workspace.workspaceId); } catch(e){}
+    inspectorTab='overview';canvasTab='canvas';
+    document.getElementById('view-arch').classList.add('has-workspace');
+    document.getElementById('arch-entry-card').hidden=true;
+    document.getElementById('arch-history-card').hidden=true;
+    document.getElementById('arch-add-node').disabled=!envelope.draft;
     state.pendingCandidate = null;
     state.selectedNodeId = null;
     state.correctionPreview = null;
+    document.getElementById("arch-correction-input").value="";
     document.getElementById("arch-workspace").hidden = false;
     document.getElementById("arch-review-result").replaceChildren();
     document.getElementById("arch-correction-preview").replaceChildren();
     renderWorkspace();
+    document.getElementById('view-arch').scrollTop=0;
   }
 
   function setGenStatus(message, isError) {
@@ -213,6 +276,7 @@
 
     document.getElementById("arch-recheck-button").hidden = planning;
     const hasDraft = Boolean(graph());
+    document.getElementById("arch-add-node").disabled=!hasDraft||state.busy;
     document.getElementById("arch-review-button").disabled = !hasDraft || state.busy;
     document.getElementById("arch-fixtask-button").disabled = !hasDraft || state.busy;
     document.getElementById("arch-correction-button").disabled = !hasDraft || !state.selectedNodeId || state.busy;
@@ -224,6 +288,8 @@
     renderGraph();
     renderDetails();
     renderCorrectionPreview();
+    renderCanvasTab();
+    emitWorkspace();
   }
 
   // ---------- graph rendering ----------
@@ -234,6 +300,12 @@
       x: (index % perRow) * (NODE_W + 24) + 20,
       y: Math.floor(index / perRow) * (NODE_H + 28) + 20,
     }));
+  }
+
+  function connectionPath(from,to){
+    const dx=to.x-from.x,dy=to.y-from.y;
+    if(Math.abs(dy)>Math.abs(dx)*.8){const x1=from.x+NODE_W/2,x2=to.x+NODE_W/2,y1=from.y+(dy>=0?NODE_H:0),y2=to.y+(dy>=0?0:NODE_H);return `M ${x1} ${y1} C ${x1} ${(y1+y2)/2}, ${x2} ${(y1+y2)/2}, ${x2} ${y2}`;}
+    const x1=from.x+(dx>=0?NODE_W:0),x2=to.x+(dx>=0?0:NODE_W),y1=from.y+NODE_H/2,y2=to.y+NODE_H/2;return `M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`;
   }
 
   function nodeBadge(node) {
@@ -247,12 +319,17 @@
   function renderGraph() {
     const current = graph();
     stage.replaceChildren();
-    if (!current) return;
-    const positions = autoPositions(current.nodes);
+    const outline=document.getElementById('arch-outline');outline.replaceChildren();
+    if (!current){stage.append(el('div','loading','工作区已就绪。生成候选或载入明确标注的演示样例。'));return;}
+    const positions = autoPositions(current.nodes).map((pos,index)=>nodePositions[current.nodes[index].id]||pos);
     const width = Math.max(720, (Math.min(current.nodes.length, 3)) * (NODE_W + 24) + 40);
     const rows = Math.ceil(current.nodes.length / 3);
-    const height = Math.max(500, rows * (NODE_H + 28) + 40);
-    const connections = svg("svg", { class: "connections", viewBox: `0 0 ${width} ${height}`, "aria-hidden": "true" });
+    const height = Math.max(480, rows * (NODE_H + 28) + 40, ...positions.map(p=>p.y+NODE_H+30));
+    stage.style.width=`${Math.max(width,...positions.map(p=>p.x+NODE_W+30))}px`;
+    stage.style.height=`${height}px`;
+    setZoom(zoom);
+    const connections = svg("svg", { class: "connections", viewBox: `0 0 ${parseFloat(stage.style.width)} ${height}`, "aria-hidden": "true" });
+    const defs=svg('defs',{});const marker=svg('marker',{id:'arch-arrow',viewBox:'0 -4 8 8',refX:7,refY:0,markerWidth:6,markerHeight:6,orient:'auto'});marker.append(svg('path',{d:'M 0 -3 L 7 0 L 0 3',fill:'none',stroke:'#9cafcc','stroke-width':1}));defs.append(marker);connections.append(defs);
     const byId = new Map(current.nodes.map((node, index) => [node.id, positions[index]]));
     for (const edge of current.edges) {
       const from = byId.get(edge.from);
@@ -262,25 +339,38 @@
       const x2 = to.x + NODE_W / 2, y2 = to.y + NODE_H / 2;
       const active = state.selectedNodeId && (edge.from === state.selectedNodeId || edge.to === state.selectedNodeId);
       connections.append(svg("path", {
-        d: `M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`,
+        d: connectionPath(from,to),
+        "marker-end":"url(#arch-arrow)",
         class: `connection-line${active ? " active" : ""}`,
+        "data-from":edge.from,"data-to":edge.to,
       }));
     }
+    connections.style.width=stage.style.width;connections.style.height=stage.style.height;
     stage.append(connections);
     current.nodes.forEach((node, index) => {
       const button = el("button", `map-node${node.id === state.selectedNodeId ? " selected" : ""}`);
       button.type = "button";
+      button.dataset.nodeId=node.id;button.dataset.status=node.status;button.title=`${node.title}\n${node.summary}`;
       button.style.left = `${positions[index].x}px`;
       button.style.top = `${positions[index].y}px`;
       button.style.width = `${NODE_W}px`;
       button.style.height = `${NODE_H}px`;
       button.setAttribute("aria-pressed", String(node.id === state.selectedNodeId));
-      button.append(el("span", "node-number", String(index + 1).padStart(2, "0")));
+      button.append(el("span", "node-number", `${(node.evidence||[]).length} evidence`));
       button.append(el("strong", "node-title", node.title));
       button.append(el("span", "node-summary", node.summary));
       button.append(el("span", "node-review", nodeBadge(node)));
       button.append(el("span", "node-arrow", "↗"));
-      button.addEventListener("click", () => { state.selectedNodeId = node.id; renderWorkspace(); });
+      let drag=null,moved=false;
+      button.addEventListener('pointerdown',event=>{if(event.button!==0)return;moved=false;drag={x:event.clientX,y:event.clientY,origin:{...positions[index]}};button.setPointerCapture(event.pointerId);});
+      button.addEventListener('pointermove',event=>{if(!drag)return;const dx=(event.clientX-drag.x)/zoom,dy=(event.clientY-drag.y)/zoom;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;if(!moved)return;nodePositions[node.id]={x:Math.max(10,drag.origin.x+dx),y:Math.max(10,drag.origin.y+dy)};button.style.left=`${nodePositions[node.id].x}px`;button.style.top=`${nodePositions[node.id].y}px`;
+        for(const line of connections.querySelectorAll('path[data-from]')){const a=nodePositions[line.dataset.from]||byId.get(line.dataset.from),b=nodePositions[line.dataset.to]||byId.get(line.dataset.to);if(!a||!b)continue;const x1=a.x+NODE_W/2,y1=a.y+NODE_H/2,x2=b.x+NODE_W/2,y2=b.y+NODE_H/2;line.setAttribute('d',connectionPath(a,b));}
+      });
+      button.addEventListener('pointerup',()=>{drag=null;if(moved){try{localStorage.setItem(positionKey(),JSON.stringify(nodePositions));setStatus('arch-draft-status','查看布局已保存在当前浏览器；没有改变架构关系。');}catch(e){setStatus('arch-draft-status','布局无法保存到当前浏览器。',true);}renderGraph();}});
+      button.addEventListener('pointercancel',()=>{drag=null;renderGraph();});
+      button.addEventListener('click',()=>{if(moved)return;state.selectedNodeId=node.id;inspectorTab='overview';renderWorkspace();});
+      button.addEventListener('dblclick',()=>{state.selectedNodeId=node.id;inspectorTab='edit';renderDetails();});
+      const outlineRow=el('button','outline-row');outlineRow.type='button';const copy=el('span');copy.append(el('strong',null,node.title),el('small',null,node.summary));outlineRow.append(copy,el('span','outline-badge',nodeBadge(node)));outlineRow.onclick=()=>{state.selectedNodeId=node.id;inspectorTab='overview';renderWorkspace();};outline.append(outlineRow);
       stage.append(button);
     });
     document.getElementById("arch-node-count").textContent = `${current.nodes.length} 个功能节点 · ${current.edges.length} 条关系`;
@@ -328,6 +418,7 @@
   function renderDetails() {
     details.replaceChildren();
     const current = graph();
+    correctionCard.hidden=!current||!state.selectedNodeId;
     if (!current) {
       details.append(el("div", "empty-details", "还没有候选图。"));
       return;
@@ -341,6 +432,32 @@
     details.append(el("div", "detail-tag", `${nodeBadge(node)} · ${node.id}`));
     const title = el("h3", "detail-title", node.title);
     details.append(title);
+    const tabs=el('div','inspector-tabs');
+    for(const [id,label] of [['overview','概览'],['evidence','证据'],['relations','关系'],['edit','编辑']]){const b=el('button',inspectorTab===id?'active':'',label);b.type='button';b.onclick=()=>{inspectorTab=id;renderDetails();};tabs.append(b);}details.append(tabs);
+    if(inspectorTab!=='edit'){
+      const body=el('div','inspector-readonly');
+      if(inspectorTab==='overview'){
+        body.append(el('h4',null,'职责'),el('p',null,node.summary),el('h4',null,'来源与状态'),el('p',null,`${nodeBadge(node)} · ${node.provenance}`),el('h4',null,'入口 / 接口'));
+        [...(node.entryPoints||[]),...(node.interfaces||[])].forEach(value=>body.append(el('div','inspector-evidence',value)));
+        if(!(node.entryPoints||[]).length&&!(node.interfaces||[]).length)body.append(el('p','inspector-empty','尚未记录入口和接口'));
+        body.append(el('h4',null,'期望过程'));
+        (node.process||[]).forEach(step=>body.append(el('p',null,`${step.title} · ${step.detail||''}`)));
+        if(!(node.process||[]).length)body.append(el('p','inspector-empty','尚未描述过程'));
+      }
+      if(inspectorTab==='overview'||inspectorTab==='evidence'){
+        body.append(el('h4',null,`证据文件 · ${(node.evidence||[]).length}`));
+        (node.evidence||[]).forEach(item=>{const evidence=el('div','evidence-card');evidence.append(el('code','evidence-path',item.path),el('p','evidence-reason',item.reason),el('small','evidence-status',item.kind||'unknown'));
+        if(state.envelope.identity.codeRevision){const open=el('button','evidence-button','查看固定版本代码 ↗');open.type='button';open.onclick=async()=>{const workspaceId=state.envelope.workspace.workspaceId,revision=state.envelope.identity.codeRevision;let repoPath=workspacePaths[workspaceId];if(!repoPath){const choice=await workspaceDialog('选择此工作区的代码仓库',[['repoPath','本机仓库绝对路径']], '查看代码');if(!choice)return;repoPath=choice.repoPath;rememberPath(workspaceId,repoPath);}activateView('explorer');document.dispatchEvent(new CustomEvent('projectmind:open-evidence',{detail:{repoPath,revision,path:item.path}}));};evidence.append(open);}body.append(evidence);});
+        if(!(node.evidence||[]).length)body.append(el('p','inspector-empty','没有声明证据'));
+      }
+      if(inspectorTab==='relations'){
+        body.append(el('h4',null,'关联模块'));
+        const linked=current.edges.filter(e=>e.from===node.id||e.to===node.id);
+        linked.forEach(edge=>{const target=current.nodes.find(n=>n.id===(edge.from===node.id?edge.to:edge.from));const b=el('button','outline-row',`${edge.from===node.id?'→':'←'} ${target?.title||'未知'} · ${edge.label||edge.type}`);b.onclick=()=>{state.selectedNodeId=target.id;renderWorkspace();};body.append(b);});
+        if(!linked.length)body.append(el('p','inspector-empty','尚未记录关系'));
+      }
+      details.append(body);return;
+    }
 
     // responsibility + title editing
     const titleInput = el("input");
@@ -728,9 +845,9 @@
 
   document.getElementById("arch-review-button").addEventListener("click", async () => {
     if (!state.envelope || !graph() || state.busy) return;
-    const actor = window.prompt("确认并保存版本：请输入复核人（本机操作者声明）");
-    if (!actor) return;
-    const reason = window.prompt("复核理由（将随决定一起记录）") || "";
+    const review=await workspaceDialog('复核并保存',[['actor','复核人（本机操作者声明）'],['reason','复核理由','textarea']], '提交复核');
+    if(!review)return;
+    const {actor,reason}=review;
     state.busy = true;
     renderWorkspace();
     try {
@@ -763,9 +880,9 @@
 
   document.getElementById("arch-fixtask-button").addEventListener("click", async () => {
     if (!state.envelope || !graph() || state.busy) return;
-    const deviation = window.prompt("偏差描述：期望过程与实际观察有什么差异？");
-    if (!deviation) return;
-    const acceptance = window.prompt("验收标准（实施者提交什么算修复）") || "";
+    const task=await workspaceDialog('创建实施修正任务',[['deviation','偏差描述','textarea'],['acceptance','验收标准','textarea']], '生成任务');
+    if(!task)return;
+    const {deviation,acceptance}=task;
     state.busy = true;
     renderWorkspace();
     try {
@@ -812,8 +929,9 @@
         const rebind = el("button", "button ghost", "复核完成后回挂到当前 HEAD");
         rebind.type = "button";
         rebind.addEventListener("click", async () => {
-          const actor = window.prompt("回挂需要复核人（本机操作者声明）");
-          if (!actor) return;
+          const review=await workspaceDialog('复核后回挂',[['actor','复核人（本机操作者声明）']], '确认回挂');
+          if(!review)return;
+          const actor=review.actor;
           try {
             const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,
               { expectedNewCodeRevision: result.newCodeRevision, actor, note: "复核后回挂" });

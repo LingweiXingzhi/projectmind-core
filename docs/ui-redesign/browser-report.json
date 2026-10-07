@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "checks": [
+    "Overview aggregates existing APIs",
+    "Command palette: shortcut, search, keyboard selection",
+    "Creation switches to the daily workspace",
+    "Sample provenance survives generation/application",
+    "Canvas / outline share selected node and Inspector",
+    "Drag saves viewing layout without architecture mutations",
+    "Canvas zoom and fit",
+    "Inspector edits persist through existing CAS endpoint",
+    "Inspector can collapse and reopen",
+    "Add node modal persists a human input candidate",
+    "Modal cancellation does not mutate the graph",
+    "Inspector opens declared evidence at pinned commit with safe syntax highlighting",
+    "Decision records preserve unverified status and save",
+    "Worklog Markdown import/read",
+    "Handoff generation and exports use unchanged backend",
+    "Changes real Git comparison / facts / proposals",
+    "Repository tree / source viewer",
+    "Overview refreshes actual work records after navigation",
+    "Small screen: no page horizontal overflow",
+    "Overview handles read failure honestly",
+    "No-map mode prevents unsupported iframe/API composition",
+    "No browser JavaScript exceptions"
+  ],
+  "errors": [],
+  "origin": "http://127.0.0.1:8835",
+  "notes": "Temporary browser fixtures; no real AI run, no human-approved model created."
+}

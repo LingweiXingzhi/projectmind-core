@@ -326,6 +326,17 @@ async function openExplorerFile(path, startLine = 1, ctx = null, retried = false
   }
 }
 
+document.addEventListener('projectmind:open-evidence',async event=>{
+  const source=event.detail;
+  document.getElementById('explorer-repo-path').value=source.repoPath;
+  document.getElementById('explorer-revision').value=source.revision;
+  await openRepository({preventDefault(){}});
+  if(document.getElementById('explorer-workspace').hidden||explorerState.repoPath!==source.repoPath||explorerState.revision!==source.revision)return;
+  const entry=explorerState.treeEntries.find(e=>e.path===source.path.replace(/\/$/,''));
+  if(entry?.kind==='directory'){document.getElementById('explorer-search').value=entry.path;renderTree(entry.path);}
+  else await openExplorerFile(source.path);
+});
+
 // ---------- 比较两个提交（changes） ----------
 async function ensureContext(sha, versionLabel, gen) {
   const cached = explorerState.contexts[sha];
@@ -465,7 +476,12 @@ function renderFile(result, replace) {
   lines.forEach((text, index) => {
     gutter.appendChild(explorerElement("div", "explorer-line-no", String(first + index)));
     const lineNode = explorerElement("div", "explorer-line");
-    lineNode.textContent = text.length ? text : " ";
+    const raw=text.length?text:' ';
+    if(/\.(py|js|ts|jsx|tsx|java|c|cpp|h|json)$/.test(result.path)) {
+      const tokens=raw.matchAll(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|#.*$|\/\/.*$|\b(?:def|class|return|import|from|if|else|elif|for|while|try|except|with|async|await|function|const|let|var|new|throw|public|private|static|void|true|false|None|null)\b|\b\d+(?:\.\d+)?\b)/g);
+      let cursor=0;
+      for(const token of tokens){lineNode.append(document.createTextNode(raw.slice(cursor,token.index)));const value=token[0];const kind=value.startsWith('#')||value.startsWith('//')?'comment':value.startsWith('"')||value.startsWith("'")?'string':/^\d/.test(value)?'number':'keyword';lineNode.append(explorerElement('span',`syntax-${kind}`,value));cursor=token.index+value.length;}lineNode.append(document.createTextNode(raw.slice(cursor)));
+    } else lineNode.textContent=raw;
     body.appendChild(lineNode);
   });
   const renderedLines = (replace ? 0 : explorerState.fileCursor.renderedLines) + lines.length;
