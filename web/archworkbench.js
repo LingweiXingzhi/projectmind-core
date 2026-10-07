@@ -8,9 +8,48 @@
   const stage = document.getElementById("arch-map-stage");
   const details = document.getElementById("arch-details-content");
   const NODE_W = 200;
-  const NODE_H = 150;
+  const NODE_H = 132;
+  let inspectorTab = 'overview';
+  let canvasTab = 'canvas';
+  let zoom = 1;
+  let nodePositions = {};
+  let workspacePaths={};
+  try{workspacePaths=JSON.parse(localStorage.getItem('projectmind:workspace-paths')||'{}')||{};}catch(e){}
+  function rememberPath(id,path){workspacePaths[id]=path;try{localStorage.setItem('projectmind:workspace-paths',JSON.stringify(workspacePaths));}catch(e){}}
 
-  const reviewFlow = { actor: null, previewDigest: null, reviewId: null, publicationAuthorized: false };
+  const correctionCard = document.getElementById('arch-correction-card');
+  const inspector = details.closest('.details');
+  inspector.append(correctionCard);
+  function emitWorkspace() { document.dispatchEvent(new CustomEvent('projectmind:workspace', {detail:state.envelope})); }
+  function positionKey(){return `projectmind:arch-layout:${state.envelope?.workspace.workspaceId}`;}
+  function setZoom(value){zoom=Math.max(.4,Math.min(1.6,value));stage.style.transform=`scale(${zoom})`;document.getElementById('canvas-zoom').textContent=`${Math.round(zoom*100)}%`;}
+  document.getElementById('canvas-zoom-in').onclick=()=>setZoom(zoom+.1);
+  document.getElementById('canvas-zoom-out').onclick=()=>setZoom(zoom-.1);
+  document.getElementById('canvas-fit').onclick=()=>{const scroll=document.getElementById('arch-canvas-scroll');setZoom(Math.min(1,(scroll.clientWidth-60)/(parseFloat(stage.style.width)||720)));scroll.scrollLeft=scroll.scrollTop=0;};
+  let pan=null;
+  const scroll=document.getElementById('arch-canvas-scroll');
+  scroll.addEventListener('pointerdown',e=>{if(e.target.closest('.map-node')||e.button!==0)return;pan={x:e.clientX,y:e.clientY,left:scroll.scrollLeft,top:scroll.scrollTop};scroll.setPointerCapture(e.pointerId);scroll.style.cursor='grabbing';});
+  scroll.addEventListener('pointermove',e=>{if(pan){scroll.scrollLeft=pan.left+pan.x-e.clientX;scroll.scrollTop=pan.top+pan.y-e.clientY;}});
+  for(const type of ['pointerup','pointercancel'])scroll.addEventListener(type,()=>{pan=null;scroll.style.cursor='';});
+  for(const tab of document.querySelectorAll('[data-arch-tab]'))tab.onclick=()=>{canvasTab=tab.dataset.archTab;renderCanvasTab();};
+  function renderCanvasTab(){
+    for(const tab of document.querySelectorAll('[data-arch-tab]'))tab.classList.toggle('active',tab.dataset.archTab===canvasTab);
+    const mapCard=stage.closest('.map-card');mapCard.hidden=canvasTab!=='canvas';
+    document.getElementById('arch-outline').hidden=canvasTab!=='outline';
+    document.getElementById('arch-history-card').hidden=canvasTab!=='versions';
+  }
+  document.getElementById('arch-new-workspace').onclick=()=>{document.getElementById('view-arch').classList.remove('has-workspace');document.getElementById('arch-entry-card').hidden=false;document.getElementById('arch-history-card').hidden=false;document.getElementById('arch-workspace').hidden=true;document.getElementById('arch-entry-card').scrollIntoView({block:'start'});};
+  document.getElementById('arch-add-node').onclick=async()=>{
+    if(!requireDraft())return;
+    const form=await workspaceDialog('新增架构节点',[['title','名称'],['summary','职责说明','textarea']], '添加到草稿');if(!form)return;
+    const title=form.title;
+    const id=`n_${Date.now().toString(36)}`;
+    const ok=await applyOps([{type:'add_node',node:{id,title:title.trim(),summary:form.summary||'待补充职责',status:'candidate',provenance:'human_input',entryPoints:[],interfaces:[],evidence:[],process:[]}}],'节点已添加到草稿。');
+    if(ok){state.selectedNodeId=id;inspectorTab='edit';renderWorkspace();}
+  };
+  document.addEventListener('projectmind:open-workspace',async event=>{try{openEnvelope(await api('GET',`/api/archloop/workspaces/${encodeURIComponent(event.detail)}`));}catch(error){setStatus('arch-create-status',error.message,true);}});
+  document.addEventListener('projectmind:select-node',event=>{if(graph()?.nodes.some(n=>n.id===event.detail)){state.selectedNodeId=event.detail;inspectorTab='overview';renderWorkspace();}});
+
 
   const state = {
     envelope: null,        // workspace envelope from the server
@@ -35,11 +74,23 @@
     return node;
   }
 
+
+  function workspaceDialog(title, fields, action='继续') {
+    return new Promise(resolve=>{
+      const dialog=el('dialog','workspace-dialog');const form=el('form');form.method='dialog';
+      form.append(el('h2',null,title));const inputs={};
+      for(const [id,label,type] of fields){const input=el(type==='textarea'?'textarea':'input');input.name=id;input.required=['title','actor','deviation','repoPath'].includes(id);if(type==='textarea')input.rows=3;input.setAttribute('aria-label',label);inputs[id]=input;form.append(labeledField(label,input));}
+      const buttons=el('div','dialog-actions');const cancel=el('button','button ghost','取消');cancel.type='button';cancel.onclick=()=>dialog.close('cancel');const submit=el('button','button primary',action);submit.type='submit';buttons.append(cancel,submit);form.append(buttons);dialog.append(form);document.body.append(dialog);
+      form.addEventListener('submit',event=>{event.preventDefault();if(!form.reportValidity())return;dialog.close('submit');});
+      dialog.addEventListener('close',()=>{resolve(dialog.returnValue==='submit'?Object.fromEntries(Object.entries(inputs).map(([id,input])=>[id,input.value.trim()])):null);dialog.remove();},{once:true});dialog.showModal();Object.values(inputs)[0]?.focus();
+    });
+  }
+
   function short(sha) { return sha ? String(sha).slice(0, 12) : "—"; }
 
-  // Server-side write session (D-A-02): every POST needs the session cookie
-  // plus this anti-forgery header. The session also registers the declared
-  // local operator that fix tasks are attributed to.
+  // Server-side write session (CONTRACT_V1 write seam): every POST needs the
+  // session cookie plus this anti-forgery header, and the same session carries
+  // the declared local operator that human review and fix tasks are bound to.
   const writeSession = { csrfToken: null, operator: null, pending: null };
 
   async function ensureSession(operator) {
@@ -63,6 +114,9 @@
     if (body !== undefined) {
       options.headers["Content-Type"] = "application/json";
       options.body = JSON.stringify(body);
+    } else if (method !== "GET") {
+      options.headers["Content-Type"] = "application/json";
+      options.body = "{}";
     }
     if (method !== "GET") {
       await ensureSession();
@@ -73,7 +127,6 @@
     try { result = await response.json(); } catch (error) { result = null; }
     const code = result && result.error && result.error.code;
     if (!response.ok && (code === "FORBIDDEN_SESSION" || code === "FORBIDDEN_CSRF")) {
-      // an expired session is re-established once and the write retried
       writeSession.csrfToken = null;
       await ensureSession();
       options.headers["X-CSRF-Token"] = writeSession.csrfToken;
@@ -88,26 +141,6 @@
       throw err;
     }
     return result;
-  }
-
-  // The operator is declared once in the workbench form and bound to the
-  // server-side write session; a prompt-based declaration cannot be bound to
-  // a session and is unavailable in some host webviews.
-  function operatorValue(required = true) {
-    const input = document.getElementById("arch-operator-input");
-    const value = input ? input.value.trim() : "";
-    if (!value && required) {
-      setStatus("arch-review-status",
-        "请先填写本机操作者（声明）：它绑定本机会话，是人审与修正任务的 actor（非身份认证）。", true);
-      if (input) input.focus();
-      return null;
-    }
-    return value;
-  }
-
-  function fieldValue(id) {
-    const input = document.getElementById(id);
-    return input ? input.value.trim() : "";
   }
 
   function setStatus(id, message, isError) {
@@ -153,6 +186,7 @@
     setStatus("arch-create-status", "正在创建工作区并读取仓库…");
     try {
       const result = await api("POST", "/api/archloop/workspaces", payload);
+      rememberPath(result.workspace.workspaceId,payload.repoPath);
       openEnvelope(result);
       await loadHistory();
       setStatus("arch-create-status", `工作区已创建：${result.workspace.workspaceId}（代码 ${short(result.identity.codeRevision)}）`);
@@ -190,7 +224,7 @@
       const card = document.getElementById("arch-history-card");
       const list = document.getElementById("arch-history-list");
       list.replaceChildren();
-      card.hidden = result.workspaces.length === 0;
+      card.hidden = Boolean(state.envelope) ? canvasTab!=="versions" : result.workspaces.length === 0;
       for (const workspace of result.workspaces) {
         const row = el("div", "arch-history-row");
         row.append(el("strong", null, workspace.title || workspace.workspaceId),
@@ -211,13 +245,22 @@
 
   function openEnvelope(envelope) {
     state.envelope = envelope;
+    try { const saved=JSON.parse(localStorage.getItem(positionKey())||'{}');nodePositions=Object.fromEntries(Object.entries(saved||{}).filter(([id,p])=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<10000&&p.y<10000)); } catch(e){nodePositions={};}
+    try { localStorage.setItem('projectmind:last-workspace',envelope.workspace.workspaceId); } catch(e){}
+    inspectorTab='overview';canvasTab='canvas';
+    document.getElementById('view-arch').classList.add('has-workspace');
+    document.getElementById('arch-entry-card').hidden=true;
+    document.getElementById('arch-history-card').hidden=true;
+    document.getElementById('arch-add-node').disabled=!envelope.draft;
     state.pendingCandidate = null;
     state.selectedNodeId = null;
     state.correctionPreview = null;
+    document.getElementById("arch-correction-input").value="";
     document.getElementById("arch-workspace").hidden = false;
     document.getElementById("arch-review-result").replaceChildren();
     document.getElementById("arch-correction-preview").replaceChildren();
     renderWorkspace();
+    document.getElementById('view-arch').scrollTop=0;
   }
 
   function setGenStatus(message, isError) {
@@ -269,18 +312,24 @@
 
     document.getElementById("arch-recheck-button").hidden = planning;
     const hasDraft = Boolean(graph());
-    // the one-shot review button was replaced by the 3-step flow
-    // (sync -> preview -> confirm -> publish) handled by renderBackendLine
-    const fixtureTaskButton = document.getElementById("arch-fixtask-button");
-    if (fixtureTaskButton) fixtureTaskButton.disabled = !hasDraft || state.busy;
-    const correctionButton = document.getElementById("arch-correction-button");
-    if (correctionButton) correctionButton.disabled = !hasDraft || !state.selectedNodeId || state.busy;
+    document.getElementById("arch-add-node").disabled=!hasDraft||state.busy;
+    document.getElementById("arch-sync-button").disabled = !hasDraft || state.busy;
+    document.getElementById("arch-review-preview-button").disabled = !hasDraft || state.busy;
+    document.getElementById("arch-versions-button").disabled = !hasDraft || state.busy;
+    document.getElementById("arch-handover-button").disabled = !hasDraft || state.busy;
+    document.getElementById("arch-fixtask-button").disabled = !hasDraft || state.busy;
+    const fixTasksButton = document.getElementById("arch-fixtasks-button");
+    if (fixTasksButton) fixTasksButton.disabled = !hasDraft || state.busy;
+    document.getElementById("arch-correction-button").disabled = !hasDraft || !state.selectedNodeId || state.busy;
     for (const id of ["arch-deviations-button", "arch-incremental-button"]) {
       const button = document.getElementById(id);
       if (button) button.disabled = !hasDraft || state.busy;
     }
-    const diffButton = document.getElementById("arch-diff-button");
-    if (diffButton) diffButton.disabled = !hasDraft || state.busy;
+    // candidate generation only needs an open workspace (it creates the first
+    // draft); the rejection paths are shown as machine codes when unavailable
+    const rulegenButton = document.getElementById("arch-rulegen-button");
+    if (rulegenButton) rulegenButton.disabled = !state.envelope || state.busy;
+    document.getElementById("arch-diff-button").disabled = !hasDraft || state.busy;
     document.getElementById("arch-gen-count").textContent = hasDraft
       ? `草稿修订 ${short(state.envelope.identity.draftRevision)}`
       : "—";
@@ -288,6 +337,8 @@
     renderGraph();
     renderDetails();
     renderCorrectionPreview();
+    renderCanvasTab();
+    emitWorkspace();
   }
 
   // ---------- graph rendering ----------
@@ -300,6 +351,12 @@
     }));
   }
 
+  function connectionPath(from,to){
+    const dx=to.x-from.x,dy=to.y-from.y;
+    if(Math.abs(dy)>Math.abs(dx)*.8){const x1=from.x+NODE_W/2,x2=to.x+NODE_W/2,y1=from.y+(dy>=0?NODE_H:0),y2=to.y+(dy>=0?0:NODE_H);return `M ${x1} ${y1} C ${x1} ${(y1+y2)/2}, ${x2} ${(y1+y2)/2}, ${x2} ${y2}`;}
+    const x1=from.x+(dx>=0?NODE_W:0),x2=to.x+(dx>=0?0:NODE_W),y1=from.y+NODE_H/2,y2=to.y+NODE_H/2;return `M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`;
+  }
+
   function nodeBadge(node) {
     if (node.provenance === "ai_candidate") return "AI 候选";
     if (node.provenance === "rule_based") return "规则候选";
@@ -308,37 +365,20 @@
     return "候选";
   }
 
-  function renderBackendLine() {
-    const line = document.getElementById("arch-backend-line");
-    if (!line) return;
-    const backend = (state.envelope && state.envelope.backend) || {};
-    const active = Boolean(backend.versionService);
-    line.textContent = active
-      ? `版本服务：已接入（${backend.ref || backend.kind}）· 人审会话=${backend.reviewGateway ? "启用" : "未配置"}`
-      : `版本服务：未接入（${backend.labeled || backend.reason || "未配置后端"}）`;
-    line.classList.toggle("warn", !active);
-    for (const id of ["arch-sync-button", "arch-review-preview-button", "arch-versions-button",
-                      "arch-handover-button"]) {
-      const button = document.getElementById(id);
-      if (button) button.disabled = !active || state.busy;
-    }
-  }
-
-  const baseRenderWorkspace = renderWorkspace;
-  renderWorkspace = function () {
-    baseRenderWorkspace.apply(this, arguments);
-    renderBackendLine();
-  };
-
   function renderGraph() {
     const current = graph();
     stage.replaceChildren();
-    if (!current) return;
-    const positions = autoPositions(current.nodes);
+    const outline=document.getElementById('arch-outline');outline.replaceChildren();
+    if (!current){stage.append(el('div','loading','工作区已就绪。生成候选或载入明确标注的演示样例。'));return;}
+    const positions = autoPositions(current.nodes).map((pos,index)=>nodePositions[current.nodes[index].id]||pos);
     const width = Math.max(720, (Math.min(current.nodes.length, 3)) * (NODE_W + 24) + 40);
     const rows = Math.ceil(current.nodes.length / 3);
-    const height = Math.max(500, rows * (NODE_H + 28) + 40);
-    const connections = svg("svg", { class: "connections", viewBox: `0 0 ${width} ${height}`, "aria-hidden": "true" });
+    const height = Math.max(480, rows * (NODE_H + 28) + 40, ...positions.map(p=>p.y+NODE_H+30));
+    stage.style.width=`${Math.max(width,...positions.map(p=>p.x+NODE_W+30))}px`;
+    stage.style.height=`${height}px`;
+    setZoom(zoom);
+    const connections = svg("svg", { class: "connections", viewBox: `0 0 ${parseFloat(stage.style.width)} ${height}`, "aria-hidden": "true" });
+    const defs=svg('defs',{});const marker=svg('marker',{id:'arch-arrow',viewBox:'0 -4 8 8',refX:7,refY:0,markerWidth:6,markerHeight:6,orient:'auto'});marker.append(svg('path',{d:'M 0 -3 L 7 0 L 0 3',fill:'none',stroke:'#9cafcc','stroke-width':1}));defs.append(marker);connections.append(defs);
     const byId = new Map(current.nodes.map((node, index) => [node.id, positions[index]]));
     for (const edge of current.edges) {
       const from = byId.get(edge.from);
@@ -348,25 +388,38 @@
       const x2 = to.x + NODE_W / 2, y2 = to.y + NODE_H / 2;
       const active = state.selectedNodeId && (edge.from === state.selectedNodeId || edge.to === state.selectedNodeId);
       connections.append(svg("path", {
-        d: `M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`,
+        d: connectionPath(from,to),
+        "marker-end":"url(#arch-arrow)",
         class: `connection-line${active ? " active" : ""}`,
+        "data-from":edge.from,"data-to":edge.to,
       }));
     }
+    connections.style.width=stage.style.width;connections.style.height=stage.style.height;
     stage.append(connections);
     current.nodes.forEach((node, index) => {
       const button = el("button", `map-node${node.id === state.selectedNodeId ? " selected" : ""}`);
       button.type = "button";
+      button.dataset.nodeId=node.id;button.dataset.status=node.status;button.title=`${node.title}\n${node.summary}`;
       button.style.left = `${positions[index].x}px`;
       button.style.top = `${positions[index].y}px`;
       button.style.width = `${NODE_W}px`;
       button.style.height = `${NODE_H}px`;
       button.setAttribute("aria-pressed", String(node.id === state.selectedNodeId));
-      button.append(el("span", "node-number", String(index + 1).padStart(2, "0")));
+      button.append(el("span", "node-number", `${(node.evidence||[]).length} evidence`));
       button.append(el("strong", "node-title", node.title));
       button.append(el("span", "node-summary", node.summary));
       button.append(el("span", "node-review", nodeBadge(node)));
       button.append(el("span", "node-arrow", "↗"));
-      button.addEventListener("click", () => { state.selectedNodeId = node.id; renderWorkspace(); });
+      let drag=null,moved=false;
+      button.addEventListener('pointerdown',event=>{if(event.button!==0)return;moved=false;drag={x:event.clientX,y:event.clientY,origin:{...positions[index]}};button.setPointerCapture(event.pointerId);});
+      button.addEventListener('pointermove',event=>{if(!drag)return;const dx=(event.clientX-drag.x)/zoom,dy=(event.clientY-drag.y)/zoom;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;if(!moved)return;nodePositions[node.id]={x:Math.max(10,drag.origin.x+dx),y:Math.max(10,drag.origin.y+dy)};button.style.left=`${nodePositions[node.id].x}px`;button.style.top=`${nodePositions[node.id].y}px`;
+        for(const line of connections.querySelectorAll('path[data-from]')){const a=nodePositions[line.dataset.from]||byId.get(line.dataset.from),b=nodePositions[line.dataset.to]||byId.get(line.dataset.to);if(!a||!b)continue;const x1=a.x+NODE_W/2,y1=a.y+NODE_H/2,x2=b.x+NODE_W/2,y2=b.y+NODE_H/2;line.setAttribute('d',connectionPath(a,b));}
+      });
+      button.addEventListener('pointerup',()=>{drag=null;if(moved){try{localStorage.setItem(positionKey(),JSON.stringify(nodePositions));setStatus('arch-draft-status','查看布局已保存在当前浏览器；没有改变架构关系。');}catch(e){setStatus('arch-draft-status','布局无法保存到当前浏览器。',true);}renderGraph();}});
+      button.addEventListener('pointercancel',()=>{drag=null;renderGraph();});
+      button.addEventListener('click',()=>{if(moved)return;state.selectedNodeId=node.id;inspectorTab='overview';renderWorkspace();});
+      button.addEventListener('dblclick',()=>{state.selectedNodeId=node.id;inspectorTab='edit';renderDetails();});
+      const outlineRow=el('button','outline-row');outlineRow.type='button';const copy=el('span');copy.append(el('strong',null,node.title),el('small',null,node.summary));outlineRow.append(copy,el('span','outline-badge',nodeBadge(node)));outlineRow.onclick=()=>{state.selectedNodeId=node.id;inspectorTab='overview';renderWorkspace();};outline.append(outlineRow);
       stage.append(button);
     });
     document.getElementById("arch-node-count").textContent = `${current.nodes.length} 个功能节点 · ${current.edges.length} 条关系`;
@@ -414,6 +467,7 @@
   function renderDetails() {
     details.replaceChildren();
     const current = graph();
+    correctionCard.hidden=!current||!state.selectedNodeId;
     if (!current) {
       details.append(el("div", "empty-details", "还没有候选图。"));
       return;
@@ -427,6 +481,32 @@
     details.append(el("div", "detail-tag", `${nodeBadge(node)} · ${node.id}`));
     const title = el("h3", "detail-title", node.title);
     details.append(title);
+    const tabs=el('div','inspector-tabs');
+    for(const [id,label] of [['overview','概览'],['evidence','证据'],['relations','关系'],['edit','编辑']]){const b=el('button',inspectorTab===id?'active':'',label);b.type='button';b.onclick=()=>{inspectorTab=id;renderDetails();};tabs.append(b);}details.append(tabs);
+    if(inspectorTab!=='edit'){
+      const body=el('div','inspector-readonly');
+      if(inspectorTab==='overview'){
+        body.append(el('h4',null,'职责'),el('p',null,node.summary),el('h4',null,'来源与状态'),el('p',null,`${nodeBadge(node)} · ${node.provenance}`),el('h4',null,'入口 / 接口'));
+        [...(node.entryPoints||[]),...(node.interfaces||[])].forEach(value=>body.append(el('div','inspector-evidence',value)));
+        if(!(node.entryPoints||[]).length&&!(node.interfaces||[]).length)body.append(el('p','inspector-empty','尚未记录入口和接口'));
+        body.append(el('h4',null,'期望过程'));
+        (node.process||[]).forEach(step=>body.append(el('p',null,`${step.title} · ${step.detail||''}`)));
+        if(!(node.process||[]).length)body.append(el('p','inspector-empty','尚未描述过程'));
+      }
+      if(inspectorTab==='overview'||inspectorTab==='evidence'){
+        body.append(el('h4',null,`证据文件 · ${(node.evidence||[]).length}`));
+        (node.evidence||[]).forEach(item=>{const evidence=el('div','evidence-card');evidence.append(el('code','evidence-path',item.path),el('p','evidence-reason',item.reason),el('small','evidence-status',item.kind||'unknown'));
+        if(state.envelope.identity.codeRevision){const open=el('button','evidence-button','查看固定版本代码 ↗');open.type='button';open.onclick=async()=>{const workspaceId=state.envelope.workspace.workspaceId,revision=state.envelope.identity.codeRevision;let repoPath=workspacePaths[workspaceId];if(!repoPath){const choice=await workspaceDialog('选择此工作区的代码仓库',[['repoPath','本机仓库绝对路径']], '查看代码');if(!choice)return;repoPath=choice.repoPath;rememberPath(workspaceId,repoPath);}activateView('explorer');document.dispatchEvent(new CustomEvent('projectmind:open-evidence',{detail:{repoPath,revision,path:item.path}}));};evidence.append(open);}body.append(evidence);});
+        if(!(node.evidence||[]).length)body.append(el('p','inspector-empty','没有声明证据'));
+      }
+      if(inspectorTab==='relations'){
+        body.append(el('h4',null,'关联模块'));
+        const linked=current.edges.filter(e=>e.from===node.id||e.to===node.id);
+        linked.forEach(edge=>{const target=current.nodes.find(n=>n.id===(edge.from===node.id?edge.to:edge.from));const b=el('button','outline-row',`${edge.from===node.id?'→':'←'} ${target?.title||'未知'} · ${edge.label||edge.type}`);b.onclick=()=>{state.selectedNodeId=target.id;renderWorkspace();};body.append(b);});
+        if(!linked.length)body.append(el('p','inspector-empty','尚未记录关系'));
+      }
+      details.append(body);return;
+    }
 
     // responsibility + title editing
     const titleInput = el("input");
@@ -540,15 +620,15 @@
     section.append(el("h4", "section-title", `期望过程 · ${(node.process || []).length} 步（步骤 ID 保持稳定）`));
     const steps = (node.process || []).map((step) => ({ ...step, inputs: [...(step.inputs || [])], outputs: [...(step.outputs || [])], branches: [...(step.branches || [])], next: [...(step.next || [])] }));
     const rows = [];
+    // edits commit on every keystroke as well as on blur: relying on `change`
+    // alone loses text when the field never loses focus before the save button
+    // is used (observed in a real browser session)
+    const onEdit = (element, handler) => {
+      element.addEventListener("input", handler);
+      element.addEventListener("change", handler);
+    };
     const rebuild = () => {
       section.replaceChildren(el("h4", "section-title", `期望过程 · ${steps.length} 步（步骤 ID 保持稳定）`));
-      // edits commit on every keystroke as well as on blur: relying on
-      // `change` alone loses text when the field never loses focus before the
-      // save button is used (observed in a real browser session)
-      const onEdit = (element, handler) => {
-        element.addEventListener("input", handler);
-        element.addEventListener("change", handler);
-      };
       steps.forEach((step, index) => {
         const row = el("div", "arch-step-row");
         const idTag = el("code", "arch-step-id", step.stepId);
@@ -690,25 +770,6 @@
     }
   });
 
-  document.getElementById("arch-rulegen-button").addEventListener("click", async () => {
-    if (!state.envelope || state.busy) return;
-    state.busy = true; renderWorkspace();
-    setGenStatus("正在用 C 规则引擎生成候选…");
-    try {
-      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, { mode: "rule_based" });
-      state.pendingCandidate = result;
-      const coverage = result.contextCoverage;
-      const coverageText = coverage
-        ? `覆盖：读取 ${coverage.filesIncluded} 个文件 / 共 ${coverage.pythonFiles} 个 Python 文件`
-        : "规划模式：没有代码事实，依据是目标与约束";
-      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；${coverageText}）`);
-    } catch (error) {
-      setGenStatus(`规则候选生成失败（${error.code}）：${error.message}`, true);
-    } finally {
-      state.busy = false; renderWorkspace();
-    }
-  });
-
   document.getElementById("arch-sample-button").addEventListener("click", async () => {
     if (!state.envelope || state.busy) return;
     state.busy = true;
@@ -773,12 +834,11 @@
     renderWorkspace();
     setStatus("arch-correction-status", "正在生成纠正预览…");
     try {
-      const correctionMode = (document.getElementById("arch-correction-mode") || {}).value || "production";
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/correction-preview`, {
-        mode: correctionMode,
         expectedDraftRevision: currentDraftRevision(),
         instruction,
         selectedNodeIds: [state.selectedNodeId],
+        mode: "dev_sample", // until C's real backend is registered; responses stay labeled
       });
       state.correctionPreview = result;
       renderCorrectionPreview();
@@ -837,224 +897,24 @@
     area.append(apply, discard);
   }
 
-  // ---------- review / publish ----------
+// ---------- rule-based candidate / deviations / incremental (C engine) ----------
 
-  // ---------- real version service: sync -> preview -> confirm -> publish ----------
-
-  async function refreshEnvelope() {
-    if (!state.envelope) return;
-    const workspaceId = state.envelope.workspace.workspaceId;
-    state.envelope = await api("GET", `/api/archloop/workspaces/${workspaceId}`);
-    renderWorkspace();
-  }
-
-  document.getElementById("arch-sync-button").addEventListener("click", async () => {
-    if (!state.envelope || !graph() || state.busy) return;
-    state.busy = true; renderWorkspace();
-    setStatus("arch-review-status", "正在保存草稿到版本服务…");
-    try {
-      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/sync`, {});
-      const area = document.getElementById("arch-review-result");
-      area.replaceChildren();
-      area.append(el("div", "ai-candidate-label", "草稿已保存到真实版本服务（尚未人审，未产生版本）"));
-      area.append(el("p", "ai-item", `服务端草稿修订：${result.bDraftRevision} · 本次操作 ${(result.operations || []).length} 条`));
-      setStatus("arch-review-status", "已保存。下一步：人审预览。");
-      await refreshEnvelope();
-    } catch (error) {
-      setStatus("arch-review-status", `保存失败（${error.code}）：${error.message}`, true);
-    } finally {
-      state.busy = false; renderWorkspace();
-    }
-  });
-
-  document.getElementById("arch-review-preview-button").addEventListener("click", async () => {
-    if (!state.envelope || !graph() || state.busy) return;
-    const actor = operatorValue();
-    if (!actor) return;
-    const reason = fieldValue("arch-review-reason-input");
-    state.busy = true; renderWorkspace();
-    setStatus("arch-review-status", "正在生成人审预览…");
-    try {
-      // the declared operator is bound to the server-side write session, so
-      // fix tasks created later are attributed to the same declared operator
-      await ensureSession(actor);
-      // planning workspaces have no code: design confirmation is not a code review
-      const verifyCode = state.envelope.workspace.context !== "planning";
-      const preview = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-preview`,
-        { actor, reason, verifyCode });
-      reviewFlow.actor = actor;
-      reviewFlow.previewDigest = preview.previewDigest;
-      const area = document.getElementById("arch-review-result");
-      area.replaceChildren();
-      area.append(el("div", "ai-candidate-label", preview.labeled || "人审预览"));
-      area.append(el("p", "ai-item",
-        `覆盖范围：节点 ${preview.reviewCoverage.nodes.length} · 关系 ${preview.reviewCoverage.edges.length} · ` +
-        `过程 ${preview.reviewCoverage.processes.length} · 代码证据 ${preview.reviewCoverage.evidence.length}（${preview.reviewCoverage.scope}）`));
-      for (const limit of preview.limits || []) area.append(el("p", "ai-provenance", limit));
-      area.append(el("p", "ai-provenance", `预览摘要：${preview.previewDigest}`));
-      const confirmButton = document.getElementById("arch-review-confirm-button");
-      const rejectButton = document.getElementById("arch-review-reject-button");
-      confirmButton.hidden = false; confirmButton.disabled = false;
-      rejectButton.hidden = false; rejectButton.disabled = false;
-      document.getElementById("arch-publish-button").hidden = true;
-      setStatus("arch-review-status", "预览已生成。请核对范围后确认或拒绝。");
-    } catch (error) {
-      const area = document.getElementById("arch-review-result");
-      area.replaceChildren();
-      if (error.code === "NOT_RUN_AWAITING_CONFIGURATION" || error.code === "BACKEND_UNAVAILABLE") {
-        area.append(el("div", "review-notice", `如实说明：${error.message}`));
-      }
-      setStatus("arch-review-status", `预览失败（${error.code}）：${error.message}`, true);
-    } finally {
-      state.busy = false; renderWorkspace();
-    }
-  });
-
-  async function confirmReview(decision) {
-    if (!state.envelope || !reviewFlow.previewDigest || state.busy) return;
-    state.busy = true; renderWorkspace();
-    try {
-      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-confirm`,
-        { previewDigest: reviewFlow.previewDigest, decision });
-      reviewFlow.reviewId = result.reviewId;
-      reviewFlow.publicationAuthorized = Boolean(result.publicationAuthorized);
-      const area = document.getElementById("arch-review-result");
-      area.append(el("p", "ai-item", `${result.labeled}`));
-      document.getElementById("arch-review-confirm-button").hidden = true;
-      document.getElementById("arch-review-reject-button").hidden = true;
-      const publishButton = document.getElementById("arch-publish-button");
-      publishButton.hidden = !result.publicationAuthorized;
-      publishButton.disabled = !result.publicationAuthorized;
-      setStatus("arch-review-status", result.publicationAuthorized
-        ? "已确认。发布授权保存在服务端，点击“发布不可变版本”产生版本。"
-        : "已拒绝。没有发布授权，也没有产生版本。");
-      await refreshEnvelope();
-    } catch (error) {
-      setStatus("arch-review-status", `确认失败（${error.code}）：${error.message}`, true);
-    } finally {
-      state.busy = false; renderWorkspace();
-    }
-  }
-
-  document.getElementById("arch-review-confirm-button").addEventListener("click", () => confirmReview("accept"));
-  document.getElementById("arch-review-reject-button").addEventListener("click", () => confirmReview("reject"));
-
-  document.getElementById("arch-publish-button").addEventListener("click", async () => {
+  document.getElementById("arch-rulegen-button").addEventListener("click", async () => {
     if (!state.envelope || state.busy) return;
     state.busy = true; renderWorkspace();
-    setStatus("arch-review-status", "正在发布…");
+    setGenStatus("正在用 C 规则引擎生成候选…");
     try {
-      const published = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/publish`, {});
-      const area = document.getElementById("arch-version-result");
-      area.replaceChildren();
-      area.append(el("div", "ai-candidate-label", published.labeled || "不可变认知版本"));
-      area.append(el("p", "ai-item", `图版本 ${published.version.mapRevision}`));
-      area.append(el("p", "ai-item", `代码提交 ${published.version.codeRevision}（核查覆盖 ${published.version.verifiedCodeRevision || "无"}）`));
-      area.append(el("p", "ai-item", `架构 Git 来源提交 ${published.provenance.mapSourceRevision}`));
-      area.append(el("p", "ai-provenance", `图性质：${published.version.status} · 覆盖范围 ${published.reviewCoverage.scope}`));
-      document.getElementById("arch-publish-button").hidden = true;
-      setStatus("arch-review-status", "版本已发布（不可变）。");
-      await refreshEnvelope();
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, { mode: "rule_based" });
+      state.pendingCandidate = result;
+      const coverage = result.contextCoverage;
+      const coverageText = coverage
+        ? `覆盖：读取 ${coverage.filesIncluded} 个文件 / 共 ${coverage.pythonFiles} 个 Python 文件`
+        : "规划模式：没有代码事实，依据是目标与约束";
+      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；${coverageText}）`);
     } catch (error) {
-      setStatus("arch-review-status", `发布失败（${error.code}）：${error.message}`, true);
+      setGenStatus(`规则候选生成失败（${error.code}）：${error.message}`, true);
     } finally {
       state.busy = false; renderWorkspace();
-    }
-  });
-
-  document.getElementById("arch-versions-button").addEventListener("click", async () => {
-    if (!state.envelope || state.busy) return;
-    try {
-      const history = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/versions`);
-      const area = document.getElementById("arch-version-result");
-      area.replaceChildren();
-      area.append(el("div", "ai-candidate-label", `版本历史（${history.versions.length}）`));
-      for (const version of history.versions) {
-        area.append(el("p", "ai-item",
-          `${version.mapRevision} · 代码 ${version.codeRevision} · 来源 ${version.mapSourceRevision} · ${version.status}`));
-      }
-      if (!history.versions.length) area.append(el("p", "ai-provenance", "尚未产生正式版本。"));
-    } catch (error) {
-      setStatus("arch-review-status", `读取版本历史失败（${error.code}）：${error.message}`, true);
-    }
-  });
-
-  document.getElementById("arch-handover-button").addEventListener("click", async () => {
-    if (!state.envelope || state.busy) return;
-    try {
-      const handover = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/handover`);
-      const blob = new Blob([JSON.stringify(handover, null, 2)], { type: "application/json" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `handover-${handover.mapId}-${String(handover.mapRevision).slice(7, 19)}.json`;
-      link.click();
-      URL.revokeObjectURL(link.href);
-      const area = document.getElementById("arch-version-result");
-      area.append(el("p", "ai-item",
-        `同版交接包已导出：mapId ${handover.mapId} · 图版本 ${handover.mapRevision} · 架构来源 ${handover.mapSourceRevision}`));
-    } catch (error) {
-      setStatus("arch-review-status", `导出交接包失败（${error.code}）：${error.message}`, true);
-    }
-  });
-
-
-  // ---------- fix task ----------
-
-  document.getElementById("arch-fixtask-button").addEventListener("click", async () => {
-    if (!state.envelope || !graph() || state.busy) return;
-    const current = graph();
-    const node = state.selectedNodeId
-      ? (current.nodes || []).find((item) => item.id === state.selectedNodeId) : null;
-    if (!node) {
-      setStatus("arch-review-status", "请先在图上选中要修正的功能节点（任务需要固定的期望过程与证据）。", true);
-      return;
-    }
-    const steps = node.process || node.steps || [];
-    if (!steps.length) {
-      setStatus("arch-review-status", "该节点还没有期望过程步骤，无法固定修正范围。", true);
-      return;
-    }
-    const evidenceItems = (node.evidence || []).filter((item) => item.path);
-    if (!evidenceItems.length) {
-      setStatus("arch-review-status", "该节点没有代码证据路径，无法创建可核查的修正任务。", true);
-      return;
-    }
-    const deviation = fieldValue("arch-deviation-input");
-    if (!deviation) {
-      setStatus("arch-review-status", "请先填写偏差描述（期望过程与实际观察的差异）。", true);
-      return;
-    }
-    const acceptance = fieldValue("arch-acceptance-input");
-    if (!acceptance) {
-      setStatus("arch-review-status", "请先填写验收条件；没有验收条件的任务不能派发。", true);
-      return;
-    }
-    const actor = operatorValue();
-    if (!actor) return;
-    state.busy = true;
-    renderWorkspace();
-    try {
-      await ensureSession(actor);
-      const task = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks`, {
-        deviation,
-        acceptance,
-        expectedProcessRef: `${node.id}/${steps[0].stepId || steps[0].id}`,
-        evidence: evidenceItems.map((item) => ({ path: item.path, reason: item.reason || "选中节点的代码证据" })),
-        scope: evidenceItems.map((item) => item.path),
-      });
-      const area = document.getElementById("arch-review-result");
-      area.replaceChildren();
-      area.append(el("div", "ai-candidate-label", task.labeled || "修正实现任务"));
-      const taskId = task.id || task.taskId;
-      area.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${task.status} · 目标提交 ${short(task.codeRevision || task.targetCodeRevision)}`));
-      area.append(el("p", "ai-item", task.deviation || task.observation));
-      area.append(el("p", "ai-provenance", `验收条件：${task.acceptance}`));
-      setStatus("arch-review-status", "已创建持久化修正任务（D 权威任务状态）；实施提交回挂后仍需实测与人确认才关闭。");
-    } catch (error) {
-      setStatus("arch-review-status", `任务创建失败（${error.code}）：${error.message}`, true);
-    } finally {
-      state.busy = false;
-      renderWorkspace();
     }
   });
 
@@ -1091,6 +951,281 @@
     }
   });
 
+// ---------- fix task lifecycle (D authoritative store, reachable from the UI) ----------
+
+  async function refreshFixTasks() {
+    if (!state.envelope) return;
+    const listing = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks`);
+    const area = document.getElementById("arch-review-result");
+    area.replaceChildren();
+    area.append(el("div", "ai-candidate-label", listing.source || "修正实现任务（D 权威任务状态）"));
+    const tasks = listing.tasks || [];
+    if (!tasks.length) {
+      area.append(el("p", "ai-item", "该工作区还没有修正任务；先在图上选中节点并创建。"));
+      return;
+    }
+    for (const task of tasks) {
+      const row = el("div", "compare-card");
+      const taskId = task.id || task.taskId;
+      row.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${task.status} · 范围 ${(task.scope || []).join("、") || "—"}`));
+      row.append(el("p", "ai-provenance", task.deviation || task.observation || ""));
+      if (task.submittedRevision) row.append(el("p", "ai-provenance", `回挂提交 ${short(task.submittedRevision)}`));
+      if (task.verification) {
+        row.append(el("p", "ai-provenance",
+          `核查：退出码 ${task.verification.exitCode} · 摘要 ${String(task.verification.outputDigest || "").slice(0, 20)}… 由 ${task.verification.actor} 确认`));
+      }
+      const actions = el("div", "compare-controls");
+      const addAction = (label, handler) => {
+        const button = el("button", "button ghost", label);
+        button.type = "button";
+        button.addEventListener("click", handler);
+        actions.append(button);
+      };
+      const act = async (body, note) => {
+        state.busy = true; renderWorkspace();
+        try {
+          const updated = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks/${taskId}`, body);
+          setStatus("arch-review-status", `${note}（当前状态：${updated.status}）`);
+          await refreshFixTasks();
+        } catch (error) {
+          setStatus("arch-review-status", `操作失败（${error.code}）：${error.message}`, true);
+        } finally {
+          state.busy = false; renderWorkspace();
+        }
+      };
+      if (task.status === "queued") {
+        addAction("接手任务", () => act({ status: "received", note: "本机操作者接手该任务" }, "已接手"));
+      } else if (task.status === "received") {
+        addAction("开始实施", () => act({ status: "in_progress", note: "在独立分支按范围实施" }, "已开始实施"));
+      } else if (task.status === "in_progress") {
+        addAction("回挂提交", async () => {
+          const submit = await workspaceDialog("回挂实施提交",
+            [["commitSha", "实施提交（完整 SHA）"], ["summary", "提交说明（做了什么、验证依据）", "textarea"]],
+            "回挂");
+          if (!submit) return;
+          await act({ status: "submitted", commitSha: submit.commitSha, summary: submit.summary }, "提交已回挂，等待实测核验");
+        });
+      } else if (task.status === "verification_pending") {
+        addAction("实测并核验（关闭偏差）", async () => {
+          const confirm = await workspaceDialog("实测核验确认",
+            [["reason", "确认理由（本轮实测结论）", "textarea"]], "确认关闭");
+          if (!confirm) return;
+          await act({ status: "verified", reason: confirm.reason }, "实测通过并已人确认，偏差关闭");
+        });
+      } else if (task.status === "verified") {
+        row.append(el("p", "ai-provenance", "该偏差已按实测结论关闭；改图或新提交不会自动重开。"));
+      }
+      if (actions.children.length) row.append(actions);
+      area.append(row);
+    }
+  }
+
+  document.getElementById("arch-fixtasks-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    try {
+      await refreshFixTasks();
+      setStatus("arch-review-status", "任务列表来自 D 的权威任务状态；每个动作都经过 CAS 与范围校验。");
+    } catch (error) {
+      setStatus("arch-review-status", `读取任务失败（${error.code}）：${error.message}`, true);
+    }
+  });
+
+// ---------- review / publish (real B version service, three steps) ----------
+
+  const reviewFlow = { actor: null, previewDigest: null };
+
+  document.getElementById("arch-sync-button").addEventListener("click", async () => {
+    if (!state.envelope || !graph() || state.busy) return;
+    state.busy = true; renderWorkspace();
+    setStatus("arch-review-status", "正在把草稿写入真实版本服务…");
+    try {
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/sync`, {});
+      const area = document.getElementById("arch-review-result");
+      area.replaceChildren();
+      area.append(el("p", "ai-item", "草稿已保存到真实版本服务（尚未人审，未产生版本）"));
+      area.append(el("p", "ai-provenance", `服务端草稿修订：${result.bDraftRevision} · 本次操作 ${(result.operations || []).length} 条`));
+      setStatus("arch-review-status", "已保存。下一步：人审预览。");
+      openEnvelope(await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}`));
+    } catch (error) {
+      setStatus("arch-review-status", `保存失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  });
+
+  document.getElementById("arch-review-preview-button").addEventListener("click", async () => {
+    if (!state.envelope || !graph() || state.busy) return;
+    const review = await workspaceDialog("人审预览",
+      [["actor", "本机操作者（声明，绑定本机会话）"], ["reason", "审阅理由（随预览与版本记录）", "textarea"]],
+      "生成预览");
+    if (!review) return;
+    const { actor, reason } = review;
+    state.busy = true; renderWorkspace();
+    setStatus("arch-review-status", "正在生成人审预览…");
+    try {
+      // the declared operator is bound to the server-side write session, so
+      // fix tasks created later are attributed to the same declaration
+      await ensureSession(actor);
+      const verifyCode = state.envelope.workspace.context !== "planning";
+      const preview = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-preview`,
+        { actor, reason, verifyCode });
+      reviewFlow.actor = actor;
+      reviewFlow.previewDigest = preview.previewDigest;
+      const area = document.getElementById("arch-review-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", preview.labeled || "人审预览"));
+      const coverage = preview.reviewCoverage;
+      area.append(el("p", "ai-item",
+        `覆盖范围：节点 ${coverage.nodes.length} · 关系 ${coverage.edges.length} · 过程 ${coverage.processes.length} · 代码证据 ${coverage.evidence.length}（${coverage.scope}）`));
+      for (const limit of preview.limits || []) area.append(el("p", "ai-provenance", limit));
+      area.append(el("p", "ai-provenance", `预览摘要：${preview.previewDigest}`));
+      const confirmButton = document.getElementById("arch-review-confirm-button");
+      const rejectButton = document.getElementById("arch-review-reject-button");
+      confirmButton.hidden = false; confirmButton.disabled = false;
+      rejectButton.hidden = false; rejectButton.disabled = false;
+      setStatus("arch-review-status", "预览已生成。请核对范围后确认或拒绝。");
+    } catch (error) {
+      setStatus("arch-review-status", `预览失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  });
+
+  async function confirmReview(decision) {
+    if (!state.envelope || !reviewFlow.previewDigest || state.busy) return;
+    state.busy = true; renderWorkspace();
+    try {
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-confirm`,
+        { previewDigest: reviewFlow.previewDigest, decision });
+      const area = document.getElementById("arch-review-result");
+      if (decision === "accept") {
+        const publishButton = document.getElementById("arch-publish-button");
+        publishButton.hidden = false; publishButton.disabled = false;
+        area.append(el("p", "ai-item", "已确认：发布授权保存在服务端；点击发布产生不可变版本"));
+        setStatus("arch-review-status", "已确认。发布授权保存在服务端，点击“发布不可变版本”产生版本。");
+      } else {
+        area.append(el("p", "ai-item", "已拒绝：没有产生版本。"));
+        setStatus("arch-review-status", "已拒绝，未产生版本。");
+      }
+      return result;
+    } catch (error) {
+      setStatus("arch-review-status", `确认失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  }
+
+  document.getElementById("arch-review-confirm-button").addEventListener("click", () => confirmReview("accept"));
+  document.getElementById("arch-review-reject-button").addEventListener("click", () => confirmReview("reject"));
+
+  document.getElementById("arch-publish-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    state.busy = true; renderWorkspace();
+    try {
+      const published = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/publish`, {});
+      const area = document.getElementById("arch-version-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", published.labeled || "B 版本服务产生并经 Git 提交的不可变认知版本"));
+      area.append(el("p", "ai-item", `图版本 ${published.version.mapRevision}`));
+      area.append(el("p", "ai-item", `代码提交 ${published.version.codeRevision || "null（规划/设计确认）"}（核查覆盖 ${published.version.verifiedCodeRevision ? short(published.version.verifiedCodeRevision) : "无"}）`));
+      area.append(el("p", "ai-provenance", `架构 Git 来源提交 ${published.provenance.mapSourceRevision || "—"} · 图性质：${published.version.status} · 覆盖范围 ${published.reviewCoverage ? published.reviewCoverage.scope : "—"}`));
+      const publishButton = document.getElementById("arch-publish-button");
+      publishButton.hidden = true; publishButton.disabled = true;
+      setStatus("arch-review-status", "版本已发布（不可变）。");
+      openEnvelope(await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}`));
+    } catch (error) {
+      setStatus("arch-review-status", `发布失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  });
+
+  document.getElementById("arch-versions-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    try {
+      const listing = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/versions`);
+      const area = document.getElementById("arch-version-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", "不可变版本历史（B 版本服务）"));
+      for (const version of listing.versions || []) {
+        area.append(el("p", "ai-item",
+          `${version.mapRevision} · ${version.status} · 代码 ${short(version.codeRevision)} · 发布 ${version.publishedAt || "—"}`));
+      }
+      if (!(listing.versions || []).length) area.append(el("p", "ai-item", "还没有已发布版本。"));
+    } catch (error) {
+      setStatus("arch-review-status", `读取版本历史失败（${error.code}）：${error.message}`, true);
+    }
+  });
+
+  document.getElementById("arch-handover-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    try {
+      const packageData = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/handover`);
+      const area = document.getElementById("arch-version-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", "同版交接包（可交给下一位副本）"));
+      area.append(el("p", "ai-item", `mapId ${packageData.mapId} · 图版本 ${packageData.mapRevision}`));
+      area.append(el("p", "ai-item", `架构来源 ${packageData.mapSourceRevision} · 未解决偏差 ${(packageData.unresolvedDeviations || []).length} · 未关闭任务 ${(packageData.openFixTasks || []).length}`));
+      area.append(el("p", "ai-provenance", packageData.importHint ? packageData.importHint.note : ""));
+      setStatus("arch-review-status", `同版交接包已导出：mapId ${packageData.mapId} · 图版本 ${packageData.mapRevision} · 架构来源 ${packageData.mapSourceRevision}`);
+    } catch (error) {
+      setStatus("arch-review-status", `导出失败（${error.code}）：${error.message}`, true);
+    }
+  });
+
+  // ---------- fix task ----------
+
+  document.getElementById("arch-fixtask-button").addEventListener("click", async () => {
+    if (!state.envelope || !graph() || state.busy) return;
+    const current = graph();
+    const node = state.selectedNodeId
+      ? (current.nodes || []).find((item) => item.id === state.selectedNodeId) : null;
+    if (!node) {
+      setStatus("arch-review-status", "请先在图上选中要修正的功能节点（任务需要固定的期望过程与证据）。", true);
+      return;
+    }
+    const steps = node.process || node.steps || [];
+    if (!steps.length) {
+      setStatus("arch-review-status", "该节点还没有期望过程步骤，无法固定修正范围。", true);
+      return;
+    }
+    const evidenceItems = (node.evidence || []).filter((item) => item.path);
+    if (!evidenceItems.length) {
+      setStatus("arch-review-status", "该节点没有代码证据路径，无法创建可核查的修正任务。", true);
+      return;
+    }
+    const review = await workspaceDialog("创建实施修正任务",
+      [["operator", "本机操作者（声明，绑定本机会话）"], ["deviation", "偏差描述", "textarea"], ["acceptance", "验收标准", "textarea"]],
+      "生成任务");
+    if (!review) return;
+    const { operator, deviation, acceptance } = review;
+    state.busy = true;
+    renderWorkspace();
+    try {
+      await ensureSession(operator);
+      const task = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks`, {
+        deviation,
+        acceptance,
+        expectedProcessRef: `${node.id}/${steps[0].stepId || steps[0].id}`,
+        evidence: evidenceItems.map((item) => ({ path: item.path, reason: item.reason || "选中节点的代码证据" })),
+        scope: evidenceItems.map((item) => item.path),
+      });
+      const area = document.getElementById("arch-review-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", task.labeled || "修正实现任务（D 权威任务状态）"));
+      const taskId = task.id || task.taskId;
+      area.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${task.status} · 目标提交 ${short(task.codeRevision || task.targetCodeRevision)}`));
+      area.append(el("p", "ai-item", task.deviation || task.observation));
+      area.append(el("p", "ai-provenance", `验收条件：${task.acceptance}`));
+      setStatus("arch-review-status", "已创建持久化修正任务（D 权威任务状态）；实施提交回挂后仍需实测与人确认才关闭。");
+    } catch (error) {
+      setStatus("arch-review-status", `任务创建失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false;
+      renderWorkspace();
+    }
+  });
+
   // ---------- recheck & diff ----------
 
   document.getElementById("arch-recheck-button").addEventListener("click", async () => {
@@ -1113,8 +1248,9 @@
         const rebind = el("button", "button ghost", "复核完成后回挂到当前 HEAD");
         rebind.type = "button";
         rebind.addEventListener("click", async () => {
-          const actor = operatorValue();
-          if (!actor) return;
+          const review=await workspaceDialog('复核后回挂',[['actor','复核人（本机操作者声明）']], '确认回挂');
+          if(!review)return;
+          const actor=review.actor;
           try {
             const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,
               { expectedNewCodeRevision: result.newCodeRevision, actor, note: "复核后回挂" });
