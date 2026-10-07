@@ -19,6 +19,7 @@ from repo_index.explorer import ExplorerError, ExplorerRegistry
 
 from archloop import ai_transport
 from archloop.adapters import AdapterRegistry
+from archloop.backend_b import BackendB
 from archloop.contract import ContractError
 from archloop.service import WorkbenchService
 from archloop.ai_transport import AIError
@@ -572,7 +573,53 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if method == "POST" and rest == ["import-legacy"]:
                     self.send_json(HTTPStatus.OK, archloop_service.import_legacy_map(workspace_id, body or {}))
                     return
+                # ---- real B version service seam (server-side sessions) ----
+                if method == "POST" and rest == ["sync"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.sync_draft_to_backend(workspace_id, body or {}))
+                    return
+                if method == "POST" and rest == ["review-preview"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.review_preview(
+                        workspace_id, body or {}, self._review_meta()))
+                    return
+                if method == "POST" and rest == ["review-confirm"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.review_confirm(
+                        workspace_id, body or {}, self._review_meta()))
+                    return
+                if method == "POST" and rest == ["publish"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.publish_version(
+                        workspace_id, body or {}, self._review_meta()))
+                    return
+                if method == "GET" and rest == ["versions"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.version_history(workspace_id))
+                    return
+                if method == "GET" and len(rest) == 2 and rest[0] == "versions":
+                    self.send_json(HTTPStatus.OK, archloop_service.version_detail(workspace_id, rest[1]))
+                    return
+                if method == "POST" and rest == ["import-version"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.import_version(workspace_id, body or {}))
+                    return
+                if method == "POST" and rest == ["associate-code"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.associate_code(workspace_id, body or {}))
+                    return
+            if method == "POST" and parts == ["open-from-version"]:
+                self.send_json(HTTPStatus.OK, archloop_service.open_from_version(body or {}))
+                return
+            if method == "GET" and parts == ["backend"]:
+                self.send_json(HTTPStatus.OK, archloop_service.backend_status())
+                return
             raise ContractError("NOT_FOUND", f"未知 archloop 路由: {method} {path}")
+
+        def _review_meta(self) -> dict:
+            """Real request metadata for the human-review Gateway.
+
+            peer/host/origin always come from the actual socket and headers —
+            never from request JSON (B refuses JSON-declared metadata).
+            """
+            return {
+                "peer": self.client_address[0] if self.client_address else "",
+                "host": self.headers.get("Host", ""),
+                "origin": self.headers.get("Origin", ""),
+            }
 
         def do_GET(self) -> None:
             request = urlparse(self.path)
@@ -878,6 +925,16 @@ def main() -> None:
     parser.add_argument("--map", type=Path, help="Curated map JSON for the chosen repository")
     parser.add_argument("--archloop-data", type=Path, default=ARCHLOOP_DATA_DEFAULT,
                         help="Architecture workbench workspace data root (keep outside source control)")
+    # Real B version service (extensions/architecture_workspace). All paths are
+    # server-side configuration; clients can never name a data root or repo.
+    parser.add_argument("--archloop-backend-data", type=Path, default=None,
+                        help="B 版本服务专用数据根（SQLite + 不可变版本记录）")
+    parser.add_argument("--archloop-architecture-repo", type=Path, default=None,
+                        help="架构版本发布的独立 Git 工作副本（分支须为 architecture/candidates/*）")
+    parser.add_argument("--archloop-architecture-branch", type=str, default=None,
+                        help="架构发布分支（architecture/candidates/...）")
+    parser.add_argument("--archloop-code-repo", type=Path, action="append", default=None,
+                        help="登记给版本服务的代码仓库路径（可重复；身份由 origin URL 决定）")
     args = parser.parse_args()
     try:
         repo, map_path, explorer_enabled = resolve_runtime(args.repo, args.map)
@@ -885,6 +942,17 @@ def main() -> None:
         parser.error(str(exc))
     registry = ExplorerRegistry() if explorer_enabled else None
     service = WorkbenchService(args.archloop_data, AdapterRegistry())
+    if args.archloop_backend_data is not None:
+        backend_b = BackendB(
+            args.archloop_backend_data,
+            code_repositories=[path for path in (args.archloop_code_repo or [])],
+            architecture_repo=args.archloop_architecture_repo,
+            architecture_branch=args.archloop_architecture_branch,
+            allowed_origin=f"http://127.0.0.1:{args.port}")
+        service.bind_backend_b(backend_b)
+        status = backend_b.status()
+        print(f"B 版本服务: {'已接入' if status['available'] else '未接入'} "
+              f"({status.get('reason') or 'probe ok'})", flush=True)
     handler = make_handler(repo, map_path, explorer_registry=registry, archloop_service=service)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), handler)
     if explorer_enabled:

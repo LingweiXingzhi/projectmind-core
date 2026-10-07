@@ -14,8 +14,9 @@ from datetime import datetime, timezone
 from . import generate as generate_module
 from . import ops as ops_module
 from .adapters import AdapterRegistry, DEV_SAMPLE_MODE, call_backend, reject_sample_review
-from .contract import (ContractError, identity_view, is_full_sha, semantic_revision,
-                       validate_workspace_identity)
+from .backend_b import b_to_a_graph
+from .contract import (ContractError, ID_PATTERN, identity_view, is_full_sha,
+                       semantic_revision, validate_workspace_identity)
 from .store import DraftStore, workspace_lock
 
 
@@ -24,8 +25,17 @@ def _utcnow() -> str:
 
 
 def stable_repo_id(repo_path: str, remote: str | None) -> str:
-    digest = hashlib.sha256(f"{repo_path}|{remote or ''}".encode("utf-8")).hexdigest()
-    return f"repo-{digest[:16]}"
+    """Stable repository identity: the registered source URL, never the local
+    absolute directory (two clones of one source keep one identity). Only a
+    repository with no remote at all falls back to its local path."""
+    if remote:
+        locator = remote.rstrip("/")
+    else:
+        from pathlib import Path as _Path
+        locator = "local:" + str(_Path(repo_path).resolve())
+    # identical rule to B's code_identity (extensions/architecture_workspace/
+    # git_publication.py) so one source keeps one identity on both sides
+    return "repo-" + hashlib.sha256(locator.encode("utf-8")).hexdigest()
 
 
 class WorkbenchService:
@@ -36,6 +46,9 @@ class WorkbenchService:
         # hardened git runner (env stripping, no prompts) instead of copying
         # repository rules; code facts always come from explicit revisions.
         self.git = None
+        # Optional real B version service (single adapter layer: backend_b.py).
+        # Bound by app.py from server-side configuration only.
+        self.backend_b = None
 
     # ---------- injected git access ----------
 
@@ -46,6 +59,19 @@ class WorkbenchService:
         if self.git is None:
             raise ContractError("BACKEND_UNAVAILABLE", "本实例未绑定 Git 访问")
         return self.git
+
+    def _code_repo_identity(self, root: str, remote: str | None) -> str:
+        """One identity for one registered source: when B's version service is
+        bound, use its registered repo id (origin-URL based); otherwise a
+        path-independent fallback. Two clones of one source never diverge
+        because of their local directories."""
+        backend_b = getattr(self, "backend_b", None)
+        if backend_b is not None and backend_b.available:
+            try:
+                return backend_b.repo_id_for(root)
+            except ContractError:
+                pass
+        return stable_repo_id(root, remote)
 
     def probe_repo(self, repo_path: str) -> dict:
         git = self._require_git()
@@ -100,11 +126,18 @@ class WorkbenchService:
             if not isinstance(repo_path, str) or not repo_path.strip():
                 raise ContractError("VALIDATION_FAILED", "已有项目需要仓库路径")
             probe = self.probe_repo(repo_path.strip())
-            identity["codeRepoId"] = stable_repo_id(probe["root"], probe.get("remote"))
+            identity["codeRepoId"] = self._code_repo_identity(probe["root"], probe.get("remote"))
             identity["codeRevision"] = probe["head"]
             identity["repoPath"] = probe["root"]
             if context == "existing_project":
                 identity["mapId"] = f"map-{identity['codeRepoId'][5:]}"
+        provided_map_id = request.get("mapId")
+        if provided_map_id is not None:
+            # second copy / same-version handover: the caller names the durable
+            # graph identity that was registered elsewhere (never inferred)
+            if not isinstance(provided_map_id, str) or not ID_PATTERN.fullmatch(provided_map_id):
+                raise ContractError("VALIDATION_FAILED", "mapId 不合法")
+            identity["mapId"] = provided_map_id
         workspace_id = f"ws_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}"
         identity["workspaceId"] = workspace_id
         validate_workspace_identity(identity, context)
@@ -113,6 +146,7 @@ class WorkbenchService:
             "title": title,
             "context": context,
             "identity": identity,
+            "mapIdProvided": provided_map_id is not None,
             "description": request.get("description", ""),
             "goals": request.get("goals", ""),
             "constraints": request.get("constraints", ""),
@@ -131,6 +165,18 @@ class WorkbenchService:
         return {"workspaces": self.store.list_workspaces(), "backend": self._backend_label()}
 
     def _backend_label(self) -> dict:
+        backend_b = getattr(self, "backend_b", None)
+        if backend_b is not None and backend_b.available:
+            status = backend_b.status()
+            return {
+                "kind": backend_b.KIND if status.get("available") else "unavailable",
+                "labeled": status.get("labeled"),
+                "origin": backend_b.KIND if status.get("available") else "unavailable",
+                "versionService": bool(status.get("available")),
+                "ref": backend_b.REF,
+                "reviewGateway": bool(status.get("reviewGateway")),
+                "reason": status.get("reason"),
+            }
         persistence = self.adapter._backends.get("persistence")
         delegating = bool(persistence and callable(persistence.get("call")))
         # Draft storage and the version service are distinct capabilities:
@@ -642,6 +688,422 @@ class WorkbenchService:
             raise ContractError("BACKEND_UNAVAILABLE",
                                 "版本后端未确认发布结果；不显示成功。",
                                 {"reply": reply.get("status")})
+
+    # ---------- B version backend: real save / review / publish / history ----------
+
+    def bind_backend_b(self, backend) -> None:
+        """Bind the configured B service (single adapter layer, backend_b.py)."""
+        self.backend_b = backend
+        if backend is not None:
+            self.adapter.register("persistence", {
+                "kind": backend.KIND, "call": backend.call, "ref": backend.REF,
+                "labeled": "B 的真实版本服务（架构草稿/人审/不可变版本）",
+            })
+
+    def _backend_b(self):
+        backend_b = getattr(self, "backend_b", None)
+        if backend_b is None or not backend_b.available:
+            reason = getattr(backend_b, "reason", None) or "未配置专用数据根与架构 Git 工作副本"
+            raise ContractError("BACKEND_UNAVAILABLE", f"B 的真实版本服务未接入：{reason}")
+        return backend_b
+
+    def backend_status(self) -> dict:
+        backend_b = getattr(self, "backend_b", None)
+        return {
+            "versionService": backend_b.status() if backend_b is not None
+            else {"available": False, "reason": "未绑定 B 版本服务", "kind": "unavailable"},
+            "adapter": self.adapter.listing(),
+            "generation": generate_module.generate_status(),
+            "persistence": self._backend_label(),
+        }
+
+    @staticmethod
+    def _require_meta(meta) -> dict:
+        if not isinstance(meta, dict) or not meta.get("peer") or not meta.get("host") \
+                or not meta.get("origin"):
+            raise ContractError("VALIDATION_FAILED",
+                                "缺少真实请求元数据：peer/host/origin 必须由服务端从请求注入")
+        return meta
+
+    @staticmethod
+    def _sample_guard(draft: dict) -> None:
+        if draft.get("origin") == "dev_sample" or "dev_sample" in (draft.get("lineage") or []):
+            reject_sample_review({"origin": "dev_sample"})
+
+    def sync_draft_to_backend(self, workspace_id: str, request: dict) -> dict:
+        """Write the current A draft into B's real draft space (server-side)."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            backend_b = self._backend_b()
+            result = backend_b.sync_draft(record, draft["graph"],
+                                          origin=draft.get("origin", "manual"))
+            binding = dict(result["binding"])
+            binding["aDraftRevisionAtSync"] = draft["draftRevision"]
+            binding["bBaseMapRevision"] = result["draft"]["baseMapRevision"]
+            record["backendB"] = binding
+            if not record.get("mapIdProvided"):
+                # the version service assigns the durable graph identity; A's
+                # identity follows it so both sides name the same map
+                record["identity"]["mapId"] = binding.get("mapId")
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "backend_sync", "at": _utcnow(), "bDraftId": binding["draftId"],
+                "bDraftRevision": binding["bDraftRevision"],
+                "operations": len(result.get("operations", [])), "created": result.get("created")})
+            return {"backend": self._backend_label(), "bDraftId": binding["draftId"],
+                    "bDraftRevision": binding["bDraftRevision"],
+                    "operations": result.get("operations", []),
+                    "envelope": self._envelope(record)}
+
+    def _ensure_synced(self, record: dict, backend_b) -> dict:
+        """Auto-sync the A draft into B when A moved on since the last sync."""
+        draft = record["draft"]
+        binding = dict(record.get("backendB") or {})
+        if binding.get("draftId") and binding.get("aDraftRevisionAtSync") == draft["draftRevision"]:
+            return binding
+        result = backend_b.sync_draft(record, draft["graph"], origin=draft.get("origin", "manual"))
+        binding = dict(result["binding"])
+        binding["aDraftRevisionAtSync"] = draft["draftRevision"]
+        binding["bBaseMapRevision"] = result["draft"]["baseMapRevision"]
+        record["backendB"] = binding
+        if not record.get("mapIdProvided"):
+            record["identity"]["mapId"] = binding.get("mapId")
+        self.store.save_workspace_record(record)
+        return binding
+
+    def review_preview(self, workspace_id: str, request: dict, meta: dict) -> dict:
+        """Server-side review preview through B's Gateway (real session values)."""
+        meta = self._require_meta(meta)
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            self._sample_guard(draft)
+            backend_b = self._backend_b()
+            actor = (request.get("actor") or "").strip()
+            if not actor:
+                raise ContractError("VALIDATION_FAILED", "人审预览需要 actor（本机操作者声明）")
+            self._ensure_synced(record, backend_b)
+            session = backend_b.create_session(actor, meta)
+            result = backend_b.preview_review(record, {
+                "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
+                "reason": request.get("reason", ""),
+                "coverage": request.get("coverage"),
+                "limits": request.get("limits"),
+                "verifyCode": request.get("verifyCode"),
+                "rejectedCandidates": request.get("rejectedCandidates"),
+            }, meta)
+            b_draft = backend_b.draft_state(record)
+            record["backendB"]["lastPreview"] = {
+                "previewDigest": result["previewDigest"],
+                "confirmationToken": result["confirmationToken"], "actor": actor,
+                "at": _utcnow(), "expiresInSeconds": result["expiresInSeconds"],
+                "bDraftRevision": b_draft["draftRevision"],
+                "aDraftRevision": draft["draftRevision"]}
+            record["backendB"]["sessionSecret"] = {
+                "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
+                "actor": actor, "at": _utcnow()}
+            self.store.save_workspace_record(record)
+            preview = result["preview"]
+            self.store.append_history(workspace_id, {
+                "type": "review_preview", "at": _utcnow(), "actor": actor,
+                "previewDigest": result["previewDigest"],
+                "coverage": preview["reviewCoverage"], "bDraftRevision": b_draft["draftRevision"]})
+            return {
+                "previewDigest": result["previewDigest"],
+                "confirmationToken": result["confirmationToken"],
+                "expiresInSeconds": result["expiresInSeconds"],
+                "beforeGraph": (b_to_a_graph(preview["beforeGraph"], preview)
+                                if preview.get("beforeGraph") else None),
+                "afterGraph": b_to_a_graph(preview["afterGraph"], preview),
+                "appliedOperations": preview["appliedOperations"],
+                "rejectedCandidates": preview["rejectedCandidates"],
+                "reviewCoverage": preview["reviewCoverage"],
+                "limits": preview["limits"], "verifyCode": preview["verifyCode"],
+                "bDraftRevision": b_draft["draftRevision"], "origin": preview["origin"],
+                "labeled": "真实版本服务的人审预览：已绑定该草稿与代码版本，确认后才会产生版本",
+            }
+
+    def review_confirm(self, workspace_id: str, request: dict, meta: dict) -> dict:
+        meta = self._require_meta(meta)
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            self._sample_guard(draft)
+            backend_b = self._backend_b()
+            binding = record.get("backendB") or {}
+            last = binding.get("lastPreview")
+            session = binding.get("sessionSecret") or {}
+            if not last or not session:
+                raise ContractError("HUMAN_REVIEW_REQUIRED", "没有先执行人审预览；请先预览再确认")
+            if request.get("previewDigest") != last["previewDigest"] \
+                    or request.get("confirmationToken") != last["confirmationToken"]:
+                raise ContractError("HUMAN_REVIEW_REQUIRED",
+                                    "确认与已存储的预览不一致；请重新预览",
+                                    {"expectedDigest": last["previewDigest"]})
+            if last.get("aDraftRevision") != draft["draftRevision"]:
+                # the draft was edited after the preview: the preview is void
+                raise ContractError("REVISION_CONFLICT",
+                                    "草稿在人审预览之后又被修改；预览作废，请重新预览",
+                                    {"previewBasis": last.get("aDraftRevision"),
+                                     "current": draft["draftRevision"]})
+            result = backend_b.confirm_review(record, {
+                "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
+                "confirmationToken": request["confirmationToken"],
+                "previewDigest": request["previewDigest"],
+                "decision": request.get("decision"),
+            }, meta)
+            binding["reviewId"] = result["reviewId"]
+            binding["reviewDecision"] = result["decision"]
+            if result.get("publicationToken"):
+                binding["publication"] = {
+                    "token": result["publicationToken"], "reviewId": result["reviewId"],
+                    "expectedMapRevision": binding.get("bBaseMapRevision"), "at": _utcnow()}
+            record["backendB"] = binding
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "review_decision", "at": _utcnow(), "actor": last.get("actor"),
+                "decision": result["decision"], "reviewId": result["reviewId"],
+                "mapRevision": draft.get("graph", {}).get("mapRevision"),
+                "delivery": "recorded_by_b_review_gateway_pending_publish"
+                if result.get("publicationToken") else "rejected_by_b_review_gateway"})
+            return {"reviewId": result["reviewId"], "decision": result["decision"],
+                    "publicationAuthorized": bool(result.get("publicationToken")),
+                    "verifiedCodeRevision": result.get("verifiedCodeRevision"),
+                    "labeled": ("已确认：发布授权保存在服务端；点击发布产生不可变版本"
+                                if result.get("publicationToken") else
+                                "已拒绝：不产生发布授权，不产生版本")}
+
+    def publish_version(self, workspace_id: str, request: dict, meta: dict) -> dict:
+        meta = self._require_meta(meta)
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            self._sample_guard(draft)
+            backend_b = self._backend_b()
+            binding = record.get("backendB") or {}
+            publication = binding.get("publication")
+            if not publication:
+                raise ContractError("HUMAN_REVIEW_REQUIRED",
+                                    "没有已确认的人审授权；发布必须经过 预览→确认→发布")
+            reviewed_revision = (binding.get("lastPreview") or {}).get("aDraftRevision")
+            if reviewed_revision is not None and reviewed_revision != draft["draftRevision"]:
+                raise ContractError("REVISION_CONFLICT",
+                                    "草稿在确认之后又被修改；当前页面与已审核内容不一致，请重新走人审",
+                                    {"reviewed": reviewed_revision, "current": draft["draftRevision"]})
+            envelope = backend_b.publish(record, {"publicationToken": publication["token"]}, meta)
+            version = envelope["version"]
+            provenance = envelope["provenance"]
+            record["lastPublish"] = {
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": provenance.get("mapSourceRevision"),
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "actor": (binding.get("lastPreview") or {}).get("actor"), "at": _utcnow()}
+            record["identity"]["mapSourceRevision"] = provenance.get("mapSourceRevision")
+            record["identity"]["verifiedCodeRevision"] = version.get("verifiedCodeRevision")
+            draft["publishedMapRevision"] = version["mapRevision"]
+            record.setdefault("publishedVersions", []).append({
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": provenance.get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "status": version["status"], "at": _utcnow()})
+            binding.pop("publication", None)
+            binding.pop("lastPreview", None)
+            record["backendB"] = binding
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "publish", "at": _utcnow(), "mapRevision": version["mapRevision"],
+                "mapSourceRevision": provenance.get("mapSourceRevision"),
+                "backend": backend_b.KIND})
+            return {
+                "version": {key: version[key] for key in
+                            ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                             "verifiedCodeRevision", "status", "origin")},
+                "provenance": provenance,
+                "graph": b_to_a_graph(version["graph"], version),
+                "reviewCoverage": version["reviewCoverage"],
+                "confirmation": version["confirmation"], "limits": version["limits"],
+                "envelope": self._envelope(record),
+                "labeled": "B 版本服务产生并经 Git 提交的不可变认知版本",
+            }
+
+    def version_history(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        binding = record.get("backendB") or {}
+        versions = list(record.get("publishedVersions", []))
+        return {"workspaceId": workspace_id, "versions": versions,
+                "bWorkspaceId": binding.get("workspaceId"), "mapId": binding.get("mapId"),
+                "currentMapRevision": (record.get("draft") or {}).get("publishedMapRevision"),
+                "backend": self._backend_label()}
+
+    def version_detail(self, workspace_id: str, map_revision: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        binding = record.get("backendB") or {}
+        if not binding.get("workspaceId"):
+            raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务")
+        envelope = self._backend_b().export_version(binding["workspaceId"], map_revision)
+        version = envelope["version"]
+        return {"version": {key: version[key] for key in
+                            ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                             "verifiedCodeRevision", "status", "origin")},
+                "provenance": envelope["provenance"],
+                "graph": b_to_a_graph(version["graph"], version),
+                "reviewCoverage": version["reviewCoverage"],
+                "confirmation": version["confirmation"], "limits": version["limits"]}
+
+    def import_version(self, workspace_id: str, request: dict) -> dict:
+        """Second client: read the immutable Git bytes for a published revision."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            binding = record.get("backendB") or {}
+            if not binding.get("workspaceId"):
+                raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务")
+            map_revision = request.get("mapRevision")
+            map_source_revision = request.get("mapSourceRevision")
+            if not map_revision or not map_source_revision:
+                raise ContractError("VALIDATION_FAILED", "需要 mapRevision 与 mapSourceRevision")
+            envelope = self._backend_b().import_git_version(
+                binding["workspaceId"], map_revision=map_revision,
+                map_source_revision=map_source_revision,
+                expected_map_revision=request.get("expectedMapRevision"))
+            version = envelope["version"]
+            record["lastPublish"] = {
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "actor": "import_git_version", "at": _utcnow()}
+            record.setdefault("publishedVersions", []).append({
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "status": version["status"], "at": _utcnow(), "imported": True})
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "import_git_version", "at": _utcnow(),
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope["provenance"].get("mapSourceRevision")})
+            return {"version": {key: version[key] for key in
+                                ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                                 "verifiedCodeRevision", "status", "origin")},
+                    "provenance": envelope["provenance"],
+                    "graph": b_to_a_graph(version["graph"], version),
+                    "reviewCoverage": version["reviewCoverage"],
+                    "confirmation": version["confirmation"], "limits": version["limits"],
+                    "labeled": "第二副本从架构 Git 固定提交读取的同版内容"}
+
+    def open_from_version(self, request: dict) -> dict:
+        """Second copy: open the same graph version as a NEW workspace.
+
+        The caller supplies the registered mapId, the immutable mapRevision and
+        the architecture Git source SHA. The version bytes are read from Git
+        and verified; a label in the request is never trusted.
+        """
+        map_id = (request.get("mapId") or "").strip()
+        map_revision = (request.get("mapRevision") or "").strip()
+        map_source_revision = (request.get("mapSourceRevision") or "").strip()
+        repo_path = (request.get("repoPath") or "").strip()
+        if not map_id or not map_revision or not map_source_revision or not repo_path:
+            raise ContractError("VALIDATION_FAILED",
+                                "需要 mapId/mapRevision/mapSourceRevision/repoPath")
+        backend_b = self._backend_b()
+        envelope = self.create_workspace({
+            "context": "existing_project",
+            "title": request.get("title") or "同版接手（第二副本）",
+            "repoPath": repo_path, "mapId": map_id,
+            "description": request.get("description", "按同版交接包打开同一认知版本")})
+        workspace_id = envelope["workspace"]["workspaceId"]
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            binding = dict(record.get("backendB") or {})
+            workspace_b = backend_b.ensure_workspace(record)
+            binding.update({"workspaceId": workspace_b["workspaceId"],
+                            "mapId": workspace_b["mapId"]})
+            record["backendB"] = binding
+            envelope_b = backend_b.import_git_version(
+                binding["workspaceId"], map_revision=map_revision,
+                map_source_revision=map_source_revision,
+                expected_map_revision=request.get("expectedMapRevision"))
+            version = envelope_b["version"]
+            record["lastPublish"] = {
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision"),
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "actor": "open_from_version", "at": _utcnow()}
+            record.setdefault("publishedVersions", []).append({
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "status": version["status"], "at": _utcnow(), "imported": True})
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "open_from_version", "at": _utcnow(),
+                "mapId": version["mapId"], "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision")})
+            result = self._envelope(record)
+        result.update({
+            "version": {key: version[key] for key in
+                        ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                         "verifiedCodeRevision", "status", "origin")},
+            "provenance": envelope_b["provenance"],
+            "graph": b_to_a_graph(version["graph"], version),
+            "reviewCoverage": version["reviewCoverage"],
+            "confirmation": version["confirmation"], "limits": version["limits"],
+            "labeled": "第二副本从架构 Git 固定提交读取并核对来源后的同版内容"})
+        return result
+
+    def associate_code(self, workspace_id: str, request: dict) -> dict:
+        """Planning workspace: explicitly associate a real repository (keeps design history)."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            if record["context"] != "planning":
+                raise ContractError("VALIDATION_FAILED", "只有规划工作区需要关联代码")
+            repo_path = (request.get("repoPath") or "").strip()
+            if not repo_path:
+                raise ContractError("VALIDATION_FAILED", "需要仓库路径")
+            probe = self.probe_repo(repo_path)
+            backend_b = self._backend_b()
+            binding = record.get("backendB") or {}
+            if not binding.get("workspaceId"):
+                raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务")
+            code_repo_id = backend_b.repo_id_for(probe["root"])
+            backend_b.associate_code(binding["workspaceId"], code_repo_id=code_repo_id,
+                                     code_revision=probe["head"],
+                                     expected_map_revision=request.get("expectedMapRevision"))
+            identity = record["identity"]
+            confirmed_design = (record.get("lastPublish") or {}).get("mapRevision")
+            if confirmed_design:
+                # the confirmed design version stays in history: associating
+                # code never rewrites what was confirmed as a design
+                record.setdefault("designHistory", []).append(confirmed_design)
+            identity["codeRepoId"] = code_repo_id
+            identity["codeRevision"] = probe["head"]
+            identity["repoPath"] = probe["root"]
+            if not identity.get("mapId"):
+                identity["mapId"] = binding.get("mapId")
+            record["context"] = "mixed"
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "associate_code", "at": _utcnow(), "codeRepoId": code_repo_id,
+                "codeRevision": probe["head"],
+                "note": "规划图关联真实代码：设计确认不等于实现完成"})
+            return self._envelope(record)
 
     # ---------- change recheck (P4) ----------
 

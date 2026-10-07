@@ -12,8 +12,10 @@ import re
 from http import HTTPStatus
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
-ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
-STEP_ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+# Same identifier rule as B's schema (extensions/architecture_workspace/schema.py)
+# so one registered repository keeps one identity across both sides.
+ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,119}$")
+STEP_ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,119}$")
 
 CONTEXTS = ("existing_project", "planning", "mixed")
 EDGE_TYPES = ("static_reference", "functional_collaboration", "expected_sequence")
@@ -35,6 +37,19 @@ ERROR_CODES = {
     "AI_GENERATION_FAILED": HTTPStatus.BAD_GATEWAY,
     "FORBIDDEN_ORIGIN": HTTPStatus.FORBIDDEN,
     "NOT_RUN_AWAITING_CONFIGURATION": HTTPStatus.SERVICE_UNAVAILABLE,
+    # B version-service vocabulary (extensions/architecture_workspace/errors.py)
+    # registered by A as part of CONTRACT_V1; HTTP mapping per B's proposal:
+    # 403 review/session codes, 409 conflicts, 503 publication/storage.
+    "HUMAN_REVIEW_REQUIRED": HTTPStatus.FORBIDDEN,
+    "REVIEW_EXPIRED": HTTPStatus.FORBIDDEN,
+    "REVIEW_REPLAY": HTTPStatus.FORBIDDEN,
+    "REQUEST_FORBIDDEN": HTTPStatus.FORBIDDEN,
+    "REFERENCE_CONFLICT": HTTPStatus.CONFLICT,
+    "PUBLICATION_CONFLICT": HTTPStatus.CONFLICT,
+    "VERSION_CONFLICT": HTTPStatus.CONFLICT,
+    "DIRTY_ARCHITECTURE_REPO": HTTPStatus.CONFLICT,
+    "PUBLICATION_FAILED": HTTPStatus.SERVICE_UNAVAILABLE,
+    "STORAGE_FAILED": HTTPStatus.SERVICE_UNAVAILABLE,
 }
 
 
