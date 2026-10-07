@@ -23,6 +23,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 import app as app_module
+from archloop.web_session import CSRF_HEADER
+from tests.archloop_http_session import establish_session
 
 
 def demo_node(node_id: str, paths: list[str]) -> dict:
@@ -32,6 +34,8 @@ def demo_node(node_id: str, paths: list[str]) -> dict:
 
 
 class ArchLoopHTTPTests(unittest.TestCase):
+    _session = None
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.tmp = tempfile.TemporaryDirectory()
@@ -47,6 +51,7 @@ class ArchLoopHTTPTests(unittest.TestCase):
         cls.port = cls.server.server_port
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
+        cls._session = None
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -55,7 +60,7 @@ class ArchLoopHTTPTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def request(self, method: str, path: str, body: dict | None = None,
-                origin: str | None = "same"):
+                origin: str | None = "same", session: bool = True):
         headers = {}
         if origin == "same":
             headers["Origin"] = f"http://127.0.0.1:{self.port}"
@@ -64,6 +69,16 @@ class ArchLoopHTTPTests(unittest.TestCase):
         data = json.dumps(body).encode("utf-8") if body is not None else None
         if data is not None:
             headers["Content-Type"] = "application/json"
+        if data is not None and session:
+            # the public write seam requires a live server-side session and its
+            # anti-forgery header (D-A-02); tests drive it like the browser
+            if self.__class__._session is None:
+                self.__class__._session = establish_session(f"http://127.0.0.1:{self.port}")
+            cookie, csrf = self.__class__._session
+            if cookie:
+                headers["Cookie"] = cookie
+            if csrf:
+                headers[CSRF_HEADER] = csrf
         request = Request(f"http://127.0.0.1:{self.port}{path}", data=data,
                           headers=headers, method=method)
         try:

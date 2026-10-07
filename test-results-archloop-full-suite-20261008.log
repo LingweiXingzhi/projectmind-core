@@ -1,0 +1,403 @@
+...............................127.0.0.1 - - [08/Oct/2026 02:11:10] "GET /api/archloop/session?operator=HTTP%20%E6%B5%8B%E8%AF%95%E6%93%8D%E4%BD%9C%E8%80%85 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:11] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:11] "POST /api/archloop/workspaces/ws_20261008021111_ec57f2/sync HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:11] "GET /api/archloop/backend HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:11] "POST /api/archloop/workspaces/ws_20261008021111_ec57f2/review-preview HTTP/1.1" 403 -
+127.0.0.1 - - [08/Oct/2026 02:11:11] "POST /api/archloop/workspaces/ws_20261008021111_ec57f2/review-preview HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:11] "POST /api/archloop/workspaces/ws_20261008021111_ec57f2/review-confirm HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:12] "POST /api/archloop/workspaces/ws_20261008021111_ec57f2/publish HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:12] "GET /api/archloop/workspaces/ws_20261008021111_ec57f2/versions HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:11:12] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:12] "POST /api/archloop/workspaces/ws_20261008021112_729f72/publish HTTP/1.1" 403 -
+.....................................................................................127.0.0.1 - - [08/Oct/2026 02:11:58] "GET /api/archloop HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:11:58] "GET /api/archloop/session HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:58] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:11:58] "GET /api/archloop/session HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:11:58] "POST /api/archloop/workspaces HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:11:58] "POST /api/archloop/workspaces HTTP/1.1" 403 -
+..............................127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/ai-status HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/archloop/session HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces HTTP/1.1" 500 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/archloop/sample-graph?context=planning HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/generate HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/apply-candidate HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/apply-ops HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/apply-ops HTTP/1.1" 409 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/correction-preview HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/apply-correction HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/review HTTP/1.1" 403 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0798b2/fix-task HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/archloop/workspaces/ws_20261008021208_0798b2 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_0b49e9/generate HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/snapshot HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/archloop/workspaces/ws_20261008021208_52d599/recheck HTTP/1.1" 404 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "POST /api/archloop/workspaces/ws_20261008021208_52d599/recheck HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/archloop HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:12:08] "GET /api/archloop/sample-graph HTTP/1.1" 200 -
+............................s..................................................................................E....................................................................................................................................C:\Program Files\Python312\Lib\tempfile.py:940: ResourceWarning: Implicitly cleaning up <TemporaryDirectory 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\tmpc6uy7y9y'>
+  _warnings.warn(warn_message, ResourceWarning)
+.C:\Program Files\Python312\Lib\tempfile.py:940: ResourceWarning: Implicitly cleaning up <TemporaryDirectory 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\tmpqpno8fcl'>
+  _warnings.warn(warn_message, ResourceWarning)
+..............................................................................................................................................E.....E........................................................127.0.0.1 - - [08/Oct/2026 02:17:33] "GET /ext/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "GET /ext/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "GET /ext/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "GET /api/extensions/continuity?action=export&id=21f0bb9892744ea9be97e9fae256cc63 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "POST /api/extensions/continuity HTTP/1.1" 409 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:33] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:34] "GET /api/extensions/continuity?action=inspect&id=2c78dd8631a54c7e8800476823a25d0f HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:17:35] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:35] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:35] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:35] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:35] "POST /api/extensions/continuity HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:17:35] "POST /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:35] "GET /api/extensions/continuity?action=export&id=1649dffebab243b5964eb06e796c26de HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:35] "POST /api/extensions/continuity HTTP/1.1" 200 -
+......127.0.0.1 - - [08/Oct/2026 02:17:42] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:42] "GET /ext/continuity_github HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:42] "GET /api/extensions/continuity_github?action=log_page HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:42] "POST /api/extensions/continuity_github HTTP/1.1" 200 -
+......127.0.0.1 - - [08/Oct/2026 02:17:46] "GET /api/extensions/exiting_runtime HTTP/1.1" 500 -
+127.0.0.1 - - [08/Oct/2026 02:17:46] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:46] "GET /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:46] "GET /api/extensions/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:46] "GET /api/extensions/continuity HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:46] "GET /api/extensions/project_summary HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:46] "GET /api/snapshot HTTP/1.1" 200 -
+..127.0.0.1 - - [08/Oct/2026 02:17:47] "GET /api/extensions/raises_ki HTTP/1.1" 500 -
+127.0.0.1 - - [08/Oct/2026 02:17:47] "GET /api/extensions/raises_ge HTTP/1.1" 500 -
+127.0.0.1 - - [08/Oct/2026 02:17:47] "GET /api/snapshot HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:17:48] "GET /api/extensions/exiting_runtime HTTP/1.1" 500 -
+127.0.0.1 - - [08/Oct/2026 02:17:48] "GET /api/extensions/healthy HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:48] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:48] "GET /api/extensions HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:17:49] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:49] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:49] "GET /api/extensions/broken HTTP/1.1" 503 -
+.127.0.0.1 - - [08/Oct/2026 02:17:49] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:49] "GET /ext/team_facts HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:49] "GET /api/extensions/team_facts?value=from-get HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:50] "POST /api/extensions/team_facts HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:50] "POST /api/extensions/team_facts HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:17:50] "GET /api/extensions/runtime_failure HTTP/1.1" 500 -
+127.0.0.1 - - [08/Oct/2026 02:17:50] "GET /api/snapshot HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:17:51] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:51] "GET /extensions.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:51] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:51] "GET /api/extensions/project_summary HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:51] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:51] "GET /ext/project_summary HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:17:52] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:52] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:52] "GET /api/extensions/healthy HTTP/1.1" 200 -
+.....127.0.0.1 - - [08/Oct/2026 02:17:52] "GET /ext/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:53] "GET /api/snapshot HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:53] "POST /api/extensions/handoff HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:17:53] "POST /api/extensions/handoff HTTP/1.1" 400 -
+..........................................................................127.0.0.1 - - [08/Oct/2026 02:18:21] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:21] "GET /api/repo-explorer/changes?projectId=ac9e7e539dbe440b9ef2a3a697f8fe81&base=0c9c3f8642da0858218b74eaf17f1be049c9c9c9&target=b1fa834787167dc055f719a0459cc9698c3275b2 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:22] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:22] "GET /api/repo-explorer/changes?projectId=dd9649df6977471da77606464cba1f08&base=d4dd5a8105f8a1df90d6ea3c52ad28e419c898ac&target=d4dd5a8105f8a1df90d6ea3c52ad28e419c898ac HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:23] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:23] "GET /api/repo-explorer/changes?projectId=38f6bf72cb194ab2ad59b57be0e18b1a&base=281c133361131bcfa6857300db745b7e8f504359 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:24] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:25] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:25] "GET /api/repo-explorer/changes?projectId=0510f4f5ff9b4c259c8b8bbadb9bda17&base=HEAD&target=83dba9f2e1341b162e230a7d4a37b99fa6ccf7c2 HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:25] "GET /api/repo-explorer/changes?projectId=0510f4f5ff9b4c259c8b8bbadb9bda17&base=main&target=83dba9f2e1341b162e230a7d4a37b99fa6ccf7c2 HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:25] "GET /api/repo-explorer/changes?projectId=0510f4f5ff9b4c259c8b8bbadb9bda17&base=219ea88b&target=83dba9f2e1341b162e230a7d4a37b99fa6ccf7c2 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:26] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:27] "GET /api/repo-explorer/changes?projectId=44ec7757942e4f99b2a5ed4fcb2b6f2d&base=0000000000000000000000000000000000000000&target=a543b4d9ec54b13fa1e880bdba182c6ff86f3d07 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:28] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:28] "GET /api/repo-explorer/changes?projectId=35da1262010446e6a41f88b4ad88bee0&base=8d3b81e0883d71e46a5f5301b91eae8622bd83a7&target=a87909f0a1ed241e98bbb95a24d6f152cb39dc98 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:29] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:29] "GET /api/repo-explorer/changes?projectId=0c393db3fcef474f846ed93605ebbbf8&base=8492aa108ea02bbb21ef368492f09450b73cc4c4&target=fe4e4a75ff14b9a50dc7312daea01a1245f2959d HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:30] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:30] "GET /api/repo-explorer/changes?projectId=6bd6c88e6b0643cc8d3628eb9604b996&base=101c234cb5a46c2b81222c7287e1edf42b359214&target=b863d0e8bfd3b4f4c0e7575362a9ff84ba47f0aa HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:30] "GET /api/repo-explorer/file?projectId=6bd6c88e6b0643cc8d3628eb9604b996&revision=b863d0e8bfd3b4f4c0e7575362a9ff84ba47f0aa&path=%00b64%3AYWRkLf8ucHk%3D&startLine=1&endLine=10 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:31] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:31] "GET /api/repo-explorer/changes?projectId=617f5761356d4ffeb60a74d57c74a6a2&base=a47b0e0e1c4819893289275e2db1ebe1d7c3e919&target=617545db7fd9c8fd9e138b7662d2ccec89aa8cd1 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:33] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:34] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:34] "GET /api/repo-explorer/changes?projectId=6a6c66b2da64404ea0fdaafa1c91aabe&base=12126395b541e61ad6ade21d405da23cb6f20d55&target=086caf9200641214cccbbc94420278c014c29d75 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:35] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:35] "GET /api/repo-explorer/changes?projectId=37003beff10c49dcb52ab530130ee7e9&base=5d3cd364117016f8ba03b701d5acaa2813c54800&target=27cc4110a363c3f40f6dfc721176922e554f84ac HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:36] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:36] "GET /api/repo-explorer/file?projectId=498af5e283724f3b898b3281c84cc4cc&revision=13b5d95cf38c27dea231d610b6894de7087931d7&path=empty.py&startLine=1&endLine=200 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:37] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:37] "GET /api/repo-explorer/file?projectId=2428e195e2e242d5b4a3cd60b061b9e9&revision=62955f9e6640a9086b7205eda7b5835ea2611528&path=multiline.py&startLine=9&endLine=99 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:38] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:38] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:38] "GET /api/repo-explorer/file?projectId=77b27dcb75aa4416996a557297659cdf&revision=db988c6821a7674a81478e4d76ceb063d6ba70e4&path=u2028.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:39] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:39] "GET /api/repo-explorer/file?projectId=d6c244fedfcf40ca9a11f9501989a0c8&revision=2b1e0ee2492e744b7ca7d40a584398a2bfc846b9 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:40] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:40] "GET /api/repo-explorer/file?projectId=7ceaa6382989436eb3171fe9c29655f6&revision=9fe2cf9e40a8166b5e3a928f128982ad3dd6e6a8&path=/etc/passwd HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:40] "GET /api/repo-explorer/file?projectId=7ceaa6382989436eb3171fe9c29655f6&revision=9fe2cf9e40a8166b5e3a928f128982ad3dd6e6a8&path=C:/windows HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:40] "GET /api/repo-explorer/file?projectId=7ceaa6382989436eb3171fe9c29655f6&revision=9fe2cf9e40a8166b5e3a928f128982ad3dd6e6a8&path=..%2Fsecret HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:40] "GET /api/repo-explorer/file?projectId=7ceaa6382989436eb3171fe9c29655f6&revision=9fe2cf9e40a8166b5e3a928f128982ad3dd6e6a8&path=a/../b HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:40] "GET /api/repo-explorer/file?projectId=7ceaa6382989436eb3171fe9c29655f6&revision=9fe2cf9e40a8166b5e3a928f128982ad3dd6e6a8&path=nested\\note.txt HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:41] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:41] "GET /api/repo-explorer/file?projectId=9c48734926694473b0d3c0ebaf72bcf5&revision=0729690efb8132746aeef715118ae4b1066a61a7&path=nope.py HTTP/1.1" 404 -
+.127.0.0.1 - - [08/Oct/2026 02:18:42] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:42] "GET /api/repo-explorer/file?projectId=3aee874cbdfd495691bed6ce2362b033&revision=30d667572fd245fdded3a54f55e8df61e5c20ee9&path=multiline.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:43] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:43] "GET /api/repo-explorer/file?projectId=b9524bff62e44df0898537fd4aa71b6c&revision=30d667572fd245fdded3a54f55e8df61e5c20ee9&path=data.bin HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:18:44] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:44] "GET /api/repo-explorer/file?projectId=22dae480043d4b9c80c467c48e127afe&revision=3b8d059773cefcb27ce798b3f8e711240eafca46&path=multiline.py&startLine=2&endLine=3 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:45] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:45] "GET /api/repo-explorer/file?projectId=3afb6ad16a3b485f847194f984c9752d&revision=89d3bdebe47b92de6f5233c02bad700814ce3370&path=multiline.py&startLine=11&endLine=20 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:46] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:46] "GET /api/repo-explorer/file?projectId=64f865c39d1d43a8bebc1cea13e53542&revision=7db8523a09ac71e0bfbecfb0e693ca51db066a9a&path=multiline.py&startLine=5&endLine=6 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:46] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:46] "GET /api/repo-explorer/file?projectId=f5182f16cce84c35b490c76aafba837e&revision=d25ddfd4ac884be38606af101a46daece7a4fe6c&path=multiline.py&startLine=1&endLine=501 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:48] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:48] "GET /api/repo-explorer/symbols?projectId=d0bca1b7dbf14579b2e70198d10accc6&revision=40784f27244351a6b4babc16f60776742dca3f01&path=alpha.py HTTP/1.1" 500 -
+.127.0.0.1 - - [08/Oct/2026 02:18:49] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:49] "GET /api/repo-explorer/symbols?projectId=5b26ce2209fa4d4c96fd8aefedd5810a&revision=f18c8d5b5e8fe5991f4f1447ad2f023b33874d7e&path=alpha.py HTTP/1.1" 500 -
+.127.0.0.1 - - [08/Oct/2026 02:18:51] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:51] "GET /api/repo-explorer/symbols?projectId=bb0f2033afde40188aa07a8be51e1b76&revision=dea99c6b24597a1299cc48288f259d5bb1f039cd&path=alpha.py HTTP/1.1" 500 -
+.127.0.0.1 - - [08/Oct/2026 02:18:52] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:52] "GET /api/repo-explorer/tree?projectId=b0d413ea97db4a7c86a53a51418326d0&revision=5a7306aff688bd25429e6f6a269f431e5da091d0 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:54] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:54] "GET /api/repo-explorer/tree?projectId=eb8e0e7c01d9487dae9830025dbfceee&revision=47de2095c56f80ff7f9a25fff5d49ac6af30725d HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:55] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:55] "GET /api/repo-explorer/file?projectId=dffdf4e49a2f40e6b867b94270753f35&revision=aa25daae878245819ff8d566d5699046a3c45eb2&path=empty.py&startLine=0&endLine=200 HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:55] "GET /api/repo-explorer/file?projectId=dffdf4e49a2f40e6b867b94270753f35&revision=aa25daae878245819ff8d566d5699046a3c45eb2&path=empty.py&startLine=-1&endLine=5 HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:55] "GET /api/repo-explorer/file?projectId=dffdf4e49a2f40e6b867b94270753f35&revision=aa25daae878245819ff8d566d5699046a3c45eb2&path=empty.py&startLine=5&endLine=2 HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:18:55] "GET /api/repo-explorer/file?projectId=dffdf4e49a2f40e6b867b94270753f35&revision=aa25daae878245819ff8d566d5699046a3c45eb2&path=empty.py&startLine=1&endLine=502 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:18:57] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:57] "GET /api/repo-explorer/file?projectId=ef82ffaddd6b4385990e4dbf8d8e45f7&revision=4abc0511bf48836b9ccd084a9a2184aa33f96b24&path=empty.py&startLine=1&endLine=200 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:58] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:18:59] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:18:59] "GET /api/repo-explorer/tree?projectId=add3ad50d4574789b91a6433a970d863&revision=59b672373be1f81a3f31e365589613aaf75b5a1d HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:01] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:01] "GET /api/repo-explorer/symbols?projectId=48810283b15d4bbd827c162daac1ccfc&revision=4bef5261286e41b550aacd4c28d3abb874c39370&path=alpha.py HTTP/1.1" 500 -
+.127.0.0.1 - - [08/Oct/2026 02:19:02] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:03] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:03] "GET /api/repo-explorer/tree?projectId=9f5db1b32ae34d84a17156ddb8da8686&revision=4b8b1129e3c326dce01ac8bd709c573d841df793 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:05] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:05] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:06] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:08] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:09] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:09] "GET /api/repo-explorer/tree?projectId=1dabaf37fffb4316a78dbf29a3a393cb&revision=e4c21d2b8befb5b1c3050add5cddd6b9ad4c6147 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:11] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:11] "GET /api/repo-explorer/relations?path=pkg%2Fservice.py&projectId=dc458a84510e43a592a5271e7cdba125&revision=cbb97e25faa459c32e17e567a899d4761d3d0102 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:13] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:13] "GET /api/repo-explorer/symbols?path=pkg%2Fservice.py&projectId=38a1e92069cf49d78e04b74f808b7c1a&revision=cbb97e25faa459c32e17e567a899d4761d3d0102 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:15] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:16] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:16] "GET /api/repo-explorer/relations?projectId=25a44072fa8f440089e785d796a39b57&revision=fbbe597de0788e735b985c9627f4fed0127abd22&path=pkg%2Futils.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:17] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:17] "GET /api/repo-explorer/tree?projectId=9fdeb562dc5743e9a96caba43fe7a2f9&revision=a39e412c3bcc6adf45d568e80e69ba311a25454a HTTP/1.1" 403 -
+127.0.0.1 - - [08/Oct/2026 02:19:17] "GET /api/repo-explorer/file?projectId=9fdeb562dc5743e9a96caba43fe7a2f9&revision=a39e412c3bcc6adf45d568e80e69ba311a25454a&path=x.py HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:19:18] "POST /api/repo-explorer/open HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:19:18] "POST /api/repo-explorer/open HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:19:19] "POST /api/repo-explorer/open HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:19:20] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:21] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:21] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:22] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:22] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:23] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:24] "POST /api/repo-explorer/open HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:19:24] "POST /api/repo-explorer/open HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:19:24] "POST /api/repo-explorer/open HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:19:25] "POST /api/repo-explorer/open HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:19:25] "POST /api/repo-explorer/open HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:19:25] "POST /api/repo-explorer/open HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:19:25] "POST /api/repo-explorer/open HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:19:26] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:27] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:28] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:29] "POST /api/repo-explorer/open HTTP/1.1" 413 -
+.127.0.0.1 - - [08/Oct/2026 02:19:30] "POST /api/repo-explorer/open HTTP/1.1" 408 -
+.127.0.0.1 - - [08/Oct/2026 02:19:31] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+............127.0.0.1 - - [08/Oct/2026 02:19:42] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:42] "GET /api/repo-explorer/relations?projectId=18c6c84badca45a69fdda5d0c482ba4a&revision=2586de0559bbd67edaed948a30b1474facd0e0ec&path=src/pkg/mod.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:43] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:43] "GET /api/repo-explorer/relations?projectId=b41923ed361d45a4b8520cc5d792d94c&revision=f64c378e0bddb8a14301cde2d082d3fd5a48afbd&path=src/pkg/mod.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:44] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:44] "GET /api/repo-explorer/relations?projectId=4b2160f618f648069603806840981f4a&revision=71f294b4a38db78345ba9f82ee7ab9f18de0f4e9&path=src/pkg/sub/mod.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:45] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:45] "GET /api/repo-explorer/relations?projectId=a0a7e9ad42c442e88b3a8f9f8c0574b9&revision=2dab63cc77b5d7ab824ef95941ef6b25bb781568&path=nsmod.py HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:45] "GET /api/repo-explorer/relations?projectId=a0a7e9ad42c442e88b3a8f9f8c0574b9&revision=2dab63cc77b5d7ab824ef95941ef6b25bb781568&path=helper.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:47] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:47] "GET /api/repo-explorer/relations?projectId=ee9f6c3da4684ee8baca5ed8e9fd4427&revision=580cf8ea199342b0b8e3fa30c67feacab74b1ed2&path=src/core/mod.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:49] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:49] "GET /api/repo-explorer/relations?projectId=3791c8bf73dc4f2a9f51fb619c56a50d&revision=aaa061868baae43a78387382d38cd4de72913726&path=src/consumer.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:51] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:51] "GET /api/repo-explorer/relations?projectId=df80cf2c60f2438ca8a73054670649fb&revision=eec7ece9a97f9399d4a65cb61a9a3e7ceebcf7f9&path=pkg/thing.py HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:51] "GET /api/repo-explorer/relations?projectId=df80cf2c60f2438ca8a73054670649fb&revision=eec7ece9a97f9399d4a65cb61a9a3e7ceebcf7f9&path=pkg/thing/__init__.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:52] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:52] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:54] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:55] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:56] "GET /api/repo-explorer/relations?projectId=0b52ff85ddda4c2c987243323582beac&revision=5d74a583777382e806deeaaa7157bc38b79d9c85&path=pkg/helper.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:57] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:57] "GET /api/repo-explorer/relations?projectId=0b74179229b747f09539568f933dc277&revision=f2fc93a6e3fe6a8cd4b4a4b8226df6285c75834b&path=pkg/frommodule.py HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:57] "GET /api/repo-explorer/relations?projectId=0b74179229b747f09539568f933dc277&revision=f2fc93a6e3fe6a8cd4b4a4b8226df6285c75834b&path=pkg/utils.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:19:59] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:59] "GET /api/repo-explorer/relations?projectId=bf50cd69b6a64d69abfa7783cd4160d8&revision=87bbc52f40995aab27d8ba2945d751c35f755023&path=pkg/consumer.py HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:19:59] "GET /api/repo-explorer/relations?projectId=bf50cd69b6a64d69abfa7783cd4160d8&revision=87bbc52f40995aab27d8ba2945d751c35f755023&path=pkg/helper.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:01] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:01] "GET /api/repo-explorer/relations?projectId=58fcfb98d79b4781ba5d9da58be0121b&revision=663e0ac3c4aaa2c9334c15d6a313410dba48d533&path=pkg/consumer.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:02] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:02] "GET /api/repo-explorer/relations?projectId=80a4489020ff45beaf2d6607ecbf80e3&revision=defab64ccdbcc28ecd2a3056146ec2ae83b7ade8&path=pkg/dualconsumer.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:04] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:06] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:06] "GET /api/repo-explorer/relations?projectId=2d5a5e2ed6ff431dac7113def4b9bb32&revision=1f5bf067826d57a54a1020432e6e7e77205e4f00&path=pkg/nsconsumer.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:07] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:07] "GET /api/repo-explorer/relations?projectId=6ecafc41a1154f798817fcc67eb0adbc&revision=434ed1cee2816a822bc39e2eb82a088d980a8919&path=src/core/sub/mod.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:09] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:09] "GET /api/repo-explorer/relations?projectId=7500128f7b8148c493e07b48a5783db7&revision=9a992fdfb53bf4ddd8e6fb941aeb108480c8b9f5&path=pkg/attributes.py HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:09] "GET /api/repo-explorer/relations?projectId=7500128f7b8148c493e07b48a5783db7&revision=9a992fdfb53bf4ddd8e6fb941aeb108480c8b9f5&path=pkg/__init__.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:11] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:11] "GET /api/repo-explorer/relations?projectId=a18159eb6fd64c319ce71f3ba7a7419a&revision=575d77f194c02853c7b8a554b2a6371d2abafd62&path=pkg/broken.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:12] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:14] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:15] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:15] "GET /api/repo-explorer/relations?projectId=1364e497338f4955ad641c0cdfbc77ab&revision=061e1d3cc036c1ed8dfd0758ff55f920b9eefdbd&path=pkg/consumer.py HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:15] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:17] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:17] "GET /api/repo-explorer/relations?projectId=2b7b952d784c4a50bd660d63c6c10c43&revision=9e4f9c1c2496f3caade666fd801d35950787816f&path=src/core/mod.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:19] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:19] "GET /api/repo-explorer/relations?projectId=17ce16b69eac4cf59d0d892bceaf9d58&revision=b08d2bdb981c9b595108d4166eb04f6d57291f67&path=service.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:20] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:20] "GET /api/repo-explorer/relations?projectId=35449396f76b49048fd3e9b513550dd0&revision=f67c7752795eb9fcc8acb524806b61d0832b6933&path=pkg/consumer.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:22] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:22] "GET /api/repo-explorer/relations?projectId=cd5779e3c05b42ef8ff936de1d76149c&revision=184b01352c4309d332f4c7a7750aaee0c823df0d&path=src/tool.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:24] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:24] "GET /api/repo-explorer/relations?projectId=aca716aea006400eadea7e3aefd5bccb&revision=1fd0bee236dfd7a71fd636c29a7ca323635cb712&path=pkg/ambiguous.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:26] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:26] "GET /api/repo-explorer/relations?projectId=fd4e56a374934d66ade047800052f296&revision=7e6033ef3bcf3d4a57f75dba72046bd369837210&path=pkg/helper.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:27] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:27] "GET /api/repo-explorer/relations?projectId=1d7a3da54eb14a6e8687279cefe79d2a&revision=68c4f429df21524bae788d0781390380efb488f8&path=big.log HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:20:29] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:29] "GET /api/repo-explorer/relations?projectId=e7298bcdbb8c4a14a7cb60440ae127fd&revision=8bdaf5fa2453e8cce1e21b9a7a5e93cb25e35185&path=src/core/helper.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:31] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:31] "GET /api/repo-explorer/relations?projectId=1da61a1fcb014f8aa8f05ea04d92ae1f&revision=5f59f3ef7dec03f2cb3e1fed52ac63a652c1e769&path=src/core/mod.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:32] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:32] "GET /api/repo-explorer/relations?projectId=56b209f20cd24fc6a9747061b103d1f4&revision=1e6679bbb0b10d24e4f902602f0d1269c226be80&path=nope.py HTTP/1.1" 404 -
+.127.0.0.1 - - [08/Oct/2026 02:20:33] "POST /api/repo-explorer/open HTTP/1.1" 404 -
+.127.0.0.1 - - [08/Oct/2026 02:20:34] "GET /api/snapshot HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:35] "GET /api/ai-status HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:35] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:35] "GET /api/extensions HTTP/1.1" 503 -
+127.0.0.1 - - [08/Oct/2026 02:20:35] "GET /api/extensions/worklog HTTP/1.1" 503 -
+127.0.0.1 - - [08/Oct/2026 02:20:35] "POST /api/extensions/worklog HTTP/1.1" 503 -
+127.0.0.1 - - [08/Oct/2026 02:20:35] "GET /ext/worklog HTTP/1.1" 503 -
+127.0.0.1 - - [08/Oct/2026 02:20:35] "GET /api/snapshot HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:20:36] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:37] "GET /api/extensions HTTP/1.1" 503 -
+127.0.0.1 - - [08/Oct/2026 02:20:37] "GET /api/extensions/worklog HTTP/1.1" 503 -
+127.0.0.1 - - [08/Oct/2026 02:20:37] "POST /api/extensions/worklog HTTP/1.1" 503 -
+127.0.0.1 - - [08/Oct/2026 02:20:37] "GET /ext/worklog HTTP/1.1" 503 -
+.127.0.0.1 - - [08/Oct/2026 02:20:38] "GET /api/snapshot HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:20:38] "GET /api/evidence?path=x.py&revision=HEAD HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:20:38] "GET /api/compare?base=1&target=2 HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:20:38] "GET /api/export HTTP/1.1" 400 -
+127.0.0.1 - - [08/Oct/2026 02:20:38] "POST /api/explain HTTP/1.1" 400 -
+......127.0.0.1 - - [08/Oct/2026 02:20:40] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:40] "GET /api/repo-explorer/file?projectId=7917ccfe26f64817acdcd55aee3f9794&revision=03644f008848700d8dade65773c5d43fe2392d8b&path=cookie.txt HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:40] "GET /api/repo-explorer/symbols?projectId=7917ccfe26f64817acdcd55aee3f9794&revision=03644f008848700d8dade65773c5d43fe2392d8b&path=cookie.txt HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:41] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:41] "GET /api/repo-explorer/symbols?projectId=c49126bbe10a4896bbcab5cf1b29ffa0&revision=e5abd2c97da49506f9f80abd85ae13daae4c64fc&path=service.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:42] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:42] "GET /api/repo-explorer/symbols?projectId=9c61e7eb24de42f4811fe50c7f24e592&revision=21bb62f30a335caccf54260713e71472d0bd9b0f&path=empty.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:43] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:43] "GET /api/repo-explorer/symbols?projectId=1d7aa8fdddb646c2a6451441dd1eb019&revision=1cc28da8f8de6bc517808032aeadbd4584b5534c&path=notes.txt HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:43] "GET /api/repo-explorer/symbols?projectId=1d7aa8fdddb646c2a6451441dd1eb019&revision=1cc28da8f8de6bc517808032aeadbd4584b5534c&path=service.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:44] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:44] "GET /api/repo-explorer/symbols?projectId=623b9cd86b584982905cf7bf641606f4&revision=f40dd48535ec9fac70483517769dc1b1e6c511dc&path=notes.txt HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:45] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:45] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:46] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:46] "GET /api/repo-explorer/symbols?projectId=7f1682f36c874112a2da2a0bca8afbc4&revision=5fc6cee0ba8b43e1f43c26c54e65d6dac72a8ddb&path=big.log HTTP/1.1" 403 -
+.127.0.0.1 - - [08/Oct/2026 02:20:47] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:47] "GET /api/repo-explorer/symbols?projectId=e9da736eee4949ea98a7a62b522f0973&revision=bbdcc3b4a76e38ce8ac5112ce9e1d5cd6cb7d04d&path=service.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:48] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:48] "GET /api/repo-explorer/symbols?projectId=60d45c4c66644a889528d69da02f550f&revision=57d79646c660a8088b2c63078986f942550eb865&path=service.py HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:48] "GET /api/repo-explorer/file?projectId=60d45c4c66644a889528d69da02f550f&revision=57d79646c660a8088b2c63078986f942550eb865&path=service.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:49] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:49] "GET /api/repo-explorer/symbols?projectId=9c2aeb6fe011437f8aadaad57a0578cb&revision=a0e0ea9ad573bbe984b14468451dbaf40a1ff471&path=service.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:50] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:50] "GET /api/repo-explorer/symbols?projectId=b713659c48f643918f0abcbc3a90fb09&revision=7e317dc847bad75fd689f84564a7564309923983&path=broken.py HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:51] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:51] "GET /api/repo-explorer/symbols?projectId=4197b191b046441dafbdba81d44c3af1&revision=bec7026eb2b5adde8166d5b397e95ca2cb1e4df4&path=nope.py HTTP/1.1" 404 -
+.127.0.0.1 - - [08/Oct/2026 02:20:52] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:52] "GET /api/repo-explorer/tree?projectId=023d24b173de4f47a5f3e7fd6ce5e3f8&revision=55ac8a2b99d902cc0a1673f23967f44d4810a8f9 HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:53] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:53] "GET /api/repo-explorer/tree?projectId=cc535d09d2624608827847c02eb1ff4b&revision=a0d1752f59d3dd8fc545a0463c29e27551d8e11e HTTP/1.1" 200 -
+.127.0.0.1 - - [08/Oct/2026 02:20:54] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:54] "GET /api/repo-explorer/tree?projectId=fcfd0049630e42b9a22b22290106de48 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:20:55] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:55] "GET /api/repo-explorer/tree?projectId=5a07a98121784e06999d6ca27a0dc9de&revision=b5fd000000000000000000000000000000000000 HTTP/1.1" 400 -
+.127.0.0.1 - - [08/Oct/2026 02:20:56] "POST /api/repo-explorer/open HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:56] "GET /api/repo-explorer/tree?projectId=deadbeef&revision=1a67473938da8f815cacb5b0739afccdde54d231 HTTP/1.1" 410 -
+.........................127.0.0.1 - - [08/Oct/2026 02:20:57] "GET /api/extensions HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:57] "GET /ext/team_footprints HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:57] "GET /api/extensions/team_footprints?year=2026 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:20:57] "POST /api/extensions/team_footprints HTTP/1.1" 405 -
+....................................................................................................127.0.0.1 - - [08/Oct/2026 02:21:39] "GET /ext/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 409 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "POST /api/extensions/worklog HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "GET /api/extensions/worklog?action=file&id=337cc06a749a4f9ca9aea3ce75c15d88 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 02:21:39] "GET /api/extensions/worklog?action=list HTTP/1.1" 200 -
+..
+======================================================================
+ERROR: test_code_symlink_is_not_evidence (test_archloop_b_service.ArchitectureWorkspaceTests.test_code_symlink_is_not_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\jiagou\codex-bridge\architecture-loop\ZCODE-ABCD-20261008-0115\integration\projectmind-core\tests\test_archloop_b_service.py", line 519, in test_code_symlink_is_not_evidence
+    (self.code / "link.py").symlink_to("main.py")
+  File "C:\Program Files\Python312\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] 客户端没有所需的特权。: 'main.py' -> 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\archloop-b-monzflt7\\code\\link.py'
+
+======================================================================
+ERROR: test_paths_are_exact_not_globs (test_code_facts.CollectorAcceptanceTests.test_paths_are_exact_not_globs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\jiagou\codex-bridge\architecture-loop\ZCODE-ABCD-20261008-0115\integration\projectmind-core\tests\test_code_facts.py", line 144, in test_paths_are_exact_not_globs
+    self.write("*.py", "def literal_name():\n    pass\n")
+  File "G:\jiagou\codex-bridge\architecture-loop\ZCODE-ABCD-20261008-0115\integration\projectmind-core\tests\test_code_facts.py", line 85, in write
+    target.write_text(content, encoding="utf-8")
+  File "C:\Program Files\Python312\Lib\pathlib.py", line 1047, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument: 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\code-facts-test-0oe18euq\\repo\\*.py'
+
+======================================================================
+ERROR: test_symlink_and_gitlink_are_skipped (test_code_facts.CollectorAcceptanceTests.test_symlink_and_gitlink_are_skipped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\jiagou\codex-bridge\architecture-loop\ZCODE-ABCD-20261008-0115\integration\projectmind-core\tests\test_code_facts.py", line 230, in test_symlink_and_gitlink_are_skipped
+    (self.repo / "linked.py").symlink_to(outside)
+  File "C:\Program Files\Python312\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] 客户端没有所需的特权。: 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\code-facts-test-bx2hhwjn\\outside.py' -> 'C:\\Users\\李则兴\\AppData\\Local\\Temp\\code-facts-test-bx2hhwjn\\repo\\linked.py'
+
+----------------------------------------------------------------------
+Ran 967 tests in 635.546s
+
+FAILED (errors=3, skipped=1)

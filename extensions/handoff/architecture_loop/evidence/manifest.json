@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "d_evidence_manifest_v1",
+  "savedAt": "2026-10-07T10:12:02.014581+00:00",
+  "baseline": "c3d524dc2c61b03e6df55ed416d3cefaf2cbb4db",
+  "implementationCommit": "782968ccd7a14de3b1b4b41f99f2e032cb7ad42b",
+  "implementationTree": "e613f1b6671725061b9ef19272dec7451f1b808e",
+  "A": "b75ad820e0d31e3dadf842b414f6950b5aa46102",
+  "BRuntime": "b58fee7455bf8348f50e3863759e53bbd711dc6d",
+  "BLatestDocsOnly": "bba8e84106416a414df2d122e9f3e6ce4677a73e",
+  "validationMirror": "86a04f898e7c4b7fb4ecdd0f886d9e2326c5ccf4",
+  "validationMirrorIsAcceptedIntegration": false,
+  "attempts": [
+    {
+      "command": "python -m unittest discover -s tests -v",
+      "exitCode": 0,
+      "evidence": "regression.log",
+      "testedCommit": "782968ccd7a14de3b1b4b41f99f2e032cb7ad42b"
+    },
+    {
+      "command": "python -m tests.architecture_loop_acceptance.run --target-checkout /tmp/projectmind-d-validation-20261007-1723 --target-head 86a04f898e7c4b7fb4ecdd0f886d9e2326c5ccf4 --base-url http://127.0.0.1:18872 --run-d-fixture --output /tmp/d-architecture-final-product-report-20261007-1723",
+      "exitCode": 2,
+      "evidence": "report.json"
+    },
+    {
+      "command": "node tests/architecture_loop_acceptance/browser_smoke.js http://127.0.0.1:18872 /tmp/d-architecture-browser-final-20261007-1723 86a04f898e7c4b7fb4ecdd0f886d9e2326c5ccf4",
+      "exitCode": 2,
+      "evidence": "browser-not-run.json"
+    }
+  ],
+  "earlierAttempts": [
+    {
+      "result": "Initial regression failed clone mutation tests because reconstructed checkout omitted original shallow boundary; restored only D checkout Git metadata and reran all tests successfully."
+    },
+    {
+      "result": "Initial cross-exec loopback HTTP refused; separate tool calls had different network namespaces. Resolved by server and HTTP collector in same process."
+    },
+    {
+      "result": "Chromium installation failed truncated ZIP; real browser launch subsequently NOT_RUN. No browser navigation or screenshots claimed."
+    }
+  ],
+  "limits": [
+    "C verification is a test double in D fixture, not actual C acceptance",
+    "Fixture human approvals are TEST_ONLY_SIMULATED_HUMAN",
+    "B original binary fixture blobs unavailable through UTF-8 connector; actual B smoke generated fresh Git fixtures instead",
+    "Model draft paths PRODUCT_INTENT.md and PROJECT_ANALYSIS.md returned 404; taskbook used, no invented confirmed model",
+    "Map UNKNOWN, AI candidate and contributor logs unverified remain unchanged"
+  ],
+  "sha256": {
+    "FINAL_ACCEPTANCE_SUMMARY.json": "5c9c70f28ad167823356087f7b20c06c6ac7641bc7340dcd648ee14642a3e1d7",
+    "b-actual-consumer.json": "c88b8c5cd58c2abb0f05d05a93e23968eecda7321afc38e12fbca0e9fe088521",
+    "browser-not-run.json": "3de0901d56cc537b48dbd69739ed5e0b99fbcaf86f4a144706d50ef4d334e98a",
+    "coinstalled.log": "95d33b9674d33017b5a14680bce11773c352ab8effa37f2c8a881289c45b2b0f",
+    "d-http.json": "b126a61442cd73c6de318b8299d55b9328162488f907cde8c6e41a5ed1b153e4",
+    "d-targeted.log": "5af904d7bdf02ced7c61d6dcea8e8c597fd692a479f668744b1964883992236d",
+    "failures.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "fix-task.json": "69967b02db6f6c82584553e02c1fcd84a3c58a9d02665862d7d086faac75ed6a",
+    "handoff.json": "08e6281d371d2512fda7d93fe26fb95cca16e395fa7993613368050a63515b41",
+    "handoff.md": "15c19d09408e2b2ca3ecf1409fb3e11fed8fda45be278a966e6780e3a424b059",
+    "planning-handoff.json": "70503cd6ac8ae71f5ea67641a696328b7e1370432848e2d2d2cd2318e73d307c",
+    "product-http.json": "6b514e70c69123bf410bd79bc28675b705b3e9315df372f8cfc3432843da2d3c",
+    "public-http-probe.json": "b75aeaa5c8f91725abbe87146dd4a44f25d6d8c28fe48521669d7514c8f62f53",
+    "regression.log": "72ce1b0ea75789e657b850df4abd0fa7ef0bb50ab94b9654ddf02cc4f1b82e9f",
+    "report.json": "a041c94473db4ca3cea5b7b8bf92f2f0a38c3fabfe29676661fcb607152ea7f4",
+    "same-version.json": "2fdf18b76db4acd3c799664bf7192ec24dc234e52d20fbf3c8bd9c2a2cd6944b"
+  }
+}

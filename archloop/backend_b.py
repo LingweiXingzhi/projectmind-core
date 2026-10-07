@@ -688,16 +688,31 @@ def coverage_for(record: dict, b_graph: dict, verify_code: bool = True) -> dict:
             for eid in interface.get("evidenceIds", [])}
         if needed <= covered_set:
             covered_nodes.append(node["id"])
+    # A node-level expected process is reviewed when every step belongs to a
+    # covered node and no step/process evidence falls outside the covered set.
+    # Without this an existing-project review could never cover a process, so
+    # D's fix tasks (which bind a *covered* expected process) were unreachable.
+    covered_processes = []
+    for process in b_graph.get("processes", []) or []:
+        refs = set(process.get("evidenceIds", []) or [])
+        nodes_ok = True
+        for step in process.get("steps", []) or []:
+            refs |= set(step.get("evidenceIds", []) or [])
+            if step.get("nodeId") not in covered_nodes:
+                nodes_ok = False
+        if nodes_ok and refs <= covered_set:
+            covered_processes.append(process["id"])
     return {"scope": "partial", "nodes": sorted(covered_nodes),
             "edges": sorted(edge["id"] for edge in b_graph.get("edges", []) or []),
-            "processes": [], "evidence": covered_evidence}
+            "processes": sorted(covered_processes), "evidence": covered_evidence}
 
 
 class BackendB:
     """Owns the configured B service instance and the A<->B call surface."""
 
     KIND = "architecture_workspace_v1"
-    REF = "B PR #51 — runtime b58fee7455bf8348f50e3863759e53bbd711dc6d (head bba8e84)"
+    REF = ("B PR #51 — 58a9ee8a25cb9b240cd1baa5bb674c0c0e528e89 "
+           "(surfaces/proposals/review-sessions; runtime base b58fee74)")
 
     def __init__(self, data_root, *, code_repositories=(), architecture_repo=None,
                  architecture_branch=None, allowed_origin=None):

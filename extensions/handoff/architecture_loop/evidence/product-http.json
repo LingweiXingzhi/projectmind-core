@@ -1,0 +1,36 @@
+[
+  {
+    "path": "/api/archloop",
+    "method": "GET",
+    "body": null,
+    "status": 200,
+    "response": {
+      "service": "architecture-workbench",
+      "adapter": {
+        "registered": {},
+        "modes": [
+          "production",
+          "dev_sample"
+        ]
+      },
+      "generation": {
+        "configured": false,
+        "model": null,
+        "note": "AI 生成尚未配置。需在启动程序前设置 OPENAI_API_KEY 和 PROJECTMIND_AI_MODEL。"
+      }
+    },
+    "at": "2026-10-07T10:06:48.188650+00:00"
+  },
+  {
+    "path": "/api/ai-status",
+    "method": "GET",
+    "body": null,
+    "status": 200,
+    "response": {
+      "configured": false,
+      "model": null,
+      "note": "AI 生成尚未配置。需在启动程序前设置 OPENAI_API_KEY 和 PROJECTMIND_AI_MODEL。"
+    },
+    "at": "2026-10-07T10:06:48.189476+00:00"
+  }
+]

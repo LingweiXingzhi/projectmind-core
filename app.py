@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import json
 import math
 import os
@@ -23,6 +24,8 @@ from archloop.backend_b import BackendB
 from archloop.contract import ContractError
 from archloop.service import WorkbenchService
 from archloop.ai_transport import AIError
+from archloop.web_session import (CSRF_HEADER, SESSION_COOKIE, WriteSessionRegistry,
+                                  parse_session_cookie)
 
 
 ROOT = Path(__file__).resolve().parent
@@ -358,6 +361,14 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
     if archloop_service is None:
         archloop_service = WorkbenchService(ARCHLOOP_DATA_DEFAULT, AdapterRegistry())
     archloop_service.bind_git(git)
+    # C ships with this repository: register its real candidate engine before
+    # the lazy extension probe runs, so the `correction` capability is the
+    # module the service actually calls (D-A-03) and not a legacy side-door.
+    archloop_service.bind_backend_c()
+    # Server-side write sessions for every /api/archloop/ POST (D-A-02): the
+    # cookie is HttpOnly and the CSRF token is only echoed to the same-origin
+    # caller that established the session.
+    archloop_sessions = WriteSessionRegistry()
 
     def bind_extension_backends() -> None:
         """Auto-register CONTRACT_V1-speaking extension backends (B/C/D).
@@ -436,8 +447,17 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             self.end_headers()
             self.wfile.write(data)
 
-        def send_json(self, status: HTTPStatus, value: dict) -> None:
-            self.send_bytes(status, json.dumps(value, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
+        def send_json(self, status: HTTPStatus, value: dict,
+                      set_cookie: str | None = None) -> None:
+            data = json.dumps(value, ensure_ascii=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            if set_cookie:
+                self.send_header("Set-Cookie", set_cookie)
+            self.end_headers()
+            self.wfile.write(data)
 
         def read_json_body(self, raw: bytes, max_bytes: int) -> dict:
             if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
@@ -493,6 +513,23 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "adapter": archloop_service.adapter.listing(),
                     "generation": ai_transport.ai_status(),
                 })
+                return
+            if method == "GET" and parts == ["session"]:
+                # Issue the server-side write session. The cookie stays
+                # HttpOnly; the CSRF token is only readable by the same-origin
+                # caller that asked for the session (D-A-02).
+                issued = archloop_sessions.issue(query.get("operator", ""))
+                cookie = (f"{SESSION_COOKIE}={issued['sessionId']}; HttpOnly; "
+                          f"SameSite=Strict; Path=/; Max-Age={issued['ttlSeconds']}")
+                self.send_json(HTTPStatus.OK, {
+                    "session": {"ttlSeconds": issued["ttlSeconds"],
+                                "operator": issued["operator"],
+                                "csrfHeader": CSRF_HEADER},
+                    "csrfToken": issued["csrfToken"],
+                    "note": ("写操作必须同时携带本会话 Cookie 与 " + CSRF_HEADER +
+                             " 请求头；缺失会话或防伪令牌的写入会被机器码拒绝。"
+                             "actor 是本机会话登记的操作者声明，不是密码学身份认证。"),
+                }, set_cookie=cookie)
                 return
             if method == "GET" and parts == ["sample-graph"]:
                 sample = load_sample_graph()
@@ -565,7 +602,8 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.recheck(workspace_id))
                     return
                 if method == "POST" and rest == ["fix-task"]:
-                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}))
+                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(
+                        workspace_id, body or {}, server_context=self._server_context()))
                     return
                 if method == "POST" and rest == ["rebind"]:
                     self.send_json(HTTPStatus.OK, archloop_service.rebind_code_revision(workspace_id, body or {}))
@@ -606,11 +644,12 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.list_fix_tasks(workspace_id))
                     return
                 if method == "POST" and rest == ["fix-tasks"]:
-                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}))
+                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(
+                        workspace_id, body or {}, server_context=self._server_context()))
                     return
                 if len(rest) == 2 and rest[0] == "fix-tasks" and method == "POST":
                     self.send_json(HTTPStatus.OK, archloop_service.update_fix_task(
-                        workspace_id, rest[1], body or {}))
+                        workspace_id, rest[1], body or {}, server_context=self._server_context()))
                     return
                 if len(rest) == 3 and rest[0] == "fix-tasks" and rest[2] == "markdown" and method == "GET":
                     self.send_json(HTTPStatus.OK, archloop_service.fix_task_markdown(workspace_id, rest[1]))
@@ -646,6 +685,18 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 "host": self.headers.get("Host", ""),
                 "origin": self.headers.get("Origin", ""),
             }
+
+        def _server_context(self) -> dict:
+            """Server-bound operator context for fix-task writes (D seam).
+
+            The operator is whatever this session declared at issue time; it is
+            never taken from the request body, so a caller cannot choose the
+            actor a fix task is attributed to.
+            """
+            session = getattr(self, "_archloop_session", None) or {}
+            return {"actor": session.get("operator", ""),
+                    "sessionScoped": bool(session),
+                    "sessionOperatorDeclared": bool(session.get("operator"))}
 
         def do_GET(self) -> None:
             request = urlparse(self.path)
@@ -870,12 +921,20 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                                               "message": "请求体不完整或读取超时，连接已关闭"}})
                 return
             if path == "/api/archloop" or path.startswith("/api/archloop/"):
-                # Write seam: loopback Host + same-service Origin only, and a
-                # JSON body; cross-site requests can never create workspaces
-                # or submit reviews (contract security note).
+                # Write seam: loopback Host + same-service Origin only, a JSON
+                # body, and a live server-side session whose anti-forgery token
+                # must match (D-A-02). Cross-site requests can never create
+                # workspaces, submit reviews or publish versions.
                 allowed, payload = self._explorer_access_allowed()
                 if not allowed:
                     self.send_json(HTTPStatus.FORBIDDEN, payload)
+                    return
+                try:
+                    self._archloop_session = archloop_sessions.verify(
+                        parse_session_cookie(self.headers.get("Cookie")),
+                        self.headers.get(CSRF_HEADER))
+                except ContractError as exc:
+                    self.send_json(exc.status, archloop_error_payload(exc))
                     return
                 try:
                     if body_error == "too_large" or len(body) > 10_000_000:
@@ -961,6 +1020,9 @@ def main() -> None:
                         help="架构发布分支（architecture/candidates/...）")
     parser.add_argument("--archloop-code-repo", type=Path, action="append", default=None,
                         help="登记给版本服务的代码仓库路径（可重复；身份由 origin URL 决定）")
+    parser.add_argument("--archloop-verify-command", type=str, default=None,
+                        help="修正任务 verified 的真实验证命令（服务端配置的单个命令行字符串，"
+                             "在回挂版本上执行，以退出码与输出摘要作为核查凭据）")
     args = parser.parse_args()
     try:
         repo, map_path, explorer_enabled = resolve_runtime(args.repo, args.map)
@@ -968,6 +1030,10 @@ def main() -> None:
         parser.error(str(exc))
     registry = ExplorerRegistry() if explorer_enabled else None
     service = WorkbenchService(args.archloop_data, AdapterRegistry())
+    service.bind_code_repositories([str(path) for path in (args.archloop_code_repo or [])])
+    # C ships with this repository: register its real candidate engine so the
+    # adapter listing reflects the calls the workbench actually makes.
+    service.bind_backend_c()
     if args.archloop_backend_data is not None:
         backend_b = BackendB(
             args.archloop_backend_data,
@@ -979,6 +1045,32 @@ def main() -> None:
         status = backend_b.status()
         print(f"B 版本服务: {'已接入' if status['available'] else '未接入'} "
               f"({status.get('reason') or 'probe ok'})", flush=True)
+        # D's fix-task authority needs B's version export and at least one
+        # registered code repository; without them the seam stays unmapped.
+        if status["available"] and args.archloop_code_repo:
+            try:
+                from archloop.backend_d import BackendD, make_command_verification_provider
+                from extensions.continuity.fix_tasks import FixTaskService
+                from extensions.continuity.store import Store as ContinuityStore
+                continuity_store = ContinuityStore(
+                    Path(args.archloop_backend_data) / "continuity-fix-tasks.sqlite3")
+                verify_command = (shlex.split(args.archloop_verify_command)
+                                  if args.archloop_verify_command else None)
+                provider = None
+                if verify_command:
+                    provider = make_command_verification_provider(
+                        verify_command, workbench=service)
+                fix_service = FixTaskService(
+                    continuity_store, architecture_repo=args.archloop_architecture_repo,
+                    code_repositories=[path for path in args.archloop_code_repo],
+                    verification_provider=provider)
+                service.bind_backend_d(BackendD(
+                    service, fix_service, architecture_repo=args.archloop_architecture_repo,
+                    code_repositories={str(path): str(path) for path in args.archloop_code_repo},
+                    verification_command=verify_command))
+                print("D 修正任务服务: 已接入（authoritative）", flush=True)
+            except Exception as exc:  # a broken D must not fake availability
+                print(f"D 修正任务服务: 未接入（{type(exc).__name__}: {exc}）", flush=True)
     handler = make_handler(repo, map_path, explorer_registry=registry, archloop_service=service)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), handler)
     if explorer_enabled:

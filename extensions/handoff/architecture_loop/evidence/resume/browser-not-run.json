@@ -1,0 +1,17 @@
+{
+  "targetHead": "52085a115f4aaf8457683a18d34875ec1dfd896c",
+  "baseUrl": "http://127.0.0.1:18873",
+  "observer": "D Playwright participant observation",
+  "observedAt": "2026-10-07T10:29:42.366Z",
+  "status": "NOT_RUN",
+  "scope": "A_DEVELOPMENT_SAMPLE_UI_ONLY_NOT_REAL_AI_OR_PUBLISH",
+  "checks": [
+    {
+      "id": "T02",
+      "status": "NOT_RUN",
+      "detail": "Real browser prerequisite/navigation failed; no fabricated screenshot",
+      "evidence": []
+    }
+  ],
+  "error": "browserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝"
+}

@@ -37,15 +37,49 @@
 
   function short(sha) { return sha ? String(sha).slice(0, 12) : "—"; }
 
+  // Server-side write session (D-A-02): every POST needs the session cookie
+  // plus this anti-forgery header. The session also registers the declared
+  // local operator that fix tasks are attributed to.
+  const writeSession = { csrfToken: null, operator: null, pending: null };
+
+  async function ensureSession(operator) {
+    const wanted = operator === undefined ? writeSession.operator : (operator || "");
+    if (writeSession.csrfToken && wanted === writeSession.operator) return writeSession;
+    if (writeSession.pending) return writeSession.pending;
+    writeSession.pending = (async () => {
+      const suffix = wanted ? `?operator=${encodeURIComponent(wanted)}` : "";
+      const response = await fetch(`/api/archloop/session${suffix}`, { method: "GET" });
+      const body = await response.json();
+      if (!response.ok) throw new Error("无法建立写会话");
+      writeSession.csrfToken = body.csrfToken;
+      writeSession.operator = (body.session && body.session.operator) || "";
+      return writeSession;
+    })();
+    try { return await writeSession.pending; } finally { writeSession.pending = null; }
+  }
+
   async function api(method, path, body) {
     const options = { method, headers: {} };
     if (body !== undefined) {
       options.headers["Content-Type"] = "application/json";
       options.body = JSON.stringify(body);
     }
-    const response = await fetch(path, options);
+    if (method !== "GET") {
+      await ensureSession();
+      if (writeSession.csrfToken) options.headers["X-CSRF-Token"] = writeSession.csrfToken;
+    }
+    let response = await fetch(path, options);
     let result = null;
     try { result = await response.json(); } catch (error) { result = null; }
+    const code = result && result.error && result.error.code;
+    if (!response.ok && (code === "FORBIDDEN_SESSION" || code === "FORBIDDEN_CSRF")) {
+      // an expired session is re-established once and the write retried
+      writeSession.csrfToken = null;
+      await ensureSession();
+      options.headers["X-CSRF-Token"] = writeSession.csrfToken;
+      response = await fetch(path, options);
+      try { result = await response.json(); } catch (error) { result = null; }
+    }
     if (!response.ok) {
       const error = (result && result.error) || {};
       const err = new Error(error.message || `请求失败 (${response.status})`);
@@ -54,6 +88,26 @@
       throw err;
     }
     return result;
+  }
+
+  // The operator is declared once in the workbench form and bound to the
+  // server-side write session; a prompt-based declaration cannot be bound to
+  // a session and is unavailable in some host webviews.
+  function operatorValue(required = true) {
+    const input = document.getElementById("arch-operator-input");
+    const value = input ? input.value.trim() : "";
+    if (!value && required) {
+      setStatus("arch-review-status",
+        "请先填写本机操作者（声明）：它绑定本机会话，是人审与修正任务的 actor（非身份认证）。", true);
+      if (input) input.focus();
+      return null;
+    }
+    return value;
+  }
+
+  function fieldValue(id) {
+    const input = document.getElementById(id);
+    return input ? input.value.trim() : "";
   }
 
   function setStatus(id, message, isError) {
@@ -488,20 +542,27 @@
     const rows = [];
     const rebuild = () => {
       section.replaceChildren(el("h4", "section-title", `期望过程 · ${steps.length} 步（步骤 ID 保持稳定）`));
+      // edits commit on every keystroke as well as on blur: relying on
+      // `change` alone loses text when the field never loses focus before the
+      // save button is used (observed in a real browser session)
+      const onEdit = (element, handler) => {
+        element.addEventListener("input", handler);
+        element.addEventListener("change", handler);
+      };
       steps.forEach((step, index) => {
         const row = el("div", "arch-step-row");
         const idTag = el("code", "arch-step-id", step.stepId);
         const titleInput = el("input");
         titleInput.value = step.title;
-        titleInput.addEventListener("change", () => { step.title = titleInput.value; });
+        onEdit(titleInput, () => { step.title = titleInput.value; });
         const detailInput = el("input");
         detailInput.value = step.detail || "";
         detailInput.placeholder = "这一步发生什么";
-        detailInput.addEventListener("change", () => { step.detail = detailInput.value; });
+        onEdit(detailInput, () => { step.detail = detailInput.value; });
         const lists = el("input");
         lists.value = [step.inputs, step.outputs, step.branches].map((list) => list.join("/")).join(" | ");
         lists.placeholder = "输入/输出/分支，用 | 分隔";
-        lists.addEventListener("change", () => {
+        onEdit(lists, () => {
           const [inputs, outputs, branches] = lists.value.split("|").map((part) => part.split("/").map((item) => item.trim()).filter(Boolean));
           step.inputs = inputs || []; step.outputs = outputs || []; step.branches = branches || [];
         });
@@ -636,7 +697,11 @@
     try {
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, { mode: "rule_based" });
       state.pendingCandidate = result;
-      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；覆盖：读取 ${result.contextCoverage?.filesIncluded ?? "?"} 个文件 / 共 ${result.contextCoverage?.pythonFiles ?? "?"} 个 Python 文件）`);
+      const coverage = result.contextCoverage;
+      const coverageText = coverage
+        ? `覆盖：读取 ${coverage.filesIncluded} 个文件 / 共 ${coverage.pythonFiles} 个 Python 文件`
+        : "规划模式：没有代码事实，依据是目标与约束";
+      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；${coverageText}）`);
     } catch (error) {
       setGenStatus(`规则候选生成失败（${error.code}）：${error.message}`, true);
     } finally {
@@ -804,12 +869,15 @@
 
   document.getElementById("arch-review-preview-button").addEventListener("click", async () => {
     if (!state.envelope || !graph() || state.busy) return;
-    const actor = window.prompt("人审预览：请输入操作者（本机操作者声明）");
+    const actor = operatorValue();
     if (!actor) return;
-    const reason = window.prompt("审阅理由（将随预览与版本一起记录）") || "";
+    const reason = fieldValue("arch-review-reason-input");
     state.busy = true; renderWorkspace();
     setStatus("arch-review-status", "正在生成人审预览…");
     try {
+      // the declared operator is bound to the server-side write session, so
+      // fix tasks created later are attributed to the same declared operator
+      await ensureSession(actor);
       // planning workspaces have no code: design confirmation is not a code review
       const verifyCode = state.envelope.workspace.context !== "planning";
       const preview = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-preview`,
@@ -934,27 +1002,54 @@
 
   document.getElementById("arch-fixtask-button").addEventListener("click", async () => {
     if (!state.envelope || !graph() || state.busy) return;
-    const deviation = window.prompt("偏差描述：期望过程与实际观察有什么差异？");
-    if (!deviation) return;
-    const acceptance = window.prompt("验收标准（实施者提交什么算修复）") || "";
+    const current = graph();
+    const node = state.selectedNodeId
+      ? (current.nodes || []).find((item) => item.id === state.selectedNodeId) : null;
+    if (!node) {
+      setStatus("arch-review-status", "请先在图上选中要修正的功能节点（任务需要固定的期望过程与证据）。", true);
+      return;
+    }
+    const steps = node.process || node.steps || [];
+    if (!steps.length) {
+      setStatus("arch-review-status", "该节点还没有期望过程步骤，无法固定修正范围。", true);
+      return;
+    }
+    const evidenceItems = (node.evidence || []).filter((item) => item.path);
+    if (!evidenceItems.length) {
+      setStatus("arch-review-status", "该节点没有代码证据路径，无法创建可核查的修正任务。", true);
+      return;
+    }
+    const deviation = fieldValue("arch-deviation-input");
+    if (!deviation) {
+      setStatus("arch-review-status", "请先填写偏差描述（期望过程与实际观察的差异）。", true);
+      return;
+    }
+    const acceptance = fieldValue("arch-acceptance-input");
+    if (!acceptance) {
+      setStatus("arch-review-status", "请先填写验收条件；没有验收条件的任务不能派发。", true);
+      return;
+    }
+    const actor = operatorValue();
+    if (!actor) return;
     state.busy = true;
     renderWorkspace();
     try {
-      const actor = window.prompt("创建修正任务：请输入操作者（本机操作者声明）") || "local_user";
+      await ensureSession(actor);
       const task = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks`, {
         deviation,
         acceptance,
-        actor,
-        expectedProcessRef: state.selectedNodeId,
-        evidence: state.selectedNodeId ? [{ path: state.selectedNodeId, reason: "来自工作台当前选中节点" }] : [],
+        expectedProcessRef: `${node.id}/${steps[0].stepId || steps[0].id}`,
+        evidence: evidenceItems.map((item) => ({ path: item.path, reason: item.reason || "选中节点的代码证据" })),
+        scope: evidenceItems.map((item) => item.path),
       });
       const area = document.getElementById("arch-review-result");
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", task.labeled || "修正实现任务"));
-      area.append(el("p", "ai-item", `任务 ${task.taskId} · 状态 ${task.status} · 目标提交 ${String(task.targetCodeRevision).slice(0, 12)}`));
-      area.append(el("p", "ai-item", task.observation));
-      area.append(el("p", "ai-provenance", `${task.labeled} 验收条件：${task.acceptance}`));
-      setStatus("arch-review-status", "已创建持久化修正任务；实施提交回挂后仍需人确认核查结论。");
+      const taskId = task.id || task.taskId;
+      area.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${task.status} · 目标提交 ${short(task.codeRevision || task.targetCodeRevision)}`));
+      area.append(el("p", "ai-item", task.deviation || task.observation));
+      area.append(el("p", "ai-provenance", `验收条件：${task.acceptance}`));
+      setStatus("arch-review-status", "已创建持久化修正任务（D 权威任务状态）；实施提交回挂后仍需实测与人确认才关闭。");
     } catch (error) {
       setStatus("arch-review-status", `任务创建失败（${error.code}）：${error.message}`, true);
     } finally {
@@ -1018,7 +1113,7 @@
         const rebind = el("button", "button ghost", "复核完成后回挂到当前 HEAD");
         rebind.type = "button";
         rebind.addEventListener("click", async () => {
-          const actor = window.prompt("回挂需要复核人（本机操作者声明）");
+          const actor = operatorValue();
           if (!actor) return;
           try {
             const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,
