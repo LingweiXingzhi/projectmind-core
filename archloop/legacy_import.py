@@ -68,8 +68,12 @@ def plan_import(old_root: Path, new_root: Path, workspace_id: str | None = None,
     new_root = Path(new_root).resolve()
     if old_root == new_root:
         raise ContractError("VALIDATION_FAILED", "源数据根与目标数据根不能相同")
-    if new_store.root.exists() and new_store.root.resolve() == old_root:
-        raise ContractError("VALIDATION_FAILED", "目标数据根不能是源数据根")
+    # the source root must stay read-only: a target inside it (or a source
+    # inside the target) would write into the very tree being imported
+    if old_root in new_root.parents or new_root in old_root.parents:
+        raise ContractError("VALIDATION_FAILED",
+                            "目标数据根不能位于源数据根内部（也不能包含源数据根）；"
+                            "请使用互不包含的目录")
     candidates = scan(old_root)
     if workspace_id is None:
         if len(candidates) != 1:

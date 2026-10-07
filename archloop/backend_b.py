@@ -230,12 +230,17 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
         # next/branch targets are rewritten through the same id mapping so a
         # collision-renamed step is still referenced correctly.
         id_map = {}
-        steps = []
+        # pass 1: every step id of this node is known before any reference is
+        # rewritten, so a forward reference is never dropped (BATCH-1 A-01)
         for step in node.get("process", []) or []:
             a_step_id = str(step.get("stepId", ""))
             b_step_id = a_step_id if a_step_id not in step_ids_seen else f"{a_step_id}--{node_id}"
             step_ids_seen.add(b_step_id)
             id_map[a_step_id] = b_step_id
+        steps = []
+        for step in node.get("process", []) or []:
+            a_step_id = str(step.get("stepId", ""))
+            b_step_id = id_map[a_step_id]
             if step.get("detail"):
                 meta["stepDetails"][b_step_id] = step["detail"]
             step_evidence = []
@@ -279,10 +284,12 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
 
     if any(meta[key] for key in ("provenance", "assumptions", "stepDetails", "importNotes")):
         payload = json.dumps(meta, ensure_ascii=False, sort_keys=True)
-        for index in range(0, max(len(payload), 1), 15000):
-            chunk = payload[index:index + 15000]
-            b_evidence.append({"id": META_EVIDENCE_ID if index == 0 else f"{META_EVIDENCE_ID}-{index}",
-                               "kind": "observation", "content": chunk,
+        chunks = [payload[index:index + 15000]
+                  for index in range(0, max(len(payload), 1), 15000)]
+        for number, chunk in enumerate(chunks):
+            # zero-padded ordinal so lexical order == payload order
+            evidence_id = META_EVIDENCE_ID if number == 0 else f"{META_EVIDENCE_ID}-{number:05d}"
+            b_evidence.append({"id": evidence_id, "kind": "observation", "content": chunk,
                                "unknownReason": META_REASON_PREFIX,
                                "reason": "A 工作台页面投影元数据；未参与核查"})
     graph = {"schemaVersion": "architecture_graph_v1", "nodes": b_nodes, "edges": b_edges,
@@ -297,20 +304,34 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
     return {"graph": graph, "layout": layout}
 
 
+def _meta_chunk_index(evidence_id: str) -> int:
+    suffix = evidence_id[len(META_EVIDENCE_ID):].lstrip("-")
+    if not suffix:
+        return 0
+    try:
+        return int(suffix)
+    except ValueError:
+        return 0
+
+
 def _meta_from_b_evidence(evidence: list) -> dict:
     chunks = []
     for item in evidence or []:
         if item.get("kind") == "observation" and \
                 str(item.get("unknownReason", "")).startswith(META_REASON_PREFIX) and \
-                str(item.get("id", "")).startswith(META_EVIDENCE_ID):
-            chunks.append((item.get("id"), item.get("content", "")))
+                (str(item.get("id", "")) == META_EVIDENCE_ID
+                 or str(item.get("id", "")).startswith(META_EVIDENCE_ID + "-")):
+            chunks.append((_meta_chunk_index(str(item.get("id"))), item.get("content", "")))
     if not chunks:
         return {}
     chunks.sort(key=lambda pair: pair[0])
     try:
         return json.loads("".join(chunk for _, chunk in chunks))
-    except (json.JSONDecodeError, TypeError):
-        return {}
+    except (json.JSONDecodeError, TypeError) as exc:
+        # silently dropping the carrier would drop provenance/assumptions and
+        # mislabel the graph: refuse instead (BATCH-1 A-04)
+        raise ContractError("EVIDENCE_MISMATCH",
+                            "A 投影元数据无法解析；拒绝在丢失来源谱系的情况下继续") from exc
 
 
 def b_to_a_graph(b_graph: dict, packet: dict | None = None) -> dict:
@@ -351,20 +372,36 @@ def b_to_a_graph(b_graph: dict, packet: dict | None = None) -> dict:
                     detail["evidence"] = [b_evidence_to_a(evidence_by_id[eid])
                                           for eid in interface["evidenceIds"] if eid in evidence_by_id]
                 interface_details.append(detail)
-        steps = []
-        for step in processes_by_node.get(node_id, []):
+        node_steps = processes_by_node.get(node_id, [])
+        reverse_ids = {}
+        for step in node_steps:
             b_step_id = step.get("id", "")
             a_step_id = b_step_id
             if b_step_id.endswith("--" + node_id):
                 a_step_id = b_step_id[: -len("--" + node_id)]
+            reverse_ids[b_step_id] = a_step_id
+        steps = []
+        for step in node_steps:
+            b_step_id = step.get("id", "")
+            a_step_id = reverse_ids[b_step_id]
+            next_steps = [reverse_ids.get(target, target) for target in (step.get("nextStepIds", []) or [])]
+            branches = [branch.get("condition", "") for branch in step.get("branches", []) or []]
+            # a branch target that is not already in next carries real data:
+            # keep it instead of dropping it (BATCH-1 A-01)
+            for branch in step.get("branches", []) or []:
+                target = branch.get("nextStepId")
+                mapped = reverse_ids.get(target, target)
+                if isinstance(target, str) and target not in (b_step_id, next_steps and "") \
+                        and mapped not in next_steps and target != b_step_id:
+                    next_steps.append(mapped)
             entry = {
                 "stepId": a_step_id,
                 "title": step.get("title", ""),
                 "detail": step_details.get(b_step_id, ""),
                 "inputs": list(step.get("inputs", []) or []),
                 "outputs": list(step.get("outputs", []) or []),
-                "branches": [branch.get("condition", "") for branch in step.get("branches", []) or []],
-                "next": list(step.get("nextStepIds", []) or []),
+                "branches": branches,
+                "next": next_steps,
             }
             if step.get("condition"):
                 entry["condition"] = step["condition"]
@@ -413,6 +450,21 @@ def diff_to_operations(old_b_graph: dict, new_b_graph: dict) -> list:
     never touched, step operations run before/after their process exists.
     """
     operations = []
+
+    def _update_or_replace(key, object_id, old_object, new_object, extra=None):
+        """B's update cannot delete a key: a disappearing field is a
+        remove+add pair so the new object is reproduced exactly (BATCH-1 A-03)."""
+        extra = dict(extra or {})
+        removed_fields = set(old_object) - set(new_object)
+        if removed_fields:
+            operations.append({"op": f"{key}.remove", "id": object_id, **extra})
+            operations.append({"op": f"{key}.add", "value": copy.deepcopy(new_object), **extra})
+            return
+        changes = {field: copy.deepcopy(value) for field, value in new_object.items()
+                   if old_object.get(field) != value and field != "id"}
+        if changes:
+            operations.append({"op": f"{key}.update", "id": object_id, "changes": changes, **extra})
+
     collections = (("nodes", "node"), ("edges", "edge"), ("evidence", "evidence"))
     for collection, key in collections:
         old = {item["id"]: item for item in old_b_graph.get(collection, []) or []}
@@ -423,10 +475,7 @@ def diff_to_operations(old_b_graph: dict, new_b_graph: dict) -> list:
             if object_id not in old:
                 operations.append({"op": f"{key}.add", "value": copy.deepcopy(new[object_id])})
             elif old[object_id] != new[object_id]:
-                changes = {field: copy.deepcopy(value) for field, value in new[object_id].items()
-                           if old[object_id].get(field) != value and field != "id"}
-                if changes:
-                    operations.append({"op": f"{key}.update", "id": object_id, "changes": changes})
+                _update_or_replace(key, object_id, old[object_id], new[object_id])
 
     old_processes = {item["id"]: item for item in old_b_graph.get("processes", []) or []}
     new_processes = {item["id"]: item for item in new_b_graph.get("processes", []) or []}
@@ -436,6 +485,7 @@ def diff_to_operations(old_b_graph: dict, new_b_graph: dict) -> list:
                  for process in new_processes.values() for step in process["steps"]}
     removed_processes = set(old_processes) - set(new_processes)
 
+    added_processes = set(new_processes) - set(old_processes)
     # 1) steps that disappear from a process that SURVIVES
     for step_id in sorted(set(old_steps) - set(new_steps)):
         process_id = old_steps[step_id][0]
@@ -444,32 +494,51 @@ def diff_to_operations(old_b_graph: dict, new_b_graph: dict) -> list:
     # 2) whole processes that disappear (their steps go with them)
     for process_id in sorted(removed_processes):
         operations.append({"op": "process.remove", "id": process_id})
-    # 3) new processes, then their steps
-    for process_id in sorted(set(new_processes) - set(old_processes)):
+    # 3) new processes carry their full steps in one add: emitting step.add for
+    #    them as well duplicates ids and makes B reject the batch (BATCH-1 A-02)
+    for process_id in sorted(added_processes):
         operations.append({"op": "process.add", "value": copy.deepcopy(new_processes[process_id])})
+    # 4) surviving processes: metadata fields only; steps are handled by
+    #    step.* operations so nothing is added twice
     for process_id in sorted(set(new_processes) & set(old_processes)):
-        if old_processes[process_id] != new_processes[process_id]:
-            changes = {field: copy.deepcopy(value)
-                       for field, value in new_processes[process_id].items()
-                       if old_processes[process_id].get(field) != value and field != "id"}
-            if changes:
-                operations.append({"op": "process.update", "id": process_id, "changes": changes})
+        old_process, new_process = old_processes[process_id], new_processes[process_id]
+        if {k: v for k, v in old_process.items() if k != "steps"} == \
+                {k: v for k, v in new_process.items() if k != "steps"}:
+            continue
+        if set(old_process) - set(new_process):
+            operations.append({"op": "process.remove", "id": process_id})
+            operations.append({"op": "process.add", "value": copy.deepcopy(new_process)})
+            continue
+        changes = {field: copy.deepcopy(value) for field, value in new_process.items()
+                   if field != "steps" and field != "id" and old_process.get(field) != value}
+        if changes:
+            operations.append({"op": "process.update", "id": process_id, "changes": changes})
+    # 5) steps of surviving processes
     for step_id in sorted(set(new_steps)):
         process_id, step = new_steps[step_id]
+        if process_id in added_processes:
+            continue
         if step_id not in old_steps:
             operations.append({"op": "step.add", "processId": process_id,
                                "value": copy.deepcopy(step)})
         else:
             old_process, old_step = old_steps[step_id]
-            if old_process == process_id and old_step != step:
-                changes = {field: copy.deepcopy(value) for field, value in step.items()
-                           if old_step.get(field) != value and field != "id"}
-                if changes:
-                    operations.append({"op": "step.update", "processId": process_id,
-                                       "id": step_id, "changes": changes})
-            elif old_process != process_id and old_process in removed_processes:
-                operations.append({"op": "step.add", "processId": process_id,
-                                   "value": copy.deepcopy(step)})
+            if old_process != process_id:
+                if old_process in removed_processes or old_process != process_id:
+                    operations.append({"op": "step.remove", "id": step_id, "processId": old_process})
+                    operations.append({"op": "step.add", "processId": process_id,
+                                       "value": copy.deepcopy(step)})
+            elif old_step != step:
+                if set(old_step) - set(step):
+                    operations.append({"op": "step.remove", "id": step_id, "processId": process_id})
+                    operations.append({"op": "step.add", "processId": process_id,
+                                       "value": copy.deepcopy(step)})
+                else:
+                    changes = {field: copy.deepcopy(value) for field, value in step.items()
+                               if old_step.get(field) != value and field != "id"}
+                    if changes:
+                        operations.append({"op": "step.update", "processId": process_id,
+                                           "id": step_id, "changes": changes})
     return operations
 
 
@@ -483,11 +552,20 @@ def coverage_for(record: dict, b_graph: dict, verify_code: bool = True) -> dict:
     whole draft, so all objects are listed as covered.
     """
     if not verify_code:
-        return {"scope": "all",
+        # partial (never "all"): every node/edge/process the human saw is listed,
+        # but the machine-marked projection carrier is not human content and
+        # stays unconfirmed; an all-coverage claim would have to list it as
+        # confirmed, which would be false (BATCH-1 A-05).
+        return {"scope": "partial",
                 "nodes": sorted(item["id"] for item in b_graph.get("nodes", []) or []),
                 "edges": sorted(item["id"] for item in b_graph.get("edges", []) or []),
                 "processes": sorted(item["id"] for item in b_graph.get("processes", []) or []),
-                "evidence": sorted(item["id"] for item in b_graph.get("evidence", []) or [])}
+                # the machine-marked projection carrier is never human-reviewed
+                # content: listing it as confirmed would be a false claim
+                "evidence": sorted(item["id"] for item in b_graph.get("evidence", []) or []
+                                   if not (item.get("kind") == "observation"
+                                           and str(item.get("unknownReason", "")).startswith(
+                                               META_REASON_PREFIX)))}
     code_revision = record.get("identity", {}).get("codeRevision")
     evidence = {item["id"]: item for item in b_graph.get("evidence", []) or []}
     covered_evidence = sorted(
@@ -614,8 +692,10 @@ class BackendB:
                           code_revision=identity.get("codeRevision"),
                           map_id=identity.get("mapId") if record.get("mapIdProvided") else None)
 
-    def sync_draft(self, record: dict, a_graph: dict, *, origin: str) -> dict:
+    def sync_draft(self, record: dict, a_graph: dict, *, origin: str,
+                   allow_rebase: bool = False) -> dict:
         """Create or update B's draft so it equals the A draft (via operations)."""
+        payload_allows_rebase = allow_rebase
         service = self.require()
         identity = record["identity"]
         code_repo_id = None if record["context"] == "planning" else self.repo_id_for(identity["repoPath"])
@@ -629,6 +709,15 @@ class BackendB:
         draft = None
         if binding.get("draftId"):
             draft = self._wrap(service.get_draft, binding["draftId"])
+            expected_b_revision = binding.get("bDraftRevision")
+            if expected_b_revision is not None and draft["draftRevision"] != expected_b_revision \
+                    and not payload_allows_rebase:
+                # another writer changed the shared draft: syncing the stale A
+                # graph would silently revert their work (BATCH-1 SYNC-01)
+                raise ContractError("REVISION_CONFLICT",
+                                    "版本服务中的草稿已被其他写入者修改；请先读取差异再决定",
+                                    {"expected": expected_b_revision,
+                                     "current": draft["draftRevision"]})
         created_fresh = False
         if draft is not None and draft.get("status") == "published":
             # the published draft is frozen; further edits need a new draft
@@ -679,6 +768,18 @@ class BackendB:
             raise ContractError("BACKEND_UNAVAILABLE", "未配置人审 Gateway（需要 loopback origin）")
         return self._wrap(self.gateway.create_session, actor,
                           peer=meta["peer"], host=meta["host"], origin=meta["origin"])
+
+    def assert_session_active(self, record: dict, meta: dict) -> None:
+        """Refuse when the stored review session is gone/expired or the caller's
+        real peer/host/origin no longer match it (publish/session boundary)."""
+        if self.gateway is None:
+            raise ContractError("BACKEND_UNAVAILABLE", "未配置人审 Gateway")
+        session = (record.get("backendB") or {}).get("sessionSecret") or {}
+        if not session:
+            raise ContractError("REQUEST_FORBIDDEN", "没有有效的人审会话；请重新预览并确认")
+        self._wrap(self.gateway._session, session_id=session.get("sessionId"),
+                   csrf_token=session.get("csrfToken"), peer=meta["peer"],
+                   host=meta["host"], origin=meta["origin"])
 
     def preview_review(self, record: dict, request: dict, meta: dict) -> dict:
         if self.gateway is None:

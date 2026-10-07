@@ -382,9 +382,21 @@ class CorrectionReviewRecheckTests(unittest.TestCase):
         self.assertIn("演示", preview["note"])
 
     def test_correction_preview_production_without_c_is_unavailable(self) -> None:
+        # production correction is the real model path: with no model
+        # configured it is honestly NOT_RUN (never a demo note), and the
+        # labeled rule-based route is explicitly selectable instead.
         with self.assertRaises(ContractError) as caught:
             self.preview(mode="production")
-        self.assertEqual(caught.exception.code, "BACKEND_UNAVAILABLE")
+        self.assertEqual(caught.exception.code, "NOT_RUN_AWAITING_CONFIGURATION")
+        # the rule-based route is C's real module: it either returns a labeled
+        # preview or fails machine-coded; it never claims to be AI
+        try:
+            rule_preview = self.preview(mode="rule_based")
+        except ContractError as exc:
+            self.assertIn(exc.code, ("BACKEND_UNAVAILABLE", "STALE_CONTEXT", "EVIDENCE_MISMATCH"))
+        else:
+            self.assertEqual(rule_preview["origin"], "rule_based")
+            self.assertIn("规则", rule_preview["labeled"])
 
     def test_correction_preview_stale_revision_conflicts(self) -> None:
         with self.assertRaises(ContractError) as caught:

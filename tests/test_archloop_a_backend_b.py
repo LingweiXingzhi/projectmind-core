@@ -269,8 +269,7 @@ class RealBackendFlowTests(unittest.TestCase):
         self.assertGreaterEqual(len(preview["reviewCoverage"]["nodes"]), 1)
         self.assertEqual(len(preview["afterGraph"]["nodes"]), 2)
         confirm = self.service.review_confirm(workspace_id, {
-            "previewDigest": preview["previewDigest"],
-            "confirmationToken": preview["confirmationToken"], "decision": "accept"}, META)
+            "previewDigest": preview["previewDigest"], "decision": "accept"}, META)
         self.assertTrue(confirm["publicationAuthorized"])
         self.assertEqual(confirm["verifiedCodeRevision"], envelope["identity"]["codeRevision"])
         # the publication token never reaches the client payload
@@ -302,8 +301,7 @@ class RealBackendFlowTests(unittest.TestCase):
         workspace_id = envelope["workspace"]["workspaceId"]
         preview = self._sync_and_preview(workspace_id)
         self.service.review_confirm(workspace_id, {
-            "previewDigest": preview["previewDigest"],
-            "confirmationToken": preview["confirmationToken"], "decision": "accept"}, META)
+            "previewDigest": preview["previewDigest"], "decision": "accept"}, META)
         published = self.service.publish_version(workspace_id, {}, META)
         map_revision = published["version"]["mapRevision"]
         map_source = published["provenance"]["mapSourceRevision"]
@@ -347,13 +345,13 @@ class RealBackendFlowTests(unittest.TestCase):
         workspace_id = envelope["workspace"]["workspaceId"]
         self.service.sync_draft_to_backend(workspace_id, {})
         with self.assertRaises(ContractError) as ctx:
-            self.service.review_confirm(workspace_id, {"previewDigest": "x", "confirmationToken": "y",
+            self.service.review_confirm(workspace_id, {"previewDigest": "x",
                                                        "decision": "accept"}, META)
         self.assertEqual(ctx.exception.code, "HUMAN_REVIEW_REQUIRED")
         preview = self._sync_and_preview(workspace_id)
         with self.assertRaises(ContractError) as ctx:
             self.service.review_confirm(workspace_id, {
-                "previewDigest": "sha256:forged", "confirmationToken": preview["confirmationToken"],
+                "previewDigest": "sha256:forged",
                 "decision": "accept"}, META)
         self.assertEqual(ctx.exception.code, "HUMAN_REVIEW_REQUIRED")
 
@@ -369,8 +367,7 @@ class RealBackendFlowTests(unittest.TestCase):
         # confirming the older preview must fail: the draft moved on
         with self.assertRaises(ContractError) as ctx:
             self.service.review_confirm(workspace_id, {
-                "previewDigest": preview["previewDigest"],
-                "confirmationToken": preview["confirmationToken"], "decision": "accept"}, META)
+                "previewDigest": preview["previewDigest"], "decision": "accept"}, META)
         self.assertLegacy = None
         self.assertIn(ctx.exception.code, ("HUMAN_REVIEW_REQUIRED", "STALE_CONTEXT", "REVISION_CONFLICT"))
 
@@ -412,8 +409,7 @@ class RealBackendFlowTests(unittest.TestCase):
         self.service.sync_draft_to_backend(workspace_id, {})
         preview = self._sync_and_preview(workspace_id)
         self.service.review_confirm(workspace_id, {
-            "previewDigest": preview["previewDigest"],
-            "confirmationToken": preview["confirmationToken"], "decision": "accept"}, META)
+            "previewDigest": preview["previewDigest"], "decision": "accept"}, META)
         published = self.service.publish_version(workspace_id, {}, META)
         self.assertEqual(published["version"]["status"], "confirmed_design")
         self.assertIsNone(published["version"]["codeRevision"])
@@ -491,7 +487,6 @@ class HttpSeamTests(unittest.TestCase):
         self.assertTrue(preview["previewDigest"])
         status, confirm = self.call("POST", f"/api/archloop/workspaces/{workspace_id}/review-confirm",
                                     {"previewDigest": preview["previewDigest"],
-                                     "confirmationToken": preview["confirmationToken"],
                                      "decision": "accept"}, origin=origin)
         self.assertEqual(status, 200, confirm)
         self.assertTrue(confirm["publicationAuthorized"])

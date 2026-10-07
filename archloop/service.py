@@ -11,6 +11,9 @@ import hashlib
 import secrets
 from datetime import datetime, timezone
 
+from . import backend_c
+from . import context_pack as context_pack_module
+from . import correction as correction_module
 from . import generate as generate_module
 from . import ops as ops_module
 from .adapters import AdapterRegistry, DEV_SAMPLE_MODE, call_backend, reject_sample_review
@@ -203,10 +206,19 @@ class WorkbenchService:
         # (FINAL-3 finding F5).
         identity = dict(record["identity"])
         last_publish = record.get("lastPublish")
-        published_here = bool(last_publish) and draft is not None             and map_revision == last_publish.get("mapRevision")
+        # A's draft hash (maprev-...) and B's immutable version id (sha256:...)
+        # are different formats: the published pair is recorded together and
+        # compared field by field (BATCH-1 C-01).
+        published_here = bool(last_publish) and draft is not None \
+            and draft.get("publishedMapRevision") == last_publish.get("mapRevision") \
+            and map_revision == last_publish.get("aMapRevision")
         if not published_here:
             identity["mapSourceRevision"] = None
             identity["verifiedCodeRevision"] = None
+        else:
+            # the immutable version id (sha256:...) is what the team shares;
+            # show it while the draft is exactly that published version
+            map_revision = last_publish.get("mapRevision")
         return {
             "workspace": {key: record.get(key) for key in
                           ("workspaceId", "title", "context", "description", "goals", "constraints",
@@ -275,14 +287,52 @@ class WorkbenchService:
             mode = request.get("mode", "production")
             repo_facts = {}
             source_revision = identity.get("codeRevision")
+            context_pack = None
             if identity.get("repoPath"):
                 probe = self.probe_repo(identity["repoPath"])
                 source_revision = probe["head"]
+                # a real generation input: the fixed commit's bounded source
+                # excerpts, symbols, imports and docs, with recorded coverage
+                # (file names alone are not "having read the project").
+                context_pack = context_pack_module.build_context_pack(
+                    identity["repoPath"], source_revision)
                 repo_facts = {
                     "codeRepoId": identity.get("codeRepoId"),
                     "codeRevision": source_revision,
                     "trackedFiles": probe.get("trackedFiles", [])[:400],
+                    "contextPack": context_pack,
                 }
+                record["lastContextPack"] = {
+                    "codeRevision": source_revision,
+                    "coverage": context_pack["coverage"],
+                    "entryPoints": context_pack["entryPoints"][:40],
+                    "files": [{"path": item["path"], "symbols": item.get("symbols", [])[:40]}
+                              for item in context_pack["files"]],
+                    "at": _utcnow(),
+                }
+            if mode == "rule_based":
+                # explicit rule-based route (C's engine), never labeled as AI
+                candidate = backend_c.bootstrap_candidate(record["context"], record)
+                graph = self._evidence_guard(candidate["graph"], record, source_revision)
+                graph["mapRevision"] = semantic_revision(graph)
+                candidate_id = f"cand_{secrets.token_hex(5)}"
+                record["lastCandidate"] = {
+                    "candidateId": candidate_id, "graph": graph, "origin": "rule_based",
+                    "status": "rule_based", "sourceCodeRevision": source_revision,
+                    "unknowns": candidate.get("warnings", []), "openQuestions": [],
+                    "labeled": "规则候选（C 规则引擎，非 AI 生成）", "storedAt": _utcnow(),
+                    "proposalId": candidate.get("proposalId")}
+                record["updatedAt"] = _utcnow()
+                self.store.save_workspace_record(record)
+                self.store.append_history(workspace_id, {
+                    "type": "generation", "origin": "rule_based", "at": _utcnow(),
+                    "candidateId": candidate_id, "sourceCodeRevision": source_revision,
+                    "proposalId": candidate.get("proposalId")})
+                return {"status": "rule_based", "origin": "rule_based", "graph": graph,
+                        "candidateId": candidate_id, "sourceCodeRevision": source_revision,
+                        "warnings": candidate.get("warnings", []),
+                        "contextCoverage": (context_pack or {}).get("coverage"),
+                        "labeled": "C 规则引擎候选：不冒充 AI 生成，需人工修改与确认"}
             if mode == DEV_SAMPLE_MODE:
                 sample = request.get("sampleGraph")
                 if not isinstance(sample, dict):
@@ -477,32 +527,38 @@ class WorkbenchService:
             if not isinstance(selected, list) or not selected:
                 raise ContractError("VALIDATION_FAILED", "请选择要纠正的节点或区域")
             mode = request.get("mode", "production")
-            backend = self.adapter.backend("correction", mode)
-            if backend.get("kind") == "dev_sample":
+            if mode == DEV_SAMPLE_MODE:
                 preview = self._sample_correction(record, draft, instruction, selected)
                 origin = "dev_sample"
                 labeled = "演示纠正预览（本地规则生成，非 AI）"
                 note = preview["note"]
-            else:
-                # Real C backend: fixed CONTRACT_V1 exchange; the reply's
-                # operations are validated by the op engine before previewing.
-                reply = call_backend(backend, "correction_preview", {
-                    "baseMapRevision": draft["graph"].get("mapRevision"),
-                    "expectedDraftRevision": draft["draftRevision"],
-                    "graph": draft["graph"],
-                    "instruction": instruction,
-                    "selectedNodeIds": selected,
-                })
-                operations = reply.get("operations")
-                if not isinstance(operations, list) or not operations:
-                    raise ContractError("BACKEND_UNAVAILABLE", "纠正后端没有返回可用操作")
+            elif mode == "rule_based":
+                # explicit C rule engine route: real module, labeled rule_based
+                reply = backend_c.nl_patch_candidate(draft["graph"], selected[0], instruction)
+                operations = reply["operations"]
                 probe_graph = draft["graph"]
                 for op in operations:
                     probe_graph = ops_module.apply_operation(probe_graph, op)
                 preview = {"operations": operations, "graph": probe_graph}
-                origin = backend.get("kind")
-                labeled = "真实纠正后端预览"
-                note = reply.get("note", "真实纠正后端返回的预览。")
+                origin = "rule_based"
+                labeled = "规则纠正预览（C 规则引擎，非 AI）"
+                note = (reply.get("labeled") or "由 C 规则引擎按所选节点生成；"
+                        "只做局部操作，不代表 AI 理解。")
+            else:
+                # real model correction: bounded operations validated by the op
+                # engine; without a configured model this is NOT_RUN, never a
+                # silent fallback to a demo note.
+                context_pack = record.get("lastContextPack") if request.get(
+                    "includeSourceContext", True) else None
+                reply = correction_module.correct_with_model(record, draft, instruction,
+                                                             selected, context_pack)
+                preview = {"operations": reply["operations"], "graph": reply["graph"]}
+                origin = "ai_generated"
+                labeled = "真实模型纠正预览（AI 候选，需人确认）"
+                note = reply.get("explanation") or "模型返回的局部纠正操作。"
+                if reply.get("unknowns") or reply.get("openQuestions"):
+                    note = (note + " 未确定：" + "；".join(
+                        list(reply.get("unknowns", [])) + list(reply.get("openQuestions", [])))).strip()
             # The preview (operations + the draft revision it was based on) is
             # stored server-side; applying later must name the proposal and
             # pass an expiry check, so a stale preview cannot overwrite newer
@@ -608,6 +664,62 @@ class WorkbenchService:
         return {"operations": operations, "graph": preview_graph,
                 "note": "演示纠正预览：由本地确定性规则生成，仅验证交互；不代表 AI 输出。"}
 
+    # ---------- C module: process deviations and incremental proposals ----------
+
+    def deviations(self, workspace_id: str, request: dict) -> dict:
+        """C's deviation detection on the current draft (read-only, honest UNKNOWN)."""
+        record = self.store.load_workspace(workspace_id)
+        draft = record.get("draft")
+        if draft is None:
+            raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+        traces = request.get("observedTraces")
+        if traces is not None and not isinstance(traces, list):
+            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表（可为空）")
+        result = backend_c.deviations_for(draft["graph"], traces or [])
+        result["draftRevision"] = draft["draftRevision"]
+        result["mapRevision"] = draft["graph"].get("mapRevision")
+        result["observedTracesProvided"] = bool(traces)
+        self.store.append_history(workspace_id, {
+            "type": "deviation_check", "at": _utcnow(), "verdict": result.get("verdict"),
+            "count": len(result.get("deviations", [])), "traces": bool(traces)})
+        return result
+
+    def incremental_proposal(self, workspace_id: str) -> dict:
+        """C's incremental candidate for a real code change (candidate only)."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            identity = record["identity"]
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            if not identity.get("repoPath") or not identity.get("codeRevision"):
+                raise ContractError("VALIDATION_FAILED", "该工作区没有关联代码")
+            probe = self.probe_repo(identity["repoPath"])
+            target = probe["head"]
+            base = identity["codeRevision"]
+            if target == base:
+                return {"status": "no_change", "baseCodeRevision": base, "targetCodeRevision": target,
+                        "operations": [], "labeled": "代码未变化；没有增量候选"}
+            changes = self.diff_repo(identity["repoPath"], base, target)
+            facts_diff = {
+                "added_files": [c["path"] for c in changes if c["code"].startswith("A")],
+                "modified_files": [c["path"] for c in changes if c["code"].startswith("M")],
+                "deleted_files": [c["path"] for c in changes if c["code"].startswith("D")],
+                "renamed_files": [{"from": c.get("oldPath"), "to": c["path"]}
+                                  for c in changes if c["code"].startswith("R")],
+            }
+            reply = backend_c.incremental_candidate(draft["graph"], base, target, facts_diff)
+            reply.update({"status": "ok", "baseCodeRevision": base, "targetCodeRevision": target,
+                          "changeSummary": {"added": len(facts_diff["added_files"]),
+                                            "modified": len(facts_diff["modified_files"]),
+                                            "deleted": len(facts_diff["deleted_files"]),
+                                            "renamed": len(facts_diff["renamed_files"])},
+                          "changes": changes})
+            self.store.append_history(workspace_id, {
+                "type": "incremental_proposal", "at": _utcnow(), "base": base, "target": target,
+                "proposalId": reply.get("proposalId"), "operations": len(reply.get("operations", []))})
+            return reply
+
     # ---------- review & publish (B seam) ----------
 
     def submit_review(self, workspace_id: str, request: dict) -> dict:
@@ -674,6 +786,9 @@ class WorkbenchService:
                 # separate from the current draft's identity (FINAL-2 F5)
                 current["lastPublish"] = {
                     "mapRevision": published_revision,
+                    # A-side hash of the graph that was published, so the
+                    # envelope can compare like with like (BATCH-1 C-01)
+                    "aMapRevision": draft["graph"].get("mapRevision"),
                     "mapSourceRevision": reply.get("mapSourceRevision"),
                     "verifiedCodeRevision": reply.get("verifiedCodeRevision"),
                     "actor": actor,
@@ -816,7 +931,8 @@ class WorkbenchService:
                 "coverage": preview["reviewCoverage"], "bDraftRevision": b_draft["draftRevision"]})
             return {
                 "previewDigest": result["previewDigest"],
-                "confirmationToken": result["confirmationToken"],
+                # the confirmation token stays on the server: the browser only
+                # proves it saw THIS preview by echoing the digest (BATCH-1 B-01)
                 "expiresInSeconds": result["expiresInSeconds"],
                 "beforeGraph": (b_to_a_graph(preview["beforeGraph"], preview)
                                 if preview.get("beforeGraph") else None),
@@ -843,8 +959,7 @@ class WorkbenchService:
             session = binding.get("sessionSecret") or {}
             if not last or not session:
                 raise ContractError("HUMAN_REVIEW_REQUIRED", "没有先执行人审预览；请先预览再确认")
-            if request.get("previewDigest") != last["previewDigest"] \
-                    or request.get("confirmationToken") != last["confirmationToken"]:
+            if request.get("previewDigest") != last["previewDigest"]:
                 raise ContractError("HUMAN_REVIEW_REQUIRED",
                                     "确认与已存储的预览不一致；请重新预览",
                                     {"expectedDigest": last["previewDigest"]})
@@ -856,7 +971,7 @@ class WorkbenchService:
                                      "current": draft["draftRevision"]})
             result = backend_b.confirm_review(record, {
                 "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
-                "confirmationToken": request["confirmationToken"],
+                "confirmationToken": last["confirmationToken"],  # server-side only
                 "previewDigest": request["previewDigest"],
                 "decision": request.get("decision"),
             }, meta)
@@ -896,6 +1011,10 @@ class WorkbenchService:
             if not publication:
                 raise ContractError("HUMAN_REVIEW_REQUIRED",
                                     "没有已确认的人审授权；发布必须经过 预览→确认→发布")
+            # publishing requires the human-review session itself to still be
+            # valid: the Host/Origin check alone is not a session check
+            # (BATCH-1 B-02; B's integration guide step 6)
+            backend_b.assert_session_active(record, meta)
             reviewed_revision = (binding.get("lastPreview") or {}).get("aDraftRevision")
             if reviewed_revision is not None and reviewed_revision != draft["draftRevision"]:
                 raise ContractError("REVISION_CONFLICT",
@@ -912,8 +1031,10 @@ class WorkbenchService:
             record["identity"]["mapSourceRevision"] = provenance.get("mapSourceRevision")
             record["identity"]["verifiedCodeRevision"] = version.get("verifiedCodeRevision")
             draft["publishedMapRevision"] = version["mapRevision"]
+            record["lastPublish"]["aMapRevision"] = draft["graph"].get("mapRevision")
             record.setdefault("publishedVersions", []).append({
                 "mapRevision": version["mapRevision"],
+                "aMapRevision": draft["graph"].get("mapRevision"),
                 "mapSourceRevision": provenance.get("mapSourceRevision"),
                 "codeRevision": version["codeRevision"],
                 "verifiedCodeRevision": version.get("verifiedCodeRevision"),
@@ -981,6 +1102,7 @@ class WorkbenchService:
             version = envelope["version"]
             record["lastPublish"] = {
                 "mapRevision": version["mapRevision"],
+                "aMapRevision": (record.get("draft") or {}).get("graph", {}).get("mapRevision"),
                 "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
                 "verifiedCodeRevision": version.get("verifiedCodeRevision"),
                 "actor": "import_git_version", "at": _utcnow()}
@@ -1040,6 +1162,7 @@ class WorkbenchService:
             version = envelope_b["version"]
             record["lastPublish"] = {
                 "mapRevision": version["mapRevision"],
+                "aMapRevision": (record.get("draft") or {}).get("graph", {}).get("mapRevision"),
                 "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision"),
                 "verifiedCodeRevision": version.get("verifiedCodeRevision"),
                 "actor": "open_from_version", "at": _utcnow()}
