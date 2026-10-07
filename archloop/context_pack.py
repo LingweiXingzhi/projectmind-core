@@ -56,7 +56,9 @@ def _key_name_is_secret(name: str) -> bool:
     """
     if not name:
         return False
-    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name)
+    # Preserve acronym boundaries: clientAPIKey -> client_API_Key.
+    spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", spaced)
     parts = [part.lower() for part in re.split(r"[^A-Za-z0-9]+", spaced) if part]
     if not parts:
         return False

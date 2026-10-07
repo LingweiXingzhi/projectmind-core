@@ -804,7 +804,7 @@
 
   document.getElementById("arch-review-preview-button").addEventListener("click", async () => {
     if (!state.envelope || !graph() || state.busy) return;
-    const actor = window.prompt("人审预览：请输入操作者（本机操作者声明）");
+    const actor = window.projectmindSession?.actor || window.prompt("人审预览：请输入操作者（本机操作者声明）");
     if (!actor) return;
     const reason = window.prompt("审阅理由（将随预览与版本一起记录）") || "";
     state.busy = true; renderWorkspace();
@@ -940,7 +940,7 @@
     state.busy = true;
     renderWorkspace();
     try {
-      const actor = window.prompt("创建修正任务：请输入操作者（本机操作者声明）") || "local_user";
+      const actor = window.projectmindSession?.actor || window.prompt("创建修正任务：请输入操作者（本机操作者声明）") || "local_user";
       const task = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks`, {
         deviation,
         acceptance,
@@ -1018,7 +1018,7 @@
         const rebind = el("button", "button ghost", "复核完成后回挂到当前 HEAD");
         rebind.type = "button";
         rebind.addEventListener("click", async () => {
-          const actor = window.prompt("回挂需要复核人（本机操作者声明）");
+          const actor = window.projectmindSession?.actor || window.prompt("回挂需要复核人（本机操作者声明）");
           if (!actor) return;
           try {
             const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,

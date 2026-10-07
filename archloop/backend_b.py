@@ -697,10 +697,10 @@ class BackendB:
     """Owns the configured B service instance and the A<->B call surface."""
 
     KIND = "architecture_workspace_v1"
-    REF = "B PR #51 — runtime b58fee7455bf8348f50e3863759e53bbd711dc6d (head bba8e84)"
+    REF = "Integrated WorkspaceService with bounded sessions and candidate-selection preview"
 
     def __init__(self, data_root, *, code_repositories=(), architecture_repo=None,
-                 architecture_branch=None, allowed_origin=None):
+                 architecture_branch=None, allowed_origin=None, trusted_https_proxy=False):
         self.data_root = str(data_root)
         self.architecture_repo = str(architecture_repo) if architecture_repo else None
         self.architecture_branch = architecture_branch
@@ -717,7 +717,8 @@ class BackendB:
                 architecture_repo=architecture_repo, architecture_branch=architecture_branch)
             self.code_repositories = dict(self.service.code_repositories)
             if allowed_origin:
-                self.gateway = HumanReviewGateway(self.service, allowed_origin)
+                self.gateway = HumanReviewGateway(self.service, allowed_origin,
+                                                   trusted_https_proxy=trusted_https_proxy)
             self.available = True
         except Exception as exc:  # a broken config is reported, never hidden
             self.reason = f"{type(exc).__name__}: {exc}"

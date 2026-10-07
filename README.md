@@ -1,6 +1,13 @@
 # projectmind-core
 面向复杂项目的HUMAN-AI协同认知与管理平台
 
+## 团队 HTTPS 运行入口（部署准备）
+
+新增登录、浏览器会话/CSRF、服务器仓库选择与 Waitress 接续。
+本地生产服务和 HTTPS 闭环已经验证；服务器、真实域名与浏览器/跨设备验收仍未完成。
+启动、账号配置、Caddy、持久化与验证限制见 [部署说明](docs/deployment/README.md)。
+公网入口使用 `python -m deployment.server serve`；下方 `app.py` 保留为本地演示。
+
 ## 架构工作台（本轮新增主入口）
 
 启动后默认进入「架构工作台」：<http://127.0.0.1:8765>。它覆盖一条完整闭环：
