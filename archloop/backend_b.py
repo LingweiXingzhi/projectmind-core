@@ -711,7 +711,8 @@ class BackendB:
     """Owns the configured B service instance and the A<->B call surface."""
 
     KIND = "architecture_workspace_v1"
-    REF = "B PR #51 — runtime b58fee7455bf8348f50e3863759e53bbd711dc6d (head bba8e84)"
+    REF = ("B PR #51 — 58a9ee8a25cb9b240cd1baa5bb674c0c0e528e89 "
+           "(surfaces/proposals/review-sessions; runtime base b58fee74)")
 
     def __init__(self, data_root, *, code_repositories=(), architecture_repo=None,
                  architecture_branch=None, allowed_origin=None):

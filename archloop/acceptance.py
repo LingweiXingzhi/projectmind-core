@@ -331,9 +331,13 @@ class Acceptance:
             operations.append({"type": "add_edge",
                                "edge": {"from": nodes_now[0]["id"], "to": nodes_now[1]["id"],
                                         "type": "functional_collaboration", "label": "验收关系"}})
+        # two ordered steps: the expected chain the deviation check compares a
+        # real observation against (a single step cannot express a bypass)
         operations.append({"type": "update_process", "nodeId": node_id, "process": [
             {"stepId": "s1", "title": "人工步骤", "detail": "验收", "inputs": [], "outputs": [],
-             "branches": ["分支A"], "next": [], "allowedFailures": ["允许失败路径"]}]})
+             "branches": ["分支A"], "next": ["s2"], "allowedFailures": ["允许失败路径"]},
+            {"stepId": "s2", "title": "人工后续步骤", "detail": "验收第二步",
+             "inputs": [], "outputs": [], "branches": [], "next": [], "allowedFailures": []}]})
         status, edited = self.call("POST", f"/api/archloop/workspaces/{ws}/apply-ops", {
             "expectedDraftRevision": draft["draftRevision"], "operations": operations,
             "actor": "验收操作者"})
@@ -483,15 +487,27 @@ class Acceptance:
                     "PASS" if status == 200 and unknown.get("verdict") == "UNKNOWN" else "FAIL",
                     {"verdict": (unknown or {}).get("verdict"), "reason": (unknown or {}).get("reason")})
         record = self.call("GET", f"/api/archloop/workspaces/{ws}")[1]
-        steps = [s["stepId"] for n in record["draft"]["graph"]["nodes"] for s in n.get("process", [])]
-        if len(steps) >= 1:
+        node_steps = [(n["id"], [s["stepId"] for s in n.get("process", [])])
+                      for n in record["draft"]["graph"]["nodes"] if n.get("process")]
+        if node_steps:
+            # a real observation: the process was expected but only its first
+            # step was actually executed — the trace carries the draft's own
+            # step ids and the workspace identity (no fabricated steps)
+            target_node, target_steps = next(((n, s) for n, s in node_steps if len(s) >= 2), node_steps[0])
+            identity = record.get("identity") or {}
+            trace = {"called_steps": target_steps[:1], "nodeId": target_node,
+                     "codeRepoId": identity.get("codeRepoId"),
+                     "codeRevision": identity.get("codeRevision")}
             status, detected = self.call("POST", f"/api/archloop/workspaces/{ws}/deviations",
-                                         {"observedTraces": [{"called_steps": []}]})
+                                         {"observedTraces": [trace]})
+            verdict = (detected or {}).get("verdict")
+            aligned_ok = verdict == "ALIGNED" and target_steps[:1] == target_steps
             self.record("T15", "有证据时的过程偏差候选（规则，可人裁决）",
-                        "PASS" if status == 200 and detected.get("verdict") in
-                        ("DEVIATION_DETECTED", "ALIGNED") else "FAIL",
-                        {"verdict": (detected or {}).get("verdict"),
-                         "deviations": len((detected or {}).get("deviations", []))})
+                        "PASS" if status == 200 and (verdict == "DEVIATION_DETECTED" or aligned_ok) else "FAIL",
+                        {"verdict": verdict, "node": target_node, "observedSteps": target_steps[:1],
+                         "expectedSteps": target_steps,
+                         "deviations": len((detected or {}).get("deviations", [])),
+                         "rejectedTraces": len((detected or {}).get("rejectedTraces", []))})
         else:
             self.record("T15", "有证据时的过程偏差候选", "NOT_RUN", "草稿没有过程步骤")
 
@@ -527,6 +543,16 @@ class Acceptance:
             self.record("T18b", "任务可列出并带验收条件",
                         "PASS" if listing.get("tasks") and listing["tasks"][0].get("acceptance") else "FAIL",
                         {"count": len(listing.get("tasks", []))})
+            status, received = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                         {"status": "received", "note": "验收实施者接手任务"})
+            self.record("T18c", "实施者接手任务（D 权威状态机）",
+                        "PASS" if status == 200 and received.get("status") == "received" else "FAIL",
+                        {"status": (received or {}).get("status"), "error": (received or {}).get("error")})
+            status, started = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                        {"status": "in_progress", "note": "在独立分支实施限定范围改动"})
+            self.record("T18d", "实施开始（in_progress）",
+                        "PASS" if status == 200 and started.get("status") == "in_progress" else "FAIL",
+                        {"status": (started or {}).get("status"), "error": (started or {}).get("error")})
             status, fixcommit = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
                                           {"status": "submitted",
                                            "commitSha": fix_commit, "summary": "验收修复提交"})
@@ -595,12 +621,14 @@ class Acceptance:
             self_identity = (self_ws or {}).get("identity") or {}
             status, rule = self.call("POST", f"/api/archloop/workspaces/{self_id}/generate",
                                      {"mode": "rule_based"})
-            # The expected revision is read from THIS repository directly with
-            # Git — never echoed back from the service response. Comparing the
-            # response against itself would accept any existing commit; the
-            # independent HEAD proves the version actually under audit
-            # (BATCH-4 ACCEPTANCE-01).
-            local_head = self.git("rev-parse", "HEAD")
+            # The expected revision is read from the audited checkout itself
+            # (REPO_ROOT, the code this runner lives in) — never echoed back
+            # from the service response. Comparing the response against itself
+            # would accept any existing commit; the independent HEAD proves the
+            # version actually under audit (BATCH-4 ACCEPTANCE-01).
+            local_head = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+                                        capture_output=True, text=True,
+                                        encoding="utf-8").stdout.strip()
             exists = _git_object_exists(str(REPO_ROOT), local_head)
             tracked_local, python_local = (None, None)
             if exists:

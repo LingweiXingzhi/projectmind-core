@@ -697,7 +697,11 @@
     try {
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, { mode: "rule_based" });
       state.pendingCandidate = result;
-      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；覆盖：读取 ${result.contextCoverage?.filesIncluded ?? "?"} 个文件 / 共 ${result.contextCoverage?.pythonFiles ?? "?"} 个 Python 文件）`);
+      const coverage = result.contextCoverage;
+      const coverageText = coverage
+        ? `覆盖：读取 ${coverage.filesIncluded} 个文件 / 共 ${coverage.pythonFiles} 个 Python 文件`
+        : "规划模式：没有代码事实，依据是目标与约束";
+      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；${coverageText}）`);
     } catch (error) {
       setGenStatus(`规则候选生成失败（${error.code}）：${error.message}`, true);
     } finally {

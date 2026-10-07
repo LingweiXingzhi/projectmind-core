@@ -918,7 +918,8 @@ class WorkbenchService:
         if traces is not None and not isinstance(traces, list):
             raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表（可为空）")
         result = self._c_call("deviations_for",
-                                  {"graph": draft["graph"], "traces": traces or []})
+                                  {"graph": draft["graph"], "traces": traces or [],
+                                   "identity": record.get("identity")})
         result["draftRevision"] = draft["draftRevision"]
         result["mapRevision"] = draft["graph"].get("mapRevision")
         result["observedTracesProvided"] = bool(traces)

@@ -92,7 +92,8 @@ def call(action: str, payload: dict) -> dict:
         return nl_patch_candidate(payload.get("graph") or {}, payload.get("nodeId"),
                                   payload.get("instruction") or "")
     if action == "deviations_for":
-        return deviations_for(payload.get("graph") or {}, payload.get("traces") or [])
+        return deviations_for(payload.get("graph") or {}, payload.get("traces") or [],
+                              payload.get("identity"))
     return incremental_candidate(payload.get("graph") or {}, payload.get("baseCodeRevision"),
                                  payload.get("targetCodeRevision"), payload.get("factsDiff") or {})
 
@@ -267,12 +268,20 @@ def nl_patch_candidate(base_graph: dict, node_id: str, instruction: str) -> dict
             "warnings": list(reply.get("warnings", []) or [])}
 
 
-def deviations_for(graph: dict, observed_traces: list) -> dict:
-    """C's process-deviation detection on the current draft graph (read-only)."""
+def deviations_for(graph: dict, observed_traces: list, identity: dict | None = None) -> dict:
+    """C's process-deviation detection on the current draft graph (read-only).
+
+    The workspace identity travels with the projection so C can check each
+    trace's declared repository/revision before it counts as evidence
+    (D-C-01) — on the public path too, not only in the component probe.
+    """
     module = _candidates_module()
+    identity = identity or {}
     projected = {"nodes": [{"nodeId": node["id"],
                             "expectedProcesses": [step.get("stepId") for step in node.get("process", [])]}
-                           for node in graph.get("nodes", [])]}
+                           for node in graph.get("nodes", [])],
+                 "codeRepoId": identity.get("codeRepoId"),
+                 "codeRevision": identity.get("codeRevision")}
     reply = module.detect_process_deviations(projected, observed_traces or [])
     result = {"status": reply.get("status"), "verdict": reply.get("verdict"),
               "deviations": reply.get("deviations", []),
