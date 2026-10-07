@@ -834,16 +834,18 @@
     renderWorkspace();
     setStatus("arch-correction-status", "正在生成纠正预览…");
     try {
+      // production path only: the real model when configured, otherwise C's
+      // rule engine (labeled rule_based). The dev-sample path is reachable
+      // solely through the explicitly labeled sample button (FINAL-UI-01).
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/correction-preview`, {
         expectedDraftRevision: currentDraftRevision(),
         instruction,
         selectedNodeIds: [state.selectedNodeId],
-        mode: "dev_sample", // until C's real backend is registered; responses stay labeled
       });
       state.correctionPreview = result;
       renderCorrectionPreview();
-      setStatus("arch-correction-status", result.origin === "dev_sample"
-        ? "演示纠正预览（本地规则生成，非 AI）。确认后应用到草稿。"
+      setStatus("arch-correction-status", result.origin === "rule_based"
+        ? `规则纠正预览（C 引擎，rule_based；${result.note || "确认后应用到草稿"}）`
         : "纠正预览已生成。");
     } catch (error) {
       setStatus("arch-correction-status", `预览失败（${error.code}）：${error.message}`, true);
@@ -984,7 +986,11 @@
       const act = async (body, note) => {
         state.busy = true; renderWorkspace();
         try {
-          const updated = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks/${taskId}`, body);
+          // state changes carry the revision and map revision this page saw;
+          // the server (and D's transaction) validate them instead of
+          // adopting whatever is current (FINAL-D-03)
+          const payload = { expectedRevision: task.revision, expectedMapRevision: task.mapRevision, ...body };
+          const updated = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks/${taskId}`, payload);
           setStatus("arch-review-status", `${note}（当前状态：${updated.status}）`);
           await refreshFixTasks();
         } catch (error) {

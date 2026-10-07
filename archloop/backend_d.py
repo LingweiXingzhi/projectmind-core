@@ -58,6 +58,16 @@ def _normalize_evidence(items, *, version: dict) -> list[dict]:
                      "detail": str(item.get("detail") or item.get("reason") or "").strip()}
             if not entry["detail"]:
                 raise ContractError("VALIDATION_FAILED", "每条证据都需要说明（detail/reason）")
+            # an observation that names its own repository/revision must match
+            # the published version; A never rewrites observed provenance into
+            # the version identity (FINAL-D-02)
+            for field in ("codeRepoId", "codeRevision"):
+                declared = item.get(field)
+                if declared is not None and declared != version.get(field):
+                    raise ContractError(
+                        "EVIDENCE_MISMATCH",
+                        f"观察证据声明的 {field} 与已发布版本不同：{declared!r} ≠ {version.get(field)!r}；"
+                        "不同仓库/版本的观察不能当作本版偏差证据")
             if item["kind"] == "code":
                 path = str(item.get("path") or "").strip()
                 if not _looks_like_repo_path(path):
@@ -65,8 +75,8 @@ def _normalize_evidence(items, *, version: dict) -> list[dict]:
                 entry.update({"path": path, "codeRevision": version.get("codeRevision"),
                               "codeRepoId": version.get("codeRepoId")})
             else:
-                entry.update({"codeRevision": version.get("codeRevision"),
-                              "codeRepoId": version.get("codeRepoId")})
+                entry.update({"codeRevision": item.get("codeRevision", version.get("codeRevision")),
+                              "codeRepoId": item.get("codeRepoId", version.get("codeRepoId"))})
             normalized.append(entry)
         elif isinstance(item, dict) and item.get("path"):
             path = str(item["path"]).strip()
@@ -278,9 +288,18 @@ class BackendD:
         recorded = record.get("deviations") or []
         candidate = str(request.get("deviationId") or "").strip()
         for item in recorded:
-            if isinstance(item, dict) and item.get("id") == candidate:
+            if not isinstance(item, dict) or item.get("id") != candidate:
+                continue
+            # a recorded deviation is reused only when the request describes the
+            # same observation; otherwise the id would lend its original
+            # evidence/scope to unrelated content (FINAL-D-04)
+            if (item.get("observation") or "").strip() == deviation.strip():
                 return candidate
-        new_id = candidate if candidate else f"dev_{_secrets.token_hex(6)}"
+            raise ContractError(
+                "EVIDENCE_MISMATCH",
+                "登记偏差的内容与本次描述不同：不能复用它的证据与范围；请以新偏差创建任务")
+        # an unknown id is never adopted verbatim — the id is server-assigned
+        new_id = f"dev_{_secrets.token_hex(6)}"
         entry = {"id": new_id, "observation": deviation,
                  "evidence": [item for item in (request.get("evidence") or [])
                               if not isinstance(item, dict) or "path" not in item][:20],
@@ -352,8 +371,20 @@ class BackendD:
             raise ContractError("VALIDATION_FAILED",
                                 "状态变更需要先声明本机操作者（写会话 operator）")
         task = self.get_task(task_id)
-        expected_revision = task["revision"]
-        expected_map = task["mapRevision"]
+        # the caller must state the revision/map revision it saw; D validates
+        # them inside its own transaction instead of A silently adopting
+        # whatever is current (FINAL-D-03)
+        expected_revision = request.get("expectedRevision")
+        expected_map = request.get("expectedMapRevision")
+        if not isinstance(expected_revision, int) or not isinstance(expected_map, str) or not expected_map:
+            raise ContractError(
+                "VALIDATION_FAILED",
+                "状态变更需要携带调用者看到的任务修订与图版本（expectedRevision / expectedMapRevision）；"
+                "服务端不会用最新值顶替")
+        if expected_revision != task["revision"] or expected_map != task["mapRevision"]:
+            raise ContractError("REVISION_CONFLICT",
+                                "任务已被其他操作者修改或图版本已变化；请重新打开任务列表再操作",
+                                {"currentRevision": task["revision"], "currentMapRevision": task["mapRevision"]})
         status = request.get("status")
         if status in ("received", "in_progress", "rejected"):
             description = str(request.get("note") or request.get("description") or "").strip()
