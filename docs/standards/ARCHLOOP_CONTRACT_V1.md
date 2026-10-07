@@ -39,18 +39,24 @@ BAD_REQUEST / VALIDATION_FAILED(400) · NOT_FOUND(404) · STALE_CONTEXT / REVISI
 | 路由 | 方法 | 语义 |
 |---|---|---|
 | /api/archloop | GET | 服务与 adapter 状态 |
-| /api/archloop/sample-graph | GET | 标注的演示样例图 |
+| /api/archloop/sample-graph?context= | GET | 标注的演示样例图（planning 变体把代码事实转需求依据） |
+| /api/archloop/legacy-map | GET | legacy 人工演示图只读来源（curated_demo） |
 | /api/archloop/workspaces | GET/POST | 列表 / 创建 |
 | /api/archloop/workspaces/{id} | GET | 打开（含身份+草稿） |
-| .../generate | POST | 生成候选（production→AI；dev_sample→须带 sampleGraph） |
-| .../apply-candidate | POST | 用户确认后候选→草稿 |
-| .../apply-ops | POST | CAS 草稿操作 |
-| .../correction-preview | POST | 自然语言纠正预览（origin 标注） |
+| .../generate | POST | 生成候选（production→AI；dev_sample→须带 sampleGraph）；候选仅存服务端并返回 candidateId |
+| .../apply-candidate | POST | 按 candidateId 应用候选；已有草稿须 expectedDraftRevision |
+| .../apply-ops | POST | CAS 草稿操作（含证据诚实防线） |
+| .../correction-preview | POST | 自然语言纠正预览（origin 标注；预览存服务端） |
+| .../apply-correction | POST | 按 proposalId 应用预览；基准过期返回 STALE_CONTEXT |
 | .../diff | GET | 基准候选→当前草稿差异 |
-| .../impact?nodeId= | GET | 删除影响 |
+| .../impact?nodeId= | GET | 删除影响（关系 + 过程引用双向） |
 | .../review | POST | 人审决定（expectedMapRevision+actor+reason） |
-| .../recheck | GET | 代码变化复核（staleNodes） |
-| .../fix-task | POST | 修正实现任务（D seam） |
+| .../recheck | POST | 代码变化复核（POST-only；GET 返回 404） |
+| .../rebind | POST | 回挂到新 HEAD（本地记录，verifiedCodeRevision 不变） |
+| .../import-legacy | POST | legacy 图导入为草稿（CAS+结构校验+证据防线） |
+| .../fix-task | POST | 修正实现任务（D 缺席→样例/503；已注册→真实委托） |
+
+版本身份补充：candidate（服务端存储）带 sourceCodeRevision；draft 带 generationMeta（unknowns/openQuestions/来源 SHA）；发布写回前做原子草稿复核（FINAL-1 #4）。
 
 ## 6. 对 B 的接线请求（persistence capability）
 

@@ -101,7 +101,7 @@
       await loadHistory();
       setStatus("arch-create-status", `工作区已创建：${result.workspace.workspaceId}（代码 ${short(result.identity.codeRevision)}）`);
     } catch (error) {
-      setStatus("arch-create-status", `创建失败：${error.message}`, true);
+      setStatus("arch-create-status", `创建失败（${error.code}）：${error.message}`, true);
     }
   });
 
@@ -124,7 +124,7 @@
       await loadHistory();
       setStatus("arch-create-status", `规划工作区已创建：${result.workspace.workspaceId}（无代码 SHA，属正常状态）`);
     } catch (error) {
-      setStatus("arch-create-status", `创建失败：${error.message}`, true);
+      setStatus("arch-create-status", `创建失败（${error.code}）：${error.message}`, true);
     }
   });
 
@@ -143,7 +143,7 @@
         open.type = "button";
         open.addEventListener("click", async () => {
           try { openEnvelope(await api("GET", `/api/archloop/workspaces/${workspace.workspaceId}`)); }
-          catch (error) { setStatus("arch-create-status", `打开失败：${error.message}`, true); }
+          catch (error) { setStatus("arch-create-status", `打开失败（${error.code}）：${error.message}`, true); }
         });
         row.append(open);
         list.append(row);
@@ -427,10 +427,11 @@
         const impact = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/impact?nodeId=${encodeURIComponent(node.id)}`);
         const lines = [`${impact.edges.length} 条关系、${impact.processReferences.length} 处过程引用将受影响。`];
         danger.replaceChildren(el("h4", "section-title", "删除节点"), el("p", "arch-impact", lines.join("")));
-        const confirmRemove = el("button", "button primary", "仍然删除（级联移除关系）");
+        const confirmRemove = el("button", "button primary", "仍然删除（级联移除关系与过程引用）");
         confirmRemove.type = "button";
         confirmRemove.addEventListener("click", () => {
-          applyOps([{ type: "remove_node", nodeId: node.id, force: impact.edges.length > 0 }], "节点已删除。");
+          const hasRefs = impact.edges.length > 0 || impact.processReferences.length > 0;
+          applyOps([{ type: "remove_node", nodeId: node.id, force: hasRefs }], "节点已删除。");
           state.selectedNodeId = null;
         });
         danger.append(confirmRemove);
@@ -821,7 +822,7 @@
       }
       setGenStatus(result.changed ? "代码有新提交，请复核列出的节点。" : "代码没有新提交。");
     } catch (error) {
-      setStatus("arch-generate-status", `复核失败（${error.code}）：${error.message}`, true);
+      setGenStatus(`复核失败（${error.code}）：${error.message}`, true);
     } finally {
       state.busy = false;
       renderWorkspace();
@@ -845,7 +846,7 @@
       for (const edge of diff.edges?.added || []) area.append(el("p", "ai-item", `新增关系 ${edge.from} → ${edge.to}（${edge.type}）`));
       for (const edge of diff.edges?.removed || []) area.append(el("p", "ai-item", `移除关系 ${edge.from} → ${edge.to}（${edge.type}）`));
     } catch (error) {
-      setStatus("arch-draft-status", `差异读取失败：${error.message}`, true);
+      setStatus("arch-draft-status", `差异读取失败（${error.code}）：${error.message}`, true);
     }
   });
 

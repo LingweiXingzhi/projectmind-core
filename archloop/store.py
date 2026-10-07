@@ -29,12 +29,18 @@ _locks_guard = threading.Lock()
 _locks_by_workspace: dict[str, threading.Lock] = {}
 
 
-def workspace_lock(workspace_id: str) -> threading.Lock:
-    """One lock per workspace id for the process lifetime."""
+def workspace_lock(workspace_id: str) -> threading.RLock:
+    """One reentrant lock per workspace id for the process lifetime.
+
+    Reentrant because submit_review legitimately re-enters the same-thread
+    lock through backend callbacks that touch the draft (the atomic
+    re-check before the publish write-back still protects against other
+    threads).
+    """
     with _locks_guard:
         lock = _locks_by_workspace.get(workspace_id)
         if lock is None:
-            lock = threading.Lock()
+            lock = threading.RLock()
             _locks_by_workspace[workspace_id] = lock
         return lock
 

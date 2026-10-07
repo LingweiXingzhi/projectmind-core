@@ -124,13 +124,19 @@ def apply_operation(graph: dict, op: dict) -> dict:
 
 
 def node_impact(graph: dict, node_id: str) -> dict:
-    """References that would break if node_id were removed (UI impact view)."""
+    """References that would break if node_id were removed (UI impact view).
+
+    Covers edges and both directions of process references (outputs AND
+    inputs), matching the removal cascade (FINAL-1 finding 5).
+    """
     edges = [edge for edge in graph.get("edges", []) if edge["from"] == node_id or edge["to"] == node_id]
     process_refs = []
     for node in graph.get("nodes", []):
         for step in node.get("process", []):
-            if node_id in [entry.split(":", 1)[-1] for entry in step.get("outputs", []) if isinstance(entry, str)]:
-                process_refs.append({"nodeId": node["id"], "stepId": step.get("stepId")})
+            refs = [entry for entry in step.get("outputs", []) + step.get("inputs", [])
+                    if isinstance(entry, str) and entry.split(":", 1)[-1] == node_id]
+            if refs:
+                process_refs.append({"nodeId": node["id"], "stepId": step.get("stepId"), "refs": refs})
     return {"nodeId": node_id, "edges": edges, "processReferences": process_refs}
 
 
