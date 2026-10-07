@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "d_self_review_v1",
+  "at": "2026-10-07T10:46:46.076685+00:00",
+  "reviewedRemote": "dc17d64a2a0757643a09f3896fe64aa722ad6bae",
+  "testedDLocalCommit": "8b8c8a52c8b14f59efdf55ff55c1920299d37a72",
+  "reviewType": "DEVELOPER_SELF_REVIEW_NOT_INDEPENDENT_AUDIT",
+  "fixedFindings": [
+    "D-R01",
+    "D-R02"
+  ],
+  "remainingDGap": "T01–T28 collector is not full executable product acceptance; needs actual integrated API/UI contract",
+  "results": {
+    "DTargeted": {
+      "count": 32,
+      "status": "OK"
+    },
+    "DCoInstalled": {
+      "count": 32,
+      "status": "OK"
+    },
+    "fullDCheckout": {
+      "count": 636,
+      "skipped": 14,
+      "status": "OK"
+    },
+    "DRealHTTPFixture": {
+      "status": "PASS",
+      "product": "INCOMPLETE",
+      "exitCode": 2
+    },
+    "actualCFixture": {
+      "task": "verified_fixture_only",
+      "existingCFindings": 4,
+      "exitCode": 1
+    }
+  },
+  "commands": [
+    "python -m unittest discover -s tests -p 'test_archloop_d_*.py' -v",
+    "python -m unittest discover -s tests -v",
+    "python -m tests.architecture_loop_acceptance.run --run-d-fixture --output /tmp/d-review-http-fixture-20261007",
+    "python -m tests.architecture_loop_acceptance.probe_candidates --output /tmp/d-review-c-fixture-20261007 --source-checkout /tmp/projectmind-d-validation-20261007-1723"
+  ],
+  "sha256": {
+    "D-coinstalled.log": "662ade54ffba4b42b22bb51d6d0f3bb00f43f1bbc3fa61b28cdf06d180e076c3",
+    "D-targeted.log": "6f0bb61fc3ebc9f2c89884ef03de6d8fab09404ac6dd727ddab340496db5aee6",
+    "actual-C-probe.json": "efb7d6b4a4305b9540bbab146f316d2f8c88fe131597270d4df86310ebc4bc08",
+    "after-fix.json": "866dc302b5de5af177ad5649a61e8397e299ce9fafba4d170da0f3a977b02c8c",
+    "before-fix.json": "9e6f7d4aa4adc28abfd80d03aa16839bb60c5ab7efb3647824e452f5b098712b",
+    "d-http.json": "fee148a01b2cff73dc1292dee22b22ccf050da69e429f4a811bd69dd0adf37f0",
+    "full-regression.log": "2eea443770700890bcca5542e182b681189727e953fca391fd5063f375163224",
+    "http-report.json": "d467750d5ec7036748cfc939b44ff81d1e55c46c173b5d5ded481397ca3de84c"
+  }
+}
