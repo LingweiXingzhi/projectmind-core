@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "fixtureOnly": true,
+  "newProtectedWriteUi": "NOT_INTEGRATED",
+  "port": 18833,
+  "checks": [
+    {
+      "check": "discovery",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "check": "immutable_version",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "check": "same_fixture_snapshot",
+      "status": 200,
+      "result": "PASS"
+    },
+    {
+      "check": "post_blocked",
+      "status": 403,
+      "result": "PASS"
+    },
+    {
+      "check": "cross_site_post_blocked",
+      "status": 403,
+      "result": "PASS"
+    }
+  ],
+  "codeRevision": "1c826a79cbf31707ee9e2df3a304c9a9edb19ae9",
+  "mapRevision": "sha256:bd00c812263e09b1937bf170b25e742cbd5078facff8e234400c4a704855178a",
+  "mapSourceRevision": "cc72b733018d91551fcb5ec05c286e55ec501f62"
+}

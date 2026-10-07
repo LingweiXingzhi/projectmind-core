@@ -1,0 +1,32 @@
+{
+  "fixtureOnly": true,
+  "realModelApi": "NOT_RUN",
+  "secondCloneEqual": true,
+  "conflicts": [
+    "REVISION_CONFLICT",
+    "EVIDENCE_MISMATCH",
+    "STALE_CONTEXT"
+  ],
+  "normal": {
+    "mapRevision": "sha256:bd00c812263e09b1937bf170b25e742cbd5078facff8e234400c4a704855178a",
+    "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+    "codeRevision": "1c826a79cbf31707ee9e2df3a304c9a9edb19ae9",
+    "verifiedCodeRevision": "1c826a79cbf31707ee9e2df3a304c9a9edb19ae9",
+    "status": "confirmed_cognition"
+  },
+  "normalProvenance": {
+    "mapSourceRevision": "cc72b733018d91551fcb5ec05c286e55ec501f62",
+    "sourceKind": "git_commit"
+  },
+  "planning": {
+    "mapRevision": "sha256:4b1dc3511ba7b6c9844378d50d696cbbfd86c53e21a66dce9a8c26e4aaebd2f2",
+    "codeRepoId": null,
+    "codeRevision": null,
+    "verifiedCodeRevision": null,
+    "status": "confirmed_design"
+  },
+  "planningProvenance": {
+    "mapSourceRevision": "979ed2a48b4579fd379eda525be344a8c2ff88c5",
+    "sourceKind": "git_commit"
+  }
+}
