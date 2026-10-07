@@ -681,6 +681,7 @@
     // a preview based on an older draft revision is void (MID-1 finding 9)
     if (preview.baseDraftRevision !== state.envelope.identity.draftRevision) {
       state.correctionPreview = null;
+      setStatus("arch-correction-status", "纠正预览已过期（草稿在此期间发生了变化）；请重新生成预览。", true);
       area.append(el("div", "review-notice", "纠正预览已过期（草稿在此期间发生了变化）；请重新生成预览。"));
       return;
     }
