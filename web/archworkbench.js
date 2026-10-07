@@ -810,8 +810,10 @@
     state.busy = true; renderWorkspace();
     setStatus("arch-review-status", "正在生成人审预览…");
     try {
+      // planning workspaces have no code: design confirmation is not a code review
+      const verifyCode = state.envelope.workspace.context !== "planning";
       const preview = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-preview`,
-        { actor, reason, verifyCode: true });
+        { actor, reason, verifyCode });
       reviewFlow.actor = actor;
       reviewFlow.previewDigest = preview.previewDigest;
       const area = document.getElementById("arch-review-result");
