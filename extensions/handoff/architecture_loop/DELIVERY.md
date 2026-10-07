@@ -25,3 +25,6 @@ python -m tests.architecture_loop_acceptance.run --run-d-fixture --output /tmp/n
 收集器完整产品未验证时退出 2，即使 D fixture PASS。可加 --target-checkout、--target-head、--base-url 核对实际集成服务，见 README.md。原始结果和最终汇总在 evidence/，manifest.json 固定执行 SHA、来源、命令、失败尝试与 SHA256。数据全来自隔离临时仓库，不是正式工作日志/团队图；没有修改正式模型。
 
 模型影响 UPDATE，候选在 MODEL_IMPACT_CANDIDATE.md，待用户确认。A 集成/独立审计前 #52 保持 open。
+
+
+继续核查的新 B/C 来源、826 项冻结回归和实际 C 再核验，请以 RESUME_DELIVERY.md 与 evidence/resume/ 为最新接续结果；本文件以上为首次交付记录。

@@ -15,3 +15,6 @@
 D 入口为 extensions/handoff/archloop_backend.py 的 create_archloop_backend(service, workspace_provider)。provider 必须来自受保护的服务器配置，给出 B versionHandoff、actor、scope 和可选的 deviationId/日志引用。FixTaskGateway 从实际 peer/Host/Origin/Cookie/CSRF 建立 RequestContext，不能从 JSON 读取执行命令、身份或本地仓库路径。
 
 A/B 目前 mapRevision、图节点/过程形状与 codeRepoId 仍不一致；B 新增 V2 文档为 DESIGN_CANDIDATE/NOT_IMPLEMENTED，不能当运行时契约。C 新闭环服务未交付，D fixture 的 C_TEST_DOUBLE 不是 C 再核验。请在 A 的新 integration 分支协调，勿写旧 integration/main。独立审计 AUDIT_PENDING；模型候选须人工确认。
+
+
+接续已读取真实 C 55ea6466583d98e0f466e5d4055922ef4aeecb12 与 B 8315c2e67aef2fa532869595441e68c29ae1beb3。原三项 A finding 仍复现，新增 C 缺证/候选身份/固定证据及 B↔C 形状问题，共七项集中见 RESUME_DELIVERY.md，原始结果 evidence/resume/。之前“C 未交付”“V2 未实现”为首次交付时观察，不代表当前状态。

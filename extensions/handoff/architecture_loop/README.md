@@ -88,7 +88,17 @@ A 当前错误字典不包含全部 D code；adapter 将未登记 code 投影到
 ## 本轮边界
 
 - 真实 B service 已在独立副本运行；D 已读取其真实 existing/planning 发布版本与第二 clone Git 字节。
-- A/B 共用 schema、身份、审核授权仍有接线差异；C 本轮新推理在本次可见远端未交付。
+- A/B 共用 schema、身份、审核授权仍有接线差异；继续核查已读取 C 的 55ea6466583d98e0f466e5d4055922ef4aeecb12，并实际运行其过程偏差函数，最新结果见 RESUME_DELIVERY.md。
 - 浏览器下载失败（无有效 ZIP），不能伪造截图或用 HTTP 顶替 UI。真实 AI 未配置，跨设备未执行。
 - 自查不称独立审计；最终 AUDIT_PENDING，USER_MODEL_REVIEW_PENDING。
 - productmind-model 的任务指定两份方向文档在尝试的 GitHub 路径返回 404；本轮依据当前用户任务书，不猜其缺失内容。
+
+## D 的实际 B/C 消费验收
+
+可选组件 probe 在含真实 B/C 模块、干净且固定 SHA 的隔离验收 checkout 执行：
+
+```sh
+python -m tests.architecture_loop_acceptance.probe_candidates --source-checkout /absolute/validation-checkout --output /absolute/new/c-component-evidence
+```
+
+产生真实临时 Git 轨迹，调用实际 C 过程函数，通过 D FixTask 接手/受限修正提交/再验证；同时报告 C 缺证/身份/候选与 B 契约问题。仅测试夹具人审，不是正式图批准、公共 UI 或生产 C 接线。存在 finding 返回 1，禁止把测试函数成功当主线全部通过。

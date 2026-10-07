@@ -1,0 +1,425 @@
+{
+  "schemaVersion": "architecture_loop_acceptance_v1",
+  "startedAt": "2026-10-07T10:29:57.778867+00:00",
+  "collectorHead": "52085a115f4aaf8457683a18d34875ec1dfd896c",
+  "targetHead": "52085a115f4aaf8457683a18d34875ec1dfd896c",
+  "checks": [
+    {
+      "id": "T01",
+      "name": "已有项目说明与真实 AI 初图",
+      "status": "NOT_RUN",
+      "detail": "Real AI unconfigured; rule/sample is not AI proof",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T02",
+      "name": "功能职责图而非文件树",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T03",
+      "name": "自然语言纠正与直接编辑",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T04",
+      "name": "关系编辑",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T05",
+      "name": "期望过程步骤与分支编辑",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T06",
+      "name": "持久化刷新重开",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T07",
+      "name": "两客户端草稿冲突",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T08",
+      "name": "候选接受/修改/拒绝",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T09",
+      "name": "未批准不能发布",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T10",
+      "name": "批准产生不可变版本",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T11",
+      "name": "历史读取与恢复草稿",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T12",
+      "name": "代码/图/图来源版本分离",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": [
+        {
+          "status": "PASS",
+          "scope": "D_ONLY_TEST_FIXTURE",
+          "detail": "See dFixture; not full A/C/UI acceptance",
+          "evidence": [
+            "d-http.json",
+            "same-version.json",
+            "planning-handoff.json",
+            "fix-task.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T13",
+      "name": "完整 SHA 证据跳转",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T14",
+      "name": "真实变化触发增量复核",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T15",
+      "name": "有观察证据的过程偏差",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T16",
+      "name": "不足证据为 UNKNOWN",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T17",
+      "name": "修正认知产生新图",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T18",
+      "name": "实施任务交给接收者",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": [
+        {
+          "status": "PASS",
+          "scope": "D_ONLY_TEST_FIXTURE",
+          "detail": "See dFixture; not full A/C/UI acceptance",
+          "evidence": [
+            "d-http.json",
+            "same-version.json",
+            "planning-handoff.json",
+            "fix-task.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T19",
+      "name": "真实修正提交回挂再验证",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": [
+        {
+          "status": "PASS",
+          "scope": "D_ONLY_TEST_FIXTURE",
+          "detail": "See dFixture; not full A/C/UI acceptance",
+          "evidence": [
+            "d-http.json",
+            "same-version.json",
+            "planning-handoff.json",
+            "fix-task.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T20",
+      "name": "第二 clone 同版交接",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": [
+        {
+          "status": "PASS",
+          "scope": "D_ONLY_TEST_FIXTURE",
+          "detail": "See dFixture; not full A/C/UI acceptance",
+          "evidence": [
+            "d-http.json",
+            "same-version.json",
+            "planning-handoff.json",
+            "fix-task.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T21",
+      "name": "同名异仓/过期审阅/改包拒绝",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": [
+        {
+          "status": "PASS",
+          "scope": "D_ONLY_TEST_FIXTURE",
+          "detail": "See dFixture; not full A/C/UI acceptance",
+          "evidence": [
+            "d-http.json",
+            "same-version.json",
+            "planning-handoff.json",
+            "fix-task.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T22",
+      "name": "AI 未配置/失败诚实降级",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T23",
+      "name": "真实 AI 与证据验证",
+      "status": "NOT_RUN",
+      "detail": "Real AI unconfigured; rule/sample is not AI proof",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T24",
+      "name": "ProjectMind 新职责候选图覆盖",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T25",
+      "name": "旧 Explorer/提案只读/CA/交接回归",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T26",
+      "name": "中断重试版本不丢不重复",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    },
+    {
+      "id": "T27",
+      "name": "无代码设计图全流程",
+      "status": "NOT_RUN",
+      "detail": "Real AI unconfigured; rule/sample is not AI proof",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": [
+        {
+          "status": "PASS",
+          "scope": "D_ONLY_TEST_FIXTURE",
+          "detail": "See dFixture; not full A/C/UI acceptance",
+          "evidence": [
+            "d-http.json",
+            "same-version.json",
+            "planning-handoff.json",
+            "fix-task.json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T28",
+      "name": "规划关联代码保留实现差异",
+      "status": "BLOCKED",
+      "detail": "Product missing registered backends: correction,handoff,persistence",
+      "evidence": [
+        "product-http.json"
+      ],
+      "componentChecks": []
+    }
+  ],
+  "failures": [],
+  "productAcceptance": "INCOMPLETE",
+  "realAI": "NOT_RUN_AWAITING_CONFIGURATION",
+  "crossDevice": "NOT_RUN",
+  "audit": "AUDIT_PENDING",
+  "humanModelReview": "USER_MODEL_REVIEW_PENDING",
+  "dFixture": {
+    "status": "PASS",
+    "scope": "D_ONLY_REAL_GIT_HTTP_TEST_FIXTURE",
+    "codeBaseline": "dc7a890c389ae24cc1d76d793bdf0ae6a04fd5a5",
+    "submittedRevision": "560e4fde83b8da4af25a2cedd656075c88d262c8",
+    "mapRevision": "sha256:c06a6de4185d715a36fb9f08f2a09aa3a93ffac0ae024dd12948279e7ce8c46e",
+    "mapSourceRevision": "04e56799507d6f3bcee2c6a9f8541fc10bb9ee4d",
+    "observedBeforeExitCode": 1,
+    "observedAfterExitCode": 0,
+    "secondCloneSameVersion": true,
+    "planningNullSha": true,
+    "actualCRecheck": "NOT_RUN_C_TEST_DOUBLE",
+    "humanApproval": "TEST_ONLY_SIMULATED_HUMAN",
+    "evidence": [
+      "d-http.json",
+      "same-version.json",
+      "planning-handoff.json",
+      "fix-task.json"
+    ]
+  },
+  "productHttp": [
+    {
+      "path": "/api/archloop",
+      "method": "GET",
+      "body": null,
+      "status": 200,
+      "response": {
+        "service": "architecture-workbench",
+        "adapter": {
+          "registered": {},
+          "modes": [
+            "production",
+            "dev_sample"
+          ]
+        },
+        "generation": {
+          "configured": false,
+          "model": null,
+          "note": "AI 生成尚未配置。需在启动程序前设置 OPENAI_API_KEY 和 PROJECTMIND_AI_MODEL。"
+        }
+      },
+      "at": "2026-10-07T10:29:58.626788+00:00"
+    },
+    {
+      "path": "/api/ai-status",
+      "method": "GET",
+      "body": null,
+      "status": 200,
+      "response": {
+        "configured": false,
+        "model": null,
+        "note": "AI 生成尚未配置。需在启动程序前设置 OPENAI_API_KEY 和 PROJECTMIND_AI_MODEL。"
+      },
+      "at": "2026-10-07T10:29:58.627642+00:00"
+    }
+  ],
+  "registeredBackends": {},
+  "finishedAt": "2026-10-07T10:29:58.631822+00:00",
+  "exitCode": 2
+}

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "d_resume_evidence_manifest_v1",
+  "savedAt": "2026-10-07T10:33:15.233540+00:00",
+  "DPreviousDelivery": "6c51f666a9f5377995953d13e95b4d91397c2184",
+  "DOriginalRuntime": "782968ccd7a14de3b1b4b41f99f2e032cb7ad42b",
+  "DProbeLocalCommit": "7967de05313f5586c85ccc0364c2bc458833c817",
+  "targetHead": "52085a115f4aaf8457683a18d34875ec1dfd896c",
+  "pins": {
+    "A": "b75ad820e0d31e3dadf842b414f6950b5aa46102",
+    "B": "8315c2e67aef2fa532869595441e68c29ae1beb3",
+    "C": "55ea6466583d98e0f466e5d4055922ef4aeecb12"
+  },
+  "scope": "D_OWNED_TOOLS_AND_EVIDENCE; TEMPORARY_B_C_COPY_NOT_A_INTEGRATION",
+  "commands": [
+    {
+      "command": "python -m unittest discover -s tests -v",
+      "exitCode": 0,
+      "evidence": "full-regression.log"
+    },
+    {
+      "command": "python -m unittest discover -s tests -p 'test_archloop_*.py' -v",
+      "exitCode": 0,
+      "evidence": "BCAD-specialists.log"
+    },
+    {
+      "command": "python -m unittest discover -s tests -p 'test_archloop_d_*.py' -v",
+      "exitCode": 0,
+      "evidence": "D-only.log"
+    },
+    {
+      "command": "python -m extensions.architecture_workspace.surface_smoke --test-fixture-only --output /tmp/d-resume-b-surfaces-20261007",
+      "exitCode": 0,
+      "evidence": "B-surfaces-smoke.json"
+    },
+    {
+      "command": "python -m tests.architecture_loop_acceptance.probe_candidates --output /tmp/d-resume-c-actual-final-20261007 --source-checkout /tmp/projectmind-d-validation-20261007-1723",
+      "exitCode": 1,
+      "evidence": "C-actual-probe.json"
+    },
+    {
+      "command": "python -m tests.architecture_loop_acceptance.run --target-checkout /tmp/projectmind-d-validation-20261007-1723 --target-head 52085a115f4aaf8457683a18d34875ec1dfd896c --base-url http://127.0.0.1:18874 --run-d-fixture --output /tmp/d-resume-frozen-product-report-20261007",
+      "exitCode": 2,
+      "evidence": "report.json"
+    },
+    {
+      "command": "node tests/architecture_loop_acceptance/browser_smoke.js http://127.0.0.1:18873 /tmp/d-resume-browser-final-20261007 52085a115f4aaf8457683a18d34875ec1dfd896c",
+      "exitCode": 2,
+      "evidence": "browser-not-run.json"
+    }
+  ],
+  "resolvedSetupAttempts": [
+    "Initial optional B tests failed 38 errors because validation mirror lacked B required two-surface-v2-design.json; included exact B fixture and 222 tests then passed. No B test modified.",
+    "Initial public probe call used wrong positional signature; server stopped; corrected actual call reran frozen product HTTP.",
+    "UTF-8 source restore hit OS argument-size limit; bounded chunk writes and Git blob validation used.",
+    "Actual D rejected differing architecture clone origins in fresh B fixture; only explicit test source registration fixed setup, never silently accepted."
+  ],
+  "limits": [
+    "Actual C component used projected expected process shape required by C current candidate schema; no claim canonical B/C seam integrated",
+    "Human approval only TEST_ONLY_SIMULATED_HUMAN; no real model confirmation",
+    "A mainline not integrated; true AI/UI/physical device/audit remain unresolved"
+  ],
+  "sha256": {
+    "B-D-consumer.json": "233ab45bdb62d3e7375683cb2d558868c4eea2fcc39f1e5d1201761d64d9df33",
+    "B-surfaces-smoke.json": "05cb2a11b14e9cdf98768666d9a24f014773ac6074b6c846709c25cd6cfb6266",
+    "BCAD-specialists.log": "29b2db58b7c9897b2f04d21a186becd51c3375139183645f7508473515c8e74e",
+    "C-actual-probe.json": "4783e13f042a8fddfd1ff8e58f7d9b51f19119182080c40a3c4a9ae0c48c4bff",
+    "D-only.log": "d9c0829db4f070b426d51a58124e52b90dcd80b5a51f0917ee718da5dd9bab75",
+    "FINAL_REPORT.json": "9998f39cb8497717b2ea532ef887105be72372bda9e3fc308518ec9cfa3290fc",
+    "browser-not-run.json": "e6170a45a9f95401c070888f99616419d16f19e7bdd1ca9914589c48fb9810a8",
+    "d-http.json": "025aeb27c32cabde76793674ae2d909ea0d61e57ab6615e7f4a8031157a130e5",
+    "failures.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "fix-task.json": "08a88814c22b35ef6625adf8c85c764957c85cedee1204d07fad678331b412d3",
+    "full-regression.log": "c0816156623dec536cb9b481f038177881f53900f6cb18ddb26b05aefd19c7f4",
+    "planning-handoff.json": "202c49e93a38f25fb208dda3ce9f7635f6c85e409cca26c75d4e4749c38d8a2c",
+    "product-http.json": "a6781355200f9f21f6bea49157d46476b3337e4e2f4207f2e1b7c92b712efce0",
+    "public-http.json": "67e613fe167640e954c79d0864a5e3ec7a1c42e97a5a380fe594734afaa8f42a",
+    "report.json": "ccb5314eb1b3766ce5d9bb64d461511e923bda4d604ceda71e160a2da7ea4dab",
+    "runtime-fingerprints.json": "cbfd298b9dac6a8fbe5cb066fdead46eb6165b098c5f91f8b0e2905e7cf27f2d",
+    "same-version.json": "db566b6758c446018552f67df7934bfd21dbc4468196978a90f3359c035e8de1"
+  }
+}
