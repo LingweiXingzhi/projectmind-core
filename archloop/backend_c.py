@@ -75,12 +75,14 @@ def candidate_to_graph(candidate: dict, *, context: str) -> tuple[dict, list]:
     nodes = []
     for index, node in enumerate(graph_candidate.get("nodes", []) or []):
         node_id = _clean_id(node.get("nodeId"), f"c_node_{index + 1}")
+        # C's "planned" is a proposal, not a human confirmation: it must never
+        # render as 设计已确认 before review (BATCH-1C C-02)
         planned = (candidate.get("mode") == "planning") or node.get("status") == "planned"
         nodes.append({
             "id": node_id,
             "title": node.get("title") or node_id,
             "summary": node.get("role") or "（C 候选未填写职责）",
-            "status": "confirmed_design" if planned else "candidate",
+            "status": "candidate",
             "provenance": "rule_based",
             "entryPoints": [item for item in (node.get("interfaces") or []) if isinstance(item, str)][:20],
             "interfaces": [],

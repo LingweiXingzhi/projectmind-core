@@ -760,7 +760,12 @@ class WorkbenchService:
                 "mapSourceRevision": package["mapSourceRevision"],
                 "expectedMapRevision": request.get("expectedMapRevision")})
             result["workspace"] = {"workspaceId": existing_workspace}
-            result["identity"] = {"mapId": package["mapId"]}
+            # never echo a package-declared mapId: the verified version's own
+            # identity is authoritative (BATCH-1C HANDOVER-02)
+            result["identity"] = {"mapId": result["version"]["mapId"]}
+            if package.get("mapId") != result["version"]["mapId"]:
+                result["packageMapIdMismatch"] = {"package": package.get("mapId"),
+                                                  "verified": result["version"]["mapId"]}
         else:
             result = self.open_from_version({
                 "mapId": package["mapId"], "mapRevision": package["mapRevision"],
@@ -777,7 +782,9 @@ class WorkbenchService:
             same_content = self._graph_fingerprint(package_graph) == \
                 self._graph_fingerprint(imported_graph)
             same_revision = package.get("mapRevision") == result["version"]["mapRevision"]
-            comparison = {"contentMatches": same_content, "revisionMatches": same_revision}
+            same_map_id = package.get("mapId") == result["version"]["mapId"]
+            comparison = {"contentMatches": same_content, "revisionMatches": same_revision,
+                          "mapIdMatches": same_map_id}
             if not (same_content and same_revision):
                 comparison["note"] = ("交接包内容与架构 Git 实际版本不一致（包可能被改过或过期）："
                                       "以 Git 版本为准，并请核对交接来源")
@@ -785,18 +792,31 @@ class WorkbenchService:
         return result
 
     @staticmethod
-    def _graph_fingerprint(graph: dict) -> list:
-        """Semantic fingerprint used to detect a tampered/stale handover package."""
-        nodes = []
-        for node in graph.get("nodes", []) or []:
-            nodes.append((
-                node.get("id"), node.get("title"), node.get("summary"), node.get("status"),
-                tuple(sorted(str(step.get("stepId")) for step in node.get("process", []) or [])),
-                tuple(sorted(str(item.get("path")) for item in node.get("evidence", []) or [])),
-            ))
-        edges = sorted((edge.get("from"), edge.get("to"), edge.get("type"), edge.get("label"))
-                       for edge in graph.get("edges", []) or [])
-        return [tuple(sorted(nodes, key=lambda item: str(item[0]))), tuple(edges)]
+    def _graph_fingerprint(graph: dict) -> str:
+        """Canonical content fingerprint of an A-projection graph.
+
+        It must cover every semantic field the version identity covers —
+        responsibilities, assumptions, provenance, interfaces, evidence text,
+        process steps/branches/next/allowed failures and their ORDER — otherwise
+        a tampered handover package could still report a content match
+        (BATCH-1C HANDOVER-01). Volatile display fields (mapRevision,
+        positions) are excluded.
+        """
+        import hashlib as _hashlib
+        import json as _json
+
+        def clean(node: dict) -> dict:
+            return {key: value for key, value in node.items()
+                    if key not in ("position", "mapRevision")}
+
+        payload = {
+            "nodes": sorted((clean(node) for node in graph.get("nodes", []) or []),
+                            key=lambda item: str(item.get("id"))),
+            "edges": sorted((clean(edge) for edge in graph.get("edges", []) or []),
+                            key=lambda item: _json.dumps(item, sort_keys=True, ensure_ascii=False)),
+        }
+        canonical = _json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        return _hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     # ---------- C module: process deviations and incremental proposals ----------
 
@@ -1235,12 +1255,27 @@ class WorkbenchService:
                 map_source_revision=map_source_revision,
                 expected_map_revision=request.get("expectedMapRevision"))
             version = envelope["version"]
+            # the imported version is a fact about what was read from Git; it
+            # only becomes the CURRENT draft's identity when the draft content
+            # actually equals that version. Re-importing an old version into an
+            # edited draft must not re-associate it with newer edits
+            # (BATCH-1C C-01).
+            draft = record.get("draft")
+            imported_projection = b_to_a_graph(version["graph"], version)
+            draft_matches = bool(draft) and \
+                self._graph_fingerprint(draft["graph"]) == self._graph_fingerprint(imported_projection)
+            if draft is not None:
+                if draft_matches:
+                    draft["publishedMapRevision"] = version["mapRevision"]
+                else:
+                    draft.pop("publishedMapRevision", None)
             record["lastPublish"] = {
                 "mapRevision": version["mapRevision"],
-                "aMapRevision": (record.get("draft") or {}).get("graph", {}).get("mapRevision"),
+                "aMapRevision": (draft or {}).get("graph", {}).get("mapRevision") if draft_matches else None,
                 "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
                 "codeRevision": version["codeRevision"],
                 "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "appliesToCurrentDraft": draft_matches,
                 "actor": "import_git_version", "at": _utcnow()}
             record.setdefault("publishedVersions", []).append({
                 "mapRevision": version["mapRevision"],

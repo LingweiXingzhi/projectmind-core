@@ -177,7 +177,7 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
     # round trip is exact (a blind suffix strip would corrupt a legitimate ID
     # that happens to end with --<nodeId>; BATCH-1B A-01)
     meta = {"provenance": {}, "assumptions": {}, "stepDetails": {}, "importNotes": {},
-            "stepIdMap": {}, "branchTargets": {}}
+            "stepIdMap": {}, "branchTargets": {}, "branchFallbacks": {}}
     layout = {}
 
     for node in a_graph["nodes"]:
@@ -256,15 +256,16 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
                                                taken_ids=taken_evidence):
                 b_evidence.append(record)
                 step_evidence.append(record["id"])
-            branch_targets = step.get("branchTargets") or {}
+            branch_targets = step.get("branchTargets") if isinstance(step.get("branchTargets"), dict) else {}
             branches = []
-            for index, branch in enumerate(step.get("branches", []) or []):
+            recorded_targets = []
+            for branch in step.get("branches", []) or []:
                 condition = str(branch)
-                target = branch_targets.get(condition) or step.get("branchTargetsList", [None] * (index + 1))[index] \
-                    if isinstance(branch_targets, dict) else None
+                target = branch_targets.get(condition)
                 branches.append({"condition": condition, "nextStepId": target})
-                if target:
-                    meta["branchTargets"].setdefault(b_step_id, []).append([condition, target])
+                # a self target is real data too: record it exactly
+                recorded_targets.append([condition, target])
+            meta["branchTargets"][b_step_id] = recorded_targets
             steps.append({"id": b_step_id, "nodeId": node_id,
                           "title": step.get("title") or b_step_id,
                           "inputs": [str(x) for x in (step.get("inputs", []) or [])],
@@ -285,7 +286,11 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
                 fallback = targets[0] if targets else step["id"]
                 for branch in step["branches"]:
                     if not branch.get("nextStepId"):
+                        # the target was auto-filled, not user intent: mark it so
+                        # the reverse projection knows this is a placeholder
                         branch["nextStepId"] = fallback
+                        meta["branchFallbacks"].setdefault(step["id"], []).append(
+                            branch.get("condition"))
             b_processes.append({"id": "process-" + node_id,
                                 "title": f"{node.get('title') or node_id} 的期望过程",
                                 "kind": "expected", "steps": steps, "evidenceIds": []})
@@ -404,13 +409,16 @@ def b_to_a_graph(b_graph: dict, packet: dict | None = None) -> dict:
             next_steps = [reverse_ids.get(target, target) for target in (step.get("nextStepIds", []) or [])]
             branches = [branch.get("condition", "") for branch in step.get("branches", []) or []]
             branch_targets = {}
+            recorded = (meta.get("branchTargets", {}) or {}).get(b_step_id, []) or []
+            fallback_conditions = set((meta.get("branchFallbacks", {}) or {}).get(b_step_id, []) or [])
             for branch in step.get("branches", []) or []:
                 condition = branch.get("condition")
                 target = branch.get("nextStepId")
-                recorded = (meta.get("branchTargets", {}) or {}).get(b_step_id, [])
                 recorded_target = next((pair[1] for pair in recorded if pair and pair[0] == condition), None)
-                chosen = recorded_target or target
-                if chosen and chosen != b_step_id:
+                # B may have edited the target since: only a target we know we
+                # auto-filled is replaced by the recorded intent (A-01)
+                chosen = recorded_target if condition in fallback_conditions else target
+                if chosen:
                     branch_targets[condition] = reverse_ids.get(chosen, chosen)
             entry = {
                 "stepId": a_step_id,
@@ -592,13 +600,17 @@ def sanitize_coverage(coverage, b_graph: dict) -> dict | None:
             return None
         kept = [value for value in values if isinstance(value, str) and value in known[key]]
         if len(kept) != len(values):
-            return None  # unknown ids are a caller error, not something to guess at
+            # unknown ids must not silently fall back to the default coverage
+            # (BATCH-1C A-05): the caller asked to review something that does
+            # not exist, so the request is rejected instead
+            raise ContractError("VALIDATION_FAILED",
+                                f"coverage.{key} 引用了图里不存在的对象；请重新读取草稿后重试")
         if key == "evidence":
             kept = [value for value in kept if value not in carriers]
         sanitized[key] = sorted(kept)
     scope = coverage.get("scope")
     if scope not in ("partial", "all"):
-        return None
+        raise ContractError("VALIDATION_FAILED", "coverage.scope 必须是 partial 或 all")
     if scope == "all" and any(set(sanitized[key]) != known[key] for key in known):
         scope = "partial"
     sanitized["scope"] = scope
