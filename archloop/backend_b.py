@@ -173,7 +173,11 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
     b_nodes: list = []
     b_edges: list = []
     b_processes: list = []
-    meta = {"provenance": {}, "assumptions": {}, "stepDetails": {}, "importNotes": {}}
+    # step identity and branch targets travel in the metadata carrier so the
+    # round trip is exact (a blind suffix strip would corrupt a legitimate ID
+    # that happens to end with --<nodeId>; BATCH-1B A-01)
+    meta = {"provenance": {}, "assumptions": {}, "stepDetails": {}, "importNotes": {},
+            "stepIdMap": {}, "branchTargets": {}}
     layout = {}
 
     for node in a_graph["nodes"]:
@@ -237,6 +241,8 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
             b_step_id = a_step_id if a_step_id not in step_ids_seen else f"{a_step_id}--{node_id}"
             step_ids_seen.add(b_step_id)
             id_map[a_step_id] = b_step_id
+            if b_step_id != a_step_id:
+                meta["stepIdMap"][b_step_id] = a_step_id
         steps = []
         for step in node.get("process", []) or []:
             a_step_id = str(step.get("stepId", ""))
@@ -250,6 +256,15 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
                                                taken_ids=taken_evidence):
                 b_evidence.append(record)
                 step_evidence.append(record["id"])
+            branch_targets = step.get("branchTargets") or {}
+            branches = []
+            for index, branch in enumerate(step.get("branches", []) or []):
+                condition = str(branch)
+                target = branch_targets.get(condition) or step.get("branchTargetsList", [None] * (index + 1))[index] \
+                    if isinstance(branch_targets, dict) else None
+                branches.append({"condition": condition, "nextStepId": target})
+                if target:
+                    meta["branchTargets"].setdefault(b_step_id, []).append([condition, target])
             steps.append({"id": b_step_id, "nodeId": node_id,
                           "title": step.get("title") or b_step_id,
                           "inputs": [str(x) for x in (step.get("inputs", []) or [])],
@@ -257,8 +272,10 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
                           "condition": str(step.get("condition", "") or ""),
                           "allowedFailures": [str(x) for x in (step.get("allowedFailures", []) or [])],
                           "nextStepIds": [id_map.get(str(x), str(x)) for x in (step.get("next", []) or [])],
-                          "branches": [{"condition": str(branch), "nextStepId": None}
-                                       for branch in (step.get("branches", []) or [])],
+                          "branches": [{**item, "nextStepId": id_map.get(str(item["nextStepId"]),
+                                                                        item["nextStepId"])
+                                        if item.get("nextStepId") else None}
+                                       for item in branches],
                           "evidenceIds": step_evidence})
         if steps:
             valid_ids = {step["id"] for step in steps}
@@ -267,7 +284,8 @@ def a_to_b_graph(a_graph: dict, *, code_repo_id, code_revision) -> dict:
                 step["nextStepIds"] = targets
                 fallback = targets[0] if targets else step["id"]
                 for branch in step["branches"]:
-                    branch["nextStepId"] = fallback
+                    if not branch.get("nextStepId"):
+                        branch["nextStepId"] = fallback
             b_processes.append({"id": "process-" + node_id,
                                 "title": f"{node.get('title') or node_id} 的期望过程",
                                 "kind": "expected", "steps": steps, "evidenceIds": []})
@@ -373,27 +391,27 @@ def b_to_a_graph(b_graph: dict, packet: dict | None = None) -> dict:
                                           for eid in interface["evidenceIds"] if eid in evidence_by_id]
                 interface_details.append(detail)
         node_steps = processes_by_node.get(node_id, [])
+        step_id_map = meta.get("stepIdMap", {}) or {}
         reverse_ids = {}
         for step in node_steps:
             b_step_id = step.get("id", "")
-            a_step_id = b_step_id
-            if b_step_id.endswith("--" + node_id):
-                a_step_id = b_step_id[: -len("--" + node_id)]
-            reverse_ids[b_step_id] = a_step_id
+            # only ids the forward projection actually renamed are mapped back
+            reverse_ids[b_step_id] = step_id_map.get(b_step_id, b_step_id)
         steps = []
         for step in node_steps:
             b_step_id = step.get("id", "")
             a_step_id = reverse_ids[b_step_id]
             next_steps = [reverse_ids.get(target, target) for target in (step.get("nextStepIds", []) or [])]
             branches = [branch.get("condition", "") for branch in step.get("branches", []) or []]
-            # a branch target that is not already in next carries real data:
-            # keep it instead of dropping it (BATCH-1 A-01)
+            branch_targets = {}
             for branch in step.get("branches", []) or []:
+                condition = branch.get("condition")
                 target = branch.get("nextStepId")
-                mapped = reverse_ids.get(target, target)
-                if isinstance(target, str) and target not in (b_step_id, next_steps and "") \
-                        and mapped not in next_steps and target != b_step_id:
-                    next_steps.append(mapped)
+                recorded = (meta.get("branchTargets", {}) or {}).get(b_step_id, [])
+                recorded_target = next((pair[1] for pair in recorded if pair and pair[0] == condition), None)
+                chosen = recorded_target or target
+                if chosen and chosen != b_step_id:
+                    branch_targets[condition] = reverse_ids.get(chosen, chosen)
             entry = {
                 "stepId": a_step_id,
                 "title": step.get("title", ""),
@@ -403,6 +421,8 @@ def b_to_a_graph(b_graph: dict, packet: dict | None = None) -> dict:
                 "branches": branches,
                 "next": next_steps,
             }
+            if branch_targets:
+                entry["branchTargets"] = branch_targets
             if step.get("condition"):
                 entry["condition"] = step["condition"]
             if step.get("allowedFailures"):
@@ -486,60 +506,103 @@ def diff_to_operations(old_b_graph: dict, new_b_graph: dict) -> list:
     removed_processes = set(old_processes) - set(new_processes)
 
     added_processes = set(new_processes) - set(old_processes)
-    # 1) steps that disappear from a process that SURVIVES
+    moved_step_ids = {step_id for step_id in set(new_steps) & set(old_steps)
+                      if old_steps[step_id][0] != new_steps[step_id][0]}
+
+    # 1) steps that leave a surviving process: removed before their new home is
+    #    created, so an add can never duplicate a graph-wide step id (SYNC-03)
     for step_id in sorted(set(old_steps) - set(new_steps)):
         process_id = old_steps[step_id][0]
         if process_id not in removed_processes:
             operations.append({"op": "step.remove", "id": step_id, "processId": process_id})
-    # 2) whole processes that disappear (their steps go with them)
-    for process_id in sorted(removed_processes):
-        operations.append({"op": "process.remove", "id": process_id})
-    # 3) new processes carry their full steps in one add: emitting step.add for
-    #    them as well duplicates ids and makes B reject the batch (BATCH-1 A-02)
+    for step_id in sorted(moved_step_ids):
+        old_process = old_steps[step_id][0]
+        if old_process not in removed_processes:
+            operations.append({"op": "step.remove", "id": step_id, "processId": old_process})
+
+    # 2) new processes carry their full steps in one add (BATCH-1 A-02)
     for process_id in sorted(added_processes):
         operations.append({"op": "process.add", "value": copy.deepcopy(new_processes[process_id])})
-    # 4) surviving processes: metadata fields only; steps are handled by
-    #    step.* operations so nothing is added twice
+    # 3) whole processes that disappear; their remaining steps go with them
+    for process_id in sorted(removed_processes):
+        operations.append({"op": "process.remove", "id": process_id})
     for process_id in sorted(set(new_processes) & set(old_processes)):
         old_process, new_process = old_processes[process_id], new_processes[process_id]
-        if {k: v for k, v in old_process.items() if k != "steps"} == \
-                {k: v for k, v in new_process.items() if k != "steps"}:
-            continue
         if set(old_process) - set(new_process):
             operations.append({"op": "process.remove", "id": process_id})
             operations.append({"op": "process.add", "value": copy.deepcopy(new_process)})
             continue
         changes = {field: copy.deepcopy(value) for field, value in new_process.items()
-                   if field != "steps" and field != "id" and old_process.get(field) != value}
+                   if field not in ("steps", "id") and old_process.get(field) != value}
         if changes:
             operations.append({"op": "process.update", "id": process_id, "changes": changes})
-    # 5) steps of surviving processes
+    # 4) steps of surviving processes: add (moved/new), then field updates
     for step_id in sorted(set(new_steps)):
-        process_id, step = new_steps[step_id]
-        if process_id in added_processes:
+        target_process, step = new_steps[step_id]
+        if target_process in added_processes:
             continue
         if step_id not in old_steps:
-            operations.append({"op": "step.add", "processId": process_id,
+            operations.append({"op": "step.add", "processId": target_process,
                                "value": copy.deepcopy(step)})
-        else:
-            old_process, old_step = old_steps[step_id]
-            if old_process != process_id:
-                if old_process in removed_processes or old_process != process_id:
-                    operations.append({"op": "step.remove", "id": step_id, "processId": old_process})
-                    operations.append({"op": "step.add", "processId": process_id,
-                                       "value": copy.deepcopy(step)})
-            elif old_step != step:
-                if set(old_step) - set(step):
-                    operations.append({"op": "step.remove", "id": step_id, "processId": process_id})
-                    operations.append({"op": "step.add", "processId": process_id,
-                                       "value": copy.deepcopy(step)})
-                else:
-                    changes = {field: copy.deepcopy(value) for field, value in step.items()
-                               if old_step.get(field) != value and field != "id"}
-                    if changes:
-                        operations.append({"op": "step.update", "processId": process_id,
-                                           "id": step_id, "changes": changes})
+            continue
+        old_process, old_step = old_steps[step_id]
+        if old_process != target_process:
+            operations.append({"op": "step.add", "processId": target_process,
+                               "value": copy.deepcopy(step)})
+            continue
+        if old_step != step:
+            if set(old_step) - set(step):
+                operations.append({"op": "step.remove", "id": step_id, "processId": target_process})
+                operations.append({"op": "step.add", "processId": target_process,
+                                   "value": copy.deepcopy(step)})
+            else:
+                changes = {field: copy.deepcopy(value) for field, value in step.items()
+                           if old_step.get(field) != value and field != "id"}
+                if changes:
+                    operations.append({"op": "step.update", "processId": target_process,
+                                       "id": step_id, "changes": changes})
+    # 5) order is part of the expected process: emit step.reorder for every
+    #    surviving process whose step order changed (SYNC-02)
+    for process_id in sorted(set(new_processes) & set(old_processes)):
+        old_order = [step["id"] for step in old_processes[process_id]["steps"]]
+        new_order = [step["id"] for step in new_processes[process_id]["steps"]]
+        if old_order != new_order:
+            operations.append({"op": "step.reorder", "processId": process_id, "value": new_order})
     return operations
+
+
+def sanitize_coverage(coverage, b_graph: dict) -> dict | None:
+    """Client-supplied coverage may not claim the machine metadata carrier.
+
+    The carrier is never human-reviewed content, so it is removed from the
+    evidence list; when that breaks an "all" claim the scope is downgraded to
+    "partial" and the adjustment is reported (BATCH-1B A-05).
+    """
+    if not isinstance(coverage, dict):
+        return None
+    known = {key: {item["id"] for item in b_graph.get(key, []) or []}
+             for key in ("nodes", "edges", "processes", "evidence")}
+    carriers = {item["id"] for item in b_graph.get("evidence", []) or []
+                if item.get("kind") == "observation"
+                and str(item.get("unknownReason", "")).startswith(META_REASON_PREFIX)}
+    sanitized = {}
+    for key in ("nodes", "edges", "processes", "evidence"):
+        values = coverage.get(key)
+        if not isinstance(values, list):
+            return None
+        kept = [value for value in values if isinstance(value, str) and value in known[key]]
+        if len(kept) != len(values):
+            return None  # unknown ids are a caller error, not something to guess at
+        if key == "evidence":
+            kept = [value for value in kept if value not in carriers]
+        sanitized[key] = sorted(kept)
+    scope = coverage.get("scope")
+    if scope not in ("partial", "all"):
+        return None
+    if scope == "all" and any(set(sanitized[key]) != known[key] for key in known):
+        scope = "partial"
+    sanitized["scope"] = scope
+    return sanitized
 
 
 def coverage_for(record: dict, b_graph: dict, verify_code: bool = True) -> dict:
@@ -798,7 +861,8 @@ class BackendB:
         if verify_code and not draft["codeRepoId"]:
             raise ContractError("VALIDATION_FAILED",
                                 "规划工作区没有代码，不能做代码核查；请以 verifyCode=false 确认设计")
-        coverage = request.get("coverage") or coverage_for(record, draft["graph"], verify_code)
+        coverage = sanitize_coverage(request.get("coverage"), draft["graph"]) or \
+            coverage_for(record, draft["graph"], verify_code)
         limits = request.get("limits") or ["核查仅适用于列明覆盖；未列出的对象与证据未核查"]
         return self._wrap(
             self.gateway.preview_review, binding["draftId"], auth=auth,

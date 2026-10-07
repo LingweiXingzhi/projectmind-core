@@ -210,9 +210,13 @@ class WorkbenchService:
         # A's draft hash (maprev-...) and B's immutable version id (sha256:...)
         # are different formats: the published pair is recorded together and
         # compared field by field (BATCH-1 C-01).
+        # published facts apply only while the draft IS the published version
+        # AND the code binding still points at the revision that was verified;
+        # a rebind to a newer commit must not inherit verifiedCodeRevision
         published_here = bool(last_publish) and draft is not None \
             and draft.get("publishedMapRevision") == last_publish.get("mapRevision") \
-            and map_revision == last_publish.get("aMapRevision")
+            and map_revision == last_publish.get("aMapRevision") \
+            and last_publish.get("codeRevision") in (None, identity.get("codeRevision"))
         if not published_here:
             identity["mapSourceRevision"] = None
             identity["verifiedCodeRevision"] = None
@@ -518,6 +522,9 @@ class WorkbenchService:
             if draft is None:
                 raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
             expected = request.get("expectedDraftRevision")
+            if not isinstance(expected, str):
+                raise ContractError("VALIDATION_FAILED",
+                                    "缺少 expectedDraftRevision（应使用草稿当前的 draftRevision）")
             if expected != draft["draftRevision"]:
                 raise ContractError("REVISION_CONFLICT", "草稿已变化，请刷新后再发起纠正",
                                     {"expected": expected, "current": draft["draftRevision"]})
@@ -1159,6 +1166,7 @@ class WorkbenchService:
             record["identity"]["verifiedCodeRevision"] = version.get("verifiedCodeRevision")
             draft["publishedMapRevision"] = version["mapRevision"]
             record["lastPublish"]["aMapRevision"] = draft["graph"].get("mapRevision")
+            record["lastPublish"]["codeRevision"] = version["codeRevision"]
             record.setdefault("publishedVersions", []).append({
                 "mapRevision": version["mapRevision"],
                 "aMapRevision": draft["graph"].get("mapRevision"),
@@ -1231,6 +1239,7 @@ class WorkbenchService:
                 "mapRevision": version["mapRevision"],
                 "aMapRevision": (record.get("draft") or {}).get("graph", {}).get("mapRevision"),
                 "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
                 "verifiedCodeRevision": version.get("verifiedCodeRevision"),
                 "actor": "import_git_version", "at": _utcnow()}
             record.setdefault("publishedVersions", []).append({
@@ -1289,9 +1298,14 @@ class WorkbenchService:
             version = envelope_b["version"]
             record["lastPublish"] = {
                 "mapRevision": version["mapRevision"],
-                "aMapRevision": (record.get("draft") or {}).get("graph", {}).get("mapRevision"),
+                # a freshly opened second copy has no draft equal to the
+                # version yet: the published facts stay historical until the
+                # copy's own draft is reviewed (BATCH-1B C-01)
+                "aMapRevision": None,
                 "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
                 "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "appliesToCurrentDraft": False,
                 "actor": "open_from_version", "at": _utcnow()}
             record.setdefault("publishedVersions", []).append({
                 "mapRevision": version["mapRevision"],

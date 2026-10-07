@@ -10,6 +10,8 @@
   const NODE_W = 200;
   const NODE_H = 150;
 
+  const reviewFlow = { actor: null, previewDigest: null, reviewId: null, publicationAuthorized: false };
+
   const state = {
     envelope: null,        // workspace envelope from the server
     pendingCandidate: null, // generation result awaiting user's apply decision
@@ -213,10 +215,18 @@
 
     document.getElementById("arch-recheck-button").hidden = planning;
     const hasDraft = Boolean(graph());
-    document.getElementById("arch-review-button").disabled = !hasDraft || state.busy;
-    document.getElementById("arch-fixtask-button").disabled = !hasDraft || state.busy;
-    document.getElementById("arch-correction-button").disabled = !hasDraft || !state.selectedNodeId || state.busy;
-    document.getElementById("arch-diff-button").disabled = !hasDraft || state.busy;
+    // the one-shot review button was replaced by the 3-step flow
+    // (sync -> preview -> confirm -> publish) handled by renderBackendLine
+    const fixtureTaskButton = document.getElementById("arch-fixtask-button");
+    if (fixtureTaskButton) fixtureTaskButton.disabled = !hasDraft || state.busy;
+    const correctionButton = document.getElementById("arch-correction-button");
+    if (correctionButton) correctionButton.disabled = !hasDraft || !state.selectedNodeId || state.busy;
+    for (const id of ["arch-deviations-button", "arch-incremental-button"]) {
+      const button = document.getElementById(id);
+      if (button) button.disabled = !hasDraft || state.busy;
+    }
+    const diffButton = document.getElementById("arch-diff-button");
+    if (diffButton) diffButton.disabled = !hasDraft || state.busy;
     document.getElementById("arch-gen-count").textContent = hasDraft
       ? `草稿修订 ${short(state.envelope.identity.draftRevision)}`
       : "—";
@@ -243,6 +253,28 @@
     if (node.status === "implemented") return "已实现";
     return "候选";
   }
+
+  function renderBackendLine() {
+    const line = document.getElementById("arch-backend-line");
+    if (!line) return;
+    const backend = (state.envelope && state.envelope.backend) || {};
+    const active = Boolean(backend.versionService);
+    line.textContent = active
+      ? `版本服务：已接入（${backend.ref || backend.kind}）· 人审会话=${backend.reviewGateway ? "启用" : "未配置"}`
+      : `版本服务：未接入（${backend.labeled || backend.reason || "未配置后端"}）`;
+    line.classList.toggle("warn", !active);
+    for (const id of ["arch-sync-button", "arch-review-preview-button", "arch-versions-button",
+                      "arch-handover-button"]) {
+      const button = document.getElementById(id);
+      if (button) button.disabled = !active || state.busy;
+    }
+  }
+
+  const baseRenderWorkspace = renderWorkspace;
+  renderWorkspace = function () {
+    baseRenderWorkspace.apply(this, arguments);
+    renderBackendLine();
+  };
 
   function renderGraph() {
     const current = graph();
@@ -597,6 +629,21 @@
     }
   });
 
+  document.getElementById("arch-rulegen-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    state.busy = true; renderWorkspace();
+    setGenStatus("正在用 C 规则引擎生成候选…");
+    try {
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, { mode: "rule_based" });
+      state.pendingCandidate = result;
+      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；覆盖：读取 ${result.contextCoverage?.filesIncluded ?? "?"} 个文件 / 共 ${result.contextCoverage?.pythonFiles ?? "?"} 个 Python 文件）`);
+    } catch (error) {
+      setGenStatus(`规则候选生成失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  });
+
   document.getElementById("arch-sample-button").addEventListener("click", async () => {
     if (!state.envelope || state.busy) return;
     state.busy = true;
@@ -661,11 +708,12 @@
     renderWorkspace();
     setStatus("arch-correction-status", "正在生成纠正预览…");
     try {
+      const correctionMode = (document.getElementById("arch-correction-mode") || {}).value || "production";
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/correction-preview`, {
+        mode: correctionMode,
         expectedDraftRevision: currentDraftRevision(),
         instruction,
         selectedNodeIds: [state.selectedNodeId],
-        mode: "dev_sample", // until C's real backend is registered; responses stay labeled
       });
       state.correctionPreview = result;
       renderCorrectionPreview();
@@ -726,38 +774,159 @@
 
   // ---------- review / publish ----------
 
-  document.getElementById("arch-review-button").addEventListener("click", async () => {
-    if (!state.envelope || !graph() || state.busy) return;
-    const actor = window.prompt("确认并保存版本：请输入复核人（本机操作者声明）");
-    if (!actor) return;
-    const reason = window.prompt("复核理由（将随决定一起记录）") || "";
-    state.busy = true;
+  // ---------- real version service: sync -> preview -> confirm -> publish ----------
+
+  async function refreshEnvelope() {
+    if (!state.envelope) return;
+    const workspaceId = state.envelope.workspace.workspaceId;
+    state.envelope = await api("GET", `/api/archloop/workspaces/${workspaceId}`);
     renderWorkspace();
+  }
+
+  document.getElementById("arch-sync-button").addEventListener("click", async () => {
+    if (!state.envelope || !graph() || state.busy) return;
+    state.busy = true; renderWorkspace();
+    setStatus("arch-review-status", "正在保存草稿到版本服务…");
     try {
-      await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review`, {
-        expectedMapRevision: graph().mapRevision,
-        decision: "accept",
-        actor,
-        reason,
-      });
-      setStatus("arch-review-status", "版本已保存。");
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/sync`, {});
+      const area = document.getElementById("arch-review-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", "草稿已保存到真实版本服务（尚未人审，未产生版本）"));
+      area.append(el("p", "ai-item", `服务端草稿修订：${result.bDraftRevision} · 本次操作 ${(result.operations || []).length} 条`));
+      setStatus("arch-review-status", "已保存。下一步：人审预览。");
+      await refreshEnvelope();
+    } catch (error) {
+      setStatus("arch-review-status", `保存失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  });
+
+  document.getElementById("arch-review-preview-button").addEventListener("click", async () => {
+    if (!state.envelope || !graph() || state.busy) return;
+    const actor = window.prompt("人审预览：请输入操作者（本机操作者声明）");
+    if (!actor) return;
+    const reason = window.prompt("审阅理由（将随预览与版本一起记录）") || "";
+    state.busy = true; renderWorkspace();
+    setStatus("arch-review-status", "正在生成人审预览…");
+    try {
+      const preview = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-preview`,
+        { actor, reason, verifyCode: true });
+      reviewFlow.actor = actor;
+      reviewFlow.previewDigest = preview.previewDigest;
+      const area = document.getElementById("arch-review-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", preview.labeled || "人审预览"));
+      area.append(el("p", "ai-item",
+        `覆盖范围：节点 ${preview.reviewCoverage.nodes.length} · 关系 ${preview.reviewCoverage.edges.length} · ` +
+        `过程 ${preview.reviewCoverage.processes.length} · 代码证据 ${preview.reviewCoverage.evidence.length}（${preview.reviewCoverage.scope}）`));
+      for (const limit of preview.limits || []) area.append(el("p", "ai-provenance", limit));
+      area.append(el("p", "ai-provenance", `预览摘要：${preview.previewDigest}`));
+      const confirmButton = document.getElementById("arch-review-confirm-button");
+      const rejectButton = document.getElementById("arch-review-reject-button");
+      confirmButton.hidden = false; confirmButton.disabled = false;
+      rejectButton.hidden = false; rejectButton.disabled = false;
+      document.getElementById("arch-publish-button").hidden = true;
+      setStatus("arch-review-status", "预览已生成。请核对范围后确认或拒绝。");
     } catch (error) {
       const area = document.getElementById("arch-review-result");
       area.replaceChildren();
-      if (error.code === "BACKEND_UNAVAILABLE") {
-        area.append(el("div", "review-notice",
-          `如实说明：${error.message} 决定已记录在草稿历史（decision: accept，actor: ${actor}），但当前没有产生任何正式认知版本。`));
-        setStatus("arch-review-status", "人审后端未接入：决定已记录，版本未产生。", true);
-      } else if (error.code === "REVISION_CONFLICT") {
-        setStatus("arch-review-status", "图版本已变化，请刷新后按最新预览重试。", true);
-      } else {
-        setStatus("arch-review-status", `提交失败（${error.code}）：${error.message}`, true);
+      if (error.code === "NOT_RUN_AWAITING_CONFIGURATION" || error.code === "BACKEND_UNAVAILABLE") {
+        area.append(el("div", "review-notice", `如实说明：${error.message}`));
       }
+      setStatus("arch-review-status", `预览失败（${error.code}）：${error.message}`, true);
     } finally {
-      state.busy = false;
-      renderWorkspace();
+      state.busy = false; renderWorkspace();
     }
   });
+
+  async function confirmReview(decision) {
+    if (!state.envelope || !reviewFlow.previewDigest || state.busy) return;
+    state.busy = true; renderWorkspace();
+    try {
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-confirm`,
+        { previewDigest: reviewFlow.previewDigest, decision });
+      reviewFlow.reviewId = result.reviewId;
+      reviewFlow.publicationAuthorized = Boolean(result.publicationAuthorized);
+      const area = document.getElementById("arch-review-result");
+      area.append(el("p", "ai-item", `${result.labeled}`));
+      document.getElementById("arch-review-confirm-button").hidden = true;
+      document.getElementById("arch-review-reject-button").hidden = true;
+      const publishButton = document.getElementById("arch-publish-button");
+      publishButton.hidden = !result.publicationAuthorized;
+      publishButton.disabled = !result.publicationAuthorized;
+      setStatus("arch-review-status", result.publicationAuthorized
+        ? "已确认。发布授权保存在服务端，点击“发布不可变版本”产生版本。"
+        : "已拒绝。没有发布授权，也没有产生版本。");
+      await refreshEnvelope();
+    } catch (error) {
+      setStatus("arch-review-status", `确认失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  }
+
+  document.getElementById("arch-review-confirm-button").addEventListener("click", () => confirmReview("accept"));
+  document.getElementById("arch-review-reject-button").addEventListener("click", () => confirmReview("reject"));
+
+  document.getElementById("arch-publish-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    state.busy = true; renderWorkspace();
+    setStatus("arch-review-status", "正在发布…");
+    try {
+      const published = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/publish`, {});
+      const area = document.getElementById("arch-version-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", published.labeled || "不可变认知版本"));
+      area.append(el("p", "ai-item", `图版本 ${published.version.mapRevision}`));
+      area.append(el("p", "ai-item", `代码提交 ${published.version.codeRevision}（核查覆盖 ${published.version.verifiedCodeRevision || "无"}）`));
+      area.append(el("p", "ai-item", `架构 Git 来源提交 ${published.provenance.mapSourceRevision}`));
+      area.append(el("p", "ai-provenance", `图性质：${published.version.status} · 覆盖范围 ${published.reviewCoverage.scope}`));
+      document.getElementById("arch-publish-button").hidden = true;
+      setStatus("arch-review-status", "版本已发布（不可变）。");
+      await refreshEnvelope();
+    } catch (error) {
+      setStatus("arch-review-status", `发布失败（${error.code}）：${error.message}`, true);
+    } finally {
+      state.busy = false; renderWorkspace();
+    }
+  });
+
+  document.getElementById("arch-versions-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    try {
+      const history = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/versions`);
+      const area = document.getElementById("arch-version-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", `版本历史（${history.versions.length}）`));
+      for (const version of history.versions) {
+        area.append(el("p", "ai-item",
+          `${version.mapRevision} · 代码 ${version.codeRevision} · 来源 ${version.mapSourceRevision} · ${version.status}`));
+      }
+      if (!history.versions.length) area.append(el("p", "ai-provenance", "尚未产生正式版本。"));
+    } catch (error) {
+      setStatus("arch-review-status", `读取版本历史失败（${error.code}）：${error.message}`, true);
+    }
+  });
+
+  document.getElementById("arch-handover-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    try {
+      const handover = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/handover`);
+      const blob = new Blob([JSON.stringify(handover, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `handover-${handover.mapId}-${String(handover.mapRevision).slice(7, 19)}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      const area = document.getElementById("arch-version-result");
+      area.append(el("p", "ai-item",
+        `同版交接包已导出：mapId ${handover.mapId} · 图版本 ${handover.mapRevision} · 架构来源 ${handover.mapSourceRevision}`));
+    } catch (error) {
+      setStatus("arch-review-status", `导出交接包失败（${error.code}）：${error.message}`, true);
+    }
+  });
+
 
   // ---------- fix task ----------
 
@@ -769,24 +938,59 @@
     state.busy = true;
     renderWorkspace();
     try {
-      const task = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-task`, {
+      const actor = window.prompt("创建修正任务：请输入操作者（本机操作者声明）") || "local_user";
+      const task = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks`, {
         deviation,
         acceptance,
+        actor,
         expectedProcessRef: state.selectedNodeId,
-        mode: "dev_sample",
+        evidence: state.selectedNodeId ? [{ path: state.selectedNodeId, reason: "来自工作台当前选中节点" }] : [],
       });
       const area = document.getElementById("arch-review-result");
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", task.labeled || "修正实现任务"));
-      area.append(el("p", "ai-item", `任务 ${task.deviationId} · 状态 ${task.status}`));
+      area.append(el("p", "ai-item", `任务 ${task.taskId} · 状态 ${task.status} · 目标提交 ${String(task.targetCodeRevision).slice(0, 12)}`));
       area.append(el("p", "ai-item", task.observation));
-      area.append(el("p", "ai-provenance", task.note));
-      setStatus("arch-review-status", "演示任务已生成（真实交接后端接入前仅为样例）。");
+      area.append(el("p", "ai-provenance", `${task.labeled} 验收条件：${task.acceptance}`));
+      setStatus("arch-review-status", "已创建持久化修正任务；实施提交回挂后仍需人确认核查结论。");
     } catch (error) {
       setStatus("arch-review-status", `任务创建失败（${error.code}）：${error.message}`, true);
     } finally {
       state.busy = false;
       renderWorkspace();
+    }
+  });
+
+  document.getElementById("arch-deviations-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    try {
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/deviations`, { observedTraces: [] });
+      const area = document.getElementById("arch-review-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", result.labeled));
+      area.append(el("p", "ai-item", `结论：${result.verdict}（${result.deviations.length} 项）`));
+      area.append(el("p", "ai-provenance", result.reason || ""));
+    } catch (error) {
+      setStatus("arch-review-status", `偏差检查失败（${error.code}）：${error.message}`, true);
+    }
+  });
+
+  document.getElementById("arch-incremental-button").addEventListener("click", async () => {
+    if (!state.envelope || state.busy) return;
+    try {
+      const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/incremental`, {});
+      const area = document.getElementById("arch-review-result");
+      area.replaceChildren();
+      area.append(el("div", "ai-candidate-label", result.labeled || "代码变化候选"));
+      if (result.status === "no_change") {
+        area.append(el("p", "ai-provenance", "代码未变化。"));
+      } else {
+        area.append(el("p", "ai-item",
+          `变化：新增 ${result.changeSummary.added} · 修改 ${result.changeSummary.modified} · 删除 ${result.changeSummary.deleted}`));
+        area.append(el("p", "ai-provenance", `候选操作 ${result.operations.length} 条（仅候选，不自动写入草稿）`));
+      }
+    } catch (error) {
+      setStatus("arch-review-status", `增量候选失败（${error.code}）：${error.message}`, true);
     }
   });
 

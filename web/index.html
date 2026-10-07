@@ -165,6 +165,7 @@
                     <span id="arch-gen-count" class="count-label">—</span></div>
                   <div class="compare-controls">
                     <button class="button primary" id="arch-generate-button" type="button">生成候选图（真实 AI）</button>
+                    <button class="button ghost" id="arch-rulegen-button" type="button" title="C 规则引擎生成：不冒充 AI，可作为可审阅的规则候选">生成规则候选（C 引擎）</button>
                     <button class="button ghost" id="arch-sample-button" type="button" title="明确标注的演示数据，不是 AI 生成">载入演示候选（样例）</button>
                     <button class="button ghost" id="arch-recheck-button" type="button" hidden>检查代码变化</button>
                   </div>
@@ -184,7 +185,13 @@
                   <div class="compare-heading"><div><span class="eyebrow">STEP 3</span><h2>自然语言纠正</h2><p>选中节点或区域，描述要改什么；预览确认后才应用到草稿。</p></div></div>
                   <div class="compare-controls">
                     <label class="arch-wide">纠正说明<input id="arch-correction-input" type="text" spellcheck="false" placeholder="例如：这块的职责说错了，它只负责 X" /></label>
+                    <select id="arch-correction-mode" class="arch-wide" title="真实 AI 需要服务端模型配置；规则纠正由 C 的规则引擎生成">
+                      <option value="production">真实 AI 纠正（需模型配置）</option>
+                      <option value="rule_based">规则纠正（C 规则引擎）</option>
+                    </select>
                     <button class="button primary" id="arch-correction-button" type="button" disabled>生成纠正预览</button>
+                    <button class="button ghost" id="arch-deviations-button" type="button" disabled>过程偏差检查（规则）</button>
+                    <button class="button ghost" id="arch-incremental-button" type="button" disabled>代码变化→认知候选（规则）</button>
                   </div>
                   <div id="arch-correction-status" class="compare-status">先在图中选中节点。</div>
                   <div id="arch-correction-preview" class="compare-result"></div>
@@ -193,11 +200,19 @@
                 <div class="compare-card">
                   <div class="compare-heading"><div><span class="eyebrow">STEP 4</span><h2>偏差处理</h2><p>修正认知更新图草稿；修正实现生成有验收的开发任务。改图不会自动修改程序。</p></div></div>
                   <div class="compare-controls">
-                    <button class="button ghost" id="arch-review-button" type="button" disabled>确认并保存版本（人审）</button>
+                    <button class="button ghost" id="arch-sync-button" type="button" disabled>保存草稿到版本服务</button>
+                    <button class="button ghost" id="arch-review-preview-button" type="button" disabled>人审预览（真实会话）</button>
+                    <button class="button primary" id="arch-review-confirm-button" type="button" hidden disabled>确认接受</button>
+                    <button class="button ghost" id="arch-review-reject-button" type="button" hidden disabled>拒绝</button>
+                    <button class="button primary" id="arch-publish-button" type="button" hidden disabled>发布不可变版本</button>
+                    <button class="button ghost" id="arch-versions-button" type="button" disabled>版本历史</button>
+                    <button class="button ghost" id="arch-handover-button" type="button" disabled>导出同版交接包</button>
                     <button class="button ghost" id="arch-fixtask-button" type="button" disabled>修正实现：创建开发任务</button>
                   </div>
-                  <div id="arch-review-status" class="compare-status">提交后将产生不可变认知版本（需真实版本后端）。</div>
+                  <div id="arch-backend-line" class="compare-status">版本服务状态未知。</div>
+                  <div id="arch-review-status" class="compare-status">人审必须经过 预览 → 确认 → 发布 三步；后端缺失时如实拒绝。</div>
                   <div id="arch-review-result" class="compare-result"></div>
+                  <div id="arch-version-result" class="compare-result"></div>
                 </div>
               </div>
             </section>
