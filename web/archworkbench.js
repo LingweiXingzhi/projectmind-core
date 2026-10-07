@@ -762,6 +762,24 @@
       for (const node of result.staleNodes || []) {
         area.append(el("p", "ai-item", `待复核节点：${node.title}（${node.paths.join("、")}）`));
       }
+      if (result.changed) {
+        const rebind = el("button", "button ghost", "复核完成后回挂到当前 HEAD");
+        rebind.type = "button";
+        rebind.addEventListener("click", async () => {
+          const actor = window.prompt("回挂需要复核人（本机操作者声明）");
+          if (!actor) return;
+          try {
+            const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,
+              { expectedNewCodeRevision: result.newCodeRevision, actor, note: "复核后回挂" });
+            state.envelope = envelope;
+            setStatus("arch-generate-status", "已回挂到新提交（本地记录；verifiedCodeRevision 仍为空，等待独立验证）。");
+            renderWorkspace();
+          } catch (error) {
+            setStatus("arch-generate-status", `回挂失败（${error.code}）：${error.message}`, true);
+          }
+        });
+        area.append(rebind);
+      }
       setStatus("arch-generate-status", result.changed ? "代码有新提交，请复核列出的节点。" : "代码没有新提交。");
     } catch (error) {
       setStatus("arch-generate-status", `复核失败（${error.code}）：${error.message}`, true);
