@@ -84,4 +84,3 @@ Cloudflare Tunnel 可以把本地服务连到一个公网域名，并可配合 A
 - [Python http.server](https://docs.python.org/3/library/http.server.html)：当前 demo 服务不适合作为生产部署入口。
 
 Project Model Impact（当前实现）：MINOR。公网权限/角色方案为待确认建议，正式 Model 未修改。
-
