@@ -358,6 +358,36 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
         archloop_service = WorkbenchService(ARCHLOOP_DATA_DEFAULT, AdapterRegistry())
     archloop_service.bind_git(git)
 
+    def bind_extension_backends() -> None:
+        """Auto-register CONTRACT_V1-speaking extension backends (B/C/D).
+
+        Probes are cheap and cached: an extension counts as a backend only
+        when it answers its contract-info action, so a missing or half-built
+        module never fakes availability. Which module delivered first is
+        decided by the extension directory, not by this wiring.
+        """
+        probes = {
+            "architecture_workspace": ("persistence", "contract_info"),
+            "map_proposal": ("correction", "archloop_contract_info"),
+            "handoff": ("handoff", "archloop_contract_info"),
+        }
+        registered = archloop_service.adapter.listing()["registered"]
+        for identifier, (capability, action) in probes.items():
+            if capability in registered:
+                continue
+            try:
+                extensions.get(identifier)
+                reply = extensions.run(identifier, "POST",
+                                       {"action": action, "contract": "CONTRACT_V1"})
+            except (ExtensionError, Exception):
+                continue
+            if isinstance(reply, dict) and reply.get("contract") == "CONTRACT_V1":
+                archloop_service.adapter.register(capability, {
+                    "kind": f"extension:{identifier}",
+                    "call": lambda act, payload, _id=identifier: extensions.run(_id, "POST",
+                                                                               {"action": act, **payload}),
+                })
+
     def archloop_error_payload(exc: ContractError) -> dict:
         return {"error": {"code": exc.code, "message": str(exc), "details": exc.details}}
 
@@ -450,6 +480,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             return bytes(data), None
 
         def _handle_archloop(self, method: str, request, body: dict | None = None) -> None:
+            bind_extension_backends()  # lazy, cached probe for B/C/D backends
             path = request.path if method == "GET" else request.path
             query = {key: values[0] for key, values in parse_qs(request.query).items()} if method == "GET" else {}
             parts = [part for part in path.split("/") if part][1:]  # drop "api"
@@ -509,6 +540,9 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     return
                 if method == "POST" and rest == ["fix-task"]:
                     self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}))
+                    return
+                if method == "POST" and rest == ["rebind"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.rebind_code_revision(workspace_id, body or {}))
                     return
             raise ContractError("NOT_FOUND", f"未知 archloop 路由: {method} {path}")
 

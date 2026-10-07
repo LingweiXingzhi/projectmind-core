@@ -62,4 +62,23 @@ def reject_sample_review(operation: dict) -> None:
         )
 
 
-__all__ = ["AdapterRegistry", "DEV_SAMPLE_MODE", "PRODUCTION_MODE", "reject_sample_review"]
+def call_backend(backend: dict, action: str, payload: dict) -> dict:
+    """Invoke a registered real backend; failures stay machine-coded."""
+    call = backend.get("call")
+    if not callable(call):
+        raise ContractError("BACKEND_UNAVAILABLE",
+                            f"{backend.get('kind')} 后端没有可调用的处理接口")
+    try:
+        reply = call(action, payload)
+    except ContractError:
+        raise
+    except Exception as exc:  # backend faults must not leak as 500s
+        raise ContractError("BACKEND_UNAVAILABLE",
+                            f"{backend.get('kind')} 后端调用失败：{type(exc).__name__}") from exc
+    if not isinstance(reply, dict):
+        raise ContractError("BACKEND_UNAVAILABLE",
+                            f"{backend.get('kind')} 后端返回了非对象结果")
+    return reply
+
+
+__all__ = ["AdapterRegistry", "DEV_SAMPLE_MODE", "PRODUCTION_MODE", "call_backend", "reject_sample_review"]

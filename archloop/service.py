@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from . import generate as generate_module
 from . import ops as ops_module
-from .adapters import AdapterRegistry, DEV_SAMPLE_MODE, reject_sample_review
+from .adapters import AdapterRegistry, DEV_SAMPLE_MODE, call_backend, reject_sample_review
 from .contract import (ContractError, identity_view, is_full_sha, semantic_revision,
                        validate_workspace_identity)
 from .store import DraftStore
@@ -134,7 +134,8 @@ class WorkbenchService:
         persistence = self.adapter._backends.get("persistence")
         if persistence:
             return {"kind": persistence["kind"], "labeled": "已接入真实后端", "origin": persistence["kind"]}
-        return {"kind": "dev_sample_draft_store", "labeled": "演示数据 · 草稿保存在本实例，等待 B 后端接入",
+        return {"kind": "dev_sample_draft_store",
+                "labeled": "草稿保存在本实例数据目录，等待 B 版本服务接入；不产生正式认知版本",
                 "origin": "dev_sample"}
 
     def _envelope(self, record: dict, mode: str = "production") -> dict:
@@ -296,8 +297,23 @@ class WorkbenchService:
         if backend.get("kind") == "dev_sample":
             preview = self._sample_correction(record, draft, instruction, selected)
         else:
-            # real C backend: fixed CONTRACT_V1 exchange (registered at integration)
-            raise ContractError("BACKEND_UNAVAILABLE", "C 纠正后端尚未接入")
+            # Real C backend: fixed CONTRACT_V1 exchange; the reply's
+            # operations are validated by the op engine before previewing.
+            reply = call_backend(backend, "correction_preview", {
+                "baseMapRevision": draft["graph"].get("mapRevision"),
+                "expectedDraftRevision": draft["draftRevision"],
+                "graph": draft["graph"],
+                "instruction": instruction,
+                "selectedNodeIds": selected,
+            })
+            operations = reply.get("operations")
+            if not isinstance(operations, list) or not operations:
+                raise ContractError("BACKEND_UNAVAILABLE", "纠正后端没有返回可用操作")
+            probe_graph = draft["graph"]
+            for op in operations:
+                probe_graph = ops_module.apply_operation(probe_graph, op)
+            preview = {"operations": operations, "graph": probe_graph,
+                       "note": reply.get("note", "真实纠正后端返回的预览。")}
         proposal_id = f"prop_{secrets.token_hex(6)}"
         self.store.append_history(workspace_id, {"type": "correction_preview", "at": _utcnow(),
                                                  "proposalId": proposal_id,
@@ -358,14 +374,37 @@ class WorkbenchService:
             "delivery": "recorded_locally_pending_b_backend",
         })
         backend = self.adapter.backend("persistence", "production")
-        # With B's service registered this delegates to publish_reviewed_graph;
-        # until then the adapter raises BACKEND_UNAVAILABLE and nothing is
-        # published.
-        raise ContractError(
-            "BACKEND_UNAVAILABLE",
-            "B 的版本服务尚未接入：本次人审决定已记录在草稿历史，但没有产生任何正式认知版本。",
-            {"decision": decision, "mapRevision": draft["graph"].get("mapRevision")},
-        )
+        if backend.get("kind") == "dev_sample":
+            raise ContractError(
+                "BACKEND_UNAVAILABLE",
+                "B 的版本服务尚未接入：本次人审决定已记录在草稿历史，但没有产生任何正式认知版本。",
+                {"decision": decision, "mapRevision": draft["graph"].get("mapRevision")},
+            )
+        # A real backend is registered: delegate the publish transaction with
+        # the reviewed content and the recorded decision.
+        reply = call_backend(backend, "publish_reviewed_graph", {
+            "workspaceId": record["workspaceId"],
+            "mapRevision": draft["graph"].get("mapRevision"),
+            "graph": draft["graph"],
+            "decision": decision,
+            "actor": actor,
+            "reason": request.get("reason", ""),
+            "proposalId": request.get("proposalId"),
+        })
+        if reply.get("status") == "published":
+            draft["publishedMapRevision"] = reply.get("mapRevision") or draft["graph"].get("mapRevision")
+            draft["mapSourceRevision"] = reply.get("mapSourceRevision")
+            record["identity"]["mapSourceRevision"] = reply.get("mapSourceRevision")
+            record["identity"]["verifiedCodeRevision"] = reply.get("verifiedCodeRevision")
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {"type": "publish", "at": _utcnow(),
+                                                     "mapRevision": draft["publishedMapRevision"],
+                                                     "mapSourceRevision": reply.get("mapSourceRevision")})
+            return self._envelope(record)
+        raise ContractError("BACKEND_UNAVAILABLE",
+                            "版本后端未确认发布结果；不显示成功。",
+                            {"reply": reply.get("status")})
 
     # ---------- change recheck (P4) ----------
 
@@ -405,6 +444,37 @@ class WorkbenchService:
                                                           "old": result["oldCodeRevision"],
                                                           "new": new_head})
         return result
+
+    def rebind_code_revision(self, workspace_id: str, request: dict) -> dict:
+        """Re-bind the workspace to a newly reviewed code revision (P4 回挂).
+
+        This is a local record: until D's verification lands the rebind never
+        sets verifiedCodeRevision, so nothing here claims the new code was
+        human-verified.
+        """
+        record = self.store.load_workspace(workspace_id)
+        identity = record["identity"]
+        if not identity.get("repoPath"):
+            raise ContractError("VALIDATION_FAILED", "该工作区没有关联代码")
+        actor = (request.get("actor") or "").strip()
+        if not actor:
+            raise ContractError("VALIDATION_FAILED", "回挂需要 actor（本机操作者声明）")
+        expected = request.get("expectedNewCodeRevision")
+        probe = self.probe_repo(identity["repoPath"])
+        if not is_full_sha(expected) or expected != probe["head"]:
+            raise ContractError("STALE_CONTEXT", "回挂目标与仓库当前 HEAD 不一致；请先刷新复核",
+                                {"expected": expected, "head": probe["head"]})
+        old = identity.get("codeRevision")
+        identity["codeRevision"] = expected
+        record["updatedAt"] = _utcnow()
+        self.store.save_workspace_record(record)
+        self.store.append_history(workspace_id, {
+            "type": "rebind", "at": _utcnow(), "actor": actor,
+            "from": old, "to": expected,
+            "note": request.get("note", ""),
+            "delivery": "local_rebind_pending_d_verification",
+        })
+        return self._envelope(record)
 
     # ---------- fix task (D seam) ----------
 
