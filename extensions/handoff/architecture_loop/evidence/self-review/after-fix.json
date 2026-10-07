@@ -1,0 +1,13 @@
+[
+  {
+    "case": "wrong_workspace",
+    "rejected": true,
+    "code": "STALE_CONTEXT"
+  },
+  {
+    "case": "out_of_scope_commit_then_revert",
+    "rejected": true,
+    "code": "SCOPE_MISMATCH",
+    "status": "in_progress"
+  }
+]

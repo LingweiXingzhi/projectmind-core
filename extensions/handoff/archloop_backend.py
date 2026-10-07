@@ -19,6 +19,8 @@ def create_archloop_backend(service, workspace_provider):
         require(isinstance(context, dict) and all(k in context for k in
                 ('versionHandoff', 'actor', 'scope', 'deviationId')),
                 'BACKEND_UNAVAILABLE', 'A 尚未登记 B 版本包、操作者或任务范围', 503)
+        require(payload.get('workspaceId') == context['versionHandoff'].get('workspaceId'),
+                'STALE_CONTEXT', '请求与服务端登记的工作区不同，不能跨工作区创建任务')
         v = context['versionHandoff']['versionEnvelope']['version']
         require(payload.get('mapRevision') == v['mapRevision'], 'STALE_CONTEXT',
                 'A 草稿图摘要与 B 已确认图不同；先对齐并确认版本再创建任务')

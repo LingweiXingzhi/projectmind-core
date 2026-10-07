@@ -27,6 +27,16 @@ class AdapterTests(fixture_tests.FixTasksTests):
         with self.assertRaises(Exception) as err:backend['call']('create_fix_task',{'workspaceId':'workspace-fixture'})
         self.assertEqual(err.exception.code,'BACKEND_UNAVAILABLE')
 
+    def test_wrong_workspace_cannot_reuse_another_workspace_task(self):
+        backend=create_archloop_backend(self.service,lambda wid:{
+            'versionHandoff':self.packet,'actor':self.args['actor'],
+            'scope':self.args['scope'],'deviationId':self.args['deviation_id']})
+        with self.assertRaises(Exception) as err:
+            backend['call']('create_fix_task',{'workspaceId':'workspace-unrelated',
+                'mapRevision':self.task['mapRevision']})
+        self.assertEqual(err.exception.code,'STALE_CONTEXT')
+        self.assertEqual(len(self.service.listing()),1)
+
 
 for name in list(fixture_tests.FixTasksTests.__dict__):
     if name.startswith('test_'):setattr(AdapterTests,name,None)

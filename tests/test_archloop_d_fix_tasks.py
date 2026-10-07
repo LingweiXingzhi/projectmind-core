@@ -78,6 +78,18 @@ class FixTasksTests(unittest.TestCase):
         self.assertEqual(e.exception.code,'VERIFICATION_FAILED')
         self.assertEqual(self.service.get(self.task['id'])['status'],'verification_pending')
 
+    def test_out_of_scope_intermediate_commit_cannot_be_hidden_by_revert(self):
+        self.start()
+        forbidden=Path(self.f['code'])/'unapproved.py'
+        forbidden.write_text('outside allowed scope\n')
+        commit(self.f['code'],'outside permitted task scope')
+        forbidden.unlink()
+        sha=self.fix()
+        with self.assertRaises(ArchitectureError) as err:self.submit(sha)
+        self.assertEqual(err.exception.code,'SCOPE_MISMATCH')
+        self.assertEqual(self.service.get(self.task['id'])['status'],'in_progress')
+        self.assertIsNone(self.service.get(self.task['id'])['submittedRevision'])
+
     def test_done_json_or_claim_is_not_verification(self):
         for status in ['verified','submitted','verification_pending']:
             with self.assertRaises(ArchitectureError):self.move(status)

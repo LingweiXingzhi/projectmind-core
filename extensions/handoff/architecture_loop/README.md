@@ -102,3 +102,7 @@ python -m tests.architecture_loop_acceptance.probe_candidates --source-checkout 
 ```
 
 产生真实临时 Git 轨迹，调用实际 C 过程函数，通过 D FixTask 接手/受限修正提交/再验证；同时报告 C 缺证/身份/候选与 B 契约问题。仅测试夹具人审，不是正式图批准、公共 UI 或生产 C 接线。存在 finding 返回 1，禁止把测试函数成功当主线全部通过。
+
+## 自身成果复审
+
+最新 D 自身缺陷修复与进度校正见 SELF_REVIEW.md。新增工作区绑定及全部交付提交历史的范围校验，撤销范围外改动不能绕过约定。T01–T28 当前仍是收集器，不是完整自动用户故事验收器；这项剩余开发属于 D，不只等待其他 owner。

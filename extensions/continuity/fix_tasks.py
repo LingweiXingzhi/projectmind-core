@@ -259,6 +259,14 @@ class FixTaskService:
                            task['codeRevision'], revision, '--').split(b'\0')
             paths = [raw[i+1].decode('utf-8') for i in range(0, len(raw)-1, 2)]
             require(paths and set(paths) <= set(task['scope']), 'SCOPE_MISMATCH', '提交无变化或超出约定改动范围')
+            # The delivered branch contains its whole history. A later revert
+            # must not conceal an out-of-scope file in an intermediate commit.
+            commits = read_git(repo, 'rev-list', task['codeRevision'] + '..' + revision).decode().splitlines()
+            for commit in commits:
+                touched = read_git(repo, 'diff-tree', '--no-commit-id', '--name-only',
+                    '--no-renames', '--root', '-r', '-m', '-z', commit, '--').split(b'\0')
+                require({p.decode('utf-8') for p in touched if p} <= set(task['scope']),
+                        'SCOPE_MISMATCH', '交付历史包含范围外文件，后续撤销不能绕过任务范围')
             task.update(status='verification_pending', deviationStatus='verification_pending',
                         submittedRevision=revision, implementationBranch=branch,
                         revision=task['revision'] + 1, verification=None)

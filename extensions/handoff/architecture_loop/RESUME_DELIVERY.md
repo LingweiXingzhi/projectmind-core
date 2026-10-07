@@ -46,3 +46,6 @@ python -m tests.architecture_loop_acceptance.probe_candidates --source-checkout 
 D fixture PASS 不能代替完整产品，收集器退出 2；C probe 找到问题退出 1。这些是诚实的验收结果，不是可改成 PASS 的成功输出。
 
 Project Model Impact：UPDATE。新职责只提候选，UNKNOWN、AI candidate、contributor log unverified 均保持。
+
+
+后续 D 自身复审发现并修复了工作区绑定与中间提交范围检查遗漏；验收器完成度的收紧表述与最新回归见 SELF_REVIEW.md。前文为接续时记录，不代表独立审计或最终主线通过。
