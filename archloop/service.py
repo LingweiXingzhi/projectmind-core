@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 from . import backend_c
 from . import context_pack as context_pack_module
+from . import fix_tasks as fix_tasks_module
 from . import correction as correction_module
 from . import generate as generate_module
 from . import ops as ops_module
@@ -663,6 +664,132 @@ class WorkbenchService:
         preview_graph = ops_module.apply_operation(graph, operations[0])
         return {"operations": operations, "graph": preview_graph,
                 "note": "演示纠正预览：由本地确定性规则生成，仅验证交互；不代表 AI 输出。"}
+
+    # ---------- implementation fix tasks (persisted, A-side) ----------
+
+    def list_fix_tasks(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
+        return {"workspaceId": workspace_id, "tasks": tasks,
+                "statuses": list(fix_tasks_module.STATUSES),
+                "labeled": ("A 工作台持久化的实施任务；提交回挂后仍需人确认核查结论"
+                            if tasks else "该工作区还没有修正任务")}
+
+    def update_fix_task(self, workspace_id: str, task_id: str, request: dict) -> dict:
+        with workspace_lock(workspace_id):
+            task = fix_tasks_module.update_task(self.store.root, workspace_id, task_id, request)
+            self.store.append_history(workspace_id, {
+                "type": "fix_task_update", "at": _utcnow(), "taskId": task_id,
+                "status": task["status"], "actor": request.get("actor")})
+            return task
+
+    def fix_task_markdown(self, workspace_id: str, task_id: str) -> dict:
+        task = fix_tasks_module.load_task(self.store.root, workspace_id, task_id)
+        return {"taskId": task_id, "markdown": fix_tasks_module.task_markdown(task),
+                "filename": f"{task_id}.md"}
+
+    # ---------- same-version handover (A compatibility export until D lands) --
+
+    def export_handover(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        binding = record.get("backendB") or {}
+        if not binding.get("workspaceId"):
+            raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务，无法导出同版交接包")
+        last_publish = record.get("lastPublish") or {}
+        map_revision = last_publish.get("mapRevision")
+        if not map_revision:
+            raise ContractError("VALIDATION_FAILED", "尚未产生正式版本；交接包必须指向不可变版本")
+        envelope = self._backend_b().export_version(binding["workspaceId"], map_revision)
+        version = envelope["version"]
+        tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
+        open_tasks = [{"taskId": task["taskId"], "status": task["status"],
+                       "observation": task.get("observation", "")[:200],
+                       "targetCodeRevision": task.get("targetCodeRevision")}
+                      for task in tasks if task.get("status") != "verified"]
+        package = {
+            "packageType": "architecture_handover_v1",
+            "producer": "A 工作台（D 的同版交接模块未接入时的兼容导出；结构与 CONTRACT_V1 一致）",
+            "workspaceId": workspace_id,
+            "mapId": version["mapId"],
+            "mapRevision": version["mapRevision"],
+            "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
+            "codeRepoId": version["codeRepoId"],
+            "codeRevision": version["codeRevision"],
+            "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+            "graphNature": version["status"],
+            "reviewCoverage": version["reviewCoverage"],
+            "limits": version["limits"],
+            "unresolvedDeviations": record.get("deviations", []),
+            "openFixTasks": open_tasks,
+            "designHistory": record.get("designHistory", []),
+            "graph": b_to_a_graph(version["graph"], version),
+            "importHint": {
+                "endpoint": "/api/archloop/import-handover",
+                "requiredFields": ["mapId", "mapRevision", "mapSourceRevision", "repoPath"],
+                "note": "第二副本必须按架构 Git 固定提交读取并核对来源；同版不等于同一套本地目录",
+            },
+        }
+        self.store.append_history(workspace_id, {
+            "type": "handover_export", "at": _utcnow(), "mapRevision": map_revision,
+            "mapSourceRevision": package["mapSourceRevision"]})
+        return package
+
+    def import_handover(self, request: dict) -> dict:
+        package = request.get("package")
+        repo_path = (request.get("repoPath") or "").strip()
+        if not isinstance(package, dict) or package.get("packageType") != "architecture_handover_v1":
+            raise ContractError("VALIDATION_FAILED", "需要 architecture_handover_v1 交接包")
+        if not repo_path:
+            raise ContractError("VALIDATION_FAILED", "需要第二副本的仓库路径")
+        for field in ("mapId", "mapRevision", "mapSourceRevision"):
+            if not package.get(field):
+                raise ContractError("VALIDATION_FAILED", f"交接包缺少 {field}")
+        existing_workspace = request.get("workspaceId")
+        if existing_workspace:
+            # re-import / refresh inside an existing second copy: same
+            # workspace, version read again from the Git bytes
+            result = self.import_version(existing_workspace, {
+                "mapRevision": package["mapRevision"],
+                "mapSourceRevision": package["mapSourceRevision"],
+                "expectedMapRevision": request.get("expectedMapRevision")})
+            result["workspace"] = {"workspaceId": existing_workspace}
+            result["identity"] = {"mapId": package["mapId"]}
+        else:
+            result = self.open_from_version({
+                "mapId": package["mapId"], "mapRevision": package["mapRevision"],
+                "mapSourceRevision": package["mapSourceRevision"], "repoPath": repo_path,
+                "title": request.get("title") or "同版接手（交接包）",
+                "expectedMapRevision": request.get("expectedMapRevision")})
+        # a mismatch between the package's own graph and the Git bytes is a
+        # tampered/stale package: the imported version wins, and the difference
+        # is reported instead of being silently accepted
+        package_graph = package.get("graph")
+        imported_graph = result.get("graph")
+        comparison = None
+        if isinstance(package_graph, dict):
+            same_content = self._graph_fingerprint(package_graph) == \
+                self._graph_fingerprint(imported_graph)
+            same_revision = package.get("mapRevision") == result["version"]["mapRevision"]
+            comparison = {"contentMatches": same_content, "revisionMatches": same_revision}
+            if not (same_content and same_revision):
+                comparison["note"] = ("交接包内容与架构 Git 实际版本不一致（包可能被改过或过期）："
+                                      "以 Git 版本为准，并请核对交接来源")
+        result["handoverComparison"] = comparison
+        return result
+
+    @staticmethod
+    def _graph_fingerprint(graph: dict) -> list:
+        """Semantic fingerprint used to detect a tampered/stale handover package."""
+        nodes = []
+        for node in graph.get("nodes", []) or []:
+            nodes.append((
+                node.get("id"), node.get("title"), node.get("summary"), node.get("status"),
+                tuple(sorted(str(step.get("stepId")) for step in node.get("process", []) or [])),
+                tuple(sorted(str(item.get("path")) for item in node.get("evidence", []) or [])),
+            ))
+        edges = sorted((edge.get("from"), edge.get("to"), edge.get("type"), edge.get("label"))
+                       for edge in graph.get("edges", []) or [])
+        return [tuple(sorted(nodes, key=lambda item: str(item[0]))), tuple(edges)]
 
     # ---------- C module: process deviations and incremental proposals ----------
 
@@ -1390,9 +1517,50 @@ class WorkbenchService:
     def create_fix_task(self, workspace_id: str, request: dict) -> dict:
         with workspace_lock(workspace_id):
             record = self.store.load_workspace(workspace_id)
-        draft = record.get("draft")
-        if draft is None:
-            raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            mode = request.get("mode", "production")
+            if mode == DEV_SAMPLE_MODE:
+                return self._sample_fix_task(record, draft, request)
+            # a registered real handoff backend (D, once delivered) owns the
+            # delegation; without one, the workbench persists a real task
+            # itself instead of falling back to a sample
+            try:
+                backend = self.adapter.backend("handoff", mode)
+            except ContractError:
+                backend = None
+            if backend is not None and backend.get("kind") != "dev_sample":
+                return self._legacy_fix_task_delegation(record, draft, request)
+            task = fix_tasks_module.create_task(self.store.root, record, draft, request)
+            task["envelope"] = self._envelope(record)
+            self.store.append_history(workspace_id, {
+                "type": "fix_task", "at": _utcnow(), "taskId": task["taskId"],
+                "deviationId": task.get("deviationId"),
+                "targetCodeRevision": task.get("targetCodeRevision")})
+            return task
+
+    def _sample_fix_task(self, record: dict, draft: dict, request: dict) -> dict:
+        deviation = (request.get("deviation") or "").strip()
+        if not deviation:
+            raise ContractError("VALIDATION_FAILED", "请描述偏差内容")
+        return {
+            "taskType": "implementation_fix",
+            "labeled": "演示数据 · 修正实现任务样例",
+            "origin": "dev_sample",
+            "deviationId": f"dev_{secrets.token_hex(4)}",
+            "workspaceId": record["workspaceId"],
+            "mapRevision": draft["graph"].get("mapRevision"),
+            "expectedProcessRef": request.get("expectedProcessRef"),
+            "observation": deviation,
+            "evidence": request.get("evidence", []),
+            "acceptance": request.get("acceptance", ""),
+            "status": "queued",
+            "note": "演示样例：真实任务请使用生产模式创建。",
+        }
+
+    def _legacy_fix_task_delegation(self, record: dict, draft: dict, request: dict) -> dict:
+        """Delegate to a registered real handoff backend (D's module)."""
         deviation = (request.get("deviation") or "").strip()
         if not deviation:
             raise ContractError("VALIDATION_FAILED", "请描述偏差内容")

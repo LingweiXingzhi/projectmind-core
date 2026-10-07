@@ -601,8 +601,34 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 if method == "POST" and rest == ["associate-code"]:
                     self.send_json(HTTPStatus.OK, archloop_service.associate_code(workspace_id, body or {}))
                     return
+                # ---- fix tasks / handover / C module (stage 3) ----
+                if method == "GET" and rest == ["fix-tasks"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.list_fix_tasks(workspace_id))
+                    return
+                if method == "POST" and rest == ["fix-tasks"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}))
+                    return
+                if len(rest) == 2 and rest[0] == "fix-tasks" and method == "POST":
+                    self.send_json(HTTPStatus.OK, archloop_service.update_fix_task(
+                        workspace_id, rest[1], body or {}))
+                    return
+                if len(rest) == 3 and rest[0] == "fix-tasks" and rest[2] == "markdown" and method == "GET":
+                    self.send_json(HTTPStatus.OK, archloop_service.fix_task_markdown(workspace_id, rest[1]))
+                    return
+                if method == "GET" and rest == ["handover"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.export_handover(workspace_id))
+                    return
+                if method == "POST" and rest == ["deviations"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.deviations(workspace_id, body or {}))
+                    return
+                if method == "POST" and rest == ["incremental"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.incremental_proposal(workspace_id))
+                    return
             if method == "POST" and parts == ["open-from-version"]:
                 self.send_json(HTTPStatus.OK, archloop_service.open_from_version(body or {}))
+                return
+            if method == "POST" and parts == ["import-handover"]:
+                self.send_json(HTTPStatus.OK, archloop_service.import_handover(body or {}))
                 return
             if method == "GET" and parts == ["backend"]:
                 self.send_json(HTTPStatus.OK, archloop_service.backend_status())

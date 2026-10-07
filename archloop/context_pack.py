@@ -79,14 +79,16 @@ def build_context_pack(repo_path: str, revision: str, *, max_files: int = 48,
     py_files = [path for path in tracked if path.endswith(".py")]
     docs = [path for path in tracked if re.search(r"\.md$", path, re.I)]
 
+    # credential-looking files are named once, for every tracked file, so the
+    # pack records what was deliberately not read (not only what it read)
     excluded: list[dict] = []
-    candidates = []
-    for path in sorted(py_files, key=_entry_rank):
+    for path in tracked:
         reason = _excluded(path)
         if reason:
             excluded.append({"path": path, "reason": reason})
-            continue
-        candidates.append(path)
+    excluded_paths = {item["path"] for item in excluded}
+    candidates = [path for path in sorted(py_files, key=_entry_rank)
+                  if path not in excluded_paths]
 
     files = []
     used = 0
@@ -140,9 +142,7 @@ def build_context_pack(repo_path: str, revision: str, *, max_files: int = 48,
 
     doc_pack = []
     for path in sorted(docs, key=doc_rank)[:max_docs]:
-        reason = _excluded(path)
-        if reason:
-            excluded.append({"path": path, "reason": reason})
+        if path in excluded_paths:
             continue
         try:
             text = read_source(root, revision, path)
