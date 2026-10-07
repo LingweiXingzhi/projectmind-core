@@ -16,7 +16,13 @@ python -m unittest discover -s tests -p 'test_archloop_b_*.py' -v
 python -m extensions.architecture_workspace.smoke --test-fixture-only --output /absolute/new/fixture-directory
 ```
 
-第二条只在新建测试仓库内模拟人审，不能用它批准真实项目。
+另可运行新的两侧接口演示：
+
+```sh
+python -m extensions.architecture_workspace.surface_smoke --test-fixture-only --output /absolute/new/surface-fixture
+```
+
+两个演示只在新建测试仓库内模拟人审，不能用它批准真实项目。
 目录已经存在时拒绝覆盖。结果为 FUNCTION_SMOKE.json，含实际代码/架构
 Git SHA、正常交换包、三种机器错误和第二 clone 的读取结果；不输出令牌。
 可追加 `--legacy-code-repo /absolute/projectmind-checkout`，仅导入其旧六节点
@@ -28,7 +34,9 @@ NOT_RUN/A_REVIEW_PENDING；不称为实际公共 HTTP/UI 或 C/D 产品联调。
 接入步骤见 A_C_D_INTEGRATION_GUIDE.md，公共差异见 CONTRACT_GAPS_FOR_A.md。
 
 两侧接口的重新设计见 TWO_SURFACE_INTERFACE_V2_DESIGN.md：B↔A 操作面与
-B↔C/D 协作面。它是待 A 审查的设计候选，尚未实现；现有 V1 运行接口保持。
+B↔C/D 协作面。设计阶段记录保持；后续实现见 TWO_SURFACE_IMPLEMENTATION.md。新的可选 Python facade、
+候选校验和原子选择已实现，公共合同仍待 A 审查；现有 V1 保持兼容。
+当前 A/C 分支差异见 AC_ALIGNMENT_2026-10-07.md。
 
 ## 服务与隔离
 
@@ -48,7 +56,8 @@ reset/clean。Git commit 后存储尚未收口时，重试只认精确的单文�
 
 ## 人审边界
 
-AI/规则 worker 只取得服务和只读快照，不取得 HumanReviewGateway、
+新 AI/规则 worker 只取得范围受限的 CollaborationAPI 和只读快照，不取得底层 service、
+HumanReviewGateway、
 会话令牌或 publicationToken。服务不会从 actor="human" 推断批准。
 Gateway 从 A 提供的真实网络请求元数据检查 loopback、Host、Origin、
 服务端本机会话、CSRF 与会话过期；预览绑定草稿版本、旧图、目标代码、

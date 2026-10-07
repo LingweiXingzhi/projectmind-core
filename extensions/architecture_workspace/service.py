@@ -69,10 +69,11 @@ class WorkspaceService:
         return {"mode": mode, "codeRepoId": repo_id, "codeRevision": revision}
 
     def open_workspace(self, *, workspace_id=None, map_id=None, mode=None,
-                       code_repo_id=None, code_revision=None):
+                       code_repo_id=None, code_revision=None, expected_context=None):
         with self.store.transaction() as db:
             if workspace_id:
                 ws = Store.get(db, "workspace", identifier(workspace_id))
+                self._expect_workspace_context(ws, expected_context)
                 require(map_id in (None, ws["mapId"]) and mode in (None, ws["mode"])
                         and code_repo_id in (None, ws["codeRepoId"]), "STALE_CONTEXT")
                 if ws["codeRepoId"]:
@@ -86,6 +87,7 @@ class WorkspaceService:
                     Store.put(db, "workspace", workspace_id, ws)
                 return copy.deepcopy(ws)
             context = self._context(mode, code_repo_id, code_revision)
+            require(expected_context is None)
             ws = {"workspaceId": new_id("workspace"), "mapId": identifier(map_id) if map_id
                   else new_id("map"), **context, "mapRevision": None, "designHistory": []}
             existing = db.execute("SELECT body FROM documents WHERE kind='workspace'").fetchall()
@@ -108,6 +110,18 @@ class WorkspaceService:
             ws.update(mode="mixed", codeRepoId=code_repo_id, codeRevision=code_revision)
             Store.put(db, "workspace", workspace_id, ws)
             return copy.deepcopy(ws)
+
+    @staticmethod
+    def _expect_workspace_context(ws, expected):
+        if expected is None:
+            return
+        from .proposals import validate_context
+        expected = validate_context(expected)
+        require(expected["draftId"] is None)
+        require(all(expected[k] == ws[k] for k in
+                    ("workspaceId", "mapId", "mode", "codeRepoId", "codeRevision")),
+                "STALE_CONTEXT")
+        require(expected["baseMapRevision"] == ws["mapRevision"], "REVISION_CONFLICT")
 
     @staticmethod
     def _compatible(repo, old, target):
@@ -135,32 +149,70 @@ class WorkspaceService:
                 verify_evidence(repo, evidence, context["codeRevision"])
 
     def create_draft(self, workspace_id, *, graph=None, base_map_revision=None,
-                     origin="manual", proposal_id=None, from_map_revision=None, legacy=None):
-        require(origin in ("manual", "ai_generated", "rule_based", "legacy", "restored"))
-        proposal_id = identifier(proposal_id) if proposal_id else new_id("proposal")
+                     origin="manual", proposal_id=None, from_map_revision=None, legacy=None,
+                     expected_context=None):
+        with self.store.transaction() as db:
+            return self._create_draft(db, workspace_id, graph=graph,
+                    base_map_revision=base_map_revision, origin=origin, proposal_id=proposal_id,
+                    from_map_revision=from_map_revision, legacy=legacy,
+                    expected_context=expected_context)
+
+    def create_candidate_draft(self, workspace_id, *, proposal, selected_candidate_id,
+                               graph, origin, base_map_revision, expected_context):
+        from .proposals import validate_proposal
         with self.store.transaction() as db:
             ws = Store.get(db, "workspace", identifier(workspace_id))
-            require(ws["mapRevision"] == base_map_revision, "REVISION_CONFLICT")
-            layout = {}
-            require(sum(x is not None for x in (graph, legacy, from_map_revision)) == 1)
-            if from_map_revision is not None:
-                version = Store.get(db, "version", workspace_id + "/" + from_map_revision)
-                graph = copy.deepcopy(version["version"]["graph"]); origin = "restored"
-                for ev in graph["evidence"]:
-                    if ev["kind"] == "code" and ev["codeRevision"] != ws["codeRevision"]:
-                        ev["unknownReason"] = "历史证据尚未核查到当前目标提交"
-            elif legacy is not None:
-                require(ws["mode"] != "planning", "STALE_CONTEXT")
-                graph, layout = self._legacy(legacy, ws); origin = "legacy"
-            graph = validate_graph(graph, ws)
-            self._evidence(graph, ws)
-            draft = {"draftId": new_id("draft"), "workspaceId": workspace_id,
-                     **{k: ws[k] for k in ("mapId", "mode", "codeRepoId", "codeRevision")},
-                     "baseMapRevision": base_map_revision, "draftRevision": 1,
-                     "origin": origin, "proposalId": proposal_id, "status": "unconfirmed",
-                     "graph": graph, "layout": layout, "operations": []}
+            self._expect_workspace_context(ws, expected_context)
+            context = {**{k: ws[k] for k in ("workspaceId", "mapId", "mode", "codeRepoId",
+                       "codeRevision")}, "baseMapRevision": ws["mapRevision"],
+                       "draftId": None, "draftRevision": None}
+            fixed = validate_proposal(proposal, context)
+            require(fixed["kind"] == "bootstrap")
+            identifier(selected_candidate_id)
+            selected = next((c for c in fixed["candidates"]
+                             if c["candidateId"] == selected_candidate_id), None)
+            require(selected is not None)
+            require((graph == selected["graph"] and origin == fixed["generation"]["source"])
+                    or origin == "manual")
+            Store.put(db, "candidate_proposal", workspace_id + "/" + fixed["proposalId"],
+                      fixed, immutable=True)
+            draft = self._create_draft(db, workspace_id, graph=graph,
+                    base_map_revision=base_map_revision, origin=origin,
+                    proposal_id=fixed["proposalId"], expected_context=expected_context)
+            draft["bootstrapSelection"] = {"proposalId": fixed["proposalId"],
+                      "proposalDigest": fixed["proposalDigest"], "candidateId": selected_candidate_id,
+                      "decision": "accept" if graph == selected["graph"] else "modify"}
             Store.put(db, "draft", draft["draftId"], draft)
             return copy.deepcopy(draft)
+
+    def _create_draft(self, db, workspace_id, *, graph=None, base_map_revision=None,
+                      origin="manual", proposal_id=None, from_map_revision=None, legacy=None,
+                      expected_context=None):
+        require(origin in ("manual", "ai_generated", "rule_based", "legacy", "restored"))
+        proposal_id = identifier(proposal_id) if proposal_id else new_id("proposal")
+        ws = Store.get(db, "workspace", identifier(workspace_id))
+        self._expect_workspace_context(ws, expected_context)
+        require(ws["mapRevision"] == base_map_revision, "REVISION_CONFLICT")
+        layout = {}
+        require(sum(x is not None for x in (graph, legacy, from_map_revision)) == 1)
+        if from_map_revision is not None:
+            version = Store.get(db, "version", workspace_id + "/" + from_map_revision)
+            graph = copy.deepcopy(version["version"]["graph"]); origin = "restored"
+            for ev in graph["evidence"]:
+                if ev["kind"] == "code" and ev["codeRevision"] != ws["codeRevision"]:
+                    ev["unknownReason"] = "历史证据尚未核查到当前目标提交"
+        elif legacy is not None:
+            require(ws["mode"] != "planning", "STALE_CONTEXT")
+            graph, layout = self._legacy(legacy, ws); origin = "legacy"
+        graph = validate_graph(graph, ws)
+        self._evidence(graph, ws)
+        draft = {"draftId": new_id("draft"), "workspaceId": workspace_id,
+                 **{k: ws[k] for k in ("mapId", "mode", "codeRepoId", "codeRevision")},
+                 "baseMapRevision": base_map_revision, "draftRevision": 1,
+                 "origin": origin, "proposalId": proposal_id, "status": "unconfirmed",
+                 "graph": graph, "layout": layout, "operations": []}
+        Store.put(db, "draft", draft["draftId"], draft)
+        return copy.deepcopy(draft)
 
     @staticmethod
     def _legacy(legacy, ws):
@@ -208,86 +260,130 @@ class WorkspaceService:
                                base_map_revision, proposal_id):
         require(isinstance(operations, list) and 0 < len(operations) <= 128)
         with self.store.transaction() as db:
+            return self._apply_operations(db, draft_id, operations=operations,
+                    expected_draft_revision=expected_draft_revision,
+                    base_map_revision=base_map_revision, proposal_id=proposal_id)
+
+    def apply_candidate_selection(self, draft_id, *, proposal, selection, operations,
+                                  expected_draft_revision, base_map_revision):
+        """Explicit A selection: candidate fixation, edit and audit save atomically.
+
+        C validation alone never calls this write entry. The packet proposalId
+        identifies C's selection; the draft proposalId remains its V1 lineage.
+        """
+        from .proposals import compile_selection
+        with self.store.transaction() as db:
             draft = Store.get(db, "draft", identifier(draft_id))
-            ws = self._current(db, draft)
-            require(draft["status"] not in ("published", "publishing"), "VERSION_CONFLICT")
+            context = {k: draft[k] for k in ("workspaceId", "mapId", "mode", "codeRepoId",
+                       "codeRevision", "baseMapRevision", "draftId", "draftRevision")}
+            compiled = compile_selection(proposal, context, selection, operations)
+            rejected_count = sum(len(entry["rejectedCandidates"])
+                                 for entry in draft.get("candidateSelections", []))
+            require(rejected_count + len(compiled["rejectedCandidates"]) <= 128,
+                    detail="单草稿累计拒绝项最多 128 条；请保留本草稿记录并新建草稿继续")
             require(type(expected_draft_revision) is int
-                    and draft["draftRevision"] == expected_draft_revision
-                    and draft["baseMapRevision"] == base_map_revision == ws["mapRevision"],
-                    "REVISION_CONFLICT")
-            require(proposal_id == draft["proposalId"], "STALE_CONTEXT")
-            graph = copy.deepcopy(draft["graph"])
-            for operation in copy.deepcopy(operations):
-                fields(operation, ("op",), ("id", "value", "changes", "processId",
-                                           "source", "operationId"))
-                op = operation["op"]
-                require(isinstance(op, str))
-                if op == "layout.set":
-                    fields(operation, ("op", "value"), ("source", "operationId"))
-                    layout = operation["value"]
-                    require(isinstance(layout, dict) and set(layout) <= {n["id"] for n in graph["nodes"]})
-                    import math
-                    for pos in layout.values():
-                        fields(pos, ("x", "y"))
-                        require(all(type(v) in (int, float) and math.isfinite(v) and v >= 0
-                                    for v in pos.values()))
-                    draft["layout"] = layout
+                    and expected_draft_revision == draft["draftRevision"]
+                    and base_map_revision == draft["baseMapRevision"], "REVISION_CONFLICT")
+            # A reused proposal ID may not replace what the user selected.
+            key = draft["workspaceId"] + "/" + proposal["proposalId"]
+            Store.put(db, "candidate_proposal", key, proposal, immutable=True)
+            updated = self._apply_operations(db, draft_id, operations=compiled["operations"],
+                    expected_draft_revision=expected_draft_revision,
+                    base_map_revision=base_map_revision, proposal_id=draft["proposalId"])
+            entry = {"proposalId": proposal["proposalId"],
+                     "proposalDigest": proposal["proposalDigest"],
+                     "selection": compiled["selection"],
+                     "rejectedCandidates": compiled["rejectedCandidates"],
+                     "appliedOperationIds": [op["operationId"] for op in compiled["operations"]],
+                     "draftRevision": updated["draftRevision"]}
+            updated.setdefault("candidateSelections", []).append(entry)
+            Store.put(db, "draft", draft_id, updated)
+            Store.put(db, "candidate_selection", draft_id + "/" + str(updated["draftRevision"]),
+                      entry, immutable=True)
+            return copy.deepcopy(updated)
+
+    def _apply_operations(self, db, draft_id, *, operations, expected_draft_revision,
+                          base_map_revision, proposal_id):
+        draft = Store.get(db, "draft", identifier(draft_id))
+        ws = self._current(db, draft)
+        require(draft["status"] not in ("published", "publishing"), "VERSION_CONFLICT")
+        require(type(expected_draft_revision) is int
+                and draft["draftRevision"] == expected_draft_revision
+                and draft["baseMapRevision"] == base_map_revision == ws["mapRevision"],
+                "REVISION_CONFLICT")
+        require(proposal_id == draft["proposalId"], "STALE_CONTEXT")
+        graph = copy.deepcopy(draft["graph"])
+        for operation in copy.deepcopy(operations):
+            fields(operation, ("op",), ("id", "value", "changes", "processId",
+                                       "source", "operationId"))
+            op = operation["op"]
+            require(isinstance(op, str))
+            if op == "layout.set":
+                fields(operation, ("op", "value"), ("source", "operationId"))
+                layout = operation["value"]
+                require(isinstance(layout, dict) and set(layout) <= {n["id"] for n in graph["nodes"]})
+                import math
+                for pos in layout.values():
+                    fields(pos, ("x", "y"))
+                    require(all(type(v) in (int, float) and math.isfinite(v) and v >= 0
+                                for v in pos.values()))
+                draft["layout"] = layout
+            else:
+                parts = op.split(".")
+                require(len(parts) == 2 and parts[0] in
+                        ("node", "edge", "evidence", "process", "step")
+                        and parts[1] in ("add", "update", "remove", "reorder"))
+                entity, action = parts
+                required = {"add": ("value",), "update": ("id", "changes"),
+                            "remove": ("id",), "reorder": ("value",)}[action]
+                fields(operation, ("op",) + required +
+                       (("processId",) if entity == "step" else ()),
+                       ("source", "operationId"))
+                if entity == "step":
+                    process = next((p for p in graph["processes"]
+                                    if p["id"] == operation.get("processId")), None)
+                    require(process is not None, "REFERENCE_CONFLICT")
+                    collection = process["steps"]
                 else:
-                    parts = op.split(".")
-                    require(len(parts) == 2 and parts[0] in
-                            ("node", "edge", "evidence", "process", "step")
-                            and parts[1] in ("add", "update", "remove", "reorder"))
-                    entity, action = parts
-                    required = {"add": ("value",), "update": ("id", "changes"),
-                                "remove": ("id",), "reorder": ("value",)}[action]
-                    fields(operation, ("op",) + required +
-                           (("processId",) if entity == "step" else ()),
-                           ("source", "operationId"))
-                    if entity == "step":
-                        process = next((p for p in graph["processes"]
-                                        if p["id"] == operation.get("processId")), None)
-                        require(process is not None, "REFERENCE_CONFLICT")
-                        collection = process["steps"]
+                    collection = graph[{"node": "nodes", "edge": "edges",
+                                        "evidence": "evidence", "process": "processes"}[entity]]
+                if action == "reorder":
+                    require(entity == "step" and isinstance(operation.get("value"), list))
+                    order = operation["value"]; objects = records(collection)
+                    strings(order)
+                    require(len(order) == len(objects) and set(order) == set(objects))
+                    collection[:] = [objects[key] for key in order]
+                elif action == "add":
+                    require(isinstance(operation.get("value"), dict))
+                    obj = copy.deepcopy(operation["value"])
+                    if "id" not in obj:
+                        obj["id"] = new_id(entity)
+                    identifier(obj["id"])
+                    require(obj["id"] not in records(collection), detail="对象 ID 已存在")
+                    collection.append(obj); operation["value"] = obj
+                else:
+                    identifier(operation.get("id"))
+                    obj = next((o for o in collection if o["id"] == operation["id"]), None)
+                    require(obj is not None, "REFERENCE_CONFLICT")
+                    if action == "remove":
+                        collection.remove(obj)
+                        if entity == "node":
+                            draft["layout"].pop(obj["id"], None)
                     else:
-                        collection = graph[{"node": "nodes", "edge": "edges",
-                                            "evidence": "evidence", "process": "processes"}[entity]]
-                    if action == "reorder":
-                        require(entity == "step" and isinstance(operation.get("value"), list))
-                        order = operation["value"]; objects = records(collection)
-                        strings(order)
-                        require(len(order) == len(objects) and set(order) == set(objects))
-                        collection[:] = [objects[key] for key in order]
-                    elif action == "add":
-                        require(isinstance(operation.get("value"), dict))
-                        obj = copy.deepcopy(operation["value"])
-                        if "id" not in obj:
-                            obj["id"] = new_id(entity)
-                        identifier(obj["id"])
-                        require(obj["id"] not in records(collection), detail="对象 ID 已存在")
-                        collection.append(obj); operation["value"] = obj
-                    else:
-                        identifier(operation.get("id"))
-                        obj = next((o for o in collection if o["id"] == operation["id"]), None)
-                        require(obj is not None, "REFERENCE_CONFLICT")
-                        if action == "remove":
-                            collection.remove(obj)
-                            if entity == "node":
-                                draft["layout"].pop(obj["id"], None)
-                        else:
-                            require(isinstance(operation.get("changes"), dict)
-                                    and "id" not in operation["changes"], detail="修改不能替换稳定 ID")
-                            obj.update(operation["changes"])
-                operation["operationId"] = identifier(operation.get("operationId") or new_id("operation"))
-                require(operation["operationId"] not in {o["operationId"] for o in draft["operations"]})
-                operation["source"] = operation.get("source", "human")
-                require(operation["source"] in ("human", "ai_generated", "rule_based"))
-                draft["operations"].append(operation)
-            draft["graph"] = validate_graph(graph, draft)
-            self._evidence(draft["graph"], draft)
-            draft["draftRevision"] += 1; draft["status"] = "unconfirmed"
-            draft.pop("reviewId", None)
-            Store.put(db, "draft", draft_id, draft)
-            return copy.deepcopy(draft)
+                        require(isinstance(operation.get("changes"), dict)
+                                and "id" not in operation["changes"], detail="修改不能替换稳定 ID")
+                        obj.update(operation["changes"])
+            operation["operationId"] = identifier(operation.get("operationId") or new_id("operation"))
+            require(operation["operationId"] not in {o["operationId"] for o in draft["operations"]})
+            operation["source"] = operation.get("source", "human")
+            require(operation["source"] in ("human", "ai_generated", "rule_based"))
+            draft["operations"].append(operation)
+        draft["graph"] = validate_graph(graph, draft)
+        self._evidence(draft["graph"], draft)
+        draft["draftRevision"] += 1; draft["status"] = "unconfirmed"
+        draft.pop("reviewId", None)
+        Store.put(db, "draft", draft_id, draft)
+        return copy.deepcopy(draft)
 
     def _preview(self, draft_id, *, actor, reason, expected_draft_revision,
                  expected_map_revision, proposal_id, code_repo_id, code_revision,
@@ -563,7 +659,7 @@ class WorkspaceService:
 
 
 # Reject malformed JSON-shaped values at the public service boundary.
-for _method in ("open_workspace", "associate_code", "create_draft", "get_draft",
-                "apply_draft_operations", "record_review", "publish_reviewed_graph",
+for _method in ("open_workspace", "associate_code", "create_draft", "create_candidate_draft", "get_draft",
+                "apply_draft_operations", "apply_candidate_selection", "record_review", "publish_reviewed_graph",
                 "get_version", "export_version", "import_git_version", "graph_snapshot"):
     setattr(WorkspaceService, _method, input_guard(getattr(WorkspaceService, _method)))
