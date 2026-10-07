@@ -1,0 +1,39 @@
+.....127.0.0.1 - - [07/Oct/2026 23:50:51] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:50:52] "POST /api/archloop/workspaces/ws_20261007235051_14d992/sync HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:50:52] "GET /api/archloop/backend HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:50:52] "POST /api/archloop/workspaces/ws_20261007235051_14d992/review-preview HTTP/1.1" 403 -
+127.0.0.1 - - [07/Oct/2026 23:50:52] "POST /api/archloop/workspaces/ws_20261007235051_14d992/review-preview HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:50:52] "POST /api/archloop/workspaces/ws_20261007235051_14d992/review-confirm HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:50:53] "POST /api/archloop/workspaces/ws_20261007235051_14d992/publish HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:50:53] "GET /api/archloop/workspaces/ws_20261007235051_14d992/versions HTTP/1.1" 200 -
+.127.0.0.1 - - [07/Oct/2026 23:50:53] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:50:53] "POST /api/archloop/workspaces/ws_20261007235053_b20793/publish HTTP/1.1" 403 -
+............................................................................................127.0.0.1 - - [07/Oct/2026 23:52:04] "GET /api/ai-status HTTP/1.1" 200 -
+.127.0.0.1 - - [07/Oct/2026 23:52:04] "POST /api/archloop/workspaces HTTP/1.1" 500 -
+127.0.0.1 - - [07/Oct/2026 23:52:04] "POST /api/archloop/workspaces HTTP/1.1" 400 -
+.127.0.0.1 - - [07/Oct/2026 23:52:04] "POST /api/archloop/workspaces HTTP/1.1" 403 -
+.127.0.0.1 - - [07/Oct/2026 23:52:04] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:04] "GET /api/archloop/sample-graph?context=planning HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:04] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/generate HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:04] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/apply-candidate HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:05] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/apply-ops HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:05] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/apply-ops HTTP/1.1" 409 -
+127.0.0.1 - - [07/Oct/2026 23:52:05] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/correction-preview HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:05] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/apply-correction HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:05] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/review HTTP/1.1" 403 -
+127.0.0.1 - - [07/Oct/2026 23:52:05] "POST /api/archloop/workspaces/ws_20261007235204_7abacf/fix-task HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:05] "GET /api/archloop/workspaces/ws_20261007235204_7abacf HTTP/1.1" 200 -
+.127.0.0.1 - - [07/Oct/2026 23:52:06] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:06] "POST /api/archloop/workspaces/ws_20261007235206_c545a6/generate HTTP/1.1" 200 -
+.127.0.0.1 - - [07/Oct/2026 23:52:06] "GET /api/snapshot HTTP/1.1" 200 -
+.127.0.0.1 - - [07/Oct/2026 23:52:06] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:06] "GET /api/archloop/workspaces/ws_20261007235206_ef34ff/recheck HTTP/1.1" 404 -
+127.0.0.1 - - [07/Oct/2026 23:52:06] "POST /api/archloop/workspaces/ws_20261007235206_ef34ff/recheck HTTP/1.1" 400 -
+.127.0.0.1 - - [07/Oct/2026 23:52:07] "GET /api/archloop HTTP/1.1" 200 -
+127.0.0.1 - - [07/Oct/2026 23:52:07] "GET /api/archloop/sample-graph HTTP/1.1" 200 -
+............................s..........
+----------------------------------------------------------------------
+Ran 144 tests in 110.256s
+
+OK (skipped=1)
+exit=0

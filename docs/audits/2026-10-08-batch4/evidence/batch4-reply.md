@@ -1,0 +1,52 @@
+{
+  "package_id": "BATCH-4",
+  "target_sha": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
+  "scope": "仅复验上批6项及修复引入的回归：相关 diff、backend_b.py、backend_c.py、context_pack.py、service.py、acceptance.py、两个指定测试模块；包内 unattended/controller.py、audit_schema.json、selfcheck.json；提供方上批 verdict 与验收记录。执行实际 B/Gateway/SQLite 内存复现、C 操作累积应用、真实只读 Git 查询、控制器替身测试及无害 Python 子进程测试。",
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "GEN-01",
+      "severity": "P1",
+      "summary": "组件拆分遗漏含缩写的 camelCase 凭据名，新增凭据外发回归。",
+      "evidence": "context_pack.py:59-65、75-81。CONFIG={\"clientAPIKey\":\"SYNTHETIC_TEST_CREDENTIAL_1234567890\"} 在 c62b5c0 的检测结果为 true，当前为 false；实际 build_context_pack 保留该文件及合成凭据。仅 Git 输入替为合成数据，退出0。service.py:352、generate.py:151 将完整 pack 放入模型输入，未实际调用模型。"
+    },
+    {
+      "id": "G-02-RUNTIME",
+      "severity": "P1",
+      "summary": "正常审计结果处理和 schema 回退均出现运行崩溃。",
+      "evidence": "包内 controller.py:828、840：returncode 仅在回退分支赋值，正常子进程返回0后 run_codex_audit 抛 UnboundLocalError，回执写入数为0。:781、810 重复进入同一 LeaseWatchdog，schema 错误回退抛 RuntimeError: threads can only be started once。执行真实函数、仅子进程及文件接口替身化，复现退出0，未调用模型。"
+    },
+    {
+      "id": "G-02-STOP",
+      "severity": "P2",
+      "summary": "看门狗已标记失租时，快速结束的子进程仍被报告为正常完成。",
+      "evidence": "包内 controller.py:744-748 在 proc.wait 成功后直接返回，未检查失租事件。实际新建无害 Python 子进程配合真实 LeaseWatchdog，模拟锁易主：watchdog_lost=true，但0.3秒子进程正常完成，returncode=0、reported_lease_lost=false。复现退出0；未写文件，锁存储为内存。"
+    },
+    {
+      "id": "G-02-RETRY",
+      "severity": "P2",
+      "summary": "调用前失租分支未恢复可重试状态，包留在 RUNNING。",
+      "evidence": "包内 controller.py:904-916 先置 RUNNING，围栏失败后直接返回。真实 tick_audit 的内存状态复现输出 package_status=RUNNING、controller_state=RUNNING、attempts=0，未启动审计。后续 newest_pending 不会选中该包。复现退出0。"
+    },
+    {
+      "id": "G-02-RELEASE",
+      "severity": "P2",
+      "summary": "释放操作仍存在检查与删除之间的竞态，可删除他人的新锁。",
+      "evidence": "包内 controller.py:650-653 将读取租约与 unlink 分离。真实 release_lock 的内存交错复现：读取自己的租约后名称被第三方取得，release 返回 true、foreign_lock_survived=false，退出0。另外 mutate_queue:469 未传 lease，直接绕过归属检查。"
+    },
+    {
+      "id": "ACCEPTANCE-01",
+      "severity": "P2",
+      "summary": "T24 仍把响应版本当作本地 HEAD，旧提交可误报为当前版本验收通过。",
+      "evidence": "acceptance.py:542 从 self_identity 取得 local_head，:548-549 再用同值自我比较，没有独立读取真正 HEAD。原样执行当前调用处，Git 查询未替换：当前 HEAD 为803c673…，使用真实旧 c62b5c0 identity、coverage 和248/139树计数仍 PASS，并将旧 SHA 标为 localHead。退出0；当前真实树计数为249/140。"
+    }
+  ],
+  "unverified": [
+    "指定测试受临时目录限制，未完整运行磁盘集成测试；未重跑完整验收。",
+    "未调用真实 AI、操作真实浏览器或验证 D 模块及其独立验收。",
+    "未执行新发布、跨设备或实体第二副本验收，也未测试发布事务极端中断。",
+    "控制器子进程测试使用真实新建 Python 进程；锁文件、归档和状态存储替为内存，未验证实际文件系统并发或完整 Codex 调用。",
+    "未独立构造 SHA256 仓库验证64位提交路径。"
+  ],
+  "notes": "git rev-parse HEAD 退出0，与目标一致；git status --porcelain 退出0且为空，结束仍 CLEAN。实际执行 python -B -m unittest tests.test_archloop_a_batch3_fixes tests.test_archloop_a_batch2_fixes -v：Ran 33 tests in 1.343s，FAILED(errors=14)，退出1；19项通过，14项因 No usable temporary directory found 报错。逐条复验：A-01已关闭——真实旧适配器生成载体，实际B改到s3后往返保留，step_diff_ops=[]，新格式两场景也通过（backend_b.py:428-447，脚本退出0）；A-05已关闭——实际A→B→Gateway，缺省不转发键，null/非对象/坏列表/未知ID拒绝，载体从显式all覆盖排除（service.py:1112-1114、backend_b.py:909-918，退出0）；GEN-01列明的普通名、凭据名、sk及占位符通过，但clientAPIKey新增泄漏；C-INCREMENTAL-01已关闭——七场景累计应用通过，多文件合并unknown、引用删除变warning、撞名唯一化、矛盾及交错输入可应用，输入未修改（backend_c.py:250-261、283-298、320-372，退出0）；G-02长子进程失租后实际被杀，正常过期回收、鲜锁保护、双线程队列保留及21项判定自检通过，但存在上述运行、停止、重试与释放缺陷；ACCEPTANCE-01的T21完整比较矩阵通过，T24当前正常响应249/140可PASS，旧提交仍误PASS。提供方35 PASS/2 NOT_RUN仅作为记录。所有独立复现脚本退出0；未修改文件。"
+}
