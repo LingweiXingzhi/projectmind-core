@@ -137,7 +137,7 @@ class SnapshotTests(unittest.TestCase):
                 "summary": "Change", "observations": [], "possibleEffects": [], "unknowns": [], "evidencePaths": []})}]},
         ]}
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key", "PROJECTMIND_AI_MODEL": "test-model"}):
-            with patch("app.urlopen", return_value=BytesIO(json.dumps(reply).encode("utf-8"))) as post:
+            with patch("archloop.ai_transport.urlopen", return_value=BytesIO(json.dumps(reply).encode("utf-8"))) as post:
                 result = request_model({"changedEvidencePaths": [], "diff": "sample"})
             body = json.loads(post.call_args.args[0].data)
             self.assertFalse(body["store"])

@@ -230,3 +230,38 @@ h1 { margin: 10px 0 8px; color: #f0f5f7; font-size: clamp(24px, 2.2vw, 32px); le
 .explorer-change-pill.is-D { background: rgba(248, 81, 73, 0.22); }
 .explorer-change-pill.is-R { background: rgba(210, 153, 34, 0.25); }
 .explorer-change-path { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+
+/* ===== Architecture workbench (view 01) ===== */
+.arch-banner { border: 1px solid rgba(210, 153, 34, 0.55); background: rgba(210, 153, 34, 0.12); color: #d29922; font-weight: 600; }
+.arch-tabs { display: flex; gap: 8px; margin: 10px 0; }
+.arch-tab.active { border-color: rgba(88, 166, 255, 0.7); color: #58a6ff; }
+.arch-entry-form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.arch-wide { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.arch-wide > input, .arch-wide > textarea, .arch-wide > select {
+  background: rgba(13, 17, 23, 0.6); border: 1px solid rgba(139, 148, 158, 0.4);
+  border-radius: 6px; color: inherit; padding: 7px 10px; font: inherit; resize: vertical;
+}
+.arch-field-label { font-size: 12px; color: #8b949e; }
+.arch-history { display: flex; flex-direction: column; gap: 8px; }
+.arch-history-row { display: flex; align-items: center; gap: 12px; border: 1px solid rgba(139, 148, 158, 0.25); border-radius: 8px; padding: 8px 12px; }
+.arch-history-row small { margin-left: auto; color: #8b949e; }
+.arch-step-row { display: grid; grid-template-columns: 52px 1fr 1fr 1fr 32px 32px 32px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.arch-step-id { color: #58a6ff; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.arch-step-row input, .arch-wide input { background: rgba(13, 17, 23, 0.6); border: 1px solid rgba(139, 148, 158, 0.4); border-radius: 6px; color: inherit; padding: 5px 8px; font: inherit; }
+.arch-step-actions { display: flex; gap: 8px; margin-top: 8px; }
+.arch-impact { color: #f0b72f; }
+.compare-status.error { color: #f85149; }
+#arch-map-stage { min-height: 500px; }
+#arch-details-content label.arch-wide { margin-bottom: 8px; }
+#arch-details-content section.detail-section button { align-self: flex-start; }
+
+/* The hidden attribute must always win over class display rules (found via
+   real browser check: .arch-entry-form flex overrode [hidden]). */
+[hidden] { display: none !important; }
+
+/* Workbench nodes: clamp long titles/summaries inside fixed-size cards. */
+#arch-map-stage .node-title, #arch-map-stage .node-summary {
+  display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;
+}
+#arch-map-stage .node-title { -webkit-line-clamp: 2; }
+#arch-map-stage .node-summary { -webkit-line-clamp: 4; }

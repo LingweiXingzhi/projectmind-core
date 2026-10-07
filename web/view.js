@@ -2,7 +2,7 @@
 // architecture). Extension pages stay reachable under 高级/调试 for raw
 // inspection; no backend semantics are redefined here — every view consumes
 // the existing APIs as-is.
-const VIEW_TITLES = { map: "项目地图", review: "变更审查", collab: "协作交接", explorer: "仓库浏览" };
+const VIEW_TITLES = { arch: "架构工作台", map: "项目地图", review: "变更审查", collab: "协作交接", explorer: "仓库浏览" };
 
 function activateView(name) {
   for (const section of document.querySelectorAll(".view")) {
