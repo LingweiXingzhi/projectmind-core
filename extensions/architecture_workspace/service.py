@@ -271,19 +271,12 @@ class WorkspaceService:
         C validation alone never calls this write entry. The packet proposalId
         identifies C's selection; the draft proposalId remains its V1 lineage.
         """
-        from .proposals import compile_selection
         with self.store.transaction() as db:
             draft = Store.get(db, "draft", identifier(draft_id))
-            context = {k: draft[k] for k in ("workspaceId", "mapId", "mode", "codeRepoId",
-                       "codeRevision", "baseMapRevision", "draftId", "draftRevision")}
-            compiled = compile_selection(proposal, context, selection, operations)
-            rejected_count = sum(len(entry["rejectedCandidates"])
-                                 for entry in draft.get("candidateSelections", []))
-            require(rejected_count + len(compiled["rejectedCandidates"]) <= 128,
-                    detail="单草稿累计拒绝项最多 128 条；请保留本草稿记录并新建草稿继续")
-            require(type(expected_draft_revision) is int
-                    and expected_draft_revision == draft["draftRevision"]
-                    and base_map_revision == draft["baseMapRevision"], "REVISION_CONFLICT")
+            self._check_operations_context(db, draft, expected_draft_revision,
+                                           base_map_revision, draft["proposalId"])
+            compiled = self._compile_candidate_selection(db, draft, proposal,
+                                                          selection, operations)
             # A reused proposal ID may not replace what the user selected.
             key = draft["workspaceId"] + "/" + proposal["proposalId"]
             Store.put(db, "candidate_proposal", key, proposal, immutable=True)
@@ -302,9 +295,93 @@ class WorkspaceService:
                       entry, immutable=True)
             return copy.deepcopy(updated)
 
-    def _apply_operations(self, db, draft_id, *, operations, expected_draft_revision,
-                          base_map_revision, proposal_id):
-        draft = Store.get(db, "draft", identifier(draft_id))
+    @staticmethod
+    def _match_candidate_context(ws, draft, expected):
+        from .proposals import validate_context
+        expected = validate_context(expected)
+        actual = ({k: draft[k] for k in expected} if draft is not None else
+                  {**{k: ws[k] for k in ("workspaceId", "mapId", "mode", "codeRepoId",
+                                         "codeRevision")},
+                   "baseMapRevision": ws["mapRevision"], "draftId": None,
+                   "draftRevision": None})
+        require(all(actual[k] == expected[k] for k in
+                    ("workspaceId", "mapId", "mode", "codeRepoId", "codeRevision", "draftId")),
+                "STALE_CONTEXT")
+        require(actual["baseMapRevision"] == expected["baseMapRevision"]
+                and actual["draftRevision"] == expected["draftRevision"]
+                and actual["baseMapRevision"] == ws["mapRevision"], "REVISION_CONFLICT")
+        return actual
+
+    def validate_candidate_proposal(self, *, proposal, expected_context):
+        """Read-only structure/basis validation in one current-context transaction.
+
+        A patch is not applicable until its explicit selection is simulated or
+        saved. No original proposal or review authority is stored here.
+        """
+        from .proposals import validate_context, validate_proposal
+        expected = validate_context(expected_context)
+        with self.store.transaction() as db:
+            ws = Store.get(db, "workspace", expected["workspaceId"])
+            draft = (Store.get(db, "draft", expected["draftId"])
+                     if expected["draftId"] is not None else None)
+            if draft is not None:
+                current = self._current(db, draft)
+                require(current["workspaceId"] == ws["workspaceId"], "STALE_CONTEXT")
+                self._check_operations_context(db, draft, expected["draftRevision"],
+                                               expected["baseMapRevision"], draft["proposalId"])
+            context = self._match_candidate_context(ws, draft, expected)
+            fixed = validate_proposal(proposal, context)
+            if fixed["kind"] == "bootstrap":
+                for candidate in fixed["candidates"]:
+                    self._evidence(candidate["graph"], context)
+            else:
+                require(draft is not None)
+            return fixed
+
+    def _compile_candidate_selection(self, db, draft, proposal, selection, operations):
+        from .proposals import compile_selection
+        context = {k: draft[k] for k in ("workspaceId", "mapId", "mode", "codeRepoId",
+                   "codeRevision", "baseMapRevision", "draftId", "draftRevision")}
+        compiled = compile_selection(proposal, context, selection, operations)
+        rejected_count = sum(len(entry["rejectedCandidates"])
+                             for entry in draft.get("candidateSelections", []))
+        require(rejected_count + len(compiled["rejectedCandidates"]) <= 128,
+                detail="单草稿累计拒绝项最多 128 条；请保留本草稿记录并新建草稿继续")
+        previous = Store.get(db, "candidate_proposal",
+                             draft["workspaceId"] + "/" + proposal["proposalId"], optional=True)
+        require(previous is None or canonical(previous) == canonical(proposal), "VERSION_CONFLICT")
+        return compiled
+
+    def preview_candidate_selection(self, draft_id, *, proposal, selection, operations,
+                                    expected_context):
+        """Simulate the selected patch with fixed Git evidence; never write/approve.
+
+        The same operation evaluator is used by an actual save. The preview is
+        a point-in-time result, not a CAS lock or a human-review authorization.
+        """
+        with self.store.transaction() as db:
+            draft = Store.get(db, "draft", identifier(draft_id))
+            ws = self._current(db, draft)
+            context = self._match_candidate_context(ws, draft, expected_context)
+            self._check_operations_context(db, draft, context["draftRevision"],
+                                           context["baseMapRevision"], draft["proposalId"])
+            compiled = self._compile_candidate_selection(db, draft, proposal, selection, operations)
+            simulated = self._simulate_operations(copy.deepcopy(draft), compiled["operations"])
+            result = {"context": context, "proposalId": proposal["proposalId"],
+                      "proposalDigest": proposal["proposalDigest"],
+                      "beforeGraph": draft["graph"], "afterGraph": simulated["graph"],
+                      "beforeLayout": draft["layout"], "afterLayout": simulated["layout"],
+                      "selection": compiled["selection"],
+                      "rejectedCandidates": compiled["rejectedCandidates"],
+                      "selectedOperations": compiled["operations"],
+                      "writePerformed": False, "reviewAuthorizationIssued": False,
+                      "validationScope": "selected_operations_graph_and_fixed_evidence",
+                      "limits": ["仅验证本次选中的操作；被拒候选不表示可以应用",
+                                 "未知证据仍未核查；预演不等于批准，保存时重新检查 CAS 与证据"]}
+            return copy.deepcopy({**result, "selectionDigest": digest(result)})
+
+    def _check_operations_context(self, db, draft, expected_draft_revision,
+                                  base_map_revision, proposal_id):
         ws = self._current(db, draft)
         require(draft["status"] not in ("published", "publishing"), "VERSION_CONFLICT")
         require(type(expected_draft_revision) is int
@@ -312,6 +389,17 @@ class WorkspaceService:
                 and draft["baseMapRevision"] == base_map_revision == ws["mapRevision"],
                 "REVISION_CONFLICT")
         require(proposal_id == draft["proposalId"], "STALE_CONTEXT")
+
+    def _apply_operations(self, db, draft_id, *, operations, expected_draft_revision,
+                          base_map_revision, proposal_id):
+        draft = Store.get(db, "draft", identifier(draft_id))
+        self._check_operations_context(db, draft, expected_draft_revision, base_map_revision, proposal_id)
+        draft = self._simulate_operations(draft, operations)
+        Store.put(db, "draft", draft_id, draft)
+        return copy.deepcopy(draft)
+
+    def _simulate_operations(self, draft, operations):
+        """Evaluate operations on a detached draft; no store or authority writes."""
         graph = copy.deepcopy(draft["graph"])
         for operation in copy.deepcopy(operations):
             fields(operation, ("op",), ("id", "value", "changes", "processId",
@@ -382,8 +470,7 @@ class WorkspaceService:
         self._evidence(draft["graph"], draft)
         draft["draftRevision"] += 1; draft["status"] = "unconfirmed"
         draft.pop("reviewId", None)
-        Store.put(db, "draft", draft_id, draft)
-        return copy.deepcopy(draft)
+        return draft
 
     def _preview(self, draft_id, *, actor, reason, expected_draft_revision,
                  expected_map_revision, proposal_id, code_repo_id, code_revision,
@@ -661,5 +748,6 @@ class WorkspaceService:
 # Reject malformed JSON-shaped values at the public service boundary.
 for _method in ("open_workspace", "associate_code", "create_draft", "create_candidate_draft", "get_draft",
                 "apply_draft_operations", "apply_candidate_selection", "record_review", "publish_reviewed_graph",
+                "validate_candidate_proposal", "preview_candidate_selection",
                 "get_version", "export_version", "import_git_version", "graph_snapshot"):
     setattr(WorkspaceService, _method, input_guard(getattr(WorkspaceService, _method)))

@@ -14,7 +14,6 @@ import json
 from pathlib import Path
 import re
 import threading
-import time
 
 from .errors import WorkspaceError, require
 from .git_publication import code_identity, read_git
@@ -149,13 +148,7 @@ class _Handler(BaseHTTPRequestHandler):
                 fields(request, ("apiVersion", "requestId"))
                 require(request["apiVersion"] == API_VERSION)
                 identifier(request["requestId"])
-                with fixture._session_lock:
-                    now = time.time()
-                    fixture.gateway.sessions = {key: value for key, value in
-                        fixture.gateway.sessions.items() if value["expires"] > now}
-                    require(len(fixture.gateway.sessions) < 128,
-                            detail="测试会话数量超过上限")
-                    session = fixture.gateway.create_session("TEST_ONLY_SIMULATED_HUMAN", **boundary)
+                session = fixture.gateway.create_session("TEST_ONLY_SIMULATED_HUMAN", **boundary)
                 result = {"apiVersion": API_VERSION, "requestId": request["requestId"],
                           "status": "fixture_session", "context": fixture.context,
                           "data": {"csrfToken": session["csrfToken"], "fixtureOnly": True,
@@ -200,7 +193,6 @@ class FixtureHTTPServer:
                 and not any(self.state_root == repo or repo in self.state_root.parents
                             for repo in (self.code, self.architecture)),
                 detail="测试状态必须放入新建的仓库外目录")
-        self._session_lock = threading.RLock()
         self._thread = None
         self._closed = False
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)

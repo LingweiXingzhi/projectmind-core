@@ -1,5 +1,8 @@
 # 当前 A/C 合同对照与接线要求
 
+历史记录：本文件保留 2026-10-07 比较。当日后的 A803c 已增加真实 B Gateway/版本接线
+和 C 函数转换；最新核验见 CONTINUATION_DELIVERY_2026-10-08.md，不沿用旧的“未接线”结论。
+
 只读核验来源：GitHub 固定树，均未截断；未改其他成员分支。
 A/integration：b75ad820e0d31e3dadf842b414f6950b5aa46102。
 C：55ea6466583d98e0f466e5d4055922ef4aeecb12。

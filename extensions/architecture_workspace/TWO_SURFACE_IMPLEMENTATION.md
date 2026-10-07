@@ -17,6 +17,7 @@
 | A 操作面 | openWorkspace / readView | 打开已绑定工作区、显式推进固定代码 SHA；分别返回当前代码与正式认知 |
 | A 操作面 | prepareDraft | 手动初图或明确选择的 C bootstrap；始终创建未确认草稿 |
 | A 操作面 | saveDraft | 手动编辑或候选选择；CAS、操作、候选固定和选择审计原子保存 |
+| A 操作面 | previewSelection | 仅预演选中的候选操作与固定证据；零保存、零审核权限 |
 | A 操作面 | restoreAsDraft / associateCode | 恢复历史为新草稿；规划显式关联代码进入 mixed |
 | A 操作面 | previewReview / confirmReview | 实际 before/after、覆盖与拒绝理由；绑定会话和预览 |
 | A 操作面 | publishVersion / publicationStatus | 同会话使用服务端原授权发布/重试；最小状态投影 |
@@ -57,6 +58,7 @@ baseMapRevision/draftId/draftRevision。planning 无代码；existing_project/mi
 | openWorkspace | context（无草稿），可选 targetCodeRevision |
 | prepareDraft | context（无草稿）、graph、origin；候选路径还需 proposal/selectedCandidateId |
 | saveDraft | context、operations；候选路径还需完整 proposal/selection |
+| previewSelection | context、完整 proposal/selection、operations；只允许候选 patch |
 | restoreAsDraft | context（无草稿）、mapRevision |
 | associateCode | context（无草稿）、codeRepoId、codeRevision |
 | previewReview | context、reason、coverage、limits、verifyCode |
@@ -97,6 +99,15 @@ C patch 的 proposalId 标识该次候选，draft.proposalId 保留 V1 草稿来
 旧不可变 version 包与 semantic hash 字段不变。V2 原候选/选择摘要未加入 D 的正式包，
 完整离线候选前后追溯协议仍需 A/C/D 冻结；D 原包已有 appliedOperations/rejectedCandidates。
 
+2026-10-08 增量：previewSelection 在同一当前上下文事务中检查八字段、正式基线、
+完整选择、累计拒绝项和固定候选不可替换；使用保存的同一操作求值器检查图与固定 Git 证据。
+返回 beforeGraph/afterGraph、布局、selectedOperations、选择/拒绝摘要和 selectionDigest。
+writePerformed=false、reviewAuthorizationIssued=false；不保存原候选、不增加草稿修订，
+也不使已有真实审阅失效。selectionDigest 是内容一致性摘要，不是授权或修订锁。
+实际保存仍重验 CAS、证据和引用；被拒候选没有可应用保证，未知证据仍未核查。
+此入口仅在受保护 A surface，不向 C/D 提供图结果读取捷径。
+C validateProposal 改为在一个事务内核对真实当前草稿与正式基线；过期基线不再返回有效。
+
 ## 审阅与恢复
 
 浏览器只拿 previewId/reviewId；facade 的引用到授权绑定保留可信服务端内存。
@@ -107,6 +118,11 @@ C patch 的 proposalId 标识该次候选，draft.proposalId 保留 V1 草稿来
 原有效会话可明确重试，Git commit 中断仍使用 V1 恢复机制。
 过期预览和授权缓存会清理，每个 surface 有 128 项上限。
 
+Gateway 会话现也在分配/有效校验时原位清理过期项，由锁保证容量检查与分配原子执行。
+默认最多 128 个活跃会话，可信服务端可用 max_sessions 配置正整数；不会逐出有效授权。
+容量满为受控 INVALID_INPUT，说明等待过期后重试。A 当前每次预览新建会话，
+长期产品需协调浏览器会话复用/注销策略；本轮不从同名 actor 自动续权。
+
 服务重启/会话失效后内存授权消失，publicationStatus 返回 awaiting_trusted_recovery。
 不从数据库授权记录、actor、reviewId 或原日志恢复发布权；保留现场。
 跨会话明确恢复的权限和存储方案待 A 确认，未实现 resume/reset/重新批准冻结事务。
@@ -114,10 +130,10 @@ C patch 的 proposalId 标识该次候选，draft.proposalId 保留 V1 草稿来
 
 ## 当前公共接入差异
 
-见 AC_ALIGNMENT_2026-10-07.md。A/C 的新分支已经存在，其合同是 DRAFT。
-图结构、代码/图身份、草稿修订、人审授权及 C dispatch 尚有不同。
-本轮可在 B 自身真实 Git、真实 SQLite 和测试 HTTP 适配器运行；
-A 共享工作台、真实 C 推理、D 产品交接与新的全链路验收仍需三方接线。
+AC_ALIGNMENT_2026-10-07.md 是历史差异。2026-10-08 的 A803c 已有真实 B Service/Gateway
+接线及 C 函数转换，接入的 B 仍是较早版本；自己的新 surface 尚未进入远端整合。
+最新隔离组合核验与实际限制见 CONTINUATION_DELIVERY_2026-10-08.md。
+本地组件接续不能代替公共合同冻结、真实 AI、浏览器交互和 D 产品路由验收。
 测试人审只批准合成 fixture，不替真实负责人批准 ProjectMind Model。
 
 Project Model Impact：MINOR（B 职责内包装/原子候选审计，既有责任边界不变）。

@@ -40,6 +40,20 @@ B↔C/D 协作面。设计阶段记录保持；后续实现见 TWO_SURFACE_IMPLE
 本轮实现与实际验证见 TWO_SURFACE_DELIVERY_2026-10-07.md：127 B 测试、
 731 全仓测试（22 skipped）通过；其中 14 项真实 socket 检查和 21 次 CLI 调用。
 
+2026-10-08 的最新增量：会话原位回收/容量并发保护、候选选择只读预演、
+C 当前基线事务校验及 B→实际 D 交接演练。计划见 CONTINUATION_PLAN_2026-10-08.md；
+当前交付与固定组合来源见 CONTINUATION_DELIVERY_2026-10-08.md。
+公网准备方案见 PUBLIC_DEPLOYMENT_PREPARATION_2026-10-08.md，状态为 NOT_DEPLOYED。
+
+在核验过的共装目录内（含 D c8b 的实际组件）可运行：
+
+```sh
+python -m extensions.architecture_workspace.d_handoff_smoke --test-fixture-only --output /absolute/new/b-d-fixture
+```
+
+它先跑 B 新 surface，随后用 D build/inspect 检查实际 Git 包和第二 clone；
+D 固定消费文件 blob 不匹配会受控拒绝。只演练测试夹具，不接公共 D 路由或公网。
+
 ## 服务与隔离
 
 `WorkspaceService(explicit_absolute_data_root, code_repositories=[...],

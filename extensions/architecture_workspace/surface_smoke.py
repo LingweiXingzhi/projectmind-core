@@ -194,7 +194,13 @@ def run(output, *, test_fixture_only=False):
         {"candidateId": "candidate-title", "decision": "reject", "operationIds": [], "reason": rejected_reason},
     ]
     save_request = {"context": context, "proposal": proposal, "selection": selection, "operations": operations}
+    before = _documents(service)
+    selection_preview = user_call("previewSelection", save_request)
+    assert selection_preview["data"]["writePerformed"] is False
+    assert selection_preview["data"]["reviewAuthorizationIssued"] is False
+    assert _documents(service) == before
     saved = user_call("saveDraft", save_request)
+    assert saved["data"]["draft"]["graph"] == selection_preview["data"]["afterGraph"]
     assert saved["context"]["draftRevision"] == context["draftRevision"] + 1
     assert saved["data"]["draft"]["operations"] == operations
     assert next(node for node in saved["data"]["draft"]["graph"]["nodes"]
@@ -278,6 +284,7 @@ def run(output, *, test_fixture_only=False):
             "mapId": ws["mapId"], "architectureBranch": FIXTURE_BRANCH,
             "publishedVersionRef": reference, "architectureFinalHead": git(architecture, "rev-parse", "HEAD")},
         "checks": {"bootstrapSelected": True, "validationReadOnly": True, "selectionApplied": True,
+            "selectionPreviewReadOnly": True, "selectionPreviewEqualsSave": True,
             "rejectReasonPreserved": True, "staleCASRejected": True, "noReviewPublishDenied": True,
             "workerWriteDenied": True, "publicSecretsAbsent": True, "sameSessionPublication": True,
             "dExactExportEqual": True, "secondClonePacketEqual": True, "secondCloneVersionRefEqual": True,

@@ -16,6 +16,7 @@ from extensions.architecture_workspace.errors import WorkspaceError
 from extensions.architecture_workspace.fixture_http import (
     FixtureHTTPServer, FIXTURE_ORIGIN, FIXTURE_BRANCH, COOKIE, MAX_BODY, SOCKET_TIMEOUT)
 from extensions.architecture_workspace.proposals import API_VERSION
+from extensions.architecture_workspace.schema import digest
 from extensions.architecture_workspace.git_publication import GitPublisher, read_git
 from extensions.architecture_workspace.smoke import init, git, graph
 
@@ -205,6 +206,39 @@ class FixtureSurfaceHTTPTests(unittest.TestCase):
             self.assertTrue(all(value.encode() not in data for data in persisted))
             self.assertNotIn(value.encode(), version_bytes)
             self.assertTrue(all(value.encode() not in data for data in self.code_state()["files"].values()))
+
+    def test_real_http_selection_preview_is_protected_read_only_and_equals_save(self):
+        auth, context = self.session()
+        candidate, context = self.prepare(auth, context)
+        op = {"op": "node.update", "operationId": "op-http-preview", "source": "rule_based",
+              "id": candidate["nodes"][0]["id"],
+              "changes": {"responsibility": "Previewed fixture responsibility"}}
+        proposal = {"apiVersion": API_VERSION, "proposalId": "http-preview-proposal",
+                    "kind": "patch", "basis": context,
+                    "generation": {"source": "rule_based", "runId": "http-fixture", "fixtureOnly": True},
+                    "candidates": [{"candidateId": "http-candidate", "operations": [op]}],
+                    "unknowns": []}
+        proposal["proposalDigest"] = digest(proposal)
+        request = {"context": context, "proposal": proposal, "operations": [op],
+                   "selection": [{"candidateId": "http-candidate", "decision": "accept",
+                                  "operationIds": [op["operationId"]]}]}
+        before = self.server.service.store.path.read_bytes()
+        status, _, result = self.user("previewSelection", auth, **request)
+        self.assertEqual(status, 200, result)
+        self.assertFalse(result["data"]["writePerformed"])
+        self.assertFalse(result["data"]["reviewAuthorizationIssued"])
+        self.assertEqual(self.server.service.store.path.read_bytes(), before)
+        self.assertEqual(self.server.api._previews, {})
+        self.assertEqual(self.server.api._reviews, {})
+        bad_status, _, denied = self.user("previewSelection", {**auth, "X-CSRF-Token": "forged"},
+                                         **request)
+        self.assert_error(bad_status, denied, 403, "REQUEST_FORBIDDEN")
+        self.assertEqual(self.server.service.store.path.read_bytes(), before)
+        save_status, _, saved = self.user("saveDraft", auth, **request)
+        self.assertEqual(save_status, 200, saved)
+        self.assertEqual(saved["data"]["draft"]["graph"], result["data"]["afterGraph"])
+        self.assertEqual(self.code_state(), self.code_before)
+        self.assertEqual(git(self.arch, "rev-parse", "HEAD"), self.arch_before)
 
     def test_transport_does_not_log_session_headers_or_request_failures(self):
         captured = StringIO()

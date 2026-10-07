@@ -17,7 +17,7 @@ import time
 
 from .errors import WorkspaceError, require
 from .git_publication import GitPublisher
-from .proposals import API_VERSION, validate_context, validate_proposal
+from .proposals import API_VERSION, validate_context
 from .schema import canonical, fields, identifier, MAP_REV
 from .storage import Store
 
@@ -110,7 +110,8 @@ class _ScopedSurface:
         if isinstance(draft_id, str):
             try:
                 candidate = self._draft(draft_id)
-                if all(candidate[k] == ws[k] for k in CONTEXT_FIELDS[:5]):
+                if (all(candidate[k] == ws[k] for k in CONTEXT_FIELDS[:5])
+                        and candidate["baseMapRevision"] == ws["mapRevision"]):
                     draft = candidate
             except WorkspaceError:
                 pass
@@ -136,6 +137,7 @@ class UserWorkspaceAPI(_ScopedSurface):
     """
     ACTIONS = {
         "openWorkspace": "_open", "readView": "_read", "prepareDraft": "_prepare",
+        "previewSelection": "_preview_selection",
         "saveDraft": "_save", "restoreAsDraft": "_restore", "associateCode": "_associate",
         "previewReview": "_preview", "confirmReview": "_confirm",
         "publishVersion": "_publish", "publicationStatus": "_status",
@@ -256,6 +258,14 @@ class UserWorkspaceAPI(_ScopedSurface):
             draft = self._service.apply_draft_operations(draft["draftId"],
                                   proposal_id=draft["proposalId"], **args)
         return self._view(request, draft)
+
+    def _preview_selection(self, request, auth, binding):
+        _request(request, ("context", "proposal", "selection", "operations"))
+        self._expect(request["context"], needs_draft=True)
+        result = self._service.preview_candidate_selection(request["context"]["draftId"],
+                    proposal=request["proposal"], selection=request["selection"],
+                    operations=request["operations"], expected_context=request["context"])
+        return _success(request, result["context"], result, "selection_preview")
 
     def _restore(self, request, auth, binding):
         _request(request, ("context", "mapRevision"))
@@ -422,13 +432,9 @@ class CollaborationAPI(_ScopedSurface):
             if action == "validateProposal":
                 _request(request, ("context", "proposal"))
                 require(self._role == "C", "REQUEST_FORBIDDEN")
-                _, draft = self._expect(request["context"])
-                proposal = validate_proposal(request["proposal"], request["context"])
-                if proposal["kind"] == "bootstrap":
-                    for candidate in proposal["candidates"]:
-                        self._service._evidence(candidate["graph"], request["context"])
-                else:
-                    require(draft is not None)
+                self._expect(request["context"])
+                proposal = self._service.validate_candidate_proposal(
+                    proposal=request["proposal"], expected_context=request["context"])
                 return _success(request, request["context"],
                     {"proposalId": proposal["proposalId"], "proposalDigest": proposal["proposalDigest"],
                      "candidateIds": [c["candidateId"] for c in proposal["candidates"]],
