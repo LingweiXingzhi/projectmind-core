@@ -20,31 +20,59 @@ def probe(base, fixture_code, second_code, output, target_head):
     def result(r):
         if r['status']!=200:raise AssertionError(r)
         return r['response']
+    # public writes require a live server-side session plus its anti-forgery
+    # header (D-A-02); the probe drives that real path, then proves a write
+    # without it is refused (below).
+    from http.cookies import SimpleCookie
+    from archloop.web_session import SESSION_COOKIE as SESSION_COOKIE_NAME
+    session_url = base + '/api/archloop/session?operator=TEST_ONLY_D_PROBE_OPERATOR'
+    session_request = Request(session_url, headers={'Origin': base})
+    with urlopen(session_request, timeout=15) as response:
+        session_body = json.loads(response.read())
+        raw_cookie = response.headers.get('Set-Cookie') or ''
+    jar = SimpleCookie(); jar.load(raw_cookie)
+    token = session_body.get('csrfToken')
+    cookie = None
+    if SESSION_COOKIE_NAME in jar:
+        cookie = f"{SESSION_COOKIE_NAME}={jar[SESSION_COOKIE_NAME].value}"
+    observations.append({'case':'write_session','status':200,
+                         'csrfIssued':bool(token),'cookieIssued':bool(cookie),
+                         'httpOnly': 'httponly' in raw_cookie.lower(),
+                         'operatorDeclared':True})
+    if not token or not cookie:
+        findings.append({'id':'D-A-02','owner':'A','severity':'HIGH',
+            'detail':'Server did not issue a write session cookie/CSRF token; the public write path cannot be exercised'})
+    def auth_headers():
+        return {'Cookie':cookie,'X-CSRF-Token':token}
+    def write(path,body=None,explicit=None):
+        return call(path,body,explicit if explicit is not None else auth_headers())
     status=result(call('/api/archloop'))
+    identity_observations=[]
     for repo in [fixture_code,second_code]:
-        r=result(call('/api/archloop/workspaces',{'context':'existing_project',
+        r=result(write('/api/archloop/workspaces',{'context':'existing_project',
             'title':'D_TEST_ONLY existing','repoPath':str(repo),'description':'Temporary fixture, expected A B C'}))
-        observations.append({'case':'existing_identity','identity':r['identity'],'workspaceId':r['workspace']['workspaceId']})
-    first_id,second_id=[x['identity']['codeRepoId'] for x in observations]
+        entry={'case':'existing_identity','identity':r['identity'],'workspaceId':r['workspace']['workspaceId']}
+        identity_observations.append(entry);observations.append(entry)
+    first_id,second_id=[x['identity']['codeRepoId'] for x in identity_observations]
     b_id=code_identity(fixture_code)
     if first_id!=second_id or first_id!=b_id:
         findings.append({'id':'D-A-01','owner':'A','severity':'HIGH',
             'detail':'A IDs differ between same-origin clones and differ from B exact origin identity',
             'actual':{'AFirst':first_id,'ASecond':second_id,'B':b_id},
             'expected':'Shared registered repository identity; path differences must not change it'})
-    planning=result(call('/api/archloop/workspaces',{'context':'planning','title':'D_TEST_ONLY planning',
+    planning=result(write('/api/archloop/workspaces',{'context':'planning','title':'D_TEST_ONLY planning',
         'goals':'Expected A B C','constraints':'No code required','description':'Temporary acceptance fixture'}))
     wid=planning['workspace']['workspaceId']
     observations.append({'case':'planning_null_sha','identity':planning['identity']})
-    production=call('/api/archloop/workspaces/'+wid+'/generate',{})
+    production=write('/api/archloop/workspaces/'+wid+'/generate',{})
     observations.append({'case':'real_ai_generation','status':production['status'],'response':production['response']})
     sample=result(call('/api/archloop/sample-graph?context=planning'))
-    candidate=result(call('/api/archloop/workspaces/'+wid+'/generate',
+    candidate=result(write('/api/archloop/workspaces/'+wid+'/generate',
         {'mode':'dev_sample','sampleGraph':sample['graph']}))
-    draft=result(call('/api/archloop/workspaces/'+wid+'/apply-candidate',{'candidateId':candidate['candidateId']}))
+    draft=result(write('/api/archloop/workspaces/'+wid+'/apply-candidate',{'candidateId':candidate['candidateId']}))
     node=draft['draft']['graph']['nodes'][0]
     operation={'type':'update_node','nodeId':node['id'],'fields':{'summary':'D actual public HTTP correction'}}
-    edited=call('/api/archloop/workspaces/'+wid+'/apply-ops',
+    edited=write('/api/archloop/workspaces/'+wid+'/apply-ops',
         {'expectedDraftRevision':draft['draft']['draftRevision'],'operations':[operation]})
     reopen=call('/api/archloop/workspaces/'+wid)
     observed_summary = (reopen.get('response',{}).get('draft') or {}).get('graph',{}).get('nodes',[{}])[0].get('summary')
@@ -52,12 +80,12 @@ def probe(base, fixture_code, second_code, output, target_head):
         findings.append({'id':'D-A-04','owner':'A','severity':'HIGH','detail':'Direct edit did not persist after HTTP reopen'})
     observations.append({'case':'public_edit_reopen_component','editStatus':edited['status'],
         'reopenStatus':reopen['status'],'observedSummary':observed_summary,'origin':'dev_sample','notRealAI':True})
-    review=call('/api/archloop/workspaces/'+wid+'/review',
+    review=write('/api/archloop/workspaces/'+wid+'/review',
         {'expectedMapRevision':reopen['response']['draft']['graph']['mapRevision'],
          'decision':'accept','actor':'TEST_ONLY_SIMULATED_HUMAN','reason':'Sample must not publish'})
     observations.append({'case':'sample_cannot_publish','status':review['status'],'response':review['response']})
-    bad_origin=call('/api/archloop/workspaces',{'context':'planning','title':'D blocked cross-site'},
-                    {'Origin':'http://other.invalid'})
+    bad_origin=write('/api/archloop/workspaces',{'context':'planning','title':'D blocked cross-site'},
+                    {'Origin':'http://other.invalid',**auth_headers()})
     observations.append({'case':'cross_origin_reject','status':bad_origin['status']})
     # No Origin/Cookie/CSRF: a genuine request, not a static code inference.
     req=Request(base+'/api/archloop/workspaces',data=json.dumps(

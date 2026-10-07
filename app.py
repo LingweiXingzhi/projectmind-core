@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import json
 import math
 import os
@@ -1019,9 +1020,9 @@ def main() -> None:
                         help="架构发布分支（architecture/candidates/...）")
     parser.add_argument("--archloop-code-repo", type=Path, action="append", default=None,
                         help="登记给版本服务的代码仓库路径（可重复；身份由 origin URL 决定）")
-    parser.add_argument("--archloop-verify-command", type=str, nargs="+", default=None,
-                        help="修正任务 verified 的真实验证命令（服务端配置；在回挂版本上执行，"
-                             "以退出码与输出摘要作为核查凭据）")
+    parser.add_argument("--archloop-verify-command", type=str, default=None,
+                        help="修正任务 verified 的真实验证命令（服务端配置的单个命令行字符串，"
+                             "在回挂版本上执行，以退出码与输出摘要作为核查凭据）")
     args = parser.parse_args()
     try:
         repo, map_path, explorer_enabled = resolve_runtime(args.repo, args.map)
@@ -1053,10 +1054,12 @@ def main() -> None:
                 from extensions.continuity.store import Store as ContinuityStore
                 continuity_store = ContinuityStore(
                     Path(args.archloop_backend_data) / "continuity-fix-tasks.sqlite3")
+                verify_command = (shlex.split(args.archloop_verify_command)
+                                  if args.archloop_verify_command else None)
                 provider = None
-                if args.archloop_verify_command:
+                if verify_command:
                     provider = make_command_verification_provider(
-                        args.archloop_verify_command, workbench=service)
+                        verify_command, workbench=service)
                 fix_service = FixTaskService(
                     continuity_store, architecture_repo=args.archloop_architecture_repo,
                     code_repositories=[path for path in args.archloop_code_repo],
@@ -1064,7 +1067,7 @@ def main() -> None:
                 service.bind_backend_d(BackendD(
                     service, fix_service, architecture_repo=args.archloop_architecture_repo,
                     code_repositories={str(path): str(path) for path in args.archloop_code_repo},
-                    verification_command=args.archloop_verify_command))
+                    verification_command=verify_command))
                 print("D 修正任务服务: 已接入（authoritative）", flush=True)
             except Exception as exc:  # a broken D must not fake availability
                 print(f"D 修正任务服务: 未接入（{type(exc).__name__}: {exc}）", flush=True)
