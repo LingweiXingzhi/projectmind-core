@@ -25,6 +25,8 @@ from archloop.backend_b import (BackendB, a_to_b_graph, b_to_a_graph, coverage_f
                                 diff_to_operations)
 from archloop.contract import ContractError
 from archloop.service import WorkbenchService
+from archloop.web_session import CSRF_HEADER
+from tests.archloop_http_session import establish_session
 
 ORIGIN = "http://127.0.0.1:8899"
 META = {"peer": "127.0.0.1", "host": "127.0.0.1:8899", "origin": ORIGIN}
@@ -424,6 +426,8 @@ class RealBackendFlowTests(unittest.TestCase):
 class HttpSeamTests(unittest.TestCase):
     """Real HTTP calls: server-side sessions, loopback/origin checks."""
 
+    _session = None
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.tmp = tempfile.TemporaryDirectory()
@@ -441,6 +445,7 @@ class HttpSeamTests(unittest.TestCase):
         cls.backend.allowed_origin = f"http://127.0.0.1:{cls.port}"
         from extensions.architecture_workspace import HumanReviewGateway
         cls.backend.gateway = HumanReviewGateway(cls.backend.service, cls.backend.allowed_origin)
+        cls._session = None
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -448,13 +453,25 @@ class HttpSeamTests(unittest.TestCase):
         cls.server.server_close()
         cls.tmp.cleanup()
 
-    def call(self, method: str, path: str, payload: dict | None = None, origin: str | None = None):
+    def call(self, method: str, path: str, payload: dict | None = None, origin: str | None = None,
+             session: bool = True):
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
         request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", data=data, method=method)
         if data is not None:
             request.add_header("Content-Type", "application/json")
         if origin is not None:
             request.add_header("Origin", origin)
+        if data is not None and session:
+            # the public write seam requires a live server-side session plus its
+            # anti-forgery header (D-A-02); tests drive it like the browser
+            if self.__class__._session is None:
+                self.__class__._session = establish_session(
+                    f"http://127.0.0.1:{self.port}", operator="HTTP 测试操作者")
+            cookie, csrf = self.__class__._session
+            if cookie:
+                request.add_header("Cookie", cookie)
+            if csrf:
+                request.add_header(CSRF_HEADER, csrf)
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
                 return response.status, json.loads(response.read().decode("utf-8"))

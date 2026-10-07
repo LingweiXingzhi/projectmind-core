@@ -39,6 +39,12 @@ KEY_VALUE_PATTERN = re.compile(
 # credential words, matched as whole name components (never as substrings)
 SECRET_KEY_COMPONENTS = ("key", "token", "secret", "password", "passwd", "credential", "credentials")
 SECRET_ANYWHERE_COMPONENTS = ("secret", "password", "passwd", "credential", "credentials")
+# compound credential words that a single all-caps or unseparated component can
+# spell without a casing boundary (`APIKEY`, `AccessToken`, `clientSECRET`)
+SECRET_COMPOUND_COMPONENTS = ("apikey", "authkey", "accesskey", "secretkey", "privatekey",
+                              "signingkey", "encryptionkey", "apisecret", "authsecret",
+                              "clientsecret", "accesstoken", "authtoken", "refreshtoken",
+                              "sessiontoken", "bearertoken", "idtoken", "apitoken")
 # documentation placeholders are not credentials (a README shows how to set a key)
 PLACEHOLDER_MARKERS = ("你的", "<", ">", "your", "xxx", "example", "placeholder",
                        "changeme", "todo", "redacted", "*", "…")
@@ -53,14 +59,19 @@ def _key_name_is_secret(name: str) -> bool:
     honoured anywhere (`secret_key_base`). Substrings like `monkey`, `keynote`
     or `service_name` must NOT count — a substring match would exclude ordinary
     configuration files from the pack (BATCH-3 GEN-01).
+
+    Abbreviated camelCase must split on the acronym boundary too: `clientAPIKey`
+    / `APIKey` are `client` + `API` + `Key`, not `client` + `apikey`
+    (BATCH-4 GEN-01). A component with no casing boundary at all is compared
+    against the known compound credential words (`APIKEY`, `ACCESSTOKEN`).
     """
     if not name:
         return False
-    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name)
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name)
     parts = [part.lower() for part in re.split(r"[^A-Za-z0-9]+", spaced) if part]
     if not parts:
         return False
-    if parts[-1] in SECRET_KEY_COMPONENTS:
+    if parts[-1] in SECRET_KEY_COMPONENTS or parts[-1] in SECRET_COMPOUND_COMPONENTS:
         return True
     return any(part in SECRET_ANYWHERE_COMPONENTS for part in parts)
 

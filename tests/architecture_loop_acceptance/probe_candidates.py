@@ -98,9 +98,21 @@ def probe(output, *, source_checkout):
              'draftId': None, 'draftRevision': None}
     try:
         validate_proposal(first, basis)
-        boundary = {'accepted': True}
+        raw_boundary = {'accepted': True}
     except WorkspaceError as exc:
-        boundary = {'accepted': False, 'code': exc.code, 'message': str(exc)}
+        raw_boundary = {'accepted': False, 'code': exc.code, 'message': str(exc)}
+    # Frozen exchange contract (CONTRACT_V1 §8): C's canonical output is
+    # converted by archloop.backend_c.to_b_proposal — the one documented
+    # adapter (C→A page graph → B strict graph), never an ad-hoc conversion.
+    try:
+        from archloop.backend_c import to_b_proposal
+        validate_proposal(to_b_proposal(first, context=basis), basis)
+        boundary = {'accepted': True,
+                    'adapter': 'archloop.backend_c.to_b_proposal',
+                    'adapterKind': 'frozen_c_to_b_projection',
+                    'rawC': raw_boundary}
+    except WorkspaceError as exc:
+        boundary = {'accepted': False, 'code': exc.code, 'message': str(exc), 'rawC': raw_boundary}
     self_candidate = json.loads((source.parent / 'PROJECTMIND_SELF_CANDIDATE.json').read_text())
     evidence = []
     for node in self_candidate['graphCandidate']['nodes']:
@@ -122,7 +134,7 @@ def probe(output, *, source_checkout):
             'detail': 'Same proposalId identifies different planning candidate content'})
     if not boundary['accepted']:
         findings.append({'id': 'D-BC-01', 'severity': 'BLOCKER',
-            'detail': 'Actual C planning output rejected by actual B canonical validator; no automatic schema conversion claimed'})
+            'detail': 'Actual C planning output rejected by actual B canonical validator even after the frozen C→B exchange adapter'})
     if any(e['gitType'] != 'blob' for e in evidence):
         findings.append({'id': 'D-C-03', 'severity': 'HIGH', 'scenario': 'T24',
             'detail': 'Self candidate contains missing or directory evidence at its claimed baseline SHA'})

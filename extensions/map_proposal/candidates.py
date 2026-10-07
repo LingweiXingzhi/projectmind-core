@@ -17,6 +17,27 @@ def _make_proposal_id(prefix: str, data: str) -> str:
     return f"{prefix}_{h}"
 
 
+def _semantic_content_digest(candidate: dict) -> str:
+    """Identity of a candidate must bind its semantic content (D-C-02).
+
+    Two planning candidates for the same workspace with a different number of
+    nodes or different titles/roles are different candidates: they must not
+    share one proposalId, or a later apply/review step can silently target the
+    wrong content. This digest covers the graph candidate and, for planning,
+    the requirement basis — never layout or run timing.
+    """
+    import json as _json
+    material = {
+        "mode": candidate.get("mode"),
+        "codeRepoId": candidate.get("codeRepoId"),
+        "codeRevision": candidate.get("codeRevision"),
+        "graphCandidate": candidate.get("graphCandidate"),
+    }
+    canonical = _json.dumps(material, ensure_ascii=False, sort_keys=True,
+                            separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
+
+
 def generate_bootstrap_proposal(context: dict) -> dict:
     """生成初版架构候选（Bootstrap）。
 
@@ -48,8 +69,8 @@ def generate_bootstrap_proposal(context: dict) -> dict:
                 "expectedProcesses": goal.get("processes", [])
             })
 
-        return {
-            "proposalId": _make_proposal_id("prop_boot_plan", workspace_id + str(len(nodes))),
+        proposal = {
+            "proposalId": "",
             "workspaceId": workspace_id,
             "mode": "planning",
             "kind": "rule_based",
@@ -63,6 +84,10 @@ def generate_bootstrap_proposal(context: dict) -> dict:
             },
             "warnings": []
         }
+        # the id binds the semantic content of this candidate, not just the
+        # workspace and node count (D-C-02): different goals → different id
+        proposal["proposalId"] = "prop_boot_plan_" + _semantic_content_digest(proposal)
+        return proposal
 
     # 已有项目或混合模式
     repo_id = context.get("codeRepoId")
@@ -106,8 +131,8 @@ def generate_bootstrap_proposal(context: dict) -> dict:
             "expectedProcesses": []
         })
 
-    return {
-        "proposalId": _make_proposal_id("prop_boot_code", f"{repo_id}_{code_rev}"),
+    proposal = {
+        "proposalId": "",
         "workspaceId": workspace_id,
         "mode": mode,
         "kind": "rule_based",
@@ -120,6 +145,10 @@ def generate_bootstrap_proposal(context: dict) -> dict:
         },
         "warnings": []
     }
+    # same rule as planning: the id binds the candidate content, so two
+    # different clusterings of one revision cannot share an identity (D-C-02)
+    proposal["proposalId"] = "prop_boot_code_" + _semantic_content_digest(proposal)
+    return proposal
 
 
 def generate_nl_correction_patch(base_graph: dict, selection: dict, prompt: str) -> dict:
@@ -231,28 +260,62 @@ def detect_process_deviations(graph: dict, observed_traces: list) -> dict:
 
     对照图上已确认的过程步骤与实际追踪证据。
     若无运行时追踪证据，如实返回 UNKNOWN，不将静态导入伪装成调用链。
+
+    证据身份先于结论（D-C-01）：一条轨迹只有在其声明的 codeRepoId /
+    codeRevision 与图一致、且确实覆盖了该节点声明的步骤时，才能支撑
+    ALIGNED / DEVIATION_DETECTED；错仓、错 SHA、无关轨迹或缺少预期步骤
+    的输入被记录为 rejected/inconclusive，整体结论保持 UNKNOWN，绝不误报
+    ALIGNED。
     """
     if not observed_traces:
         return {
             "status": "ok",
             "verdict": "UNKNOWN",
             "deviations": [],
+            "rejectedTraces": [],
+            "coveredNodes": [],
             "reason": "缺少可验证的运行时执行追踪数据；静态导入关系不代表运行时执行调用链。"
         }
 
+    expected_repo = graph.get("codeRepoId")
+    expected_revision = graph.get("codeRevision")
+    usable: list[tuple[int, dict]] = []
+    rejected: list[dict] = []
+    for index, trace in enumerate(observed_traces):
+        if not isinstance(trace, dict) or not isinstance(trace.get("called_steps"), list):
+            rejected.append({"traceIndex": index, "reason": "轨迹缺少 called_steps 列表，无法作为观察证据"})
+            continue
+        if expected_repo is not None and trace.get("codeRepoId") not in (None, expected_repo):
+            rejected.append({"traceIndex": index, "reason": "轨迹声明的是另一个代码仓库身份（codeRepoId 不匹配）",
+                             "traceRepoId": trace.get("codeRepoId"), "expectedRepoId": expected_repo})
+            continue
+        if expected_revision is not None and trace.get("codeRevision") not in (None, expected_revision):
+            rejected.append({"traceIndex": index, "reason": "轨迹记录的是另一个代码版本（codeRevision 不匹配）",
+                             "traceRevision": trace.get("codeRevision"), "expectedRevision": expected_revision})
+            continue
+        usable.append((index, trace))
+
     deviations = []
+    covered_nodes: set[str] = set()
+    inconclusive: list[dict] = []
     for node in graph.get("nodes", []):
         expected_steps = node.get("expectedProcesses", [])
         if len(expected_steps) < 2:
             continue
-
-        for trace in observed_traces:
+        for index, trace in usable:
             called_steps = trace.get("called_steps", [])
+            target_id = node.get("nodeId")
+            if not set(called_steps) & set(expected_steps):
+                # the trace says nothing about this node's declared process:
+                # it can neither confirm nor deny it
+                inconclusive.append({"traceIndex": index, "nodeId": target_id,
+                                     "reason": "轨迹未覆盖该节点声明的任何步骤，不足以判断一致性"})
+                continue
+            covered_nodes.add(target_id)
             for idx in range(len(expected_steps) - 1):
                 cur_step = expected_steps[idx]
                 next_step = expected_steps[idx + 1]
                 if cur_step in called_steps and next_step not in called_steps:
-                    target_id = node.get("nodeId")
                     deviations.append({
                         "deviationId": f"dev_{target_id}_{cur_step}_{next_step}",
                         "nodeId": target_id,
@@ -263,9 +326,23 @@ def detect_process_deviations(graph: dict, observed_traces: list) -> dict:
                         "recommendation": "可选择【修正认知】更新期望执行过程，或【修正实现】创建代码补丁任务。"
                     })
 
+    if deviations:
+        verdict = "DEVIATION_DETECTED"
+        reason = ""
+    elif covered_nodes:
+        verdict = "ALIGNED"
+        reason = "轨迹覆盖了这些节点声明的步骤且未发现绕过；一致性仅在覆盖范围内成立。"
+    else:
+        verdict = "UNKNOWN"
+        reason = ("没有一条轨迹覆盖图上声明的期望步骤，或轨迹来自其他仓库/版本；"
+                  "证据不足时不报告 ALIGNED。")
     return {
         "status": "ok",
-        "verdict": "DEVIATION_DETECTED" if deviations else "ALIGNED",
+        "verdict": verdict,
         "deviations": deviations,
-        "warnings": []
+        "rejectedTraces": rejected,
+        "inconclusive": inconclusive[:20],
+        "coveredNodes": sorted(covered_nodes),
+        "reason": reason,
+        "warnings": [],
     }

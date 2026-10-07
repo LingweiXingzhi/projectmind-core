@@ -50,6 +50,10 @@ ERROR_CODES = {
     "DIRTY_ARCHITECTURE_REPO": HTTPStatus.CONFLICT,
     "PUBLICATION_FAILED": HTTPStatus.SERVICE_UNAVAILABLE,
     "STORAGE_FAILED": HTTPStatus.SERVICE_UNAVAILABLE,
+    # Workbench write sessions (D-A-02): a public write without a live
+    # server-side session, or with a missing/mismatched anti-forgery token.
+    "FORBIDDEN_SESSION": HTTPStatus.FORBIDDEN,
+    "FORBIDDEN_CSRF": HTTPStatus.FORBIDDEN,
 }
 
 

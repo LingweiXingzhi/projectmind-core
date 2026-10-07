@@ -55,13 +55,22 @@ def _git_object_exists(repo: str, revision: str) -> bool:
 
 
 def _request(base_url: str, method: str, path: str, payload: dict | None = None,
-             origin: str | None = None, timeout: int = 60):
+             origin: str | None = None, timeout: int = 60,
+             session: tuple[str | None, str | None] | None = None):
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     request = urllib.request.Request(base_url + path, data=data, method=method)
     if data is not None:
         request.add_header("Content-Type", "application/json")
     if origin:
         request.add_header("Origin", origin)
+    if data is not None and session:
+        # public writes need the server-side session and its anti-forgery
+        # header (D-A-02); the runner establishes one like a real browser
+        cookie, csrf = session
+        if cookie:
+            request.add_header("Cookie", cookie)
+        if csrf:
+            request.add_header("X-CSRF-Token", csrf)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             body = response.read().decode("utf-8", errors="replace")
@@ -156,11 +165,12 @@ def self_coverage_verdict(status, body, repo: str, identity: dict | None = None,
     The candidate must come from a workspace bound to a *real* full commit of
     THIS project (the runner confirms the revision exists and computes the
     tree's file counts locally): identity revision, coverage revision and the
-    local HEAD must agree, and the coverage's tracked/python counts must equal
-    this repository's real tree at that revision with a real number of files.
-    A placeholder like "HEAD", a nonexistent SHA, another repository or an
-    identity that disagrees with the coverage does not qualify as "ProjectMind
-    itself" (BATCH-2 + BATCH-3 ACCEPTANCE-01).
+    independently read Git HEAD must agree, and the coverage's tracked/python
+    counts must equal this repository's real tree at that revision with a real
+    number of files. A placeholder like "HEAD", a nonexistent SHA, another
+    repository, an identity that disagrees with the coverage, or a revision
+    that is merely echoed back by the service does not qualify as "ProjectMind
+    itself" (BATCH-2 + BATCH-3 + BATCH-4 ACCEPTANCE-01).
     """
     body = body or {}
     identity = identity or {}
@@ -199,6 +209,9 @@ class Acceptance:
         self.repo = repo
         self.arch_repo = arch_repo
         self.origin = self.base_url
+        # declared local operator bound to the server-side write session
+        self.operator = "验收操作者"
+        self._session: tuple[str | None, str | None] = (None, None)
         self.results: list[dict] = []
         self.workspace_id: str | None = None
         self.planning_id: str | None = None
@@ -212,9 +225,27 @@ class Acceptance:
                              "evidence": evidence if isinstance(evidence, str)
                              else json.dumps(evidence, ensure_ascii=False)[:1500]})
 
-    def call(self, method: str, path: str, payload=None, origin=True):
+    def establish_session(self) -> tuple[str | None, str | None]:
+        """Real HTTP session bootstrap: cookie + CSRF token from the server."""
+        import urllib.parse
+        from http.cookies import SimpleCookie
+        from .web_session import SESSION_COOKIE
+        url = f"{self.base_url}/api/archloop/session?operator={urllib.parse.quote(self.operator)}"
+        request = urllib.request.Request(url, method="GET")
+        request.add_header("Origin", self.origin)
+        with urllib.request.urlopen(request, timeout=30) as response:
+            body = json.loads(response.read().decode("utf-8"))
+            raw = response.headers.get("Set-Cookie") or ""
+        jar = SimpleCookie()
+        jar.load(raw)
+        cookie = f"{SESSION_COOKIE}={jar[SESSION_COOKIE].value}" if SESSION_COOKIE in jar else None
+        self._session = (cookie, body.get("csrfToken"))
+        return self._session
+
+    def call(self, method: str, path: str, payload=None, origin=True, session=True):
         return _request(self.base_url, method, path, payload,
-                        self.origin if origin else None)
+                        self.origin if origin else None,
+                        session=self._session if session else None)
 
     def git(self, *args):
         return subprocess.run(["git", "-C", self.repo, *args], capture_output=True,
@@ -242,6 +273,16 @@ class Acceptance:
 
     # ---------- the 28 items ----------
     def run(self) -> dict:
+        # public write seam: establish the server-side session first, then
+        # prove that a write without it is refused (D-A-02)
+        self.establish_session()
+        status, refused = self.call("POST", "/api/archloop/workspaces",
+                                    {"context": "planning", "title": "无会话写入"},
+                                    session=False)
+        self.record("T00", "无服务端会话/防伪令牌的写入口被拒绝",
+                    "PASS" if status == 403 and (refused or {}).get("error", {}).get("code")
+                    in ("FORBIDDEN_SESSION", "FORBIDDEN_CSRF") else "FAIL",
+                    {"http": status, "code": (refused or {}).get("error", {}).get("code")})
         ws = self.require_workspace()
         planning = self.require_planning()
         head = self.git("rev-parse", "HEAD")
@@ -458,37 +499,52 @@ class Acceptance:
         self.record("T17", "修正认知产生新草稿（编辑与纠正均写入草稿）", "PASS",
                     {"draftRevision": record["draft"]["draftRevision"], "note": "见 T03/T04 的实际写入"})
 
-        # T18 fix-implementation task
+        # T18 fix-implementation task. The fix is delivered as a real scoped
+        # commit on an independent branch (D rejects main/master submissions,
+        # out-of-scope files and non-inherited baselines).
+        fix_branch = "acceptance/fix-" + time.strftime("%H%M%S")
+        fix_scope = ["acceptance_change.py"]
+        self.git("checkout", "-b", fix_branch)
+        fix_target = Path(self.repo) / "acceptance_change.py"
+        with open(fix_target, "a", encoding="utf-8") as handle:
+            handle.write("# acceptance fix %s\n" % time.time())
+        self.git("add", "acceptance_change.py")
+        self.git("-c", "user.email=a@local", "-c", "user.name=a", "commit", "-m", "acceptance scoped fix")
+        fix_commit = self.git("rev-parse", "HEAD")
         status, task = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks", {
             "deviation": "验收：期望步骤在实现中被绕过", "acceptance": "重新执行验收用例并通过",
             "expectedProcessRef": f"{node_id}/s1", "evidence": evidence_paths[:1],
-            "actor": "验收操作者"})
-        task_ok = status == 200 and task.get("taskId") and task.get("status") == "queued"
+            "scope": fix_scope, "actor": "验收操作者"})
+        task_ok = status == 200 and (task.get("id") or task.get("taskId")) and task.get("status") == "queued"
+        task_id = (task or {}).get("id") or (task or {}).get("taskId")
         self.record("T18", "修正实现创建可交付的持久化任务",
                     "PASS" if task_ok else "FAIL",
-                    {"taskId": (task or {}).get("taskId"), "status": (task or {}).get("status"),
-                     "targetCodeRevision": (task or {}).get("targetCodeRevision")})
+                    {"taskId": task_id, "status": (task or {}).get("status"),
+                     "targetCodeRevision": (task or {}).get("codeRevision"),
+                     "scope": (task or {}).get("scope"), "error": (task or {}).get("error")})
         if task_ok:
             status, listing = self.call("GET", f"/api/archloop/workspaces/{ws}/fix-tasks")
             self.record("T18b", "任务可列出并带验收条件",
                         "PASS" if listing.get("tasks") and listing["tasks"][0].get("acceptance") else "FAIL",
                         {"count": len(listing.get("tasks", []))})
-            status, fixcommit = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task['taskId']}",
-                                          {"status": "submitted", "actor": "验收实施者",
-                                           "commitSha": after, "summary": "验收修复提交"})
+            status, fixcommit = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                          {"status": "submitted",
+                                           "commitSha": fix_commit, "summary": "验收修复提交"})
             self.record("T19a", "实施提交回挂后进入 verification_pending（不自动关闭）",
                         "PASS" if status == 200 and fixcommit.get("status") == "verification_pending" else "FAIL",
-                        {"status": (fixcommit or {}).get("status")})
-            status, verified = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task['taskId']}",
-                                         {"status": "verified", "actor": "验收负责人",
-                                          "confirmedBy": "验收负责人", "commitSha": after,
-                                          "verificationEvidence": [
-                                              {"case": "重新执行验收用例", "result": "通过"},
-                                              {"evidence": "实施提交在验收仓库中真实存在"}]})
-            self.record("T19b", "人确认核查结论后关闭偏差（限定核查范围）",
+                        {"status": (fixcommit or {}).get("status"),
+                         "error": (fixcommit or {}).get("error"), "commit": fix_commit})
+            status, verified = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                         {"status": "verified",
+                                          "reason": "本轮实测通过，人确认关闭偏差"})
+            verification = (verified or {}).get("verification") or {}
+            self.record("T19b", "人确认本轮实测核查结论后关闭偏差",
                         "PASS" if status == 200 and verified.get("status") == "verified" else "FAIL",
                         {"status": (verified or {}).get("status"),
-                         "scope": (verified.get("verification") or {}).get("scope")})
+                         "exitCode": verification.get("exitCode"),
+                         "outputDigest": verification.get("outputDigest"),
+                         "error": (verified or {}).get("error")})
+        self.git("checkout", "-")
 
         # T20/T21 same-version handover to a second copy is verified by the test suite;
         # here we export the package and confirm the identities.
@@ -539,7 +595,12 @@ class Acceptance:
             self_identity = (self_ws or {}).get("identity") or {}
             status, rule = self.call("POST", f"/api/archloop/workspaces/{self_id}/generate",
                                      {"mode": "rule_based"})
-            local_head = self_identity.get("codeRevision")
+            # The expected revision is read from THIS repository directly with
+            # Git — never echoed back from the service response. Comparing the
+            # response against itself would accept any existing commit; the
+            # independent HEAD proves the version actually under audit
+            # (BATCH-4 ACCEPTANCE-01).
+            local_head = self.git("rev-parse", "HEAD")
             exists = _git_object_exists(str(REPO_ROOT), local_head)
             tracked_local, python_local = (None, None)
             if exists:
@@ -548,6 +609,9 @@ class Acceptance:
                 status, rule, str(REPO_ROOT), identity=self_identity, revision_exists=exists,
                 expected_revision=local_head, expected_tracked=tracked_local,
                 expected_python=python_local)
+            t24_evidence["headSource"] = "独立读取：验收器对被测 checkout 执行 git rev-parse HEAD"
+            t24_evidence["identityMatchesIndependentHead"] = (
+                self_identity.get("codeRevision") == local_head)
             self.record("T24", "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）",
                         t24_status, t24_evidence)
 

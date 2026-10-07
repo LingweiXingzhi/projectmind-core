@@ -53,6 +53,10 @@ class WorkbenchService:
         # Optional real B version service (single adapter layer: backend_b.py).
         # Bound by app.py from server-side configuration only.
         self.backend_b = None
+        # Optional D fix-task authority (backend_d.py) and the registered code
+        # roots its verification provider may resolve commits in.
+        self.backend_d = None
+        self.code_repo_roots: list[str] = []
 
     # ---------- injected git access ----------
 
@@ -354,7 +358,8 @@ class WorkbenchService:
                 record["lastContextPack"] = self._context_pack_summary(context_pack, source_revision)
             if mode == "rule_based":
                 # explicit rule-based route (C's engine), never labeled as AI
-                candidate = backend_c.bootstrap_candidate(record["context"], record)
+                candidate = self._c_call("bootstrap_candidate",
+                                             {"context": record["context"], "record": record})
                 graph = self._evidence_guard(candidate["graph"], record, source_revision)
                 graph["mapRevision"] = semantic_revision(graph)
                 candidate_id = f"cand_{secrets.token_hex(5)}"
@@ -579,7 +584,9 @@ class WorkbenchService:
                 note = preview["note"]
             elif mode == "rule_based":
                 # explicit C rule engine route: real module, labeled rule_based
-                reply = backend_c.nl_patch_candidate(draft["graph"], selected[0], instruction)
+                reply = self._c_call("nl_patch_candidate",
+                                             {"graph": draft["graph"], "nodeId": selected[0],
+                                              "instruction": instruction})
                 operations = reply["operations"]
                 probe_graph = draft["graph"]
                 for op in operations:
@@ -711,17 +718,43 @@ class WorkbenchService:
         return {"operations": operations, "graph": preview_graph,
                 "note": "演示纠正预览：由本地确定性规则生成，仅验证交互；不代表 AI 输出。"}
 
-    # ---------- implementation fix tasks (persisted, A-side) ----------
+    # ---------- implementation fix tasks (persisted; D authoritative when bound) --
+
+    def _backend_d(self):
+        backend_d = getattr(self, "backend_d", None)
+        if backend_d is None or not getattr(backend_d, "available", False):
+            return None
+        return backend_d
 
     def list_fix_tasks(self, workspace_id: str) -> dict:
-        record = self.store.load_workspace(workspace_id)
+        self.store.load_workspace(workspace_id)
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            listing = backend_d.list_tasks(workspace_id)
+            listing["workspaceId"] = workspace_id
+            listing["statuses"] = list(fix_tasks_module.STATUSES)
+            return listing
         tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
         return {"workspaceId": workspace_id, "tasks": tasks,
                 "statuses": list(fix_tasks_module.STATUSES),
+                "backend": {"kind": "a_local_seam", "ref": "A 兼容 seam（D 未接入）"},
                 "labeled": ("A 工作台持久化的实施任务；提交回挂后仍需人确认核查结论"
                             if tasks else "该工作区还没有修正任务")}
 
-    def update_fix_task(self, workspace_id: str, task_id: str, request: dict) -> dict:
+    def update_fix_task(self, workspace_id: str, task_id: str, request: dict,
+                        server_context: dict | None = None) -> dict:
+        self.store.load_workspace(workspace_id)
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            # D owns the task state machine; the operator comes from the
+            # server-side write session, never from the request body
+            task = backend_d.update(task_id, request, server_context)
+            if task.get("workspaceId") != workspace_id:
+                raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
+            self.store.append_history(workspace_id, {
+                "type": "fix_task_update", "at": _utcnow(), "taskId": task_id,
+                "status": task.get("status"), "backend": "d_fix_tasks"})
+            return task
         with workspace_lock(workspace_id):
             task = fix_tasks_module.update_task(self.store.root, workspace_id, task_id, request)
             self.store.append_history(workspace_id, {
@@ -730,6 +763,13 @@ class WorkbenchService:
             return task
 
     def fix_task_markdown(self, workspace_id: str, task_id: str) -> dict:
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            task = backend_d.get_task(task_id)
+            if task.get("workspaceId") != workspace_id:
+                raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
+            return {**backend_d.markdown(task_id), "taskId": task_id,
+                    "filename": f"{task_id}.md"}
         task = fix_tasks_module.load_task(self.store.root, workspace_id, task_id)
         return {"taskId": task_id, "markdown": fix_tasks_module.task_markdown(task),
                 "filename": f"{task_id}.md"}
@@ -747,14 +787,23 @@ class WorkbenchService:
             raise ContractError("VALIDATION_FAILED", "尚未产生正式版本；交接包必须指向不可变版本")
         envelope = self._backend_b().export_version(binding["workspaceId"], map_revision)
         version = envelope["version"]
-        tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            tasks = [{"taskId": task.get("id"), "status": task.get("status"),
+                      "observation": task.get("deviation", "")[:200],
+                      "targetCodeRevision": task.get("codeRevision")}
+                     for task in backend_d.list_tasks(workspace_id)["tasks"]]
+            producer = "A 工作台导出；任务状态来自 D 的权威修正任务服务（PR #54）"
+        else:
+            tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
+            producer = "A 工作台（D 的同版交接模块未接入时的兼容导出；结构与 CONTRACT_V1 一致）"
         open_tasks = [{"taskId": task["taskId"], "status": task["status"],
                        "observation": task.get("observation", "")[:200],
                        "targetCodeRevision": task.get("targetCodeRevision")}
                       for task in tasks if task.get("status") != "verified"]
         package = {
             "packageType": "architecture_handover_v1",
-            "producer": "A 工作台（D 的同版交接模块未接入时的兼容导出；结构与 CONTRACT_V1 一致）",
+            "producer": producer,
             "workspaceId": workspace_id,
             "mapId": version["mapId"],
             "mapRevision": version["mapRevision"],
@@ -868,7 +917,8 @@ class WorkbenchService:
         traces = request.get("observedTraces")
         if traces is not None and not isinstance(traces, list):
             raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表（可为空）")
-        result = backend_c.deviations_for(draft["graph"], traces or [])
+        result = self._c_call("deviations_for",
+                                  {"graph": draft["graph"], "traces": traces or []})
         result["draftRevision"] = draft["draftRevision"]
         result["mapRevision"] = draft["graph"].get("mapRevision")
         result["observedTracesProvided"] = bool(traces)
@@ -901,7 +951,9 @@ class WorkbenchService:
                 "renamed_files": [{"from": c.get("oldPath"), "to": c["path"]}
                                   for c in changes if c["code"].startswith("R")],
             }
-            reply = backend_c.incremental_candidate(draft["graph"], base, target, facts_diff)
+            reply = self._c_call("incremental_candidate",
+                                             {"graph": draft["graph"], "baseCodeRevision": base,
+                                              "targetCodeRevision": target, "factsDiff": facts_diff})
             reply.update({"status": "ok", "baseCodeRevision": base, "targetCodeRevision": target,
                           "changeSummary": {"added": len(facts_diff["added_files"]),
                                             "modified": len(facts_diff["modified_files"]),
@@ -1008,6 +1060,37 @@ class WorkbenchService:
                 "labeled": "B 的真实版本服务（架构草稿/人审/不可变版本）",
             })
 
+    def bind_backend_c(self, backend=None) -> None:
+        """Register C's real candidate engine as the proposal backend.
+
+        C ships with this repository, so the workbench registers it whenever
+        the module is importable; the registered state then reflects the calls
+        the service actually makes (D-A-03), instead of an unregistered
+        side-channel import.
+        """
+        descriptor = backend if backend is not None else backend_c.descriptor()
+        if descriptor is None:
+            return
+        self.adapter.register("correction", descriptor)
+
+    def bind_backend_d(self, backend) -> None:
+        """Register D's real fix-task/handover backend (authoritative seam)."""
+        self.backend_d = backend
+        if backend is not None and getattr(backend, "available", False):
+            self.adapter.register("handoff", backend.descriptor())
+
+    def bind_code_repositories(self, paths) -> None:
+        """Registered code roots this instance may verify fix-task commits in."""
+        self.code_repo_roots = [str(path) for path in (paths or [])]
+
+    def _c_call(self, action: str, payload: dict) -> dict:
+        """Call C through its registered adapter (falls back to the module only
+        when no descriptor is registered, e.g. a bare unit-test service)."""
+        descriptor = self.adapter._backends.get("correction")
+        if descriptor is not None:
+            return call_backend(descriptor, action, payload)
+        return backend_c.call(action, payload)
+
     def _backend_b(self):
         backend_b = getattr(self, "backend_b", None)
         if backend_b is None or not backend_b.available:
@@ -1017,9 +1100,14 @@ class WorkbenchService:
 
     def backend_status(self) -> dict:
         backend_b = getattr(self, "backend_b", None)
+        backend_d = getattr(self, "backend_d", None)
         return {
             "versionService": backend_b.status() if backend_b is not None
             else {"available": False, "reason": "未绑定 B 版本服务", "kind": "unavailable"},
+            "candidates": backend_c.c_status(),
+            "fixTasks": (backend_d.status() if backend_d is not None
+                         else {"available": False, "kind": "unavailable",
+                               "reason": "未绑定 D 修正任务服务"}),
             "adapter": self.adapter.listing(),
             "generation": generate_module.generate_status(),
             "persistence": self._backend_label(),
@@ -1618,7 +1706,8 @@ class WorkbenchService:
                                                  "draftRevision": draft["draftRevision"]})
         return self._envelope(record)
 
-    def create_fix_task(self, workspace_id: str, request: dict) -> dict:
+    def create_fix_task(self, workspace_id: str, request: dict,
+                        server_context: dict | None = None) -> dict:
         with workspace_lock(workspace_id):
             record = self.store.load_workspace(workspace_id)
             draft = record.get("draft")
@@ -1627,7 +1716,17 @@ class WorkbenchService:
             mode = request.get("mode", "production")
             if mode == DEV_SAMPLE_MODE:
                 return self._sample_fix_task(record, draft, request)
-            # a registered real handoff backend (D, once delivered) owns the
+            # D's real FixTaskService is authoritative whenever it is bound:
+            # one store owns task state, A adapts the request (CONTRACT_V1 §7)
+            backend_d = self._backend_d()
+            if backend_d is not None:
+                task = backend_d.create(record, draft, request, server_context)
+                self.store.append_history(workspace_id, {
+                    "type": "fix_task", "at": _utcnow(), "taskId": task.get("id") or task.get("taskId"),
+                    "deviationId": task.get("deviationId"),
+                    "targetCodeRevision": task.get("codeRevision"), "backend": "d_fix_tasks"})
+                return task
+            # a registered real handoff backend (legacy extension seam) owns the
             # delegation; without one, the workbench persists a real task
             # itself instead of falling back to a sample
             try:

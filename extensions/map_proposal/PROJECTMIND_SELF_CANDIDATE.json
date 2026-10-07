@@ -3,7 +3,7 @@
   "kind": "rule_based",
   "status": "candidate",
   "codeRepoId": "LingweiXingzhi/projectmind-core",
-  "codeRevision": "c3d524dc2c61b03e6df55ed416d3cefaf2cbb4db",
+  "codeRevision": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
   "verifiedCodeRevision": null,
   "description": "ProjectMind 自身新增职责功能图候选草稿（待人审裁决）",
   "graphCandidate": {
@@ -73,11 +73,13 @@
         "evidence": [
           {
             "kind": "source_module",
-            "path": "extensions/handoff/"
+            "path": "extensions/handoff/handoff.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
           },
           {
             "kind": "source_module",
-            "path": "extensions/continuity/"
+            "path": "extensions/continuity/store.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
           }
         ],
         "interfaces": [
@@ -93,7 +95,8 @@
         "evidence": [
           {
             "kind": "source_module",
-            "path": "extensions/worklog/"
+            "path": "extensions/worklog/store.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
           }
         ],
         "interfaces": [
@@ -109,7 +112,8 @@
         "evidence": [
           {
             "kind": "source_module",
-            "path": "extensions/continuity_github/"
+            "path": "extensions/continuity_github/service.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
           }
         ],
         "interfaces": []
@@ -134,6 +138,8 @@
     ]
   },
   "warnings": [
-    "此架构图为 Role C 依据基线代码事实生成的候选建议草稿，未经人审确认为正式版本。"
+    "此架构图为 Role C 依据基线代码事实生成的候选建议草稿，未经人审确认为正式版本。",
+    "本轮集成分支修复：codeRevision 固定为本轮起点 803c6736d1ab01bee004a77c2d2b3b140b28cb12；原先的 c3d524d 提交中 candidates.py 尚不存在，且目录路径不是可取证的 blob（D-C-03）。",
+    "候选内容仍待人审裁决；固定提交只说明证据取自哪一版代码事实。"
   ]
 }
