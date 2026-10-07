@@ -275,5 +275,79 @@ class Final2FixTests(unittest.TestCase):
         self.assertTrue([e for e in history if e["type"] == "review_decision"])
 
 
+class Final3FixTests(unittest.TestCase):
+    """Red/green evidence for the FINAL-3 findings."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.service = service_with_git(Path(self.tmp.name))
+        self.repo = tiny_repo(Path(self.tmp.name))
+        envelope = self.service.create_workspace({
+            "context": "existing_project", "title": "示例",
+            "repoPath": str(self.repo), "description": "说明",
+        })
+        self.workspace_id = envelope["workspace"]["workspaceId"]
+
+    def apply_sample(self, workspace_id: str) -> dict:
+        generated = self.service.generate(workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        return self.service.apply_candidate(workspace_id, {"candidateId": generated["candidateId"]})
+
+    def test_import_claiming_sample_origin_stays_tainted(self) -> None:
+        # FINAL-3 F2: submitting a sample graph as a "legacy map" cannot
+        # launder it — an explicit dev_sample origin stays in origin+lineage
+        # and review is refused with 403 and no decision record.
+        self.apply_sample(self.workspace_id)
+        envelope = self.service.load_draft(self.workspace_id)
+        legacy = {"note": "旧图", "origin": "dev_sample", "nodes": [
+            {"id": "legacy_x", "title": "旧节点", "summary": "旧职责", "entryPoint": "",
+             "evidence": []}], "edges": []}
+        result = self.service.import_legacy_map(self.workspace_id, {
+            "legacyMap": legacy, "expectedDraftRevision": envelope["identity"]["draftRevision"]})
+        self.assertEqual(result["draft"]["origin"], "dev_sample")
+        self.assertIn("dev_sample", result["draft"]["lineage"])
+        with self.assertRaises(ContractError) as caught:
+            self.service.submit_review(self.workspace_id, {
+                "expectedMapRevision": result["draft"]["graph"]["mapRevision"],
+                "decision": "accept", "actor": "tester",
+            })
+        self.assertEqual(caught.exception.code, "DEV_SAMPLE_DISABLED")
+        history = self.service.store.load_history(self.workspace_id)
+        self.assertFalse([e for e in history if e["type"] == "review_decision"])
+
+    def test_identity_drops_published_facts_when_draft_moves_on(self) -> None:
+        # FINAL-3 F5: published mapSource/verified identities apply only while
+        # the current draft IS the published revision; afterwards they are
+        # null in the identity view and lastPublish keeps the facts.
+        self.apply_sample(self.workspace_id)
+        record = self.service.store.load_workspace(self.workspace_id)
+        record["draft"]["origin"] = "ai_candidate"
+        record["draft"]["lineage"] = ["ai_candidate"]
+        self.service.store.save_workspace_record(record)
+        self.service.adapter.register("persistence", {
+            "kind": "extension:test-b",
+            "call": lambda action, payload: {"status": "published",
+                                             "mapSourceRevision": "c" * 40,
+                                             "verifiedCodeRevision": None},
+        })
+        envelope = self.service.load_draft(self.workspace_id)
+        published = self.service.submit_review(self.workspace_id, {
+            "expectedMapRevision": envelope["draft"]["graph"]["mapRevision"],
+            "decision": "accept", "actor": "tester", "reason": "发布身份分离验证",
+        })
+        self.assertEqual(published["identity"]["mapSourceRevision"], "c" * 40)
+        self.assertIsNotNone(published["lastPublish"])
+        # edit the draft: the published facts must leave the identity view
+        moved = self.service.apply_ops(self.workspace_id, {
+            "expectedDraftRevision": published["identity"]["draftRevision"],
+            "operations": [{"type": "update_node", "nodeId": "n_a", "fields": {"summary": "发布后编辑"}}],
+        })
+        self.assertIsNone(moved["identity"]["mapSourceRevision"])
+        self.assertIsNone(moved["identity"]["verifiedCodeRevision"])
+        self.assertEqual(moved["lastPublish"]["mapSourceRevision"], "c" * 40)
+        self.assertEqual(moved["draft"]["publishedMapRevision"], published["lastPublish"]["mapRevision"])
+
+
 if __name__ == "__main__":
     unittest.main()

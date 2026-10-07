@@ -308,7 +308,7 @@
       return true;
     } catch (error) {
       if (error.code === "REVISION_CONFLICT") {
-        setStatus("arch-draft-status", "草稿已被其他窗口修改（版本冲突）。请重新打开工作区，对比差异后再继续。", true);
+        setStatus("arch-draft-status", `编辑冲突（${error.code}）：草稿已被其他窗口修改。请重新打开工作区，对比差异后再继续。`, true);
       } else {
         setStatus("arch-draft-status", `应用失败（${error.code}）：${error.message}`, true);
       }

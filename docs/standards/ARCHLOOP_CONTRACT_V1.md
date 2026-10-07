@@ -58,7 +58,7 @@ BAD_REQUEST / VALIDATION_FAILED(400) · NOT_FOUND(404) · STALE_CONTEXT / REVISI
 
 版本身份补充：candidate（服务端存储）带 sourceCodeRevision；draft 带 generationMeta（unknowns/openQuestions/来源 SHA）；发布写回前做原子草稿复核（FINAL-1 #4）。
 
-来源谱系（FINAL-2）：draft.lineage 记录来源链（候选 origin、legacy_import 等）。人审拒绝条件是当前 origin 或谱系中含 dev_sample——替换样例草稿（如 legacy 导入）不会洗去标记。发布后 envelope.lastPublish 保存最近一次发布的 mapRevision/mapSourceRevision/verifiedCodeRevision/actor，与当前草稿身份分开表达。
+来源谱系（FINAL-2/3）：draft.lineage 记录来源链（候选 origin、legacy_import 等）。人审拒绝条件是当前 origin 或谱系中含 dev_sample——替换样例草稿（如 legacy 导入）不会洗去标记；导入请求或导入图自带 dev_sample 来源时，导入结果同样保持污染。发布后 envelope.lastPublish 保存最近一次发布的 mapRevision/mapSourceRevision/verifiedCodeRevision/actor；identity 中的 mapSourceRevision/verifiedCodeRevision 仅在当前草稿就是已发布修订时呈现，草稿前进后为 null（FINAL-3 F5）。
 
 ## 6. 对 B 的接线请求（persistence capability）
 

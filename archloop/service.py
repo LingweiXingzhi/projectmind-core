@@ -150,13 +150,24 @@ class WorkbenchService:
         draft = record.get("draft")
         draft_revision = draft.get("draftRevision") if draft else None
         map_revision = draft.get("graph", {}).get("mapRevision") if draft else None
+        # mapSourceRevision / verifiedCodeRevision are facts about the
+        # PUBLISHED graph; they apply to the identity only while the current
+        # draft IS that published revision. Once the draft moves on, the
+        # identity view nulls them and lastPublish carries the facts
+        # (FINAL-3 finding F5).
+        identity = dict(record["identity"])
+        last_publish = record.get("lastPublish")
+        published_here = bool(last_publish) and draft is not None             and map_revision == last_publish.get("mapRevision")
+        if not published_here:
+            identity["mapSourceRevision"] = None
+            identity["verifiedCodeRevision"] = None
         return {
             "workspace": {key: record.get(key) for key in
                           ("workspaceId", "title", "context", "description", "goals", "constraints",
                            "createdAt", "updatedAt")},
-            "identity": identity_view(record["identity"], map_revision, draft_revision),
+            "identity": identity_view(identity, map_revision, draft_revision),
             "draft": draft,
-            "lastPublish": record.get("lastPublish"),
+            "lastPublish": last_publish,
             "backend": self._backend_label(),
             "generation": generate_module.generate_status(),
             "mode": mode,
@@ -768,12 +779,21 @@ class WorkbenchService:
         # (FINAL-2 finding F1)
         graph["mapRevision"] = semantic_revision(graph)
         graph["mapRevision"] = semantic_revision(graph)
-        draft = self._new_draft(record, graph, origin="legacy_import")
+        # F2 (FINAL-3): an import that claims dev_sample origin stays tainted —
+        # a sample graph cannot launder itself into a reviewable legacy_import
+        # by being submitted as a "legacy map".
+        import_origin = "legacy_import"
+        if request.get("origin") == "dev_sample" or legacy.get("origin") == "dev_sample":
+            import_origin = "dev_sample"
+        draft = self._new_draft(record, graph, origin=import_origin)
         # replacing a sample draft does not wash its mark: the origin chain is
         # carried so review still refuses sample-tainted lineages (FINAL-2 F2)
+        lineage = []
         if existing_draft is not None:
-            draft["lineage"] = list(existing_draft.get("lineage", [existing_draft.get("origin")])) + ["legacy_import"]
+            lineage = list(existing_draft.get("lineage", [existing_draft.get("origin")]))
             draft["publishedMapRevision"] = existing_draft.get("publishedMapRevision")
+        lineage.append(import_origin)
+        draft["lineage"] = lineage
         record["draft"] = draft
         record["updatedAt"] = _utcnow()
         self.store.save_workspace_record(record)
