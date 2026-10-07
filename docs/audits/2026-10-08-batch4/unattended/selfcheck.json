@@ -1,0 +1,300 @@
+{
+  "run_id": "ZCODE-CLOSE-20261007-1757-K7",
+  "at": "2026-10-07T23:52:41+08:00",
+  "model_call_made": false,
+  "queue_read_ok": true,
+  "queue_view": {
+    "pending": [],
+    "total": 5
+  },
+  "lock_idempotent_ok": true,
+  "verdict_selftest_ok": true,
+  "verdict_cases": [
+    {
+      "case": "overall_fail_single_item_pass_in_prose",
+      "expected": "CHANGES_REQUESTED",
+      "got": "CHANGES_REQUESTED",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "fieldline_pass_without_unverified",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "prose_pass_only_no_field",
+      "expected": "INVALID_NO_STRUCTURED_RESULT",
+      "got": "INVALID_NO_STRUCTURED_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "nonzero_exit_with_stale_pass_reply",
+      "expected": "INVALID_EXIT",
+      "got": "INVALID_EXIT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "sha_mismatch",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "empty_reply",
+      "expected": "INVALID_EMPTY_REPLY",
+      "got": "INVALID_EMPTY_REPLY",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass",
+      "expected": "PASS",
+      "got": "PASS",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_with_findings",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_missing_findings",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_null_findings",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_object_findings",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_numeric_findings",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_nonlist_unverified",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_missing_unverified",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_null_unverified",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "findings_text_none_must_not_pass",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "findings_text_wu_must_not_pass",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "structured_json_pass_string_findings",
+      "expected": "INVALID_RESULT",
+      "got": "INVALID_RESULT",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "quota_error_text_no_reply",
+      "expected": "RATE_LIMITED",
+      "got": "RATE_LIMITED",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "network_error_text",
+      "expected": "NETWORK_ERROR",
+      "got": "NETWORK_ERROR",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    },
+    {
+      "case": "auth_error_text",
+      "expected": "AUTH_ERROR",
+      "got": "AUTH_ERROR",
+      "pass": true,
+      "label": "SIMULATED_RESULT_NOT_A_MODEL_CALL"
+    }
+  ],
+  "proc_selftest_ok": true,
+  "proc_cases": [
+    {
+      "case": "unregistered_pid",
+      "expect_deny": "NOT_REGISTERED",
+      "got": "NOT_REGISTERED",
+      "pass": true
+    },
+    {
+      "case": "foreign_run_entry",
+      "expect_deny": "FOREIGN_RUN",
+      "got": "FOREIGN_RUN",
+      "pass": true
+    },
+    {
+      "case": "dead_pid",
+      "expect_deny": "PID_DEAD",
+      "got": "PID_DEAD",
+      "pass": true
+    },
+    {
+      "case": "pid_reused_creation_mismatch",
+      "expect_deny": "PID_REUSED",
+      "got": "PID_REUSED",
+      "pass": true,
+      "pid_info_available": true
+    },
+    {
+      "case": "creation_unrecorded",
+      "expect_deny": "CREATION_UNRECORDED",
+      "got": "CREATION_UNRECORDED",
+      "pass": true
+    },
+    {
+      "case": "dir_unrecorded",
+      "expect_deny": "DIR_UNRECORDED",
+      "got": "DIR_UNRECORDED",
+      "pass": true
+    },
+    {
+      "case": "dir_ownership_changed",
+      "expect_deny": "DIR_MISMATCH",
+      "got": "DIR_MISMATCH",
+      "pass": true
+    },
+    {
+      "case": "port_owner_changed",
+      "expect": "PORT_OWNER_CHANGED",
+      "got": "PORT_OWNER_CHANGED",
+      "pass": true,
+      "observed_port_owner": 27284
+    },
+    {
+      "case": "port_not_listening",
+      "expect": "PORT_NOT_LISTENING",
+      "got": "PORT_NOT_LISTENING",
+      "pass": true
+    },
+    {
+      "case": "creation_instant_mismatch",
+      "expect_deny": "PID_REUSED",
+      "got": "PID_REUSED",
+      "pass": true
+    },
+    {
+      "case": "dir_prefix_mismatch",
+      "expect_deny": "DIR_MISMATCH",
+      "got": "DIR_MISMATCH",
+      "pass": true
+    },
+    {
+      "case": "verified_owned_dry_run",
+      "expect": "VERIFIED_OWNED",
+      "got": "VERIFIED_OWNED",
+      "pass": true,
+      "killed": false
+    }
+  ],
+  "duplicate_trigger_refused": true,
+  "fresh_unreadable_lock_protected": true,
+  "log_line": "[2026-10-07T23:52:46+08:00] self-check executed (no model call)",
+  "lock_reclaim_selftest_ok": true,
+  "lock_reclaim_cases": [
+    {
+      "case": "reclaim_never_clobbers_a_fresh_lock",
+      "refused": true,
+      "surviving_request": "racer-took-the-name",
+      "pass": true
+    },
+    {
+      "case": "stale_dead_lock_is_reclaimed_cleanly",
+      "acquired": true,
+      "lock_pid": 19720,
+      "pass": true
+    }
+  ],
+  "lease_fencing_selftest_ok": true,
+  "lease_fencing_cases": [
+    {
+      "case": "displaced_holder_sees_loss",
+      "lease_held": false,
+      "pass": true
+    },
+    {
+      "case": "displaced_holder_child_is_killed",
+      "lease_lost": true,
+      "returncode": 1,
+      "elapsed_seconds": 1.0,
+      "pass": true
+    },
+    {
+      "case": "release_never_removes_a_foreign_lock",
+      "removed": false,
+      "surviving_owner": "third-party",
+      "pass": true
+    }
+  ],
+  "queue_concurrency_selftest_ok": true,
+  "queue_concurrency_cases": [
+    {
+      "case": "unlocked_interleave_loses_a_package",
+      "lost": true,
+      "pass": true
+    },
+    {
+      "case": "locked_concurrent_queue_add_keeps_both",
+      "final": [
+        "SELFTEST-A",
+        "SELFTEST-B"
+      ],
+      "results": [
+        true,
+        true
+      ],
+      "errors": [],
+      "pass": true
+    }
+  ],
+  "ok": true
+}

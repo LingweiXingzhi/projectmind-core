@@ -1,0 +1,12 @@
+{
+  "source_control_relative_path": "receipts/BATCH-4/attempt-001/events.jsonl",
+  "original_bytes": 179756,
+  "original_sha256": "fd90e69411992e1b943c4281d5168652b7eb936edd90ccdc67d3e9a29c5a2718",
+  "event_count": 39,
+  "last_event_type": "turn.completed",
+  "turn_completed_count": 1,
+  "full_event_stream_published": false,
+  "stderr_published": false,
+  "exit_code_is_inferred": true,
+  "note": "This metadata excerpt supports the recorded completion event; it does not independently record the subprocess exit code."
+}

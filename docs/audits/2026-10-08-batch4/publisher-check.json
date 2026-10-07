@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-10-07T16:40:18.557426+00:00",
+  "scope": "Evidence publication only; no new audit and no bug fixes.",
+  "target_sha": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
+  "product_head": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
+  "remote_product_head": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
+  "product_worktree_clean": true,
+  "active_controller_equals_frozen_snapshot": true,
+  "reply_verdict_findings_and_unverified_match": true,
+  "finding_counts": {
+    "P1": 2,
+    "P2": 4
+  },
+  "gen01_pure_helper_probe_current": {
+    "revision": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
+    "key_name_is_secret": false,
+    "looks_like_secret": false,
+    "synthetic_input": "CONFIG={\"clientAPIKey\":\"SYNTHETIC_TEST_CREDENTIAL_1234567890\"}",
+    "real_model_called": false,
+    "context_pack_built": false
+  },
+  "gen01_pure_helper_probe_previous": {
+    "revision": "c62b5c0789879fa585824471396246ab21161106",
+    "key_name_is_secret": null,
+    "looks_like_secret": true,
+    "synthetic_input": "CONFIG={\"clientAPIKey\":\"SYNTHETIC_TEST_CREDENTIAL_1234567890\"}",
+    "real_model_called": false,
+    "context_pack_built": false
+  },
+  "full_suite_rerun": false,
+  "all_six_findings_independently_reproduced": false,
+  "real_model_called": false,
+  "auto_review_started": false,
+  "project_model_impact": "NONE"
+}
