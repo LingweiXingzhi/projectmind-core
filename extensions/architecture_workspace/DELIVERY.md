@@ -13,6 +13,10 @@ INTEGRATED=PENDING；D_VERIFIED=PENDING；CONTRACT_V1_A_REVIEW=PENDING；
 最终独立精确 SHA 审计 AUDIT_PENDING；USER_MODEL_REVIEW_PENDING。
 本地自查结果不写成外部 Codex 审计 PASS，不写整条产品主线已完成。
 
+后续自查发现并修复 5 个边界问题；新的复现、验证与限制见
+SELF_REVIEW_2026-10-07.md。下方 37/641 项为首交付历史记录，
+后续自查以该报告与 verification/self-review-* 的实际日志为准。
+
 ## Files Changed
 
 仅 extensions/architecture_workspace/** 与 tests/test_archloop_b_service.py。

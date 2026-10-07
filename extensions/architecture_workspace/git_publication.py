@@ -98,7 +98,9 @@ class GitPublisher:
             current = current / part
             require(not current.is_symlink(), "PUBLICATION_CONFLICT")
         target.parent.mkdir(parents=True, exist_ok=True)
-        fd, temporary = tempfile.mkstemp(prefix=".publication-", dir=target.parent)
+        # A hard exit before replace must not leave an unexpected tracked-tree
+        # file that blocks journal recovery. Git metadata is on the same volume.
+        fd, temporary = tempfile.mkstemp(prefix="architecture-publication-", dir=self.repo / ".git")
         try:
             with os.fdopen(fd, "wb") as stream:
                 stream.write(content); stream.flush(); os.fsync(stream.fileno())
@@ -128,9 +130,10 @@ class GitPublisher:
 
     def publish(self, journal):
         # Shared across separate service instances/data roots, never tracked.
-        lock = sqlite3.connect(self.repo / ".git/architecture-publication-lock.sqlite",
-                               timeout=15, isolation_level=None)
+        lock = None
         try:
+            lock = sqlite3.connect(self.repo / ".git/architecture-publication-lock.sqlite",
+                                   timeout=15, isolation_level=None)
             lock.execute("BEGIN IMMEDIATE")
             relative, packet = journal["path"], journal["packet"]
             content = (canonical(packet) + "\n").encode()
@@ -174,7 +177,8 @@ class GitPublisher:
         except OSError as exc:
             raise WorkspaceError("PUBLICATION_FAILED", "架构版本写入未完成") from exc
         finally:
-            lock.close()
+            if lock is not None:
+                lock.close()
 
     @classmethod
     def read_version(cls, repo, map_id, map_revision, source_revision):

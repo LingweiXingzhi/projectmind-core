@@ -238,6 +238,11 @@ class WorkspaceService:
                             ("node", "edge", "evidence", "process", "step")
                             and parts[1] in ("add", "update", "remove", "reorder"))
                     entity, action = parts
+                    required = {"add": ("value",), "update": ("id", "changes"),
+                                "remove": ("id",), "reorder": ("value",)}[action]
+                    fields(operation, ("op",) + required +
+                           (("processId",) if entity == "step" else ()),
+                           ("source", "operationId"))
                     if entity == "step":
                         process = next((p for p in graph["processes"]
                                         if p["id"] == operation.get("processId")), None)
@@ -346,6 +351,7 @@ class WorkspaceService:
                 return copy.deepcopy(intent["response"])
             require(time.time() < intent["expiresAt"], "REVIEW_EXPIRED")
             draft = Store.get(db, "draft", identifier(draft_id)); ws = self._current(db, draft)
+            require(draft["status"] not in ("publishing", "published"), "VERSION_CONFLICT")
             require(draft["draftRevision"] == expected_draft_revision
                     and draft["baseMapRevision"] == expected_map_revision == ws["mapRevision"],
                     "REVISION_CONFLICT")
@@ -453,7 +459,10 @@ class WorkspaceService:
             ws = self._current(db, draft)
             require(ws["mapRevision"] == draft["baseMapRevision"], "REVISION_CONFLICT")
             packet = journal["packet"]
-            require(draft["draftRevision"] == packet["review"]["draftRevision"]
+            require(draft["status"] == "publishing"
+                    and ws.get("pendingPublication") == draft_id
+                    and draft.get("reviewId") == packet["review"]["reviewId"]
+                    and draft["draftRevision"] == packet["review"]["draftRevision"]
                     and draft["graph"] == packet["graph"], "PUBLICATION_CONFLICT")
             envelope = {"version": packet, "provenance": {"mapSourceRevision": source,
                         "sourceKind": "git_commit"}}
@@ -490,7 +499,17 @@ class WorkspaceService:
             packet = envelope["version"]
             require(packet["codeRepoId"] == ws["codeRepoId"]
                     and packet["codeRevision"] == ws["codeRevision"], "STALE_CONTEXT")
-            Store.put(db, "version", workspace_id + "/" + map_revision, envelope, immutable=True)
+            key = workspace_id + "/" + map_revision
+            existing = Store.get(db, "version", key, optional=True)
+            if existing:
+                # The reader adds verification notes outside the packet. Reuse
+                # the original immutable envelope only for the same Git source.
+                require(existing["version"] == packet and all(
+                    existing["provenance"][k] == envelope["provenance"][k]
+                    for k in ("mapSourceRevision", "sourceKind")), "VERSION_CONFLICT")
+                envelope = existing
+            else:
+                Store.put(db, "version", key, envelope, immutable=True)
             ws["mapRevision"] = map_revision
             Store.put(db, "workspace", workspace_id, ws)
             return envelope

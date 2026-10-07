@@ -7,6 +7,7 @@ import multiprocessing
 from pathlib import Path
 import secrets
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -542,6 +543,74 @@ class ArchitectureWorkspaceTests(unittest.TestCase):
         preview = self.preview(second)
         self.publish(first)
         self.assert_error("REVISION_CONFLICT", lambda: self.review(second, preview))
+
+    def test_pending_publication_cannot_be_rejected_by_an_older_preview(self):
+        draft = self.draft()
+        first, older = self.preview(draft), self.preview(draft)
+        review = self.review(draft, first)
+        with patch.object(self.service.publisher, "_commit", side_effect=WorkspaceError("PUBLICATION_FAILED")):
+            self.assert_error("PUBLICATION_FAILED", lambda: self.publish(draft, review))
+        self.assert_error("VERSION_CONFLICT", lambda: self.review(draft, older, decision="reject"))
+        self.assertEqual(self.service.get_draft(draft["draftId"])["reviewId"], review["reviewId"])
+        self.assertEqual(self.review(draft, first), review)  # Same decision remains idempotent.
+        self.service = self.make_service()
+        published = self.publish(draft, review)
+        self.assertEqual(published["version"]["review"]["reviewId"], review["reviewId"])
+
+    def test_process_exit_before_atomic_replace_is_recoverable(self):
+        draft = self.draft(); review = self.review(draft)
+        head = git(self.arch, "rev-parse", "HEAD")
+        with patch.object(self.service.publisher, "publish", side_effect=WorkspaceError("PUBLICATION_FAILED")):
+            self.assert_error("PUBLICATION_FAILED", lambda: self.publish(draft, review))
+        from extensions.architecture_workspace.storage import Store
+        with self.service.store.transaction() as db:
+            journal = Store.get(db, "journal", draft["draftId"])
+        child = '''import json, os, sys
+from extensions.architecture_workspace.git_publication import GitPublisher
+from extensions.architecture_workspace.schema import canonical
+request = json.load(sys.stdin)
+publisher = GitPublisher(request["repo"], "architecture/candidates/fixture")
+os.replace = lambda *args: os._exit(73)
+publisher._write_file(request["journal"]["path"], (canonical(request["journal"]["packet"]) + "\\n").encode())
+'''
+        result = subprocess.run([sys.executable, "-c", child], input=json.dumps(
+            {"repo": str(self.arch), "journal": journal}).encode(), capture_output=True)
+        self.assertEqual(result.returncode, 73, result.stderr.decode())
+        self.assertEqual(git(self.arch, "status", "--porcelain", "--untracked-files=all"), "")
+        self.service = self.make_service()
+        self.publish(draft, review)
+        self.assertEqual(git(self.arch, "rev-list", "--count", head + "..HEAD"), "1")
+
+    def test_reimport_own_version_preserves_original_immutable_envelope(self):
+        draft = self.draft(); original = self.publish(draft)
+        imported = self.service.import_git_version(self.ws["workspaceId"],
+            map_revision=original["version"]["mapRevision"],
+            map_source_revision=original["provenance"]["mapSourceRevision"],
+            expected_map_revision=original["version"]["mapRevision"])
+        self.assertEqual(imported, original)
+        self.assertEqual(self.service.get_version(self.ws["workspaceId"],
+            original["version"]["mapRevision"]), original)
+
+    def test_publication_lock_open_failure_has_controlled_error(self):
+        draft = self.draft(); review = self.review(draft)
+        import sqlite3
+        original_connect = sqlite3.connect
+        def connect(path, *args, **kwargs):
+            if str(path).endswith("architecture-publication-lock.sqlite"):
+                raise sqlite3.OperationalError("TEST lock cannot open")
+            return original_connect(path, *args, **kwargs)
+        with patch("extensions.architecture_workspace.git_publication.sqlite3.connect", side_effect=connect):
+            self.assert_error("PUBLICATION_FAILED", lambda: self.publish(draft, review))
+        self.publish(draft, review)
+
+    def test_operation_action_rejects_ignored_fields_without_partial_edit(self):
+        draft = self.draft()
+        for op in ({"op": "node.update", "id": "n-main", "changes": {"title": "Wrong"},
+                    "value": {"title": "Ignored"}},
+                   {"op": "edge.remove", "id": "r-one", "changes": {"label": "Ignored"}},
+                   {"op": "node.add", "id": "ignored-id", "value": copy.deepcopy(self.graph["nodes"][0])}):
+            self.assert_error("INVALID_INPUT", lambda: self.update(draft, [op]))
+            self.assertEqual(self.service.get_draft(draft["draftId"]), draft)
 
 
 if __name__ == "__main__":

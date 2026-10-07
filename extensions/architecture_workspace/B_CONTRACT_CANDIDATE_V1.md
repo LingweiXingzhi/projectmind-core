@@ -66,6 +66,10 @@ step.reorder（processId/value=完整 step ID 顺序），layout.set。
 operationId 可省略由服务分配，source=human/ai_generated/rule_based；
 缺省 source=human 只记录编辑来源，绝不构成批准。
 批次原子校验；坏引用时全部回滚，无隐藏级联。
+各动作严格校验字段：add 只接受 value，update 接受 id/changes，remove
+接受 id，step.reorder 接受 value；step 动作额外必需 processId。
+通用可选字段为 source/operationId。动作不适用的字段返回 INVALID_INPUT，
+不静默丢弃参数；对象 ID 应在 add.value 内提供。
 
 ## A 人审调用顺序
 
@@ -88,6 +92,10 @@ operationId 可省略由服务分配，source=human/ai_generated/rule_based；
 相同确认重试返回原响应；同令牌换决定为 REVIEW_REPLAY。草稿、图、代码、
 会话或实际预览改变则拒绝。发布进行中冻结草稿/版本推进，可在新进程用原
 发布授权恢复；不向客户端暴露底层 intent/permit/journal 内容。
+发布进入 publishing 后，不同预览即使仍未过期也不能替换或拒绝原审核，
+返回 VERSION_CONFLICT；同一令牌、同一决定重试仍返回原审核响应。
+第二 clone 重复导入同一包及同一 source SHA 时复用原不可变 envelope，
+不因 reader 的附加说明覆盖历史；同一语义版本换 source SHA 则拒绝覆盖。
 
 ## C / D
 
