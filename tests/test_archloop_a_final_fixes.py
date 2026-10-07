@@ -111,6 +111,7 @@ class FinalAuditRegressionTests(unittest.TestCase):
         self.apply_sample(workspace_id)
         record = self.service.store.load_workspace(workspace_id)
         record["draft"]["origin"] = "ai_candidate"
+        record["draft"]["lineage"] = ["ai_candidate"]  # simulate a real-AI draft
         self.service.store.save_workspace_record(record)
 
         def backend_call(action, payload):
@@ -154,15 +155,16 @@ class FinalAuditRegressionTests(unittest.TestCase):
         self.assertEqual(task["deviationId"], "dev_real")
 
     def test_recheck_flags_renamed_old_paths(self) -> None:
-        # FINAL-1 finding 6: renamed evidence keeps the stale flag.
+        # FINAL-1 finding 6: a pure rename must keep flagging nodes that cite
+        # the old path (without the fix, changed_paths only has renamed.py).
         workspace_id = self.create_existing()
         self.apply_sample(workspace_id)
-        (self.repo / "entry.py").write_text("def run():\n    return 3\n", encoding="utf-8")
-        run_git(self.repo, "add", ".")
-        run_git(self.repo, "commit", "-m", "change")
         run_git(self.repo, "mv", "entry.py", "renamed.py")
-        run_git(self.repo, "commit", "-m", "rename entry")
+        run_git(self.repo, "commit", "-m", "pure rename")
         result = self.service.recheck(workspace_id)
+        changes = result["comparison"]["changes"]
+        self.assertTrue(any(c["code"].startswith("R") and c.get("oldPath") == "entry.py"
+                            for c in changes), changes)
         stale_paths = {path for node in result["staleNodes"] for path in node["paths"]}
         self.assertIn("entry.py", stale_paths)
 
@@ -179,6 +181,98 @@ class FinalAuditRegressionTests(unittest.TestCase):
         label = self.service.load_draft(workspace_id)["backend"]
         self.assertEqual(label["origin"], "extension:persistence")
         self.assertTrue(label["versionService"])
+
+
+class Final2FixTests(unittest.TestCase):
+    """Red/green evidence for the FINAL-2 findings."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.service = service_with_git(Path(self.tmp.name))
+        self.repo = tiny_repo(Path(self.tmp.name))
+        envelope = self.service.create_workspace({
+            "context": "existing_project", "title": "示例",
+            "repoPath": str(self.repo), "description": "说明",
+        })
+        self.workspace_id = envelope["workspace"]["workspaceId"]
+        generated = self.service.generate(self.workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        self.service.apply_candidate(self.workspace_id, {"candidateId": generated["candidateId"]})
+        self.envelope = self.service.load_draft(self.workspace_id)
+
+    def test_identity_revision_matches_graph_after_evidence_downgrade(self) -> None:
+        # FINAL-2 F1: the guard downgrades evidence after ops ran; the graph's
+        # own mapRevision field and the envelope identity must stay consistent.
+        from archloop.contract import semantic_revision
+        (self.repo / "ghost.py").write_text("x = 1" + chr(10), encoding="utf-8")
+        result = self.service.apply_ops(self.workspace_id, {
+            "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
+            "operations": [{"type": "update_node", "nodeId": "n_a", "fields": {
+                "evidence": [{"path": "ghost.py", "reason": "声称", "kind": "code_fact"}]}}],
+        })
+        graph = result["draft"]["graph"]
+        self.assertEqual(graph["mapRevision"], semantic_revision(graph))
+        self.assertEqual(result["identity"]["mapRevision"], graph["mapRevision"])
+
+    def test_legacy_import_keeps_sample_lineage_refusal(self) -> None:
+        # FINAL-2 F2: replacing a sample draft via legacy import keeps the
+        # sample lineage — review is refused with 403, not recorded as a 503.
+        preview = self.service.correction_preview(self.workspace_id, {
+            "expectedDraftRevision": self.envelope["identity"]["draftRevision"],
+            "instruction": "职责不对", "selectedNodeIds": ["n_a"], "mode": "dev_sample",
+        })
+        self.service.apply_correction(self.workspace_id, {
+            "proposalId": preview["proposalId"],
+            "expectedDraftRevision": preview["baseDraftRevision"],
+        })
+        envelope = self.service.load_draft(self.workspace_id)
+        legacy = {"note": "旧图", "nodes": [
+            {"id": "legacy_x", "title": "旧节点", "summary": "旧职责", "entryPoint": "",
+             "evidence": []}], "edges": []}
+        result = self.service.import_legacy_map(self.workspace_id, {
+            "legacyMap": legacy, "expectedDraftRevision": envelope["identity"]["draftRevision"]})
+        self.assertEqual(result["draft"]["origin"], "legacy_import")
+        self.assertIn("dev_sample", result["draft"]["lineage"])
+        with self.assertRaises(ContractError) as caught:
+            self.service.submit_review(self.workspace_id, {
+                "expectedMapRevision": result["draft"]["graph"]["mapRevision"],
+                "decision": "accept", "actor": "tester",
+            })
+        self.assertEqual(caught.exception.code, "DEV_SAMPLE_DISABLED")  # 403, not a recorded 503
+        history = self.service.store.load_history(self.workspace_id)
+        self.assertFalse([e for e in history if e["type"] == "review_decision"])
+
+    def test_clean_lineage_legacy_import_is_review_eligible(self) -> None:
+        # the constraint targets sample lineage only: a workspace whose draft
+        # carries a real-AI lineage keeps its import review-eligible
+        workspace_id = self.service.create_workspace({
+            "context": "existing_project", "title": "干净",
+            "repoPath": str(self.repo), "description": "说明",
+        })["workspace"]["workspaceId"]
+        generated = self.service.generate(workspace_id,
+                                          {"mode": "dev_sample", "sampleGraph": dev_sample_graph()})
+        self.service.apply_candidate(workspace_id, {"candidateId": generated["candidateId"]})
+        record = self.service.store.load_workspace(workspace_id)
+        record["draft"]["origin"] = "ai_candidate"
+        record["draft"]["lineage"] = ["ai_candidate"]  # simulate a real-AI draft
+        self.service.store.save_workspace_record(record)
+        envelope = self.service.load_draft(workspace_id)
+        legacy = {"note": "旧图", "nodes": [
+            {"id": "legacy_x", "title": "旧节点", "summary": "旧职责", "entryPoint": "",
+             "evidence": []}], "edges": []}
+        result = self.service.import_legacy_map(workspace_id, {
+            "legacyMap": legacy, "expectedDraftRevision": envelope["identity"]["draftRevision"]})
+        self.assertNotIn("dev_sample", result["draft"]["lineage"])
+        with self.assertRaises(ContractError) as caught:
+            self.service.submit_review(workspace_id, {
+                "expectedMapRevision": result["draft"]["graph"]["mapRevision"],
+                "decision": "accept", "actor": "tester",
+            })
+        # clean lineage reaches the B seam and is refused with 503 + record
+        self.assertEqual(caught.exception.code, "BACKEND_UNAVAILABLE")
+        history = self.service.store.load_history(workspace_id)
+        self.assertTrue([e for e in history if e["type"] == "review_decision"])
 
 
 if __name__ == "__main__":

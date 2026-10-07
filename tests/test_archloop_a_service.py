@@ -451,6 +451,7 @@ class CorrectionReviewRecheckTests(unittest.TestCase):
         # recording the decision.
         record = self.service.store.load_workspace(self.workspace_id)
         record["draft"]["origin"] = "ai_candidate"
+        record["draft"]["lineage"] = ["ai_candidate"]  # simulate a real-AI draft
         self.service.store.save_workspace_record(record)
         map_revision = self.envelope["draft"]["graph"]["mapRevision"]
         with self.assertRaises(ContractError) as caught:

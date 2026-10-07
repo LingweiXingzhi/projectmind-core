@@ -185,7 +185,13 @@
     document.getElementById("arch-identity-line").textContent = identityLine;
 
     const banner = document.getElementById("arch-sample-banner");
-    if (envelope.backend && envelope.backend.origin === "dev_sample") {
+    const contentIsSample = Boolean(envelope.draft && (envelope.draft.origin === "dev_sample"
+      || (envelope.draft.lineage || []).includes("dev_sample")));
+    if (contentIsSample) {
+      // content-based marking survives backend registration (FINAL-2 F4)
+      banner.hidden = false;
+      banner.textContent = "演示数据：当前草稿的来源链包含开发样例；它不能提交人审或发布版本。";
+    } else if (envelope.backend && envelope.backend.origin === "dev_sample") {
       banner.hidden = false;
       banner.textContent = `演示数据：${envelope.backend.labeled}`;
     } else {
@@ -304,7 +310,7 @@
       if (error.code === "REVISION_CONFLICT") {
         setStatus("arch-draft-status", "草稿已被其他窗口修改（版本冲突）。请重新打开工作区，对比差异后再继续。", true);
       } else {
-        setStatus("arch-draft-status", `应用失败：${error.message}`, true);
+        setStatus("arch-draft-status", `应用失败（${error.code}）：${error.message}`, true);
       }
       return false;
     } finally {
@@ -436,7 +442,7 @@
         });
         danger.append(confirmRemove);
       } catch (error) {
-        setStatus("arch-draft-status", `影响读取失败：${error.message}`, true);
+        setStatus("arch-draft-status", `影响读取失败（${error.code}）：${error.message}`, true);
       }
     });
     danger.append(previewImpact);

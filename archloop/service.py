@@ -156,6 +156,7 @@ class WorkbenchService:
                            "createdAt", "updatedAt")},
             "identity": identity_view(record["identity"], map_revision, draft_revision),
             "draft": draft,
+            "lastPublish": record.get("lastPublish"),
             "backend": self._backend_label(),
             "generation": generate_module.generate_status(),
             "mode": mode,
@@ -304,6 +305,7 @@ class WorkbenchService:
             graph = ops_module.validate_graph(candidate["graph"])
             graph["mapRevision"] = semantic_revision(graph)
             draft = self._new_draft(record, graph, origin=candidate["origin"])
+            draft["lineage"] = [candidate["origin"]]
             draft["generationMeta"] = {
                 "origin": candidate["origin"],
                 "generatedFromCodeRevision": candidate.get("sourceCodeRevision"),
@@ -359,13 +361,19 @@ class WorkbenchService:
         # generation (FINAL-1 finding 2)
         bound = record["identity"].get("codeRevision")
         graph = self._evidence_guard(graph, record, bound)
+        # the guard can mutate evidence (semantic content): recompute the
+        # graph's own revision field so identity never shows a stale digest
+        # (FINAL-2 finding F1)
+        graph["mapRevision"] = semantic_revision(graph)
         new_draft = {
             "draftRevision": semantic_revision(graph) + f"-{secrets.token_hex(4)}",
             "baseMapRevision": draft.get("baseMapRevision"),
             "graph": graph,
             "baseGraph": draft.get("baseGraph") or draft["graph"],
             "origin": draft.get("origin") if draft.get("origin") != "ai_candidate" else "edited_candidate",
+            "lineage": draft.get("lineage", [draft.get("origin")]),
             "generationMeta": draft.get("generationMeta"),
+            "publishedMapRevision": draft.get("publishedMapRevision"),
             "updatedAt": _utcnow(),
         }
         record["draft"] = new_draft
@@ -498,6 +506,10 @@ class WorkbenchService:
                 applied.append(op.get("type"))
             bound = record["identity"].get("codeRevision")
             graph = self._evidence_guard(graph, record, bound)
+            graph["mapRevision"] = semantic_revision(graph)  # FINAL-2 F1
+            lineage = list(draft.get("lineage", [draft.get("origin")]))
+            if preview["origin"] == "dev_sample" and "dev_sample" not in lineage:
+                lineage.append("dev_sample")
             new_draft = {
                 "draftRevision": semantic_revision(graph) + f"-{secrets.token_hex(4)}",
                 "baseMapRevision": draft.get("baseMapRevision"),
@@ -506,7 +518,9 @@ class WorkbenchService:
                 # sample-derived content keeps the sample marking: it can never
                 # pass review as if it were clean (MID-1 finding 3)
                 "origin": "dev_sample" if preview["origin"] == "dev_sample" else draft.get("origin"),
+                "lineage": lineage,
                 "generationMeta": draft.get("generationMeta"),
+                "publishedMapRevision": draft.get("publishedMapRevision"),
                 "updatedAt": _utcnow(),
             }
             record["draft"] = new_draft
@@ -545,7 +559,7 @@ class WorkbenchService:
             draft = record.get("draft")
             if draft is None:
                 raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
-            if request.get("origin") == "dev_sample" or draft.get("origin") == "dev_sample":
+            if request.get("origin") == "dev_sample" or draft.get("origin") == "dev_sample"                     or "dev_sample" in (draft.get("lineage") or []):
                 reject_sample_review({"origin": "dev_sample"})
             decision = request.get("decision")
             if decision not in ("accept", "partial", "reject"):
@@ -599,6 +613,15 @@ class WorkbenchService:
                 current["draft"]["mapSourceRevision"] = reply.get("mapSourceRevision")
                 current["identity"]["mapSourceRevision"] = reply.get("mapSourceRevision")
                 current["identity"]["verifiedCodeRevision"] = reply.get("verifiedCodeRevision")
+                # published identity is a fact about the last publish, kept
+                # separate from the current draft's identity (FINAL-2 F5)
+                current["lastPublish"] = {
+                    "mapRevision": published_revision,
+                    "mapSourceRevision": reply.get("mapSourceRevision"),
+                    "verifiedCodeRevision": reply.get("verifiedCodeRevision"),
+                    "actor": actor,
+                    "at": _utcnow(),
+                }
                 current["updatedAt"] = _utcnow()
                 self.store.save_workspace_record(current)
                 self.store.append_history(workspace_id, {"type": "publish", "at": _utcnow(),
@@ -740,8 +763,17 @@ class WorkbenchService:
         ops_module.validate_graph(graph)
         bound = record["identity"].get("codeRevision")
         graph = self._evidence_guard(graph, record, bound)
+        # the guard can mutate evidence (semantic content): recompute the
+        # graph's own revision field so identity never shows a stale digest
+        # (FINAL-2 finding F1)
+        graph["mapRevision"] = semantic_revision(graph)
         graph["mapRevision"] = semantic_revision(graph)
         draft = self._new_draft(record, graph, origin="legacy_import")
+        # replacing a sample draft does not wash its mark: the origin chain is
+        # carried so review still refuses sample-tainted lineages (FINAL-2 F2)
+        if existing_draft is not None:
+            draft["lineage"] = list(existing_draft.get("lineage", [existing_draft.get("origin")])) + ["legacy_import"]
+            draft["publishedMapRevision"] = existing_draft.get("publishedMapRevision")
         record["draft"] = draft
         record["updatedAt"] = _utcnow()
         self.store.save_workspace_record(record)
