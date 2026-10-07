@@ -1,0 +1,112 @@
+test_diff_to_operations_minimal (tests.test_archloop_a_backend_b.ConversionTests.test_diff_to_operations_minimal) ... ok
+test_edge_type_enum_mapping (tests.test_archloop_a_backend_b.ConversionTests.test_edge_type_enum_mapping) ... ok
+test_planning_graph_has_no_code_evidence_and_no_repo (tests.test_archloop_a_backend_b.ConversionTests.test_planning_graph_has_no_code_evidence_and_no_repo) ... ok
+test_round_trip_preserves_a_content (tests.test_archloop_a_backend_b.ConversionTests.test_round_trip_preserves_a_content) ... ok
+test_step_id_collision_across_nodes_is_reversible (tests.test_archloop_a_backend_b.ConversionTests.test_step_id_collision_across_nodes_is_reversible) ... ok
+test_http_review_flow_with_real_sessions (tests.test_archloop_a_backend_b.HttpSeamTests.test_http_review_flow_with_real_sessions) ... 127.0.0.1 - - [08/Oct/2026 00:38:40] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "POST /api/archloop/workspaces/ws_20261008003840_66457f/sync HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "GET /api/archloop/backend HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "POST /api/archloop/workspaces/ws_20261008003840_66457f/review-preview HTTP/1.1" 403 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "POST /api/archloop/workspaces/ws_20261008003840_66457f/review-preview HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "POST /api/archloop/workspaces/ws_20261008003840_66457f/review-confirm HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "POST /api/archloop/workspaces/ws_20261008003840_66457f/publish HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "GET /api/archloop/workspaces/ws_20261008003840_66457f/versions HTTP/1.1" 200 -
+ok
+test_publish_without_review_is_refused (tests.test_archloop_a_backend_b.HttpSeamTests.test_publish_without_review_is_refused) ... 127.0.0.1 - - [08/Oct/2026 00:38:41] "POST /api/archloop/workspaces HTTP/1.1" 200 -
+127.0.0.1 - - [08/Oct/2026 00:38:41] "POST /api/archloop/workspaces/ws_20261008003841_1bf6ee/publish HTTP/1.1" 403 -
+ok
+test_import_copies_draft_keeps_sample_mark_and_source_intact (tests.test_archloop_a_backend_b.LegacyDraftImportTests.test_import_copies_draft_keeps_sample_mark_and_source_intact) ... ok
+test_associate_code_keeps_design_history (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_associate_code_keeps_design_history) ... ok
+test_confirmation_without_preview_or_with_wrong_digest_is_refused (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_confirmation_without_preview_or_with_wrong_digest_is_refused) ... ok
+test_create_workspace_uses_origin_identity_not_local_path (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_create_workspace_uses_origin_identity_not_local_path) ... ok
+test_preview_after_edit_invalidates_old_preview (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_preview_after_edit_invalidates_old_preview) ... ok
+test_review_preview_confirm_publish_produces_immutable_version (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_review_preview_confirm_publish_produces_immutable_version) ... ok
+test_sample_draft_can_never_be_reviewed (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_sample_draft_can_never_be_reviewed) ... ok
+test_second_copy_imports_same_version (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_second_copy_imports_same_version) ... ok
+test_sync_save_reopen_and_conflict (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_sync_save_reopen_and_conflict) ... ok
+test_unavailable_backend_reports_reason_instead_of_faking (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_unavailable_backend_reports_reason_instead_of_faking) ... ok
+test_ai_correction_is_not_run_without_a_model (tests.test_archloop_a_stage23.CMouleIntegrationTests.test_ai_correction_is_not_run_without_a_model) ... ok
+test_deviations_are_unknown_without_traces_and_detected_with_them (tests.test_archloop_a_stage23.CMouleIntegrationTests.test_deviations_are_unknown_without_traces_and_detected_with_them) ... skipped 'rule-based candidate has no process steps to compare'
+test_incremental_proposal_after_a_real_code_change (tests.test_archloop_a_stage23.CMouleIntegrationTests.test_incremental_proposal_after_a_real_code_change) ... ok
+test_planning_rule_based_generation_has_no_code_facts (tests.test_archloop_a_stage23.CMouleIntegrationTests.test_planning_rule_based_generation_has_no_code_facts) ... ok
+test_rule_based_correction_previews_and_applies (tests.test_archloop_a_stage23.CMouleIntegrationTests.test_rule_based_correction_previews_and_applies) ... ok
+test_rule_based_generation_is_labeled_and_applies (tests.test_archloop_a_stage23.CMouleIntegrationTests.test_rule_based_generation_is_labeled_and_applies) ... ok
+test_bounded_pack_records_coverage_and_excludes_secrets (tests.test_archloop_a_stage23.ContextPackTests.test_bounded_pack_records_coverage_and_excludes_secrets) ... ok
+test_pack_requires_a_full_sha (tests.test_archloop_a_stage23.ContextPackTests.test_pack_requires_a_full_sha) ... ok
+test_task_lifecycle_requires_real_evidence (tests.test_archloop_a_stage23.FixTaskTests.test_task_lifecycle_requires_real_evidence) ... ok
+test_handover_requires_a_version_and_exports_identities (tests.test_archloop_a_stage23.HandoverTests.test_handover_requires_a_version_and_exports_identities) ... ok
+test_handover_without_a_published_version_is_refused (tests.test_archloop_a_stage23.HandoverTests.test_handover_without_a_published_version_is_refused) ... ok
+test_second_copy_imports_the_same_version (tests.test_archloop_a_stage23.HandoverTests.test_second_copy_imports_the_same_version) ... ok
+test_confirmation_token_never_reaches_the_client (tests.test_archloop_a_batch1_fixes.HumanReviewBoundaryRepairTests.test_confirmation_token_never_reaches_the_client) ... ok
+test_publish_requires_a_live_review_session (tests.test_archloop_a_batch1_fixes.HumanReviewBoundaryRepairTests.test_publish_requires_a_live_review_session) ... ok
+test_published_identity_is_visible_then_expires_with_the_draft (tests.test_archloop_a_batch1_fixes.HumanReviewBoundaryRepairTests.test_published_identity_is_visible_then_expires_with_the_draft) ... ok
+test_nested_target_is_refused (tests.test_archloop_a_batch1_fixes.LegacyImportRepairTests.test_nested_target_is_refused) ... ok
+test_corrupted_metadata_is_refused_not_silently_dropped (tests.test_archloop_a_batch1_fixes.OperationDiffRepairTests.test_corrupted_metadata_is_refused_not_silently_dropped) ... ok
+test_design_coverage_never_claims_the_carrier (tests.test_archloop_a_batch1_fixes.OperationDiffRepairTests.test_design_coverage_never_claims_the_carrier) ... ok
+test_field_deletion_is_expressed_as_replace (tests.test_archloop_a_batch1_fixes.OperationDiffRepairTests.test_field_deletion_is_expressed_as_replace) ... ok
+test_large_metadata_round_trips (tests.test_archloop_a_batch1_fixes.OperationDiffRepairTests.test_large_metadata_round_trips) ... ok
+test_new_process_is_added_once (tests.test_archloop_a_batch1_fixes.OperationDiffRepairTests.test_new_process_is_added_once) ... ok
+test_associate_code_keeps_design_history (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_associate_code_keeps_design_history) ... ok
+test_confirmation_without_preview_or_with_wrong_digest_is_refused (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_confirmation_without_preview_or_with_wrong_digest_is_refused) ... ok
+test_create_workspace_uses_origin_identity_not_local_path (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_create_workspace_uses_origin_identity_not_local_path) ... ok
+test_preview_after_edit_invalidates_old_preview (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_preview_after_edit_invalidates_old_preview) ... ok
+test_review_preview_confirm_publish_produces_immutable_version (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_review_preview_confirm_publish_produces_immutable_version) ... ok
+test_sample_draft_can_never_be_reviewed (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_sample_draft_can_never_be_reviewed) ... ok
+test_second_copy_imports_same_version (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_second_copy_imports_same_version) ... ok
+test_sync_save_reopen_and_conflict (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_sync_save_reopen_and_conflict) ... ok
+test_unavailable_backend_reports_reason_instead_of_faking (tests.test_archloop_a_backend_b.RealBackendFlowTests.test_unavailable_backend_reports_reason_instead_of_faking) ... ok
+test_branch_targets_are_not_dropped (tests.test_archloop_a_batch1_fixes.RoundTripRepairTests.test_branch_targets_are_not_dropped) ... ok
+test_duplicate_step_ids_across_nodes_round_trip (tests.test_archloop_a_batch1_fixes.RoundTripRepairTests.test_duplicate_step_ids_across_nodes_round_trip) ... ok
+test_forward_step_references_survive (tests.test_archloop_a_batch1_fixes.RoundTripRepairTests.test_forward_step_references_survive) ... ok
+test_explicit_rebase_is_possible_after_reading (tests.test_archloop_a_batch1_fixes.SyncGuardRepairTests.test_explicit_rebase_is_possible_after_reading) ... ok
+test_external_b_edit_is_not_overwritten (tests.test_archloop_a_batch1_fixes.SyncGuardRepairTests.test_external_b_edit_is_not_overwritten) ... ok
+test_t01_failed_generation_is_not_a_pass (tests.test_archloop_a_batch2_fixes.AcceptanceCriteriaRepairTests.test_t01_failed_generation_is_not_a_pass) ... ok
+test_t01_real_generation_passes_and_unconfigured_is_not_run (tests.test_archloop_a_batch2_fixes.AcceptanceCriteriaRepairTests.test_t01_real_generation_passes_and_unconfigured_is_not_run) ... ok
+test_t21_content_mismatch_and_integrity_refusals_pass (tests.test_archloop_a_batch2_fixes.AcceptanceCriteriaRepairTests.test_t21_content_mismatch_and_integrity_refusals_pass) ... ok
+test_t21_needs_a_complete_comparison (tests.test_archloop_a_batch2_fixes.AcceptanceCriteriaRepairTests.test_t21_needs_a_complete_comparison) ... ok
+test_t21_unrelated_refusal_is_not_tamper_detection (tests.test_archloop_a_batch2_fixes.AcceptanceCriteriaRepairTests.test_t21_unrelated_refusal_is_not_tamper_detection) ... ok
+test_t24_rejects_placeholder_missing_or_mismatched_revisions (tests.test_archloop_a_batch2_fixes.AcceptanceCriteriaRepairTests.test_t24_rejects_placeholder_missing_or_mismatched_revisions) ... ok
+test_t24_requires_this_repository_and_real_coverage (tests.test_archloop_a_batch2_fixes.AcceptanceCriteriaRepairTests.test_t24_requires_this_repository_and_real_coverage) ... ok
+test_b_edited_branch_target_survives_round_trip (tests.test_archloop_a_batch2_fixes.BranchFallbackRepairTests.test_b_edited_branch_target_survives_round_trip) ... ok
+test_untouched_auto_filled_branch_stays_stable (tests.test_archloop_a_batch2_fixes.BranchFallbackRepairTests.test_untouched_auto_filled_branch_stays_stable) ... ok
+test_payload_carries_excerpts_docs_and_the_missing_list (tests.test_archloop_a_batch2_fixes.CorrectionPackRepairTests.test_payload_carries_excerpts_docs_and_the_missing_list) ... ok
+test_rebind_refreshes_the_pack_revision (tests.test_archloop_a_batch2_fixes.CorrectionPackRepairTests.test_rebind_refreshes_the_pack_revision) ... ok
+test_absent_coverage_still_selects_the_default (tests.test_archloop_a_batch2_fixes.CoverageRefusalRepairTests.test_absent_coverage_still_selects_the_default) ... ok
+test_malformed_explicit_coverage_is_refused (tests.test_archloop_a_batch2_fixes.CoverageRefusalRepairTests.test_malformed_explicit_coverage_is_refused) ... ok
+test_plain_config_stays_included (tests.test_archloop_a_batch2_fixes.CredentialFilterRepairTests.test_plain_config_stays_included) ... ok
+test_prefixed_quoted_credential_key_is_excluded (tests.test_archloop_a_batch2_fixes.CredentialFilterRepairTests.test_prefixed_quoted_credential_key_is_excluded) ... ok
+test_quoted_credential_key_is_excluded (tests.test_archloop_a_batch2_fixes.CredentialFilterRepairTests.test_quoted_credential_key_is_excluded) ... ok
+test_boolean_evidence_is_refused (tests.test_archloop_a_batch2_fixes.FixTaskVerificationRepairTests.test_boolean_evidence_is_refused) ... ok
+test_nonexistent_commit_is_refused (tests.test_archloop_a_batch2_fixes.FixTaskVerificationRepairTests.test_nonexistent_commit_is_refused) ... ok
+test_real_commit_and_recorded_evidence_verifies (tests.test_archloop_a_batch2_fixes.FixTaskVerificationRepairTests.test_real_commit_and_recorded_evidence_verifies) ... ok
+test_conversion_covers_add_update_remove_and_all_apply (tests.test_archloop_a_batch2_fixes.IncrementalConversionRepairTests.test_conversion_covers_add_update_remove_and_all_apply) ... ok
+test_service_incremental_proposal_returns_applicable_ops (tests.test_archloop_a_batch2_fixes.IncrementalConversionRepairTests.test_service_incremental_proposal_returns_applicable_ops) ... ok
+test_unmatched_changes_become_warnings_not_broken_ops (tests.test_archloop_a_batch2_fixes.IncrementalConversionRepairTests.test_unmatched_changes_become_warnings_not_broken_ops) ... ok
+test_absent_coverage_uses_the_default (tests.test_archloop_a_batch3_fixes.CoverageNullRepairTests.test_absent_coverage_uses_the_default) ... ok
+test_explicit_null_coverage_is_refused (tests.test_archloop_a_batch3_fixes.CoverageNullRepairTests.test_explicit_null_coverage_is_refused) ... ok
+test_malformed_values_are_still_refused (tests.test_archloop_a_batch3_fixes.CoverageNullRepairTests.test_malformed_values_are_still_refused) ... ok
+test_colliding_derived_ids_are_made_unique (tests.test_archloop_a_batch3_fixes.IncrementalConversionRepairTests.test_colliding_derived_ids_are_made_unique) ... ok
+test_every_emitted_operation_applies_in_order (tests.test_archloop_a_batch3_fixes.IncrementalConversionRepairTests.test_every_emitted_operation_applies_in_order) ... ok
+test_removing_a_referenced_node_becomes_a_warning (tests.test_archloop_a_batch3_fixes.IncrementalConversionRepairTests.test_removing_a_referenced_node_becomes_a_warning) ... ok
+test_two_updates_to_one_node_are_merged (tests.test_archloop_a_batch3_fixes.IncrementalConversionRepairTests.test_two_updates_to_one_node_are_merged) ... ok
+test_legacy_carrier_does_not_resurrect_a_stale_target (tests.test_archloop_a_batch3_fixes.LegacyCarrierRepairTests.test_legacy_carrier_does_not_resurrect_a_stale_target) ... ok
+test_credential_names_are_detected_in_every_style (tests.test_archloop_a_batch3_fixes.SecretKeyNameTests.test_credential_names_are_detected_in_every_style) ... ok
+test_ordinary_names_are_not_credentials (tests.test_archloop_a_batch3_fixes.SecretKeyNameTests.test_ordinary_names_are_not_credentials) ... ok
+test_placeholders_and_plain_config_stay_out (tests.test_archloop_a_batch3_fixes.SecretKeyNameTests.test_placeholders_and_plain_config_stay_out) ... ok
+test_clean_lineage_legacy_import_is_review_eligible (tests.test_archloop_a_final_fixes.Final2FixTests.test_clean_lineage_legacy_import_is_review_eligible) ... ok
+test_identity_revision_matches_graph_after_evidence_downgrade (tests.test_archloop_a_final_fixes.Final2FixTests.test_identity_revision_matches_graph_after_evidence_downgrade) ... ok
+test_legacy_import_keeps_sample_lineage_refusal (tests.test_archloop_a_final_fixes.Final2FixTests.test_legacy_import_keeps_sample_lineage_refusal) ... ok
+test_identity_drops_published_facts_when_draft_moves_on (tests.test_archloop_a_final_fixes.Final3FixTests.test_identity_drops_published_facts_when_draft_moves_on) ... ok
+test_import_claiming_sample_origin_stays_tainted (tests.test_archloop_a_final_fixes.Final3FixTests.test_import_claiming_sample_origin_stays_tainted) ... ok
+test_backend_label_splits_storage_and_version_service (tests.test_archloop_a_final_fixes.FinalAuditRegressionTests.test_backend_label_splits_storage_and_version_service) ... ok
+test_direct_edit_evidence_checked_against_bound_revision (tests.test_archloop_a_final_fixes.FinalAuditRegressionTests.test_direct_edit_evidence_checked_against_bound_revision) ... ok
+test_fix_task_delegates_to_registered_backend (tests.test_archloop_a_final_fixes.FinalAuditRegressionTests.test_fix_task_delegates_to_registered_backend) ... ok
+test_legacy_import_cas_validation_and_guard (tests.test_archloop_a_final_fixes.FinalAuditRegressionTests.test_legacy_import_cas_validation_and_guard) ... ok
+test_publish_write_back_is_atomically_rechecked (tests.test_archloop_a_final_fixes.FinalAuditRegressionTests.test_publish_write_back_is_atomically_rechecked) ... ok
+test_recheck_flags_renamed_old_paths (tests.test_archloop_a_final_fixes.FinalAuditRegressionTests.test_recheck_flags_renamed_old_paths) ... ok
+test_sample_correction_poisons_real_origin_draft (tests.test_archloop_a_final_fixes.FinalAuditRegressionTests.test_sample_correction_poisons_real_origin_draft) ... ok
+
+----------------------------------------------------------------------
+Ran 97 tests in 22.951s
+
+OK (skipped=1)
