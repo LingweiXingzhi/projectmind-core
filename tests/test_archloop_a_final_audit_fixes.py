@@ -63,6 +63,18 @@ class PartialTraceIsNeverAlignedTests(unittest.TestCase):
                          "out_of_order")
 
 
+class IdentityLessGraphIsUnknownTests(unittest.TestCase):
+    """FINAL-R2-C-01: without a verifiable identity the verdict stays UNKNOWN."""
+
+    def test_unverifiable_identity_is_unknown(self) -> None:
+        from extensions.map_proposal.candidates import detect_process_deviations
+        graph = {"nodes": [{"nodeId": "n", "expectedProcesses": ["A", "B", "C"]}]}
+        complete = detect_process_deviations(graph, [{"called_steps": ["A", "B", "C"]}])
+        self.assertEqual(complete["verdict"], "UNKNOWN")
+        bypass = detect_process_deviations(graph, [{"called_steps": ["A", "B"]}])
+        self.assertEqual(bypass["verdict"], "UNKNOWN")
+
+
 class CrossWorkspaceUpdateIsRefusedBeforeWriteTests(unittest.TestCase):
     """FINAL-D-01: ownership is validated before any state change."""
 
@@ -114,6 +126,15 @@ class ObservationIdentityTests(unittest.TestCase):
     def test_mismatched_observation_identity_is_refused(self) -> None:
         with self.assertRaises(ContractError) as refused:
             _normalize_evidence([{"kind": "trace_observation", "detail": "观察",
+                                  "codeRepoId": "repo-WRONG", "codeRevision": "b" * 40}],
+                                version=self.VERSION)
+        self.assertEqual(refused.exception.code, "EVIDENCE_MISMATCH")
+
+    def test_path_shaped_evidence_identity_is_checked_too(self) -> None:
+        """FINAL-R2-D-01: the check covers every dictionary shape, not only
+        observations that already name a kind."""
+        with self.assertRaises(ContractError) as refused:
+            _normalize_evidence([{"path": "app.py", "reason": "r",
                                   "codeRepoId": "repo-WRONG", "codeRevision": "b" * 40}],
                                 version=self.VERSION)
         self.assertEqual(refused.exception.code, "EVIDENCE_MISMATCH")

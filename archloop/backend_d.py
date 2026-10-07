@@ -53,14 +53,10 @@ def _normalize_evidence(items, *, version: dict) -> list[dict]:
                             "修正实现需要观察证据（至少一项：路径或结构化观察）")
     normalized: list[dict] = []
     for item in items:
-        if isinstance(item, dict) and item.get("kind") in D_EVIDENCE_KINDS:
-            entry = {"kind": item["kind"],
-                     "detail": str(item.get("detail") or item.get("reason") or "").strip()}
-            if not entry["detail"]:
-                raise ContractError("VALIDATION_FAILED", "每条证据都需要说明（detail/reason）")
-            # an observation that names its own repository/revision must match
-            # the published version; A never rewrites observed provenance into
-            # the version identity (FINAL-D-02)
+        # the declared observation identity is checked for EVERY dictionary
+        # shape, before any branch can attach the version identity to it
+        # (FINAL-D-02 / FINAL-R2-D-01)
+        if isinstance(item, dict):
             for field in ("codeRepoId", "codeRevision"):
                 declared = item.get(field)
                 if declared is not None and declared != version.get(field):
@@ -68,6 +64,11 @@ def _normalize_evidence(items, *, version: dict) -> list[dict]:
                         "EVIDENCE_MISMATCH",
                         f"观察证据声明的 {field} 与已发布版本不同：{declared!r} ≠ {version.get(field)!r}；"
                         "不同仓库/版本的观察不能当作本版偏差证据")
+        if isinstance(item, dict) and item.get("kind") in D_EVIDENCE_KINDS:
+            entry = {"kind": item["kind"],
+                     "detail": str(item.get("detail") or item.get("reason") or "").strip()}
+            if not entry["detail"]:
+                raise ContractError("VALIDATION_FAILED", "每条证据都需要说明（detail/reason）")
             if item["kind"] == "code":
                 path = str(item.get("path") or "").strip()
                 if not _looks_like_repo_path(path):

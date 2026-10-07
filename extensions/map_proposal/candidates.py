@@ -281,6 +281,24 @@ def detect_process_deviations(graph: dict, observed_traces: list) -> dict:
     expected_revision = graph.get("codeRevision")
     usable: list[tuple[int, dict]] = []
     rejected: list[dict] = []
+    if expected_repo is None and expected_revision is None:
+        # There is no repository/revision to check the observation against
+        # (e.g. a planning/design process): the identity of the evidence can
+        # not be verified, so no verdict beyond UNKNOWN may be reported
+        # (FINAL-R2-C-01).
+        return {
+            "status": "ok",
+            "verdict": "UNKNOWN",
+            "deviations": [],
+            "rejectedTraces": [{"traceIndex": index,
+                                "reason": "声明过程没有可核对的仓库/版本身份，观察轨迹无法归属"}
+                               for index in range(len(observed_traces))],
+            "inconclusive": [],
+            "coveredNodes": [],
+            "reason": "图没有给出可核对的 codeRepoId/codeRevision；无身份的观察不能判定一致或偏差，"
+                      "结论保持 UNKNOWN。",
+            "warnings": [],
+        }
     for index, trace in enumerate(observed_traces):
         if not isinstance(trace, dict) or not isinstance(trace.get("called_steps"), list):
             rejected.append({"traceIndex": index, "reason": "轨迹缺少 called_steps 列表，无法作为观察证据"})
