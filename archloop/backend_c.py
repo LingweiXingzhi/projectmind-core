@@ -36,6 +36,104 @@ def c_status() -> dict:
             "labeled": "C 的规则候选模块（rule_based，只读；候选不直接写入草稿）"}
 
 
+C_ACTIONS = ("bootstrap_candidate", "nl_patch_candidate", "deviations_for", "incremental_candidate")
+
+
+def to_b_proposal(candidate: dict, *, context: dict) -> dict:
+    """Frozen C→B exchange adapter (CONTRACT_V1 §8, D-BC-01).
+
+    C's canonical candidate output and B's `validate_proposal` schema are both
+    frozen; this adapter is the single documented conversion between them. It
+    reuses the two already-verified projections (C→A page graph via
+    `candidate_to_graph`, A→B strict graph via `a_to_b_graph`) and wraps the
+    result in B's proposal envelope with a real content digest — no field
+    guessing, no write authority. `context` is B's server-resolved basis
+    (validate_context shape) that the proposal must be bound to.
+    """
+    from extensions.architecture_workspace.proposals import API_VERSION as B_API_VERSION
+    from extensions.architecture_workspace.schema import digest as b_digest
+
+    from .backend_b import a_to_b_graph
+
+    # The candidate states the identity it was generated for; projecting it
+    # into another repository/revision would silently re-label its evidence
+    # (FINAL-BC-01). Only a bootstrap context is a valid target here: a patch
+    # must carry operations, not a graph (FINAL-BC-02).
+    if context.get("draftId") is not None:
+        raise ContractError(
+            "VALIDATION_FAILED",
+            "已有草稿的交换需要 operations 形式的 patch；本冻结适配器只支持 bootstrap 候选，"
+            "请使用操作引擎生成 patch")
+    for field in ("codeRepoId", "codeRevision", "mode"):
+        declared = candidate.get(field)
+        bound = context.get(field)
+        if field == "mode":
+            # planning candidates carry mode=planning; code candidates repeat
+            # the context mode
+            if declared is not None and declared != bound:
+                raise ContractError("STALE_CONTEXT",
+                                    f"候选的 {field} 与服务端上下文不同：{declared!r} ≠ {bound!r}")
+            continue
+        if declared != bound:
+            raise ContractError(
+                "STALE_CONTEXT",
+                f"候选声明的 {field} 与服务端上下文不同：{declared!r} ≠ {bound!r}；"
+                "不能把另一仓库/版本的候选投影成本上下文的内容")
+    if bound is not None and candidate.get("verifiedCodeRevision") is not None:
+        raise ContractError("EVIDENCE_MISMATCH", "初图候选不能自带已核查代码版本")
+
+    graph, warnings = candidate_to_graph(candidate, context=context.get("mode", "existing_project"))
+    projected = a_to_b_graph(graph, code_repo_id=context.get("codeRepoId"),
+                             code_revision=context.get("codeRevision"))
+    proposal_id = _clean_id(candidate.get("proposalId"), "prop_c_adapted")
+    run_id = _clean_id(candidate.get("proposalId"), "run_c_adapted")
+    envelope = {
+        "apiVersion": B_API_VERSION,
+        "proposalId": proposal_id,
+        "kind": "bootstrap" if context.get("draftId") is None else "patch",
+        "basis": context,
+        "generation": {"source": "rule_based", "runId": run_id, "fixtureOnly": False},
+        "candidates": [{"candidateId": _clean_id(candidate.get("proposalId"), "candidate_adapted"),
+                        "graph": projected["graph"]}],
+        "unknowns": [str(item)[:500] for item in warnings][:20],
+    }
+    envelope["proposalDigest"] = b_digest({key: value for key, value in envelope.items()
+                                           if key != "proposalDigest"})
+    return envelope
+
+
+def call(action: str, payload: dict) -> dict:
+    """Single dispatcher for the registered `correction` capability.
+
+    The registered state must reflect the calls the workbench actually makes
+    (D-A-03): every production C invocation goes through this one entry, so
+    the adapter listing cannot claim C while the service side-channels it.
+    """
+    if action not in C_ACTIONS:
+        raise ContractError("BACKEND_UNAVAILABLE", f"C 后端不支持的动作: {action}")
+    if not isinstance(payload, dict):
+        raise ContractError("BACKEND_UNAVAILABLE", "C 后端需要对象载荷")
+    if action == "bootstrap_candidate":
+        return bootstrap_candidate(payload.get("context"), payload.get("record") or {})
+    if action == "nl_patch_candidate":
+        return nl_patch_candidate(payload.get("graph") or {}, payload.get("nodeId"),
+                                  payload.get("instruction") or "")
+    if action == "deviations_for":
+        return deviations_for(payload.get("graph") or {}, payload.get("traces") or [],
+                              payload.get("identity"))
+    return incremental_candidate(payload.get("graph") or {}, payload.get("baseCodeRevision"),
+                                 payload.get("targetCodeRevision"), payload.get("factsDiff") or {})
+
+
+def descriptor() -> dict | None:
+    """Registered descriptor for the `correction` capability (None if absent)."""
+    status = c_status()
+    if not status.get("available"):
+        return None
+    return {"kind": status["kind"], "ref": REF, "call": call,
+            "labeled": status.get("labeled")}
+
+
 def _clean_id(value: str, fallback: str) -> str:
     """C's ids are its own; the workbench needs contract-legal stable ids."""
     if isinstance(value, str) and ID_PATTERN.fullmatch(value):
@@ -197,15 +295,25 @@ def nl_patch_candidate(base_graph: dict, node_id: str, instruction: str) -> dict
             "warnings": list(reply.get("warnings", []) or [])}
 
 
-def deviations_for(graph: dict, observed_traces: list) -> dict:
-    """C's process-deviation detection on the current draft graph (read-only)."""
+def deviations_for(graph: dict, observed_traces: list, identity: dict | None = None) -> dict:
+    """C's process-deviation detection on the current draft graph (read-only).
+
+    The workspace identity travels with the projection so C can check each
+    trace's declared repository/revision before it counts as evidence
+    (D-C-01) — on the public path too, not only in the component probe.
+    """
     module = _candidates_module()
+    identity = identity or {}
     projected = {"nodes": [{"nodeId": node["id"],
                             "expectedProcesses": [step.get("stepId") for step in node.get("process", [])]}
-                           for node in graph.get("nodes", [])]}
+                           for node in graph.get("nodes", [])],
+                 "codeRepoId": identity.get("codeRepoId"),
+                 "codeRevision": identity.get("codeRevision")}
     reply = module.detect_process_deviations(projected, observed_traces or [])
     result = {"status": reply.get("status"), "verdict": reply.get("verdict"),
               "deviations": reply.get("deviations", []),
+              "rejectedTraces": reply.get("rejectedTraces", []),
+              "inconclusive": reply.get("inconclusive", []), "coveredNodes": reply.get("coveredNodes", []),
               "reason": reply.get("reason", ""),
               "labeled": "C 规则偏差检测：静态图与提供的追踪数据对照；无追踪证据时为 UNKNOWN"}
     for deviation in result["deviations"]:
@@ -396,4 +504,4 @@ def incremental_candidate(base_graph: dict, base_code_revision: str, target_code
 
 
 __all__ = ["c_status", "bootstrap_candidate", "nl_patch_candidate", "deviations_for",
-           "incremental_candidate", "candidate_to_graph", "REF"]
+           "incremental_candidate", "candidate_to_graph", "call", "descriptor", "REF"]
