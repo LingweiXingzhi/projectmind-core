@@ -110,6 +110,7 @@ PROJECTMIND_DOMAIN=你的真实域名 caddy run \
 - 恢复到新的私有目录，校验 SQLite integrity_check、A/B 记录、架构 Git 对象和固定版本。
   第一阶段 A/B 同机恢复已验证；第二阶段增加 D 任务恢复检查，见对应交付证据。换机须重新获取对应代码历史、核对仓库身份与路径绑定。
 - 所有旧浏览器授权在重启后重新建立；恢复数据不恢复真实登录授权。
+- 可执行冷备与只读校验：`python -m deployment.server backup` / `inspect-backup`，详细范围和拒绝条件见 [冷备操作](COLD_BACKUP.md)。
 
 本轮冷备夹具恢复了两份工作区：B documents 与源副本相同，SQLite integrity_check=ok，
 A 工作区可重开且 mapRevision/mapSourceRevision 不变，架构 Git HEAD 相同。
