@@ -195,6 +195,20 @@ class RuntimeHTTPTests(unittest.TestCase):
             self.assertEqual(status,200,body);self.assertTrue(body['canEdit'])
         self.assertEqual(self.calls,[])
 
+    def test_server_managed_availability_check_is_real_bounded_and_never_returns_key(self):
+        self.settings.shared_from_env=True
+        with patch.dict(os.environ,{'PROJECTMIND_AI_API_KEY':KEY,'PROJECTMIND_AI_MODEL':'env-fixture','PROJECTMIND_AI_BASE_URL':self.base},clear=True):
+            status,body,_=self.request('POST','/api/ai-settings/check',{'mode':'shared'},csrf=False)
+            self.assertEqual(status,403,body)
+            status,body,_=self.request('POST','/api/ai-settings/check',{'mode':'shared','baseUrl':self.base})
+            self.assertEqual(status,400,body);self.assertEqual(self.calls,[])
+            status,body,_=self.request('POST','/api/ai-settings/check',{'mode':'shared'})
+            self.assertEqual(status,200,body);self.assertTrue(body['connected'])
+            self.assertNotIn(KEY,json.dumps(body));self.assertEqual(len(self.calls),1)
+            self.assertEqual(self.calls[0]['request']['max_tokens'],2048)
+            self.assertEqual(self.settings.budget()['chargedTokens'],15)
+        self.assertEqual(self.settings._row()['config'],'{}','environment key is never persisted')
+
     def test_personal_mode_does_not_replace_shared_and_survives_operator_session_reissue(self):
         self.request('POST','/api/ai-settings',config(self.base))
         self.request('POST','/api/ai-settings/select',{'mode':'personal'})
@@ -324,6 +338,28 @@ class PublicModeTests(unittest.TestCase):
             status,value=self.request('teacher','POST','/api/ai-settings',config(url,mode='personal'))
             self.assertEqual(status,403,value)
         self.assertFalse(current(self.settings)['configured'])
+
+    def test_teacher_can_check_shared_api_without_configuration_permission(self):
+        calls=[]
+        class Provider(BaseHTTPRequestHandler):
+            def log_message(self,*args):pass
+            def do_POST(self):
+                calls.append(json.loads(self.rfile.read(int(self.headers['Content-Length']))))
+                raw=json.dumps({'choices':[{'message':{'content':'{"ok":true}'}}],'usage':{'total_tokens':15}}).encode()
+                self.send_response(200);self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+        server=ThreadingHTTPServer(('127.0.0.1',0),Provider)
+        threading.Thread(target=server.serve_forever,daemon=True).start()
+        self.addCleanup(server.server_close);self.addCleanup(server.shutdown)
+        self.settings.shared_from_env=True
+        with patch.dict(os.environ,{'PROJECTMIND_AI_API_KEY':KEY,'PROJECTMIND_AI_MODEL':'env-fixture',
+                                    'PROJECTMIND_AI_BASE_URL':f'http://127.0.0.1:{server.server_port}/v1'},clear=True):
+            status,value=self.request('teacher','POST','/api/ai-settings/check',{'mode':'shared'},csrf=False)
+            self.assertEqual(status,403,value);self.assertEqual(calls,[])
+            status,value=self.request('teacher','POST','/api/ai-settings/check',{'mode':'shared'})
+            self.assertEqual(status,200,value);self.assertTrue(value['connected']);self.assertNotIn(KEY,json.dumps(value))
+            self.assertEqual(len(calls),1);self.assertEqual(self.settings.budget()['chargedTokens'],15)
+            status,value=self.request('teacher','POST','/api/ai-settings',config())
+            self.assertEqual(status,403,(value,'availability check never grants configuration permission'))
 
     def test_teacher_generation_uses_shared_configuration_and_real_worker(self):
         from tests.test_archloop_ai_providers import VALID_GRAPH

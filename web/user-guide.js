@@ -77,7 +77,7 @@
   function showConnection(planning = false, initialMode = null) {
     const d = dialog('AI 服务', presentation?'直接使用平台提供的 AI，无需填写 API 密钥。':'默认使用平台提供的 AI，无需填写密钥。也可以选择接入自己的 API。');
     const status = make('p', '正在读取配置…', 'ux-connection-status'); status.setAttribute('role', 'status');
-    const budget = make('p', '', 'ux-ai-budget'); budget.setAttribute('role','status');
+    const budget = make('p', '', 'ux-ai-budget'); budget.setAttribute('role','status');budget.hidden=true;
     const form = make('form', undefined, 'ux-ai-settings');form.hidden=true;
     const fields={},advanced=make('details',undefined,'ux-ai-advanced');advanced.append(make('summary','高级设置与额度'));
     const modes=make('div',undefined,'ux-actions');let mode='shared',requestedMode=initialMode;
@@ -104,7 +104,7 @@
       const labelEl=make('label',label);labelEl.append(input);(['protocol','tokenLimit','outputLimit'].includes(id)?advanced:form).append(labelEl);fields[id]=input;
     }
     form.append(advanced);
-    const preset=button('填入千问平台兼容地址',()=>{fields.baseUrl.value='https://maas.qianwenapi.com/compatible-mode/v1';fields.protocol.value='chat_completions';dirty=true;test.disabled=true;});form.append(preset);
+    const preset=button('填入千问平台兼容地址',()=>{fields.baseUrl.value='https://maas.qianwenapi.com/compatible-mode/v1';fields.protocol.value='chat_completions';dirty=true;test.disabled=true;health.disabled=true;});form.append(preset);
     const explanation=make('p','总额度包含生成、纠正和连接测试。保存不会清零已用额度；请求前会预留输入与输出，未知用量保守计入。','ux-entry-help');
     const note=make('p','', 'ux-entry-help');
     let saved=null,busy=false,dirty=false;
@@ -117,19 +117,19 @@
       finally{lock(false);}
     });
     const controls=make('div',undefined,'ux-actions');controls.append(save,test);advanced.append(explanation);form.append(controls);
-    function showBudget(value){if(!value){budget.textContent='该服务暂未提供额度信息。';return;}budget.textContent=`${mode==='personal'?'个人 API 额度':'平台共享额度'}：剩余 ${value.remainingTokens.toLocaleString()} / 总额 ${value.tokenLimit.toLocaleString()} token；单次输出最多 ${value.outputLimit}。已用或预留 ${value.chargedTokens.toLocaleString()}（供应商报告 ${value.reportedTokens.toLocaleString()}，保守估算 ${value.estimatedTokens.toLocaleString()}）。`;}
-    function lock(value){busy=value;for(const field of Object.values(fields))field.disabled=value;personal.disabled=value;shared.disabled=value;preset.disabled=value;save.disabled=value;test.disabled=value||dirty||!saved?.configured;}
+    function showBudget(value){budget.hidden=mode!=='personal';if(budget.hidden){budget.textContent='';return;}if(!value){budget.textContent='该服务暂未提供额度信息。';return;}budget.textContent=`个人 API 额度：剩余 ${value.remainingTokens.toLocaleString()} / 总额 ${value.tokenLimit.toLocaleString()} token；单次输出最多 ${value.outputLimit}。已用或预留 ${value.chargedTokens.toLocaleString()}（供应商报告 ${value.reportedTokens.toLocaleString()}，保守估算 ${value.estimatedTokens.toLocaleString()}）。`;}
+    function lock(value){busy=value;for(const field of Object.values(fields))field.disabled=value;personal.disabled=value;shared.disabled=value;preset.disabled=value;save.disabled=value;test.disabled=value||dirty||!saved?.configured;health.disabled=value||dirty;}
     function load(value){saved=value;mode=value.mode||'shared';if(!presentation){activeAIMode=mode;try{sessionStorage.setItem('projectmind:ai-mode',mode);}catch(_){}}connection=value;showBudget(value.budget);personal.setAttribute('aria-pressed',String(mode==='personal'));shared.setAttribute('aria-pressed',String(mode==='shared'));
       status.textContent=mode==='shared'?(value.configured?`平台 AI 已配置：${value.model}。实际可用性以生成结果为准。`:'平台 AI 尚未启用。管理员完成服务器配置后即可使用。'):(value.configured?`个人 API 已配置：${value.model}。调用消耗你自己的平台额度，实际可用性以连接测试和生成结果为准。`:'填写自己的服务地址、密钥和模型后保存即可；会话到期需重新填写，不自动使用平台 Key。');
       const editable=mode==='personal'&&value.canEdit&&!presentation;
       form.hidden=!editable;serverHelp.hidden=mode!=='shared'||presentation;
       if(!editable)fields.apiKey.value='';
-      note.textContent=mode==='shared'?'老师无需填写或获取 Key。平台密钥由管理员在服务器私有配置中管理，本页仅查看状态和额度。':`个人配置保留在服务端，${value.personalLifetime==='account'?'仅当前登录账号可使用':'绑定当前浏览器会话；服务重启或会话到期后需重新填写'}。更换地址时需重新填写密钥；密钥不会回显。`;
+      note.textContent=mode==='shared'?'老师无需填写或获取 Key。平台密钥由管理员在服务器私有配置中管理。点击检查按钮会发送一次小请求，产生少量 API 用量。':`个人配置保留在服务端，${value.personalLifetime==='account'?'仅当前登录账号可使用':'绑定当前浏览器会话；服务重启或会话到期后需重新填写'}。更换地址时需重新填写密钥；密钥不会回显。`;
       if(editable){fields.baseUrl.value=value.baseUrl;fields.apiKey.value='';fields.apiKey.required=!value.hasKey;fields.apiKey.placeholder=value.hasKey?'已保存；留空沿用同一地址的密钥':'填写你的 API 密钥';fields.model.value=value.model||'';fields.protocol.value=value.configured?(value.protocol||'auto'):'auto';fields.tokenLimit.value=value.budget.tokenLimit;fields.outputLimit.value=value.budget.outputLimit;}
       dirty=false;lock(false);continueButton.textContent=planning?(value.configured?(mode==='shared'?'使用平台 AI，继续':'继续 · 输入项目想法'):'先记录项目想法'):'返回工作台';renderNext();
     }
-    for(const field of Object.values(fields))field.addEventListener('input',()=>{dirty=true;test.disabled=true;});
-    fields.protocol.addEventListener('change',()=>{dirty=true;test.disabled=true;});
+    for(const field of Object.values(fields))field.addEventListener('input',()=>{dirty=true;test.disabled=true;health.disabled=true;});
+    fields.protocol.addEventListener('change',()=>{dirty=true;test.disabled=true;health.disabled=true;});
     form.addEventListener('submit',async event=>{event.preventDefault();if(busy||!form.reportValidity())return;lock(true);status.textContent='正在保存服务端配置…';
       const value={};for(const [id,field] of Object.entries(fields))value[id]=field.type==='number'?Number(field.value):field.value.trim();value.mode=mode;
       try{load(await window.projectmindAISettingsRequest('/api/ai-settings',value));status.textContent='配置已保存并立即生效。下一步可测试连接，再开始生成。';}
@@ -138,10 +138,12 @@
     });
     async function refreshBudget(){try{const value=await window.projectmindAISettingsRequest('/api/ai-settings?mode='+mode,undefined,'GET');showBudget(value.budget);}catch(_){} }
     const continueButton=button(planning?'先记录项目想法':'返回工作台',()=>{d.close();if(planning)startRoute('planning');});
-    const check=async()=>{if(busy)return;if(dirty&&!window.confirm('刷新会放弃尚未保存的 API 配置，继续吗？'))return;lock(true);status.textContent='正在读取配置…';try{const value=await window.projectmindAISettingsRequest('/api/ai-settings'+(requestedMode?'?mode='+requestedMode:''),undefined,'GET');requestedMode=null;load(value);}catch(error){status.textContent=error.message;form.hidden=true;try{await readConnection();renderNext();}catch(_){} }finally{lock(false);}};
-    const actions=make('div',undefined,'ux-actions');actions.append(button('刷新状态与额度',check),continueButton);
+    const readSettings=async()=>{if(busy)return;if(dirty)return;lock(true);status.textContent='正在读取配置…';try{const value=await window.projectmindAISettingsRequest('/api/ai-settings'+(requestedMode?'?mode='+requestedMode:''),undefined,'GET');requestedMode=null;load(value);return value;}catch(error){status.textContent=error.message;form.hidden=true;try{await readConnection();renderNext();}catch(_){} }finally{lock(false);}};
+    const check=async()=>{const value=await readSettings();if(!value||!value.configured)return;lock(true);status.textContent='正在检查 API 是否可用…';try{const result=await window.projectmindAISettingsRequest('/api/ai-settings/check',{mode});status.textContent=result.note;showBudget(result.budget);}catch(error){status.textContent='API 检查未通过：'+error.message;await refreshBudget();}finally{lock(false);}};
+    const health=button('检查 API 是否可用',check);
+    const actions=make('div',undefined,'ux-actions');actions.append(health,continueButton);
     const demo=make('a','打开展示入口（不显示配置表单）','button ghost');demo.href='/?demo=1#home';demo.target='_blank';demo.rel='noopener';
-    d.append(modes,status,budget,note,form,serverHelp,actions);if(!presentation)d.append(demo);check();
+    d.append(modes,status,budget,note,form,serverHelp,actions);if(!presentation)d.append(demo);readSettings();
   }
   function help() {
     const d = dialog('按这条流程使用', '普通操作都围绕当前项目的功能图展开。需要时再打开代码、日志和任务。');

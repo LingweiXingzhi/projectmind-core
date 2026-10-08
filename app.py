@@ -826,10 +826,10 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                         if set(request) != {'mode'}:
                             raise SettingsError('模式选择字段无效。')
                         ai_settings.choose(self._ai_identity, mode)
-                    elif not editor:
+                    elif path != '/api/ai-settings/check' and not editor:
                         raise SettingsError('共享演示配置由运行者管理；你可以直接使用已配置的模型。', 'AI_SETTINGS_FORBIDDEN', 403)
                 with ai_transport.settings_context(selected):
-                    if method=='POST' and path == '/api/ai-settings/test':
+                    if method=='POST' and path in ('/api/ai-settings/test', '/api/ai-settings/check'):
                         if set(request) - {'mode'}:
                             raise SettingsError('连接测试使用已保存配置，不接受临时端点。')
                         schema = {'type':'object','properties':{'ok':{'type':'boolean'}},'required':['ok'],'additionalProperties':False}
@@ -838,7 +838,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                         if value['ok'] is not True:
                             raise AIError('模型没有通过连接测试。')
                         self.send_json(HTTPStatus.OK, {'connected':True,'budget':selected.budget(),
-                                                      'note':'模型实际响应通过结构校验；测试用量已计入演示额度。'})
+                                                      'note':'API 当前可用：本次连接检查成功。'})
                         return
                     if method=='POST' and path=='/api/ai-settings':
                         selected.save({key:value for key,value in request.items() if key!='mode'}, ai_transport.ai_config())
@@ -852,7 +852,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             except ContractError as exc:
                 self.send_json(exc.status, archloop_error_payload(exc))
             except AIError as exc:
-                self.send_json(HTTPStatus.BAD_GATEWAY if path.endswith('/test') else HTTPStatus.BAD_REQUEST,
+                self.send_json(HTTPStatus.BAD_GATEWAY if path.endswith(('/test','/check')) else HTTPStatus.BAD_REQUEST,
                                {'error':{'code':'AI_CONNECTION_FAILED','message':str(exc)}})
             except sqlite3.Error:
                 self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, {'error':{'code':'AI_SETTINGS_UNAVAILABLE','message':'AI 私有存储暂不可用，请由运行者检查。'}})
@@ -1090,7 +1090,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                                    {"error": {"code": "REQUEST_INCOMPLETE",
                                               "message": "请求体不完整或读取超时，连接已关闭"}})
                 return
-            if path in ('/api/ai-settings', '/api/ai-settings/test', '/api/ai-settings/select'):
+            if path in ('/api/ai-settings', '/api/ai-settings/test', '/api/ai-settings/check', '/api/ai-settings/select'):
                 self._handle_ai_settings('POST', path, body)
                 return
             if path == "/api/archloop" or path.startswith("/api/archloop/"):
