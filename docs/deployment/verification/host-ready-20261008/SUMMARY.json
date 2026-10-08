@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "projectmind_host_readiness_verification_v1",
+  "upstreamPR": 68,
+  "upstreamCommit": "5be9af307ef1f631af3301e5f2521dfea3f4d436",
+  "remoteRuntimeCommit": "2fa41db622efde036fde0ef2c5a5b4d701319afc",
+  "fullSnapshotRegression": {
+    "run": 1027,
+    "passed": 1012,
+    "skipped": 15,
+    "errors": 0,
+    "seconds": 139.572,
+    "scope": "local source snapshot; before final standard-port tightening; not complete upstream Git history"
+  },
+  "finalDeploymentRegression": {
+    "run": 25,
+    "passed": 25,
+    "skipped": 0,
+    "seconds": 4.048,
+    "scope": "final implementation including added port boundary; actual Caddy TLS"
+  },
+  "realHTTPSFlowRequests": 40,
+  "ingressChecks": 14,
+  "boundRecovery": {
+    "workspaces": 2,
+    "tasks": 1,
+    "records": 2,
+    "historyAndVersionsPreserved": true,
+    "sessionsRestored": false
+  },
+  "caddy": {
+    "version": "2.11.7",
+    "archiveSHA256": "727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b",
+    "digestVerifiedAgainstGitHubRelease": true,
+    "generatedConfigurationValidated": true
+  },
+  "shellSyntax": "PASS",
+  "pythonCompilation": "PASS",
+  "systemdUnitParsing": "PASS_WITH_EXECUTABLE_PATHS_MAPPED_TO_RUNNER",
+  "notRun": {
+    "systemdBoot": "runner PID1 is supervisord",
+    "unprivilegedUserRuntime": "only UID/GID 0 mapped; non-root chown refused",
+    "cloudFirewallDNSPublicCertificateRenewal": "no actual server/domain configured",
+    "physicalSecondDevice": "no public endpoint",
+    "nativeBrowserLayout": "not a browser harness",
+    "realModel": "not configured; transport deadline belongs to teammate",
+    "realTaskVerifier": "not configured",
+    "finalIndependentAudit": "not run"
+  },
+  "developmentRechecks": [
+    "Two early broad runs lacked already-existing upstream JSON/JSONL fixtures; materialized exact blobs and reran successfully. No product fix or new fixture fabrication.",
+    "Final port boundary added after broad regression; final targeted 25 checks validate final deployment implementation."
+  ],
+  "publiclyDeployed": false,
+  "mainModified": false,
+  "formalModelModified": false
+}
