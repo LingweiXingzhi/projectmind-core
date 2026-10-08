@@ -10,3 +10,4 @@
 #arch-map-stage .ux-edge-control{position:absolute;width:24px;height:24px;z-index:3;padding:0;border:1px solid #b9ccef;background:#f6f9ff;color:#2d63ba;border-radius:50%;cursor:pointer;font-size:14px;line-height:22px}#arch-map-stage .ux-edge-control:hover,#arch-map-stage .ux-edge-control:focus-visible{background:#dfebff;border-color:#155eea;outline:2px solid #aac8ff}
 @media(max-width:700px){.sidebar .top-nav{flex-direction:row}.sidebar .top-nav .nav-item{width:auto}.ux-dialog input,.ux-dialog textarea,.arch-entry-form input,.arch-entry-form textarea{font-size:16px}}
 @media(max-width:700px){body{min-width:320px}.ux-next>div:first-child,.ux-welcome>div{min-width:0}}
+@media(min-width:901px){#view-arch .details{position:sticky;top:0;align-self:start;max-height:calc(100vh - 86px);overflow-y:auto}}
