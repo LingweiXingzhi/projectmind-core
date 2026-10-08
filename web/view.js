@@ -154,7 +154,10 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
   function ask(){activateView('arch');document.body.classList.remove('inspector-hidden');const input=$('arch-correction-input');input?.focus();toast('选中架构节点后描述修改；纠正先生成预览，由你确认应用；来源以返回结果为准。');}
   $('ask-projectmind').onclick=ask;
   document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();commandOpen();}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='j'){e.preventDefault();ask();}});
-  function network(){const el=$('status-network');el.textContent=navigator.onLine?'◉ 本地':'○ 离线';el.classList.toggle('status-offline',!navigator.onLine);}
+  function network(){const el=$('status-network');el.textContent=navigator.onLine
+    ? (location.protocol==='https:'?'◉ HTTPS':'◉ 本机'):'○ 离线';
+    el.title='浏览器网络状态；服务器和版本状态以接口结果为准';
+    el.classList.toggle('status-offline',!navigator.onLine);}
   window.addEventListener('offline',network);window.addEventListener('online',()=>{network();overview(true);});network();overview();
 })();
 

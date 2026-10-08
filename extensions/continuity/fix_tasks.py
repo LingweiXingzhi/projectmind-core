@@ -50,7 +50,11 @@ class VerificationReceipt:
 
 class FixTaskService:
     """No imported command execution; configured repository paths never come from JSON."""
-    def __init__(self, continuity_store, *, architecture_repo, code_repositories, verification_provider=None):
+    def __init__(self, continuity_store, *, architecture_repo, code_repositories, verification_provider=None,
+                 actor_identity='local_operator_declaration'):
+        require(actor_identity in ('local_operator_declaration', 'authenticated_account'),
+                'INVALID_INPUT', '操作者身份来源必须由运行入口配置', 400)
+        self.actor_identity = actor_identity
         self.store = continuity_store
         self.architecture_repo = Path(architecture_repo).resolve()
         self.code_repositories = {code_identity(p): Path(p).resolve() for p in code_repositories}
@@ -62,6 +66,10 @@ class FixTaskService:
                 CREATE TABLE IF NOT EXISTS architecture_fix_history
                 (id TEXT NOT NULL, revision INTEGER NOT NULL, document TEXT NOT NULL,
                  PRIMARY KEY(id,revision));''')
+
+    def discard_verification(self, token):
+        """Release an expired/revoked gateway preview without changing a task."""
+        self._receipts.pop(token, None)
 
     def get(self, task_id, db=None):
         identity(task_id)
@@ -123,6 +131,8 @@ class FixTaskService:
             db.execute('BEGIN IMMEDIATE')
             local = self._match(db,base['id'],base['revision'],base['mapRevision'])
             local.update(status='received',deviationStatus='open',revision=local['revision']+1,
+                actorIdentity='imported_participant_claim', receivedBy=actor,
+                receivedByIdentity=self.actor_identity,
                 importedHistory={'status':task['status'],'submittedRevision':task.get('submittedRevision'),
                     'events':task.get('events',[]),'verification':task.get('verification'),
                     'trust':'imported_participant_record_unverified'},
@@ -219,10 +229,14 @@ class FixTaskService:
                 require(task['definitionDigest'] == digest(payload), 'REVISION_CONFLICT', '同一偏差任务定义不同')
                 return task
             task = {**payload, 'id': task_id, 'revision': 1, 'status': 'queued',
+                    'actorIdentity': self.actor_identity,
                     'deviationStatus': 'open', 'definitionDigest': digest(payload), 'submittedRevision': None,
                     'localContinuityId': local_continuity_id or continuity_id,
                     'events': [{'kind': 'queued', 'actor': actor, 'note': deviation, 'at': now()}],
-                    'verification': None, 'limits': ['任务与反馈为本机参与者记录，不是身份认证。',
+                    'verification': None, 'limits': [
+                        '操作者由当前服务器登录会话登记；导入包仍是未经认证的参与者记录。'
+                        if self.actor_identity == 'authenticated_account'
+                        else '任务与反馈为本机参与者记录，不是身份认证。',
                         '提交存在不证明偏差消失；C 复核、真实验证及人确认后才关闭。']}
             return self._write(db, task)
 
@@ -361,7 +375,7 @@ class FixTaskService:
                             'exitCode': receipt.exit_code, 'outputDigest': receipt.output_digest,
                             'observedAt': receipt.observed_at, 'observation': receipt.observation,
                             'recheckRef': receipt.recheck_ref, 'actor': actor, 'reason': reason,
-                            'actorIdentity': 'local_operator_declaration', 'fixtureOnly': receipt.fixture_only})
+                            'actorIdentity': self.actor_identity, 'fixtureOnly': receipt.fixture_only})
             task['events'].append({'kind': 'verified', 'actor': actor, 'note': reason, 'at': now()})
             answer = self._write(db, task)
         self._receipts.pop(token, None)

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "projectmind_verification_summary_v1",
+  "runtimeLocalSHA": "453553face25ae045c80e941e33e68bcff875ca2",
+  "runtimeRemoteSHA": "951b59c5d67dfcacc0211eb2568325d7e9a2756e",
+  "runtimeTree": "89c2194215e3ec8c67c5fb8e4c920df238d19995",
+  "tests": 979,
+  "passed": 956,
+  "skipped": 23,
+  "seconds": 253.844,
+  "exitCode": 0,
+  "javascriptSyntaxFiles": 11,
+  "httpsRequests": 30,
+  "fullDomHttpRequests": 49,
+  "nativeBrowser": "NOT_RUN",
+  "publicCloud": "NOT_RUN",
+  "realAI": "NOT_RUN",
+  "realTaskVerifier": "NOT_CONFIGURED",
+  "formalModelApproval": "NOT_RUN"
+}

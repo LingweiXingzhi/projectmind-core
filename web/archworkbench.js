@@ -79,7 +79,19 @@
     return new Promise(resolve=>{
       const dialog=el('dialog','workspace-dialog');const form=el('form');form.method='dialog';
       form.append(el('h2',null,title));const inputs={};
-      for(const [id,label,type] of fields){const input=el(type==='textarea'?'textarea':'input');input.name=id;input.required=['title','actor','deviation','repoPath'].includes(id);if(type==='textarea')input.rows=3;input.setAttribute('aria-label',label);inputs[id]=input;form.append(labeledField(label,input));}
+      for (const [id, label, type] of fields) {
+        const session = window.projectmindSession;
+        const registered = id === 'repoPath' && session;
+        const input = el(registered ? 'select' : type === 'textarea' ? 'textarea' : 'input');
+        input.name = id; input.required = ['title','actor','deviation','repoPath','reason'].includes(id);
+        if (type === 'textarea') input.rows = 3;
+        if (registered) for (const repo of session.repositories) {
+          const option = el('option', null, repo.label); option.value = repo.key; input.append(option);
+        }
+        if (id === 'actor' && session) { input.value = session.actor; input.readOnly = true; }
+        const name = registered ? '服务器登记的代码仓库' : id === 'actor' && session ? '登录账户' : label;
+        input.setAttribute('aria-label', name); inputs[id] = input; form.append(labeledField(name, input));
+      }
       const buttons=el('div','dialog-actions');const cancel=el('button','button ghost','取消');cancel.type='button';cancel.onclick=()=>dialog.close('cancel');const submit=el('button','button primary',action);submit.type='submit';buttons.append(cancel,submit);form.append(buttons);dialog.append(form);document.body.append(dialog);
       form.addEventListener('submit',event=>{event.preventDefault();if(!form.reportValidity())return;dialog.close('submit');});
       dialog.addEventListener('close',()=>{resolve(dialog.returnValue==='submit'?Object.fromEntries(Object.entries(inputs).map(([id,input])=>[id,input.value.trim()])):null);dialog.remove();},{once:true});dialog.showModal();Object.values(inputs)[0]?.focus();

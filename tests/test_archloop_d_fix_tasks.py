@@ -148,11 +148,15 @@ class FixTasksTests(unittest.TestCase):
         self.start();self.task=self.submit(self.fix())
         packet=self.service.export_task(self.task['id'])
         second=FixTaskService(Store(Path(self.tmp.name)/'second-continuity'/'records.sqlite3'),
-            architecture_repo=self.f['secondArchitecture'],code_repositories=[self.f['secondCode']])
+            architecture_repo=self.f['secondArchitecture'],code_repositories=[self.f['secondCode']],
+            actor_identity='authenticated_account')
         received=second.receive_task(packet,actor='TEST_ONLY_SECOND')
         self.assertEqual(received['id'],self.task['id']);self.assertEqual(received['status'],'received')
         self.assertIsNone(received['submittedRevision']);self.assertIsNone(received['verification'])
         self.assertEqual(received['importedHistory']['status'],'verification_pending')
+        self.assertEqual(received['actorIdentity'],'imported_participant_claim')
+        self.assertEqual(received['receivedBy'],'TEST_ONLY_SECOND')
+        self.assertEqual(received['receivedByIdentity'],'authenticated_account')
         self.assertEqual(second.receive_task(packet,actor='TEST_ONLY_SECOND'),received)
         broken=deepcopy(packet);broken['task']['acceptance']='tampered'
         with self.assertRaises(ArchitectureError):second.receive_task(broken,actor='T')

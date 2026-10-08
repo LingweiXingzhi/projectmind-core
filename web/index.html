@@ -13,6 +13,7 @@
     <script src="/explorer-core.js" defer></script>
     <script src="/explorer.js" defer></script>
     <script src="/archworkbench.js" defer></script>
+    <script src="/governed-tasks.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -213,6 +214,7 @@
                   <div id="arch-review-status" class="compare-status">人审必须经过 预览 → 确认 → 发布 三步；后端缺失时如实拒绝，不产生版本。</div>
                   <div id="arch-review-result" class="compare-result"></div>
                   <div id="arch-version-result" class="compare-result"></div>
+                  <section id="governed-task-panel" hidden aria-labelledby="governed-task-title"></section>
                 </div>
               </div>
             </section>

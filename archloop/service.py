@@ -54,7 +54,7 @@ class WorkbenchService:
         # Optional real B version service (single adapter layer: backend_b.py).
         # Bound by app.py from server-side configuration only.
         self.backend_b = None
-        # Optional D fix-task authority (backend_d.py) and the registered code
+# Optional D fix-task authority (backend_d.py) and the registered code
         # roots its verification provider may resolve commits in.
         self.backend_d = None
         self.code_repo_roots: list[str] = []
@@ -732,6 +732,14 @@ class WorkbenchService:
             return None
         return backend_d
 
+    def _governed_tasks(self):
+        """#62 authenticated task bridge (GovernedTasks) when the shared-server
+        entry bound it; app.py's local entry binds BackendD above instead."""
+        backend_d = getattr(self, "backend_d", None)
+        if backend_d is None or not hasattr(backend_d, "action"):
+            return None
+        return backend_d
+
     def list_fix_tasks(self, workspace_id: str) -> dict:
         self.store.load_workspace(workspace_id)
         backend_d = self._backend_d()
@@ -740,6 +748,9 @@ class WorkbenchService:
             listing["workspaceId"] = workspace_id
             listing["statuses"] = list(fix_tasks_module.STATUSES)
             return listing
+        governed = self._governed_tasks()
+        if governed is not None:
+            return governed.tasks(workspace_id)
         tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
         return {"workspaceId": workspace_id, "tasks": tasks,
                 "statuses": list(fix_tasks_module.STATUSES),
@@ -765,6 +776,8 @@ class WorkbenchService:
                 "type": "fix_task_update", "at": _utcnow(), "taskId": task_id,
                 "status": task.get("status"), "backend": "d_fix_tasks"})
             return task
+        if self._governed_tasks() is not None:
+            raise ContractError('VALIDATION_FAILED', '治理任务须使用任务 governance 接口及固定版本 CAS')
         with workspace_lock(workspace_id):
             task = fix_tasks_module.update_task(self.store.root, workspace_id, task_id, request)
             self.store.append_history(workspace_id, {
@@ -780,6 +793,10 @@ class WorkbenchService:
                 raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
             return {**backend_d.markdown(task_id), "taskId": task_id,
                     "filename": f"{task_id}.md"}
+        governed = self._governed_tasks()
+        if governed is not None:
+            self.store.load_workspace(workspace_id)
+            return governed.markdown(workspace_id, task_id)
         task = fix_tasks_module.load_task(self.store.root, workspace_id, task_id)
         return {"taskId": task_id, "markdown": fix_tasks_module.task_markdown(task),
                 "filename": f"{task_id}.md"}
@@ -788,6 +805,8 @@ class WorkbenchService:
 
     def export_handover(self, workspace_id: str) -> dict:
         record = self.store.load_workspace(workspace_id)
+        if self.backend_d is not None:
+            return self.backend_d.handover(record)
         binding = record.get("backendB") or {}
         if not binding.get("workspaceId"):
             raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务，无法导出同版交接包")
@@ -1122,7 +1141,23 @@ class WorkbenchService:
             "adapter": self.adapter.listing(),
             "generation": generate_module.generate_status(),
             "persistence": self._backend_label(),
+            "governedTasks": self._governed_tasks().status() if self._governed_tasks() is not None else {
+                "available": False, "reason": "未绑定新任务治理层"},
         }
+
+    def fix_task_hints(self, workspace_id):
+        governed = self._governed_tasks()
+        if governed is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return governed.hints(self.store.load_workspace(workspace_id))
+
+    def governed_task_action(self, workspace_id, task_id, request, meta):
+        governed = self._governed_tasks()
+        if governed is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return governed.action(self.store.load_workspace(workspace_id), task_id, request, meta)
 
     @staticmethod
     def _require_meta(meta) -> dict:
@@ -1732,12 +1767,15 @@ class WorkbenchService:
         return self._envelope(record)
 
     def create_fix_task(self, workspace_id: str, request: dict,
-                        server_context: dict | None = None) -> dict:
+                        server_context: dict | None = None, meta: dict | None = None) -> dict:
         with workspace_lock(workspace_id):
             record = self.store.load_workspace(workspace_id)
             draft = record.get("draft")
             if draft is None:
                 raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            governed = self._governed_tasks()
+            if governed is not None:
+                return governed.create(record, request, meta)
             mode = request.get("mode", "production")
             if mode == DEV_SAMPLE_MODE:
                 return self._sample_fix_task(record, draft, request)

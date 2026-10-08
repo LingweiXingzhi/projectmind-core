@@ -20,6 +20,7 @@ fixture = _outside_git(args.output)
 if fixture.exists(): raise RuntimeError('Preserve existing evidence; choose a new run name')
 fixture.mkdir(mode=0o700, parents=True)
 code=tiny_code_repo(fixture);arch=architecture_repo(fixture)
+run_git(arch, 'remote', 'add', 'origin', 'https://example.invalid/architecture-fixture.git')
 password=secrets.token_urlsafe(24);create_account_file(fixture/'accounts.json','browser-fixture',password)
 def port():
     with socket.socket() as sock:
@@ -112,7 +113,7 @@ try:
     registered_key=request('GET','/api/auth/session',auth=auth)[2]['repositories'][0]['key']
     assert request('POST','/api/archloop/workspaces',{},auth={'Cookie':auth['Cookie']})[0]==403
     assert request('POST','/api/archloop/workspaces',{},auth=auth,request_origin='https://evil.example.invalid')[0]==403
-    publications=[]
+    publications=[]; tasks=[]
     for planning in (False,True):
         payload={'context':'planning' if planning else 'existing_project','title':'TLS fixture only',
             'goals':'保存设计','constraints':'不伪造实现','description':'isolated fixture'}
@@ -121,7 +122,16 @@ try:
         path='/api/archloop/workspaces/'+opened['workspace']['workspaceId']
         status,_,candidate=request('POST',path+'/generate',{'mode':'rule_based'},auth);assert status==200
         status,_,applied=request('POST',path+'/apply-candidate',{'candidateId':candidate['candidateId'],'expectedDraftRevision':None},auth);assert status==200
-        status,_,preview=request('POST',path+'/review-preview',{'actor':'FORGED_JSON_ACTOR','reason':'FIXTURE ONLY simulated review'},auth);assert status==200
+        if not planning:
+            node=applied['draft']['graph']['nodes'][0]['id']
+            status,_,applied=request('POST',path+'/apply-ops', {
+                'expectedDraftRevision':applied['draft']['draftRevision'],
+                'operations':[{'type':'update_process','nodeId':node,'process':[
+                    {'stepId':'fixture-return','title':'Fixture expected return','detail':'Not real runtime evidence',
+                     'inputs':[],'outputs':[],'branches':[],'next':[]}]}]},auth)
+            assert status==200
+        status,_,preview=request('POST',path+'/review-preview',{'actor':'FORGED_JSON_ACTOR',
+            'verifyCode':False,'reason':'FIXTURE ONLY simulated design/expected-process review'},auth);assert status==200
         confirmation={'previewDigest':preview['previewDigest'],'decision':'accept'}
         assert request('POST',path+'/review-confirm',confirmation,other)[0]==403
         assert request('POST',path+'/review-confirm',confirmation,auth)[0]==200
@@ -133,6 +143,27 @@ try:
         if planning:assert published['version']['codeRevision'] is None and published['version']['verifiedCodeRevision'] is None
         publications.append({'context':payload['context'],'mapRevision':published['version']['mapRevision'],
             'mapSourceRevision':published['provenance']['mapSourceRevision'],'codeRevision':published['version']['codeRevision']})
+        if not planning:
+            status,_,hints=request('GET',path+'/fix-task-hints',auth=auth);assert status==200 and hints['canCreate']
+            process=hints['processes'][0]
+            status,_,task=request('POST',path+'/fix-tasks',{
+                'expectedMapRevision':hints['mapRevision'],'expectedDraftRevision':hints['draftRevision'],
+                'expectedProcessRef':{'processId':process['id'],'stepIds':[process['steps'][0]['id']]},
+                'deviation':'Synthetic declared observation','scope':['service.py'],
+                'evidence':[{'kind':'test_observation','detail':'Fixture only, real team runtime NOT_RUN',
+                    'codeRepoId':hints['codeRepoId'],'codeRevision':hints['codeRevision']}],
+                'acceptance':'Synthetic acceptance','actor':'FORGED_JSON_ACTOR'},auth)
+            assert status==200 and task['actor']=='browser-fixture' and task['actorIdentity']=='authenticated_account'
+            status,_,task=request('POST',path+'/fix-tasks/'+task['id']+'/governance',{
+                'action':'transition','expectedRevision':task['revision'],'expectedMapRevision':task['mapRevision'],
+                'status':'received','description':'FIXTURE ONLY received'},auth)
+            assert status==200 and task['status']=='received'
+            status,_,listed=request('GET',path+'/fix-tasks',auth=other)
+            assert status==200 and listed['tasks'][0]['id']==task['id'] and 'versionHandoff' not in listed['tasks'][0]
+            status,_,handoff=request('GET',path+'/handover',auth=other)
+            assert status==200 and handoff['schemaVersion']=='architecture_handoff_v1'
+            tasks.append({'id':task['id'],'workspaceId':task['workspaceId'],'mapRevision':task['mapRevision'],
+                'revision':task['revision'],'status':task['status'],'actorIdentity':task['actorIdentity']})
     assert code_before==(run_git(code,'rev-parse','HEAD'),run_git(code,'status','--porcelain'))
     report={'schemaVersion':'local_https_rehearsal_v1','fixtureOnly':True,'backend':'actual Waitress CLI',
         'proxy':subprocess.check_output([str(caddy),'version'],text=True).strip(),'localCertificateAndHostnameVerified':True,
@@ -142,7 +173,9 @@ try:
         'crossSessionConfirmRejected':True,'crossSessionPublishRejected':True,
         'csrfRejected':True,'wrongOriginRejected':True,'trustedActorFromSession':True,
         'planningNoFakeCodeSHA':True,'secondServingProcessRejected':True,
-        'sourceLocalSHA':run_git(SOURCE,'rev-parse','HEAD'),'sourceTree':run_git(SOURCE,'rev-parse','HEAD^{tree}')}
+        'governedTasks':tasks,'nativeHandoffSchema':bool(tasks),
+        'sourceLocalSHA':run_git(SOURCE,'rev-parse','HEAD'),'sourceTree':run_git(SOURCE,'rev-parse','HEAD^{tree}'),
+        'sourceWorkingTreeDirty':bool(run_git(SOURCE,'status','--porcelain'))}
     (fixture/'HTTPS_REPORT.json').write_text(json.dumps(report,indent=2)+'\n')
 
 finally:
@@ -163,6 +196,11 @@ def documents(path):
         assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         return connection.execute("SELECT kind, id, body FROM documents ORDER BY kind, id").fetchall()
 assert documents(fixture/"state/b/workspace.sqlite3") == documents(restored/"state/b/workspace.sqlite3")
+def d_tasks(path):
+    with sqlite3.connect(f"file:{path.resolve()}?mode=ro",uri=True) as connection:
+        assert connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
+        return connection.execute('SELECT id,revision,document FROM architecture_fix_tasks ORDER BY id').fetchall()
+assert d_tasks(fixture/'state/d/continuity.sqlite3') == d_tasks(restored/'state/d/continuity.sqlite3')
 assert run_git(arch,"rev-parse","HEAD") == run_git(restored/"architecture","rev-parse","HEAD")
 restore_config = dict(config, dataRoot=str(restored/"state"), architectureRepo=str(restored/"architecture"))
 restore_path = restored / "runtime.json"
@@ -177,10 +215,14 @@ for row in rows:
     identities.append((opened["identity"]["mapRevision"], opened["identity"]["mapSourceRevision"]))
 assert sorted(identities) == sorted((v["mapRevision"], v["mapSourceRevision"]) for v in publications)
 assert len(application.access.sessions) == 0
+reopened=application.service.backend_d.service.listing()
+assert [(v['id'],v['revision'],v['status']) for v in reopened] == [(v['id'],v['revision'],v['status']) for v in tasks]
+assert len(application.service.backend_d.gateway.sessions)==0
 restore_report = {"schemaVersion":"cold_restore_fixture_v1", "fixtureOnly":True,
     "serviceStoppedBeforeCopy":True, "sqliteIntegrity":"ok", "bDocumentsEqual":True,
     "aWorkspacesReopened":len(rows), "architectureGitHeadEqual":True, "newBrowserSessions":0,
     "scope":"same host, same registered code fixture; not cloud recovery",
     "sourceLocalSHA":report["sourceLocalSHA"], "sourceTree":report["sourceTree"]}
+restore_report.update(dSQLiteIntegrity='ok',dTasksEqual=True,dTasksReopened=len(reopened),dSessionsRestored=0)
 (restored/"RESTORE_REPORT.json").write_text(json.dumps(restore_report,indent=2)+"\n")
 print(json.dumps({"https":report,"restore":restore_report}))
