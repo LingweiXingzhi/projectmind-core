@@ -43,6 +43,7 @@ def build_application(config_path):
     check(backend.available, message="B 版本后端配置无效；检查专用数据根和独立架构候选分支")
     service = WorkbenchService(data / "a", AdapterRegistry(), allowed_repositories=repos)
     service.bind_backend_b(backend)
+    service.bind_backend_c()
     from archloop.backend_d import GovernedTasks
     service.bind_backend_d(GovernedTasks(service, backend, data, access.origin))
     from archloop.work_records import WorkspaceRecords

@@ -103,6 +103,8 @@ def generate_status() -> dict:
     return {
         "configured": status["configured"],
         "model": status["model"],
+        "provider": status.get("provider"),
+        "protocol": status.get("protocol"),
         "note": status["note"],
         "generation": "ready" if status["configured"] else "NOT_RUN_AWAITING_CONFIGURATION",
     }

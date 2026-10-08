@@ -362,7 +362,7 @@ class WorkbenchService:
                 record["lastContextPack"] = self._context_pack_summary(context_pack, source_revision)
             if mode == "rule_based":
                 # explicit rule-based route (C's engine), never labeled as AI
-                candidate = backend_c.bootstrap_candidate(record["context"], record)
+                candidate = self._c_call('bootstrap_candidate', {'context': record['context'], 'record': record})
                 graph = self._evidence_guard(candidate["graph"], record, source_revision)
                 graph["mapRevision"] = semantic_revision(graph)
                 candidate_id = f"cand_{secrets.token_hex(5)}"
@@ -587,7 +587,8 @@ class WorkbenchService:
                 note = preview["note"]
             elif mode == "rule_based":
                 # explicit C rule engine route: real module, labeled rule_based
-                reply = backend_c.nl_patch_candidate(draft["graph"], selected[0], instruction)
+                reply = self._c_call('nl_patch_candidate', {'graph': draft['graph'], 'nodeId': selected[0],
+                                                          'instruction': instruction})
                 operations = reply["operations"]
                 probe_graph = draft["graph"]
                 for op in operations:
@@ -883,9 +884,10 @@ class WorkbenchService:
         if draft is None:
             raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
         traces = request.get("observedTraces")
-        if traces is not None and not isinstance(traces, list):
-            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表（可为空）")
-        result = backend_c.deviations_for(draft["graph"], traces or [])
+        if traces is not None and (not isinstance(traces, list) or len(traces) > 200):
+            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表，最多 200 条（可为空）")
+        result = self._c_call('deviations_for', {'graph': draft['graph'], 'traces': traces or [],
+                                               'identity': record['identity']})
         result["draftRevision"] = draft["draftRevision"]
         result["mapRevision"] = draft["graph"].get("mapRevision")
         result["observedTracesProvided"] = bool(traces)
@@ -918,7 +920,8 @@ class WorkbenchService:
                 "renamed_files": [{"from": c.get("oldPath"), "to": c["path"]}
                                   for c in changes if c["code"].startswith("R")],
             }
-            reply = backend_c.incremental_candidate(draft["graph"], base, target, facts_diff)
+            reply = self._c_call('incremental_candidate', {'graph': draft['graph'], 'baseCodeRevision': base,
+                                                          'targetCodeRevision': target, 'factsDiff': facts_diff})
             reply.update({"status": "ok", "baseCodeRevision": base, "targetCodeRevision": target,
                           "changeSummary": {"added": len(facts_diff["added_files"]),
                                             "modified": len(facts_diff["modified_files"]),
@@ -1048,6 +1051,15 @@ class WorkbenchService:
 
     def bind_backend_d(self, backend) -> None:
         self.backend_d = backend
+
+    def bind_backend_c(self, descriptor=None):
+        descriptor = descriptor if descriptor is not None else backend_c.descriptor()
+        if descriptor is not None:
+            self.adapter.register('correction', descriptor)
+
+    def _c_call(self, action, payload):
+        descriptor = self.adapter._backends.get('correction')
+        return call_backend(descriptor, action, payload) if descriptor is not None else backend_c.call(action, payload)
 
     def bind_work_records(self, backend):
         self.work_records = backend

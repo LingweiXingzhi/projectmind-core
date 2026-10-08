@@ -96,6 +96,8 @@ class TestArchloopCCandidates(unittest.TestCase):
     def test_process_deviation_controllable_and_unknown(self):
         """验证过程偏差：缺少证据返回 UNKNOWN；存在绕过返回具体偏差。"""
         graph = {
+            "codeRepoId": "repo-test",
+            "codeRevision": "a" * 40,
             "nodes": [
                 {
                     "nodeId": "node_order",
@@ -107,13 +109,28 @@ class TestArchloopCCandidates(unittest.TestCase):
         unknown_res = detect_process_deviations(graph, [])
         self.assertEqual(unknown_res["verdict"], "UNKNOWN")
 
-        # 2. 真实追踪显示 deduct_stock 被绕过
-        trace = {"called_steps": ["validate", "other_step"]}
+        # 2. 真实追踪显示 deduct_stock 被绕过（轨迹声明的仓库/版本与图一致）
+        trace = {"called_steps": ["validate", "other_step"],
+                 "codeRepoId": "repo-test", "codeRevision": "a" * 40}
         dev_res = detect_process_deviations(graph, [trace])
         self.assertEqual(dev_res["verdict"], "DEVIATION_DETECTED")
         self.assertEqual(len(dev_res["deviations"]), 1)
         self.assertEqual(dev_res["deviations"][0]["type"], "bypassed_step")
         self.assertEqual(dev_res["deviations"][0]["expectedStep"], "deduct_stock")
+
+        # 3. 图没有可核对的仓库/版本身份 -> 无身份观察不能判一致（UNKNOWN）
+        no_identity_graph = {"nodes": [{"nodeId": "node_order",
+                                        "expectedProcesses": ["validate", "deduct_stock", "send_notice"]}]}
+        self.assertEqual(detect_process_deviations(
+            no_identity_graph, [{"called_steps": ["validate", "deduct_stock", "send_notice"]}])["verdict"],
+            "UNKNOWN")
+
+        # 4. 完整链但缺身份 / 错版本 -> 不报告 ALIGNED
+        self.assertEqual(detect_process_deviations(
+            graph, [{"called_steps": ["validate", "deduct_stock", "send_notice"]}])["verdict"], "UNKNOWN")
+        self.assertEqual(detect_process_deviations(
+            graph, [{"called_steps": ["validate", "deduct_stock", "send_notice"],
+                     "codeRepoId": "repo-test", "codeRevision": "b" * 40}])["verdict"], "UNKNOWN")
 
 
 if __name__ == "__main__":

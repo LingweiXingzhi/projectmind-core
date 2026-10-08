@@ -1,0 +1,267 @@
+{
+  "schemaVersion": "local_https_rehearsal_v1",
+  "fixtureOnly": true,
+  "backend": "actual Waitress CLI",
+  "proxy": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=",
+  "localCertificateAndHostnameVerified": true,
+  "codeGitUnchanged": true,
+  "publicNetwork": "NOT_RUN",
+  "realTeamApproval": "NOT_RUN",
+  "browser": "NOT_RUN_NOT_A_BROWSER_HARNESS",
+  "requests": 40,
+  "observations": [
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    }
+  ],
+  "publishedFixtures": [
+    {
+      "context": "existing_project",
+      "mapRevision": "sha256:bd01b5571dee36e4f74a7776dd85817f3e98c329d8a76b51cfc4fa0a6be79ed7",
+      "mapSourceRevision": "4f9be11e5c99c1d6e4e2fa49c9fa7ece418aaa88",
+      "codeRevision": "e01d0856b41a5a213740e49765730fba869deba3"
+    },
+    {
+      "context": "planning",
+      "mapRevision": "sha256:03490785a315b75e94b5bc160a28c06c17126f94b02212eb2352655402ef4ad6",
+      "mapSourceRevision": "494e3008f147cb3ea74969978ca90b96b48dd651",
+      "codeRevision": null
+    }
+  ],
+  "crossSessionConfirmRejected": true,
+  "crossSessionPublishRejected": true,
+  "csrfRejected": true,
+  "wrongOriginRejected": true,
+  "trustedActorFromSession": true,
+  "planningNoFakeCodeSHA": true,
+  "secondServingProcessRejected": true,
+  "governedTasks": [
+    {
+      "id": "fix-cbcd2f348a4022c3ba35f0f6516eebb5",
+      "workspaceId": "ws_20261008105558_3a5a33",
+      "mapRevision": "sha256:bd01b5571dee36e4f74a7776dd85817f3e98c329d8a76b51cfc4fa0a6be79ed7",
+      "revision": 2,
+      "status": "received",
+      "actorIdentity": "authenticated_account"
+    }
+  ],
+  "nativeHandoffSchema": true,
+  "sharedRecords": [
+    {
+      "id": "b7697e45738042a6a96bc64586ebc56f",
+      "workspaceId": "ws_20261008105558_3a5a33",
+      "version": 2,
+      "status": "ai_candidate",
+      "codeRevision": "e01d0856b41a5a213740e49765730fba869deba3"
+    },
+    {
+      "id": "59a4f7c805c04b78b135aea4ef58d0a4",
+      "workspaceId": "ws_20261008105559_344988",
+      "version": 2,
+      "status": "ai_candidate",
+      "codeRevision": null
+    }
+  ],
+  "recordCASConflictRejected": true,
+  "recordActorFromSession": true,
+  "sourceLocalSHA": "9c2b3840b0ef039b686c043bb6e83b37736865c9",
+  "sourceTree": "4dbdc00ea7146270527d305ec1b414aead0dda3d",
+  "sourceWorkingTreeDirty": false
+}
