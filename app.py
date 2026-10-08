@@ -538,6 +538,9 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             if method == "GET" and parts == ["workspaces"]:
                 self.send_json(HTTPStatus.OK, archloop_service.list_workspaces())
                 return
+            if method == "GET" and parts == ["records"]:
+                self.send_json(HTTPStatus.OK, archloop_service.list_work_records())
+                return
             if method == "POST" and parts == ["workspaces"]:
                 self.send_json(HTTPStatus.OK, archloop_service.create_workspace(body or {}))
                 return
@@ -546,6 +549,18 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 rest = parts[2:]
                 if method == "GET" and not rest:
                     self.send_json(HTTPStatus.OK, archloop_service.open_workspace(workspace_id))
+                    return
+                if rest == ["records"]:
+                    if method == "GET":
+                        self.send_json(HTTPStatus.OK, archloop_service.list_work_records(workspace_id))
+                    else:
+                        self.send_json(HTTPStatus.OK, archloop_service.save_work_record(workspace_id, body or {}, self._review_meta()))
+                    return
+                if method == "GET" and rest == ["records", "export"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.export_work_records(workspace_id))
+                    return
+                if method == "GET" and len(rest) == 3 and rest[0] == "records" and rest[2] == "history":
+                    self.send_json(HTTPStatus.OK, archloop_service.work_record_history(workspace_id, rest[1]))
                     return
                 if method == "GET" and rest == ["diff"]:
                     self.send_json(HTTPStatus.OK, archloop_service.draft_diff(workspace_id))
@@ -861,6 +876,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "/extension.js": ("extension.js", "text/javascript; charset=utf-8"),
                     "/archworkbench.js": ("archworkbench.js", "text/javascript; charset=utf-8"),
                     "/governed-tasks.js": ("governed-tasks.js", "text/javascript; charset=utf-8"),
+                    "/work-records.js": ("work-records.js", "text/javascript; charset=utf-8"),
                     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
                 }
                 if request.path in assets:

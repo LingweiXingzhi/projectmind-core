@@ -35,7 +35,7 @@ Windows 本地演示不受影响；Windows 公网模式需要后续专门验证 
 | /etc/projectmind | runtime.json、accounts.json | 私有目录；账号文件 0600 |
 | /srv/projectmind/code/target | 完整代码 Git 副本 | 代码证据只读；保留所需提交历史 |
 | /var/lib/projectmind/architecture | 独立架构 Git 副本 | 专用 architecture/candidates/* 分支 |
-| /var/lib/projectmind/state | A JSON、B SQLite、D continuity.sqlite3 | 0700；升级应用不能清理此目录 |
+| /var/lib/projectmind/state | A JSON、B/D SQLite、共享工作记录 SQLite | 0700；升级应用不能清理此目录 |
 
 服务器上用常规 Git 授权获取私有仓库，凭据放 Git 的正常凭据机制。
 不要把令牌写入 remote URL、源文件、浏览器或运行证据。
@@ -98,11 +98,12 @@ PROJECTMIND_DOMAIN=你的真实域名 caddy run \
 仅开放 HTTPS/证书所需入口，不公开应用的 8765 后端端口。
 `deployment/projectmind.service` 提供 Linux 单进程守护模板；创建对应服务用户与目录后再启用。
 此模板的 systemd 实机启动、云防火墙、真实证书续期本轮尚未验证。
-模板只允许写 /var/lib/projectmind。新任务使用 state/d 私有数据库；旧本地图模式中存于代码 .git 的工作记录等扩展仍需迁移，不能直接声称已线上可用。
+模板只允许写 /var/lib/projectmind。新任务使用 state/d；共享文本记录使用 state/work-records。
+旧本地图中存于代码 .git 的历史记录/附件等数据需单独迁移；不会自动扫描/导入旧副本。
 
 ## 四、持久化与恢复
 
-- 应用更新使用新版本目录，保留 A/B/D 数据和架构 Git；不要 reset/clean 数据目录。
+- 应用更新使用新版本目录，保留 A/B/D/工作记录数据和架构 Git；不要 reset/clean 数据目录。
 - 当前冷备方式：先停止写入与应用服务，再一起保存 state 和 architecture（包括 .git）。
   不要单独复制运行中 SQLite 主文件并忽略 WAL/事务状态。
 - 账号文件和模型 API 环境配置另作私有备份；备份文件不能放入产品 Git 或公开下载目录。
@@ -127,7 +128,7 @@ Chromium 的本地启动被 macOS MachPort 权限限制拒绝，**浏览器交�
 
 实际上线还需：云服务器/域名、真实 HTTPS 证书、浏览器完整交互、不同网络第二设备同版接续、
 真实模型配置后的候选闭环、真实任务验证器配置，以及最新审查中未收口项。
-新 D/UI 接续范围和明确限制见 [第二阶段协议](PHASE2_PROTOCOL.md)；旧扩展不因新入口接通而自动上线。
+新 D/UI 接续范围见 [第二阶段协议](PHASE2_PROTOCOL.md)，共享文本记录见 [第三阶段协议](PHASE3_RECORDS.md)。其他旧扩展不因新入口接通而自动上线。
 当前候选不自动合并 main，也不自动发布正式 Project Model。
 
 ## 官方实现参考

@@ -60,7 +60,7 @@ new MutationObserver(()=>{
     const frame=document.getElementById(name==='collab'?'collab-frame':`${name}-frame`);
     const note=document.querySelector(`#view-${name} .mode-note`);
     if(frame && document.body.dataset.mapMode==='false'){frame.removeAttribute('src');frame.hidden=true;}
-    if(note)note.hidden=document.body.dataset.mapMode!=='false';
+    if(note)note.hidden=document.body.dataset.mapMode!=='false' || document.body.dataset.sharedRecords==='true';
   }
   loadShellFrame(shellView);
 }).observe(document.body,{attributes:true,attributeFilter:['data-map-mode']});
@@ -83,7 +83,7 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
     if(loading)return force?loading.then(()=>overview(true)):loading;
     if(!force&&Date.now()-loadedAt<15000)return;
     loading=(async()=>{
-      const results=await Promise.allSettled([read('/api/snapshot'),read('/api/archloop/workspaces'),read('/api/extensions/worklog?action=list'),read('/api/ai-status')]);
+      const results=await Promise.allSettled([read('/api/snapshot'),read('/api/archloop/workspaces'),read(window.projectmindSession?'/api/archloop/records':'/api/extensions/worklog?action=list'),read('/api/ai-status')]);
       const [snap,spaces,logs,ai]=results;
       cache.snapshot=snap.status==='fulfilled'?snap.value:null;
       cache.workspaces=spaces.status==='fulfilled'?spaces.value.workspaces.slice().sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))):[];
@@ -107,7 +107,8 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
         const date=e.updatedAt||e.date;const time=date?String(date).slice(0,10):'项目记录';
         $('home-activity').append(row(e.title,time,e.category==='decision'?'◇':'▤',()=>{
           const name=e.category==='decision'?'decisions':'worklog';activateView(name);
-          const frame=$(name+'-frame');if(frame&&document.body.dataset.mapMode==='true')frame.src=`/ext/worklog#${e.category}/${encodeURIComponent(e.id)}`;
+          if(window.projectmindSession)document.dispatchEvent(new CustomEvent('projectmind:open-record',{detail:e}));
+          else {const frame=$(name+'-frame');if(frame&&document.body.dataset.mapMode==='true')frame.src=`/ext/worklog#${e.category}/${encodeURIComponent(e.id)}`;}
         }));
       });
       if(!cache.entries.length)empty($('home-activity'),logs.status==='fulfilled'?'工作记录还没有开始。写下进展、决策和下一步。':'工作记录当前不可用。');
