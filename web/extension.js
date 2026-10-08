@@ -29,8 +29,8 @@ async function initExtension() {
     if (!response.ok) throw new Error(result.error || "无法读取扩展");
     const extension = result.extensions.find((item) => item.id === extensionId && item.status === "ready");
     if (!extension) throw new Error("扩展不存在或不可用");
-    title.textContent = extension.title;
-    description.textContent = extension.description;
+    title.textContent = projectmindUiLabel(extension.title);
+    description.textContent = projectmindUiDescription(extension.description);
     runButton.disabled = false;
   } catch (error) {
     title.textContent = "扩展不可用";

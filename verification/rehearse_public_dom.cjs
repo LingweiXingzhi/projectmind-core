@@ -39,7 +39,11 @@ async function main(config) {
   const page = await fetchLocal('/'); assert.equal(page.status, 200);
   const console = new VirtualConsole(); console.on('jsdomError', error => errors.push(error.message));
   const dom = new JSDOM(await page.text(), {url: origin+'/', runScripts:'outside-only', cookieJar:jar, virtualConsole:console});
-  const w = dom.window;
+  const w = dom.window, blobs=new Map(), downloads=[];
+  w.Blob=Blob;
+  w.URL.createObjectURL=blob=>{const url='blob:fixture/'+blobs.size;blobs.set(url,blob);return url;};
+  w.URL.revokeObjectURL=()=>{};
+  w.HTMLAnchorElement.prototype.click=function(){if(this.download)downloads.push({name:this.download,blob:blobs.get(this.href)});};
   w.fetch = fetchLocal; w.Request = BrowserRequest; w.Headers = Headers;
   w.HTMLElement.prototype.scrollIntoView = () => {};
   w.HTMLElement.prototype.setPointerCapture = () => {};
@@ -66,6 +70,9 @@ async function main(config) {
     submit(dialog.querySelector('form'));
   }
   await wait(()=>w.projectmindSession,'server session');
+  assert.equal(w.document.getElementById('view-worklog').querySelector('h1').textContent,'工作日志 项目记忆');
+  assert.equal(w.projectmindUiLabel('verification_pending'),'待核验');
+  assert.equal(w.projectmindUiLabel('unknown_identifier'),'unknown_identifier');
   assert.equal(w.document.getElementById('arch-repo-path').tagName,'SELECT');
   w.activateView('arch');
   w.document.getElementById('arch-existing-title').value='Synthetic DOM + HTTP fixture';
@@ -93,7 +100,20 @@ async function main(config) {
   find('接手').click();await dialog('FIXTURE ONLY received');
   await wait(()=>find('开始实施'),'task received');find('开始实施').click();await dialog('FIXTURE ONLY started');
   await wait(()=>find('回挂实现提交'),'task in progress');
-  assert.match(w.document.querySelector('#governed-task-panel article h4').textContent,/in_progress/);
+  assert.equal(w.document.querySelector('#governed-task-panel article').dataset.taskState,'in_progress');
+  assert.match(w.document.querySelector('#governed-task-panel article h4').textContent,/实施中/);
+  w.document.getElementById('arch-handover-button').click();
+  await wait(()=>downloads.length>0,'native handoff download capture');
+  const handoff=JSON.parse(await downloads[0].blob.text());
+  assert.equal(handoff.schemaVersion,'architecture_handoff_v1');
+  // Existing-project publication is confirmed_cognition; verifyCode=false
+  // does not relabel that machine status as a planning/design workspace.
+  assert.equal(handoff.versionEnvelope.version.status,'confirmed_cognition','Machine status remains unchanged');
+  const original=await (await w.fetch('/api/archloop/workspaces/'+encodeURIComponent(handoff.workspaceId)+'/handover')).json();
+  assert.deepEqual(handoff,original,'Downloaded JSON is the unchanged native handoff');
+  assert.ok(downloads[0].name.includes(handoff.versionEnvelope.version.mapId));
+  assert.match(w.document.getElementById('arch-version-result').textContent,/同版交接包已导出/);
+  assert.ok(!w.document.getElementById('arch-version-result').textContent.includes('undefined'));
   w.activateView('worklog');
   const recordPanel=w.document.querySelector('[data-shared-records=all]');
   await wait(()=>recordPanel.querySelector('form'),'shared record form');
@@ -138,7 +158,8 @@ async function main(config) {
     governedTaskCreatedReceivedStarted:true,sharedRecordSavedEditedHistory:true,recordConflictRetainsInput:true,
     aiDecisionRemainsCandidate:true,nativeBrowser:'NOT_RUN',TLS:'SIMULATED_PROXY_HEADERS_ONLY',
     workspaceSwitchRetainsUnsavedInput:true,
-    layout:'NOT_RUN',realAI:'NOT_RUN',realTeamApproval:'NOT_RUN',polyfills:['dialog','pointer capture','scroll']};
+    chineseLabels:true,unknownIdentifiersPreserved:true,nativeHandoffJsonCapturedUnchanged:true,
+    layout:'NOT_RUN',realAI:'NOT_RUN',realTeamApproval:'NOT_RUN',polyfills:['dialog','pointer capture','scroll','Blob URL/download capture']};
   dom.window.close();return result;
 }
 let input='';process.stdin.setEncoding('utf8');process.stdin.on('data',part=>input+=part);

@@ -23,8 +23,8 @@ async function listExtensions() {
         const link = document.createElement("a");
         link.className = "nav-item extension-nav";
         link.href = extension.pageUrl;
-        link.textContent = extension.title;
-        link.title = extension.description;
+        link.textContent = projectmindUiLabel(extension.title);
+        link.title = projectmindUiDescription(extension.description);
         extensionLinks.append(link);
       } else {
         const note = document.createElement("div");

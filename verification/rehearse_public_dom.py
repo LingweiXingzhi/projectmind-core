@@ -27,6 +27,7 @@ def main():
         pass
     Runtime.setUpClass()
     try:
+        run_git(Runtime.arch, 'remote', 'add', 'origin', 'https://example.invalid/dom-architecture-fixture.git')
         before = (run_git(Runtime.code, 'rev-parse', 'HEAD'), run_git(Runtime.code, 'status', '--porcelain'))
         payload = {'port': Runtime.port, 'username': 'fixture', 'password': Runtime.password}
         with (output / 'stderr.log').open('w') as error:

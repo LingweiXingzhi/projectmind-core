@@ -1,0 +1,15 @@
+{
+  "runtimeLocalSHA": "edd555c26a224e2e07f245b3246d9ab68a1b1068",
+  "runtimeRemoteSHA": "7728eb98a19b645e7be99c4b23e8d77584444352",
+  "runtimeTree": "a8f17fbae0eba736d4b3c32cbe86ecac6981508a",
+  "publicTests": 30,
+  "seconds": 11.776,
+  "exitCode": 0,
+  "javascriptSyntaxFiles": 12,
+  "htmlControlFiles": 6,
+  "widgetDOMChecks": 4,
+  "fullDomHttpRequests": 119,
+  "nativeBrowser": "NOT_RUN",
+  "physicalDownload": "NOT_RUN; Blob capture only",
+  "backendFullRegressionThisStage": "NOT_RERUN; prior phase5 1008 baseline, UI scope"
+}
