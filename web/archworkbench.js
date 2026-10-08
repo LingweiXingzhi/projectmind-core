@@ -228,7 +228,7 @@
       for (const workspace of result.workspaces) {
         const row = el("div", "arch-history-row");
         row.append(el("strong", null, workspace.title || workspace.workspaceId),
-          el("small", "arch-history-meta", `${workspace.context} · ${workspace.workspaceId}`));
+          el("small", "arch-history-meta", `${projectmindUiLabel(workspace.context)} · ${workspace.workspaceId}`));
         const open = el("button", "button ghost", "打开 ↗");
         open.type = "button";
         open.addEventListener("click", async () => {
@@ -279,8 +279,8 @@
     const identity = envelope.identity;
     const planning = envelope.workspace.context === "planning";
     document.getElementById("arch-context-pill").textContent =
-      planning ? "planning · 无代码" : `existing · ${short(identity.codeRevision)}`;
-    const identityLine = `codeRepoId ${identity.codeRepoId || "—"} · mapId ${identity.mapId || "—"} · 代码 ${short(identity.codeRevision)} · 图 ${short(identity.mapRevision)} · 草稿 ${short(identity.draftRevision)} · mapSource ${short(identity.mapSourceRevision)} · verifiedCode ${short(identity.verifiedCodeRevision)}`;
+      planning ? "新项目规划 · 无代码" : `已有项目 · ${short(identity.codeRevision)}`;
+    const identityLine = `代码仓库标识 ${identity.codeRepoId || "—"} · 图标识 ${identity.mapId || "—"} · 代码 ${short(identity.codeRevision)} · 图 ${short(identity.mapRevision)} · 草稿 ${short(identity.draftRevision)} · 架构来源 ${short(identity.mapSourceRevision)} · 已核查代码 ${short(identity.verifiedCodeRevision)}`;
     document.getElementById("arch-identity-line").textContent = identityLine;
 
     const banner = document.getElementById("arch-sample-banner");
@@ -406,7 +406,7 @@
       button.style.width = `${NODE_W}px`;
       button.style.height = `${NODE_H}px`;
       button.setAttribute("aria-pressed", String(node.id === state.selectedNodeId));
-      button.append(el("span", "node-number", `${(node.evidence||[]).length} evidence`));
+      button.append(el("span", "node-number", `${(node.evidence||[]).length} 项证据`));
       button.append(el("strong", "node-title", node.title));
       button.append(el("span", "node-summary", node.summary));
       button.append(el("span", "node-review", nodeBadge(node)));
@@ -487,7 +487,7 @@
     if(inspectorTab!=='edit'){
       const body=el('div','inspector-readonly');
       if(inspectorTab==='overview'){
-        body.append(el('h4',null,'职责'),el('p',null,node.summary),el('h4',null,'来源与状态'),el('p',null,`${nodeBadge(node)} · ${node.provenance}`),el('h4',null,'入口 / 接口'));
+        body.append(el('h4',null,'职责'),el('p',null,node.summary),el('h4',null,'来源与状态'),el('p',null,`${nodeBadge(node)} · ${projectmindUiLabel(node.provenance)}`),el('h4',null,'入口 / 接口'));
         [...(node.entryPoints||[]),...(node.interfaces||[])].forEach(value=>body.append(el('div','inspector-evidence',value)));
         if(!(node.entryPoints||[]).length&&!(node.interfaces||[]).length)body.append(el('p','inspector-empty','尚未记录入口和接口'));
         body.append(el('h4',null,'期望过程'));
@@ -496,14 +496,14 @@
       }
       if(inspectorTab==='overview'||inspectorTab==='evidence'){
         body.append(el('h4',null,`证据文件 · ${(node.evidence||[]).length}`));
-        (node.evidence||[]).forEach(item=>{const evidence=el('div','evidence-card');evidence.append(el('code','evidence-path',item.path),el('p','evidence-reason',item.reason),el('small','evidence-status',item.kind||'unknown'));
+        (node.evidence||[]).forEach(item=>{const evidence=el('div','evidence-card');evidence.append(el('code','evidence-path',item.path),el('p','evidence-reason',item.reason),el('small','evidence-status',projectmindUiLabel(item.kind||'unknown')));
         if(state.envelope.identity.codeRevision){const open=el('button','evidence-button','查看固定版本代码 ↗');open.type='button';open.onclick=async()=>{const workspaceId=state.envelope.workspace.workspaceId,revision=state.envelope.identity.codeRevision;let repoPath=workspacePaths[workspaceId];if(!repoPath){const choice=await workspaceDialog('选择此工作区的代码仓库',[['repoPath','本机仓库绝对路径']], '查看代码');if(!choice)return;repoPath=choice.repoPath;rememberPath(workspaceId,repoPath);}activateView('explorer');document.dispatchEvent(new CustomEvent('projectmind:open-evidence',{detail:{repoPath,revision,path:item.path}}));};evidence.append(open);}body.append(evidence);});
         if(!(node.evidence||[]).length)body.append(el('p','inspector-empty','没有声明证据'));
       }
       if(inspectorTab==='relations'){
         body.append(el('h4',null,'关联模块'));
         const linked=current.edges.filter(e=>e.from===node.id||e.to===node.id);
-        linked.forEach(edge=>{const target=current.nodes.find(n=>n.id===(edge.from===node.id?edge.to:edge.from));const b=el('button','outline-row',`${edge.from===node.id?'→':'←'} ${target?.title||'未知'} · ${edge.label||edge.type}`);b.onclick=()=>{state.selectedNodeId=target.id;renderWorkspace();};body.append(b);});
+        linked.forEach(edge=>{const target=current.nodes.find(n=>n.id===(edge.from===node.id?edge.to:edge.from));const b=el('button','outline-row',`${edge.from===node.id?'→':'←'} ${target?.title||'未知'} · ${edge.label||projectmindUiLabel(edge.type)}`);b.onclick=()=>{state.selectedNodeId=target.id;renderWorkspace();};body.append(b);});
         if(!linked.length)body.append(el('p','inspector-empty','尚未记录关系'));
       }
       details.append(body);return;
@@ -692,7 +692,7 @@
       const row = el("div", "relation-row");
       row.append(el("span", "relation-symbol", edge.from === node.id ? "→" : "←"),
         el("span", "relation-name", other ? other.title : edge.to),
-        el("small", "relation-label", `${edge.type} · ${edge.label}`));
+        el("small", "relation-label", `${projectmindUiLabel(edge.type)} · ${edge.label}`));
       const remove = el("button", "evidence-button", "删除");
       remove.type = "button";
       remove.addEventListener("click", () => {
@@ -761,7 +761,7 @@
         state.pendingCandidate = result;
         showCandidateForApply(result, "AI 候选图已生成。请检查后点击「应用到草稿」。");
       } else {
-        setGenStatus(`${result.status}：${result.note}`, true);
+        setGenStatus(`${projectmindUiLabel(result.status)}：${result.note}`, true);
       }
     } catch (error) {
       setGenStatus(`生成失败（${error.code}）：${error.message}`, true);
@@ -788,7 +788,7 @@
         banner.hidden = false;
         banner.textContent = "演示数据：当前候选是明确标注的开发样例，用于验证界面交互，不代表 AI 分析结果。";
       } else {
-        setGenStatus(`${result.status}：${result.note}`, true);
+        setGenStatus(`${projectmindUiLabel(result.status)}：${result.note}`, true);
       }
     } catch (error) {
       setGenStatus(`载入失败（${error.code}）：${error.message}`, true);
@@ -849,7 +849,7 @@
       state.correctionPreview = result;
       renderCorrectionPreview();
       setStatus("arch-correction-status", result.origin === "rule_based"
-        ? `规则纠正预览（C 引擎，rule_based；${result.note || "确认后应用到草稿"}）`
+        ? `规则纠正预览（规则引擎；${result.note || "确认后应用到草稿"}）`
         : "纠正预览已生成。");
     } catch (error) {
       setStatus("arch-correction-status", `预览失败（${error.code}）：${error.message}`, true);
@@ -876,7 +876,7 @@
     area.append(label);
     const changed = preview.diff || {};
     for (const node of changed.nodes || []) {
-      area.append(el("p", "ai-item", `节点 ${node.id}（${node.title || ""}）：${node.change}${node.fields ? ` · ${node.fields.join("、")}` : ""}`));
+      area.append(el("p", "ai-item", `节点 ${node.id}（${node.title || ""}）：${projectmindUiLabel(node.change)}${node.fields ? ` · ${node.fields.map(projectmindUiLabel).join("、")}` : ""}`));
     }
     for (const edge of changed.edges?.added || []) area.append(el("p", "ai-item", `新增关系 ${edge.from} → ${edge.to}`));
     for (const edge of changed.edges?.removed || []) area.append(el("p", "ai-item", `移除关系 ${edge.from} → ${edge.to}`));
@@ -916,7 +916,7 @@
       const coverageText = coverage
         ? `覆盖：读取 ${coverage.filesIncluded} 个文件 / 共 ${coverage.pythonFiles} 个 Python 文件`
         : "规划模式：没有代码事实，依据是目标与约束";
-      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${result.origin}；${coverageText}）`);
+      showCandidateForApply(result, `${result.labeled || "规则候选"}（来源：${projectmindUiLabel(result.origin)}；${coverageText}）`);
     } catch (error) {
       setGenStatus(`规则候选生成失败（${error.code}）：${error.message}`, true);
     } finally {
@@ -931,7 +931,7 @@
       const area = document.getElementById("arch-review-result");
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", result.labeled));
-      area.append(el("p", "ai-item", `结论：${result.verdict}（${result.deviations.length} 项）`));
+      area.append(el("p", "ai-item", `结论：${projectmindUiLabel(result.verdict)}（${result.deviations.length} 项）`));
       area.append(el("p", "ai-provenance", result.reason || ""));
     } catch (error) {
       setStatus("arch-review-status", `偏差检查失败（${error.code}）：${error.message}`, true);
@@ -973,7 +973,7 @@
     for (const task of tasks) {
       const row = el("div", "compare-card");
       const taskId = task.id || task.taskId;
-      row.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${task.status} · 范围 ${(task.scope || []).join("、") || "—"}`));
+      row.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${projectmindUiLabel(task.status)} · 范围 ${(task.scope || []).join("、") || "—"}`));
       row.append(el("p", "ai-provenance", task.deviation || task.observation || ""));
       if (task.submittedRevision) row.append(el("p", "ai-provenance", `回挂提交 ${short(task.submittedRevision)}`));
       if (task.verification) {
@@ -995,7 +995,7 @@
           // adopting whatever is current (FINAL-D-03)
           const payload = { expectedRevision: task.revision, expectedMapRevision: task.mapRevision, ...body };
           const updated = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/fix-tasks/${taskId}`, payload);
-          setStatus("arch-review-status", `${note}（当前状态：${updated.status}）`);
+          setStatus("arch-review-status", `${note}（当前状态：${projectmindUiLabel(updated.status)}）`);
           await refreshFixTasks();
         } catch (error) {
           setStatus("arch-review-status", `操作失败（${error.code}）：${error.message}`, true);
@@ -1137,8 +1137,8 @@
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", published.labeled || "B 版本服务产生并经 Git 提交的不可变认知版本"));
       area.append(el("p", "ai-item", `图版本 ${published.version.mapRevision}`));
-      area.append(el("p", "ai-item", `代码提交 ${published.version.codeRevision || "null（规划/设计确认）"}（核查覆盖 ${published.version.verifiedCodeRevision ? short(published.version.verifiedCodeRevision) : "无"}）`));
-      area.append(el("p", "ai-provenance", `架构 Git 来源提交 ${published.provenance.mapSourceRevision || "—"} · 图性质：${published.version.status} · 覆盖范围 ${published.reviewCoverage ? published.reviewCoverage.scope : "—"}`));
+      area.append(el("p", "ai-item", `代码提交 ${published.version.codeRevision || "无（规划/设计确认）"}（核查覆盖 ${published.version.verifiedCodeRevision ? short(published.version.verifiedCodeRevision) : "无"}）`));
+      area.append(el("p", "ai-provenance", `架构 Git 来源提交 ${published.provenance.mapSourceRevision || "—"} · 图性质：${projectmindUiLabel(published.version.status)} · 覆盖范围 ${published.reviewCoverage ? projectmindUiLabel(published.reviewCoverage.scope) : "—"}`));
       const publishButton = document.getElementById("arch-publish-button");
       publishButton.hidden = true; publishButton.disabled = true;
       setStatus("arch-review-status", "版本已发布（不可变）。");
@@ -1159,7 +1159,7 @@
       area.append(el("div", "ai-candidate-label", "不可变版本历史（B 版本服务）"));
       for (const version of listing.versions || []) {
         area.append(el("p", "ai-item",
-          `${version.mapRevision} · ${version.status} · 代码 ${short(version.codeRevision)} · 发布 ${version.publishedAt || "—"}`));
+          `${version.mapRevision} · ${projectmindUiLabel(version.status)} · 代码 ${short(version.codeRevision)} · 发布 ${version.publishedAt || "—"}`));
       }
       if (!(listing.versions || []).length) area.append(el("p", "ai-item", "还没有已发布版本。"));
     } catch (error) {
@@ -1174,10 +1174,10 @@
       const area = document.getElementById("arch-version-result");
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", "同版交接包（可交给下一位副本）"));
-      area.append(el("p", "ai-item", `mapId ${packageData.mapId} · 图版本 ${packageData.mapRevision}`));
+      area.append(el("p", "ai-item", `图标识 ${packageData.mapId} · 图版本 ${packageData.mapRevision}`));
       area.append(el("p", "ai-item", `架构来源 ${packageData.mapSourceRevision} · 未解决偏差 ${(packageData.unresolvedDeviations || []).length} · 未关闭任务 ${(packageData.openFixTasks || []).length}`));
       area.append(el("p", "ai-provenance", packageData.importHint ? packageData.importHint.note : ""));
-      setStatus("arch-review-status", `同版交接包已导出：mapId ${packageData.mapId} · 图版本 ${packageData.mapRevision} · 架构来源 ${packageData.mapSourceRevision}`);
+      setStatus("arch-review-status", `同版交接包已导出：图标识 ${packageData.mapId} · 图版本 ${packageData.mapRevision} · 架构来源 ${packageData.mapSourceRevision}`);
     } catch (error) {
       setStatus("arch-review-status", `导出失败（${error.code}）：${error.message}`, true);
     }
@@ -1224,7 +1224,7 @@
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", task.labeled || "修正实现任务（D 权威任务状态）"));
       const taskId = task.id || task.taskId;
-      area.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${task.status} · 目标提交 ${short(task.codeRevision || task.targetCodeRevision)}`));
+      area.append(el("p", "ai-item", `任务 ${taskId} · 状态 ${projectmindUiLabel(task.status)} · 目标提交 ${short(task.codeRevision || task.targetCodeRevision)}`));
       area.append(el("p", "ai-item", task.deviation || task.observation));
       area.append(el("p", "ai-provenance", `验收条件：${task.acceptance}`));
       setStatus("arch-review-status", "已创建持久化修正任务（D 权威任务状态）；实施提交回挂后仍需实测与人确认才关闭。");
@@ -1294,10 +1294,10 @@
         area.append(el("p", "ai-item", "与基准候选没有语义差异（仅布局或无变化）。"));
       }
       for (const node of changedNodes) {
-        area.append(el("p", "ai-item", `节点 ${node.id}（${node.title || ""}）：${node.change}${node.fields ? ` · ${node.fields.join("、")}` : ""}`));
+        area.append(el("p", "ai-item", `节点 ${node.id}（${node.title || ""}）：${projectmindUiLabel(node.change)}${node.fields ? ` · ${node.fields.map(projectmindUiLabel).join("、")}` : ""}`));
       }
-      for (const edge of diff.edges?.added || []) area.append(el("p", "ai-item", `新增关系 ${edge.from} → ${edge.to}（${edge.type}）`));
-      for (const edge of diff.edges?.removed || []) area.append(el("p", "ai-item", `移除关系 ${edge.from} → ${edge.to}（${edge.type}）`));
+      for (const edge of diff.edges?.added || []) area.append(el("p", "ai-item", `新增关系 ${edge.from} → ${edge.to}（${projectmindUiLabel(edge.type)}）`));
+      for (const edge of diff.edges?.removed || []) area.append(el("p", "ai-item", `移除关系 ${edge.from} → ${edge.to}（${projectmindUiLabel(edge.type)}）`));
     } catch (error) {
       setStatus("arch-draft-status", `差异读取失败（${error.code}）：${error.message}`, true);
     }
@@ -1307,3 +1307,4 @@
 
   loadHistory();
 })();
+
