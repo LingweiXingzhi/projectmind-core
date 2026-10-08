@@ -659,6 +659,14 @@ class GovernedTasks:
     @guarded
     def handover(self, record):
         packet = self._packet(record)
-        if any(isinstance(v, str) and v.startswith('local:') for v in packet['sources'].values()):
+        if isinstance(packet['sources']['code'], str) and packet['sources']['code'].startswith('local:'):
             raise ContractError('BACKEND_UNAVAILABLE', '跨副本交接需配置可传递的 Git origin；本机路径不导出')
+        if isinstance(packet['sources']['architecture'], str) and packet['sources']['architecture'].startswith('local:'):
+            # A private server Git still contains a real immutable version.
+            # Export its content without leaking the server path or inventing
+            # a clone URL. D's independent Git inspection keeps SOURCE_REQUIRED.
+            packet = build_version_handoff(packet['versionEnvelope'], workspace_id=packet['workspaceId'],
+                sources=dict(packet['sources'], architecture=None),
+                task=dict(packet['task'], nextAction='可阅读已发布版本内容；跨电脑 Git 来源核对需管理员配置架构仓库远端来源。'),
+                references=packet['references'])
         return packet

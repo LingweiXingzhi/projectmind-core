@@ -1412,10 +1412,12 @@
       link.textContent='下载同版交接包 JSON';link.className='button primary';
       const area = document.getElementById("arch-version-result");
       area.replaceChildren();
-      area.append(el("div", "ai-candidate-label", "同版交接包（可交给下一位副本）"));
+      const readingOnly = packageData.sources && packageData.sources.architecture === null;
+      area.append(el("div", "ai-candidate-label", readingOnly ? "同版交接包（已发布版本内容）" : "同版交接包（可交给下一位副本）"));
       area.append(el("p", "ai-item", `图标识 ${version.mapId} · 图版本 ${version.mapRevision}`));
       area.append(el("p", "ai-item", `架构来源 ${provenance.mapSourceRevision} · 未解决偏差 ${(packageData.unresolvedDeviations || []).length} · 未关闭任务 ${(packageData.openFixTasks || []).length}`));
       area.append(el("p", "ai-provenance", packageData.importHint ? packageData.importHint.note : ""));
+      if (readingOnly) area.append(el("p", "ai-provenance", "可下载用于阅读交接；跨电脑来源核验尚未完成。"));
       area.append(link);
       setStatus("arch-review-status", `同版交接包已生成，请点击下载保存：图标识 ${version.mapId} · 图版本 ${version.mapRevision} · 架构来源 ${provenance.mapSourceRevision}`);
     } catch (error) {
