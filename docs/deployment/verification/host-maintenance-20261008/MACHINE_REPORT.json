@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "projectmind_machine_inventory_v1",
+  "status": "BLOCKED",
+  "blocked": 5,
+  "checks": [
+    {
+      "name": "linux",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "systemd",
+      "status": "BLOCKED",
+      "action": "使用实际systemd主机；degraded状态还须检查其他失败单元"
+    },
+    {
+      "name": "tool:git",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "tool:python3",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "tool:runuser",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "tool:flock",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "tool:systemctl",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "python-venv",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "caddy",
+      "status": "BLOCKED",
+      "action": "按官方方式安装Caddy及caddy系统账号"
+    },
+    {
+      "name": "user:projectmind",
+      "status": "BLOCKED",
+      "action": "安装阶段准备独立的非root系统账号 projectmind"
+    },
+    {
+      "name": "user:caddy",
+      "status": "BLOCKED",
+      "action": "安装阶段准备独立的非root系统账号 caddy"
+    },
+    {
+      "name": "clock-synchronized",
+      "status": "BLOCKED",
+      "action": "配置并验证系统时钟同步，保证TLS有效期和审计时间可信"
+    },
+    {
+      "name": "free-space:/opt",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "free-space:/var/lib",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "free-space:/srv",
+      "status": "PASS",
+      "action": ""
+    },
+    {
+      "name": "runtime:projectmind.service",
+      "status": "OBSERVED",
+      "active": false,
+      "enabled": false
+    },
+    {
+      "name": "runtime:projectmind-proxy.service",
+      "status": "OBSERVED",
+      "active": false,
+      "enabled": false
+    }
+  ],
+  "servicesChanged": false,
+  "publicNetworkVerified": false,
+  "remaining": [
+    "service-user preflight and runtime rehearsal",
+    "cloud firewall and host firewall (80/443; private 8765)",
+    "DNS A/AAAA matching actual server addresses",
+    "public CA issuance and renewal",
+    "public HTTPS authenticated smoke",
+    "different-network browser acceptance",
+    "private off-host backup and restore drill",
+    "real model and task verifier acceptance"
+  ]
+}

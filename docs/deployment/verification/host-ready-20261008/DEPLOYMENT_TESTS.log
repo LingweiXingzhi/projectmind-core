@@ -1,0 +1,31 @@
+test_credentials_in_data_root_rejected (test_deployment_backup.ColdBackupTests.test_credentials_in_data_root_rejected) ... ok
+test_existing_output_preserved_and_nested_output_rejected (test_deployment_backup.ColdBackupTests.test_existing_output_preserved_and_nested_output_rejected) ... ok
+test_round_trip_independent_files_and_read_only_inspection (test_deployment_backup.ColdBackupTests.test_round_trip_independent_files_and_read_only_inspection) ... ok
+test_running_lease_rejected_without_output (test_deployment_backup.ColdBackupTests.test_running_lease_rejected_without_output) ... ok
+test_symlink_corrupt_sqlite_or_external_git_objects_rejected (test_deployment_backup.ColdBackupTests.test_symlink_corrupt_sqlite_or_external_git_objects_rejected) ... ok
+test_tampered_added_or_incomplete_backup_rejected (test_deployment_backup.ColdBackupTests.test_tampered_added_or_incomplete_backup_rejected) ... ok
+test_bound_backup_and_restore_preserve_bytes_and_no_sessions (test_deployment_host.HostPreparationTests.test_bound_backup_and_restore_preserve_bytes_and_no_sessions) ... ok
+test_domain_validation_rejects_config_injection_before_output (test_deployment_host.HostPreparationTests.test_domain_validation_rejects_config_injection_before_output) ... ok
+test_domainless_bundle_no_start_no_password_and_shell_syntax (test_deployment_host.HostPreparationTests.test_domainless_bundle_no_start_no_password_and_shell_syntax) ... ok
+test_final_domain_render_preserves_registered_sources_and_original_config (test_deployment_host.HostPreparationTests.test_final_domain_render_preserves_registered_sources_and_original_config) ... ok
+test_fixed_release_has_history_and_independent_git_objects (test_deployment_host.HostPreparationTests.test_fixed_release_has_history_and_independent_git_objects) ... ok
+test_missing_binding_receipt_refused (test_deployment_host.HostPreparationTests.test_missing_binding_receipt_refused) ... ok
+test_preflight_rejects_architecture_branch_or_dirty_tree (test_deployment_host.HostPreparationTests.test_preflight_rejects_architecture_branch_or_dirty_tree) ... ok
+test_preflight_rejects_dirty_source_wrong_sha_and_permissions (test_deployment_host.HostPreparationTests.test_preflight_rejects_dirty_source_wrong_sha_and_permissions) ... ok
+test_preflight_rejects_token_remote (test_deployment_host.HostPreparationTests.test_preflight_rejects_token_remote) ... ok
+test_public_activation_rejects_runtime_port_mismatch (test_deployment_host.HostPreparationTests.test_public_activation_rejects_runtime_port_mismatch) ... ok
+test_read_only_preflight_and_public_placeholder_refusal (test_deployment_host.HostPreparationTests.test_read_only_preflight_and_public_placeholder_refusal) ... ok
+test_release_rejects_dirty_source_before_allocating_target (test_deployment_host.HostPreparationTests.test_release_rejects_dirty_source_before_allocating_target) ... ok
+test_restore_never_overwrites_config_or_existing_target (test_deployment_host.HostPreparationTests.test_restore_never_overwrites_config_or_existing_target) ... ok
+test_restore_refuses_active_service_without_creating_output (test_deployment_host.HostPreparationTests.test_restore_refuses_active_service_without_creating_output) ... ok
+test_restore_refuses_wrong_repository_binding_and_tampered_backup (test_deployment_host.HostPreparationTests.test_restore_refuses_wrong_repository_binding_and_tampered_backup) ... ok
+test_restore_rejects_nested_output (test_deployment_host.HostPreparationTests.test_restore_rejects_nested_output) ... ok
+test_actual_tls_login_logout_and_csrf_report_contains_no_secrets (test_deployment_host_https.HostHTTPSTests.test_actual_tls_login_logout_and_csrf_report_contains_no_secrets) ... ok
+test_untrusted_ca_rejected (test_deployment_host_https.HostHTTPSTests.test_untrusted_ca_rejected) ... ok
+test_wrong_sni_rejected_even_with_trusted_ca (test_deployment_host_https.HostHTTPSTests.test_wrong_sni_rejected_even_with_trusted_ca) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 4.048s
+
+OK
+{"hostIngress": {"schemaVersion": "projectmind_https_ingress_v1", "status": "PASS", "certificateAndHostnameVerified": true, "customCA": true, "networkScope": "explicit_ip_tls", "authenticatedChecksRun": true, "observations": [{"check": "login_page", "status": 200, "expected": 200, "passed": true}, {"check": "anonymous_api_rejected", "status": 401, "expected": 401, "passed": true}, {"check": "forged_identity_rejected", "status": 401, "expected": 401, "passed": true}, {"check": "foreign_origin_rejected", "status": 403, "expected": 403, "passed": true}, {"check": "login_1", "status": 200, "expected": 200, "passed": true}, {"check": "authenticated_api_1", "status": 200, "expected": 200, "passed": true}, {"check": "login_2", "status": 200, "expected": 200, "passed": true}, {"check": "authenticated_api_2", "status": 200, "expected": 200, "passed": true}, {"check": "missing_csrf_rejected", "status": 403, "expected": 403, "passed": true}, {"check": "cross_session_csrf_rejected", "status": 403, "expected": 403, "passed": true}, {"check": "logout_1", "status": 200, "expected": 200, "passed": true}, {"check": "logged_out_rejected_1", "status": 401, "expected": 401, "passed": true}, {"check": "logout_2", "status": 200, "expected": 200, "passed": true}, {"check": "logged_out_rejected_2", "status": 401, "expected": 401, "passed": true}], "productDataWritten": false, "scope": "ingress/session checks only; no browser, model, graph approval or task verification"}}

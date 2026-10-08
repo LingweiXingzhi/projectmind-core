@@ -1,0 +1,75 @@
++{
+  "upstreamPR": 68,
+  "upstreamCommit": "5be9af307ef1f631af3301e5f2521dfea3f4d436",
+  "remoteRuntimeCommit": "2fa41db622efde036fde0ef2c5a5b4d701319afc",
+  "remoteTree": "3d2745d415f64d700b7ee1babd56bf713ad516fe",
+  "files": [
+    {
+      "path": "deployment/host.py",
+      "blobSHA": "5fd9807fd409563548cbf379e311a0063a29ec53",
+      "sha256": "9afaf65c6d85d44ac798911ef2fa53b6d52876bcc0dfe0f925335b3eaa40f8b6"
+    },
+    {
+      "path": "deployment/host_smoke.py",
+      "blobSHA": "9cdd9b650be16bb3f63592713f082237fec9081e",
+      "sha256": "78a31095f0a5c7d8ff11b8844430ed9dd57b43f032e507d59b98522ef04248f1"
+    },
+    {
+      "path": "deployment/host_templates/Caddyfile",
+      "blobSHA": "02e999584de970b55e98c46b3fbb2d058b1cddb5",
+      "sha256": "82aff442e971674d13d70b551c54cb59373100cda9fefb74727aab93a49512cf"
+    },
+    {
+      "path": "deployment/host_templates/activate.sh",
+      "blobSHA": "047a78bdfedd78e250eb00ba7fa85f2fe3cf455c",
+      "sha256": "ab3bea189fa5e48a35af20825fc49b6f3bf2e53cef1a5fb8eee55554e573ed74"
+    },
+    {
+      "path": "deployment/host_templates/backup.sh",
+      "blobSHA": "705abadb505d92069a63cb6f1cc0bff40e4db8fc",
+      "sha256": "2fb4a69ff17d7fabcb1daf45065625373b6b60dc584f1d80c8cd131b8be9186e"
+    },
+    {
+      "path": "deployment/host_templates/install.sh",
+      "blobSHA": "18e4eb2a75db859c4627bf59f1b95c763ee7d3e7",
+      "sha256": "d7f215f2c4668d30b4abc66b36a90373e6d9e42472ab5f257d4cda898df6d2d8"
+    },
+    {
+      "path": "deployment/host_templates/projectmind-proxy.service",
+      "blobSHA": "aa8ee8a34cc67e242f03d5081aa181a7d2bd8033",
+      "sha256": "5f1312c1a385f0d64fdd01252b704f3ce268e04059611f7bbcae56b52dbffe0d"
+    },
+    {
+      "path": "deployment/host_templates/projectmind.service",
+      "blobSHA": "55159963dd391e330b78102498dae28b0a4ecee1",
+      "sha256": "aceb774a41e8825408936602035270411c12c4464c93ef90288c906483a2e4c1"
+    },
+    {
+      "path": "docs/deployment/HOST_READINESS.md",
+      "blobSHA": "d2764b3a3a06017e07545bb96d7127a90ec3c2d2",
+      "sha256": "dafd2df10ed4d372be5bcdb53c5fa3811ce0b142ffb599a28ec4d8fd163a8fed"
+    },
+    {
+      "path": "tests/test_deployment_host.py",
+      "blobSHA": "8f104a2ef89e96c24adc6b77c561be8ee6d1345e",
+      "sha256": "b480cda0c311693122b5831963a5033a06ecaa6ac6359138a65396916d41752f"
+    },
+    {
+      "path": "tests/test_deployment_host_https.py",
+      "blobSHA": "e8defb8396290a091d696b2b0ca47db7703c5380",
+      "sha256": "b0d3ae71a84c5c09f7f1634621bf199d0eda49260591699a119fc785f6479978"
+    },
+    {
+      "path": "verification/rehearse_host_user.py",
+      "blobSHA": "e4ef6678b9b4e74cad4d9bb5913db6cee99b0465",
+      "sha256": "5ae91606bebd2518eab5d92e7f474607a56bd6005fe809975dc274463374650c"
+    },
+    {
+      "path": "docs/deployment/README.md",
+      "blobSHA": "387c8c5572b53646356858e262bce8c60f039fb8",
+      "sha256": "0275e1d5885977d01d0b809dc703cdd3b3a9abf4f56743399e1d620c055d2010"
+    }
+  ],
+  "fullUpstreamGitHistoryLocallyAvailable": false,
+  "localMaterialization": "260 upstream source/fixture blobs verified; historical reports/assets not required by runtime/tests were not cloned"
+}

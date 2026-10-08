@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "projectmind_host_bound_recovery_rehearsal_v1",
+  "fixtureOnly": true,
+  "backup": {
+    "backup": {
+      "schemaVersion": "projectmind_cold_backup_v1",
+      "complete": true,
+      "filesVerified": 49,
+      "architecture": {
+        "head": "5e93332bcfeea8c6fe4d44e625a971b951a5751e",
+        "branch": "architecture/candidates/archloop-test"
+      },
+      "sqliteIntegrity": {
+        "b/workspace.sqlite3": "ok",
+        "d/continuity.sqlite3": "ok",
+        "work-records/records.sqlite3": "ok"
+      },
+      "scope": "private cold copy; restore and new-host source binding require separate checks"
+    },
+    "bindingRecorded": true,
+    "accountsIncluded": false,
+    "sessionsIncluded": false
+  },
+  "restore": {
+    "schemaVersion": "projectmind_restore_v1",
+    "restored": true,
+    "architecture": {
+      "head": "5e93332bcfeea8c6fe4d44e625a971b951a5751e",
+      "branch": "architecture/candidates/archloop-test"
+    },
+    "sqliteIntegrity": {
+      "b/workspace.sqlite3": "ok",
+      "d/continuity.sqlite3": "ok",
+      "work-records/records.sqlite3": "ok"
+    },
+    "sourcePreserved": true,
+    "serviceStarted": false,
+    "sessionsRestored": false,
+    "next": "preflight restored runtime, then activate explicitly"
+  },
+  "preflight": {
+    "schemaVersion": "projectmind_host_preflight_v1",
+    "status": "HOST_FILES_CHECKED",
+    "codeRepositoriesChecked": 1,
+    "architecture": {
+      "head": "5e93332bcfeea8c6fe4d44e625a971b951a5751e",
+      "branch": "architecture/candidates/archloop-test"
+    },
+    "source": null,
+    "serviceStarted": false,
+    "publicNetworkVerified": false,
+    "remaining": [
+      "service-user runtime permissions",
+      "systemd service start",
+      "DNS and public TLS",
+      "second device",
+      "real model and task verifier"
+    ]
+  },
+  "workspacesReopened": 2,
+  "tasksReopened": 1,
+  "recordsReopened": 2,
+  "workspacesTasksRecordsEqual": true,
+  "sessionsRestored": false,
+  "publicNetwork": "NOT_RUN",
+  "sourceLocalRuntimeCommit": "2cd00c4"
+}

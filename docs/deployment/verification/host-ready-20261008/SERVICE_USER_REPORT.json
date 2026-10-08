@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "projectmind_service_user_fixture_v1",
+  "fixtureOnly": true,
+  "status": "NOT_RUN_USER_ID_NOT_MAPPED",
+  "runtimeUserVerified": false,
+  "systemdActivation": "NOT_RUN_NO_SYSTEMD_PID1",
+  "publicNetwork": "NOT_RUN"
+}
