@@ -7,6 +7,7 @@ from pathlib import Path
 from .access import AccessError, PublicAccess, _outside_git, add_account, check, create_account_file
 from .wsgi import Application, MAX_BODY
 from extensions.architecture_workspace.errors import WorkspaceError
+from archloop.contract import ContractError
 
 
 def build_application(config_path):
@@ -42,6 +43,8 @@ def build_application(config_path):
     check(backend.available, message="B 版本后端配置无效；检查专用数据根和独立架构候选分支")
     service = WorkbenchService(data / "a", AdapterRegistry(), allowed_repositories=repos)
     service.bind_backend_b(backend)
+    from archloop.backend_d import GovernedTasks
+    service.bind_backend_d(GovernedTasks(service, backend, data, access.origin))
     handler = make_handler(repos[0] if repos else ROOT, None, explorer_registry=ExplorerRegistry(),
                            archloop_service=service, public_origin=access.origin)
     application = Application(handler, access, repos)
@@ -81,7 +84,7 @@ def main():
                     channel_timeout=30, max_request_header_size=16384,
                     max_request_body_size=MAX_BODY, clear_untrusted_proxy_headers=True,
                     expose_tracebacks=False, ident="ProjectMind")
-    except (AccessError, WorkspaceError, OSError, ValueError, TypeError, KeyError) as exc:
+    except (AccessError, WorkspaceError, ContractError, OSError, ValueError, TypeError, KeyError) as exc:
         parser.exit(1, f"部署配置未通过：{type(exc).__name__}。请检查私有配置与目录。\n")
 
 

@@ -23,15 +23,20 @@
       }
     }
     const bar = document.createElement("div");
-    bar.style.cssText = "padding:8px 20px;display:flex;gap:16px;align-items:center;background:#eef3fc";
+    bar.className = 'authenticated-controls';
+    bar.style.cssText = "display:flex;gap:12px;align-items:center;flex-wrap:wrap";
     const name = document.createElement("span"); name.textContent = "已登录：" + session.actor;
+    name.title = name.textContent;
+    name.style.cssText = 'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
     const logout = document.createElement("button"); logout.textContent = "退出登录";
     logout.addEventListener("click", async () => {
       const result = await original("/api/auth/logout", {method: "POST", credentials: "same-origin",
         headers: {"X-ProjectMind-CSRF": session.csrf}});
       if (result.ok || result.status === 401) location.replace("/login");
     });
-    bar.append(name, logout); document.body.prepend(bar);
+    bar.append(name, logout);
+    const header = document.querySelector('.topbar');
+    if (header) header.append(bar); else document.body.prepend(bar);
     return session;
   });
   window.fetch = async (input, init) => {

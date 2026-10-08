@@ -578,7 +578,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.recheck(workspace_id))
                     return
                 if method == "POST" and rest == ["fix-task"]:
-                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}))
+                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}, self._review_meta()))
                     return
                 if method == "POST" and rest == ["rebind"]:
                     self.send_json(HTTPStatus.OK, archloop_service.rebind_code_revision(workspace_id, body or {}))
@@ -619,7 +619,14 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.list_fix_tasks(workspace_id))
                     return
                 if method == "POST" and rest == ["fix-tasks"]:
-                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}))
+                    self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(workspace_id, body or {}, self._review_meta()))
+                    return
+                if method == "GET" and rest == ["fix-task-hints"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.fix_task_hints(workspace_id))
+                    return
+                if len(rest) == 3 and rest[0] == "fix-tasks" and rest[2] == "governance" and method == "POST":
+                    self.send_json(HTTPStatus.OK, archloop_service.governed_task_action(
+                        workspace_id, rest[1], body or {}, self._review_meta()))
                     return
                 if len(rest) == 2 and rest[0] == "fix-tasks" and method == "POST":
                     self.send_json(HTTPStatus.OK, archloop_service.update_fix_task(
@@ -853,6 +860,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "/extensions.js": ("extensions.js", "text/javascript; charset=utf-8"),
                     "/extension.js": ("extension.js", "text/javascript; charset=utf-8"),
                     "/archworkbench.js": ("archworkbench.js", "text/javascript; charset=utf-8"),
+                    "/governed-tasks.js": ("governed-tasks.js", "text/javascript; charset=utf-8"),
                     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
                 }
                 if request.path in assets:
