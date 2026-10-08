@@ -12,7 +12,7 @@ flowchart LR
     Browser[团队浏览器] --> TLS[Caddy HTTPS]
     TLS --> Auth[账号登录 会话 CSRF]
     Auth --> App[Waitress 与现有 ProjectMind 路由]
-    App --> Data[A 工作区记录 B SQLite]
+    App --> Data[A 工作区记录 B 与 D SQLite]
     App --> Code[登记的代码 Git 只读]
     App --> Graph[独立架构 Git 候选分支]
 ```
@@ -35,7 +35,7 @@ Windows 本地演示不受影响；Windows 公网模式需要后续专门验证 
 | /etc/projectmind | runtime.json、accounts.json | 私有目录；账号文件 0600 |
 | /srv/projectmind/code/target | 完整代码 Git 副本 | 代码证据只读；保留所需提交历史 |
 | /var/lib/projectmind/architecture | 独立架构 Git 副本 | 专用 architecture/candidates/* 分支 |
-| /var/lib/projectmind/state | A JSON 与 B SQLite | 0700；升级应用不能清理此目录 |
+| /var/lib/projectmind/state | A JSON、B SQLite、D continuity.sqlite3 | 0700；升级应用不能清理此目录 |
 
 服务器上用常规 Git 授权获取私有仓库，凭据放 Git 的正常凭据机制。
 不要把令牌写入 remote URL、源文件、浏览器或运行证据。
@@ -98,16 +98,16 @@ PROJECTMIND_DOMAIN=你的真实域名 caddy run \
 仅开放 HTTPS/证书所需入口，不公开应用的 8765 后端端口。
 `deployment/projectmind.service` 提供 Linux 单进程守护模板；创建对应服务用户与目录后再启用。
 此模板的 systemd 实机启动、云防火墙、真实证书续期本轮尚未验证。
-模板只允许写 /var/lib/projectmind；旧本地图模式中存于代码 .git 的扩展状态另需迁移/配置，不能直接声称也已线上可用。
+模板只允许写 /var/lib/projectmind。新任务使用 state/d 私有数据库；旧本地图模式中存于代码 .git 的工作记录等扩展仍需迁移，不能直接声称已线上可用。
 
 ## 四、持久化与恢复
 
-- 应用更新使用新版本目录，保留 A/B 数据和架构 Git；不要 reset/clean 数据目录。
+- 应用更新使用新版本目录，保留 A/B/D 数据和架构 Git；不要 reset/clean 数据目录。
 - 当前冷备方式：先停止写入与应用服务，再一起保存 state 和 architecture（包括 .git）。
   不要单独复制运行中 SQLite 主文件并忽略 WAL/事务状态。
 - 账号文件和模型 API 环境配置另作私有备份；备份文件不能放入产品 Git 或公开下载目录。
 - 恢复到新的私有目录，校验 SQLite integrity_check、A/B 记录、架构 Git 对象和固定版本。
-  同机恢复已验证；换机须重新获取对应代码历史、核对仓库身份与路径绑定。
+  第一阶段 A/B 同机恢复已验证；第二阶段增加 D 任务恢复检查，见对应交付证据。换机须重新获取对应代码历史、核对仓库身份与路径绑定。
 - 所有旧浏览器授权在重启后重新建立；恢复数据不恢复真实登录授权。
 
 本轮冷备夹具恢复了两份工作区：B documents 与源副本相同，SQLite integrity_check=ok，
@@ -122,11 +122,12 @@ A 工作区可重开且 mapRevision/mapSourceRevision 不变，架构 Git HEAD �
 规则输出明确为 rule_based；没有调用真实模型，没有批准真实团队项目认知。
 
 Chromium 的本地启动被 macOS MachPort 权限限制拒绝，**浏览器交互验收仍为 NOT_RUN**。
-目前只有 JavaScript 语法检查与 HTTP/HTTPS 路由证据，不能把它写成浏览器测试通过。
+第二阶段另外运行 jsdom 中的真实页面脚本与生产 HTTP，但对话框/布局等使用替身；不能把 DOM 演练写成原生浏览器测试通过。
 源文件树快照不含完整上游历史；实际开发提交的本地历史验证与完整上游历史验证分开报告。
 
 实际上线还需：云服务器/域名、真实 HTTPS 证书、浏览器完整交互、不同网络第二设备同版接续、
-真实模型配置后的候选闭环，以及新 D/UI 接续和最新审查中未收口项。
+真实模型配置后的候选闭环、真实任务验证器配置，以及最新审查中未收口项。
+新 D/UI 接续范围和明确限制见 [第二阶段协议](PHASE2_PROTOCOL.md)；旧扩展不因新入口接通而自动上线。
 当前候选不自动合并 main，也不自动发布正式 Project Model。
 
 ## 官方实现参考

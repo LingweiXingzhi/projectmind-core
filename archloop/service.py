@@ -54,6 +54,7 @@ class WorkbenchService:
         # Optional real B version service (single adapter layer: backend_b.py).
         # Bound by app.py from server-side configuration only.
         self.backend_b = None
+        self.backend_d = None
         from pathlib import Path
         self.allowed_repositories = (None if allowed_repositories is None
                                      else frozenset(Path(p).resolve() for p in allowed_repositories))
@@ -721,6 +722,8 @@ class WorkbenchService:
 
     def list_fix_tasks(self, workspace_id: str) -> dict:
         record = self.store.load_workspace(workspace_id)
+        if self.backend_d is not None:
+            return self.backend_d.tasks(workspace_id)
         tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
         return {"workspaceId": workspace_id, "tasks": tasks,
                 "statuses": list(fix_tasks_module.STATUSES),
@@ -728,6 +731,8 @@ class WorkbenchService:
                             if tasks else "该工作区还没有修正任务")}
 
     def update_fix_task(self, workspace_id: str, task_id: str, request: dict) -> dict:
+        if self.backend_d is not None:
+            raise ContractError('VALIDATION_FAILED', '治理任务须使用任务 governance 接口及固定版本 CAS')
         with workspace_lock(workspace_id):
             task = fix_tasks_module.update_task(self.store.root, workspace_id, task_id, request)
             self.store.append_history(workspace_id, {
@@ -736,6 +741,9 @@ class WorkbenchService:
             return task
 
     def fix_task_markdown(self, workspace_id: str, task_id: str) -> dict:
+        if self.backend_d is not None:
+            self.store.load_workspace(workspace_id)
+            return self.backend_d.markdown(workspace_id, task_id)
         task = fix_tasks_module.load_task(self.store.root, workspace_id, task_id)
         return {"taskId": task_id, "markdown": fix_tasks_module.task_markdown(task),
                 "filename": f"{task_id}.md"}
@@ -744,6 +752,8 @@ class WorkbenchService:
 
     def export_handover(self, workspace_id: str) -> dict:
         record = self.store.load_workspace(workspace_id)
+        if self.backend_d is not None:
+            return self.backend_d.handover(record)
         binding = record.get("backendB") or {}
         if not binding.get("workspaceId"):
             raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务，无法导出同版交接包")
@@ -1029,7 +1039,24 @@ class WorkbenchService:
             "adapter": self.adapter.listing(),
             "generation": generate_module.generate_status(),
             "persistence": self._backend_label(),
+            "governedTasks": self.backend_d.status() if self.backend_d is not None else {
+                "available": False, "reason": "未绑定新任务治理层"},
         }
+
+    def bind_backend_d(self, backend) -> None:
+        self.backend_d = backend
+
+    def fix_task_hints(self, workspace_id):
+        if self.backend_d is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return self.backend_d.hints(self.store.load_workspace(workspace_id))
+
+    def governed_task_action(self, workspace_id, task_id, request, meta):
+        if self.backend_d is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return self.backend_d.action(self.store.load_workspace(workspace_id), task_id, request, meta)
 
     @staticmethod
     def _require_meta(meta) -> dict:
@@ -1638,12 +1665,14 @@ class WorkbenchService:
                                                  "draftRevision": draft["draftRevision"]})
         return self._envelope(record)
 
-    def create_fix_task(self, workspace_id: str, request: dict) -> dict:
+    def create_fix_task(self, workspace_id: str, request: dict, meta=None) -> dict:
         with workspace_lock(workspace_id):
             record = self.store.load_workspace(workspace_id)
             draft = record.get("draft")
             if draft is None:
                 raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            if self.backend_d is not None:
+                return self.backend_d.create(record, request, meta)
             mode = request.get("mode", "production")
             if mode == DEV_SAMPLE_MODE:
                 return self._sample_fix_task(record, draft, request)

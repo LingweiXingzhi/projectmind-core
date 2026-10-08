@@ -29,6 +29,14 @@ def main_revision(context):
 
 def handle(context, method, data):
     try:
+        if isinstance(data, dict) and data.get('action') == 'archloop_contract_info':
+            from extensions.handoff.archloop_backend import contract_info
+            return contract_info()
+        if isinstance(data, dict) and data.get('action') in (
+                'create_fix_task', 'submit_fix_task', 'verify_fix_task', 'import_architecture_version'):
+            # The legacy seam has no server-authenticated session/CSRF context.
+            # A registers the in-process backend behind its protected routes.
+            raise ExtensionError(HTTPStatus.FORBIDDEN, 'PUBLIC_ADAPTER_REQUIRED：请使用 A 的受保护架构工作台接口')
         if method == 'GET':
             try:
                 revision, error = main_revision(context), ''

@@ -1,10 +1,13 @@
 <!doctype html>
 <html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ProjectMind · 交接包</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;color:#28364f;background:#f8f9fc;color-scheme:light}body{font-size:13px}h1,h2,h3{letter-spacing:-.025em;color:#20304d}button,input,textarea,select{font:inherit;border-radius:6px}button{padding:7px 11px;background:#fafcff;border:1px solid #dce4f0;color:#526788;cursor:pointer}button:hover{background:#edf3fe}button:focus-visible,a:focus-visible{outline:2px solid #4b82ed;outline-offset:2px}input,select,textarea{background:#fcfdff;border:1px solid #dbe3ef;color:#344e75;padding:8px 10px}input:focus,textarea:focus{outline:2px solid #e0eafa;border-color:#8eb0ef}button.primary,.primary{background:#1c62e6;border-color:#1c62e6;color:#fff}.embedded>header{display:none!important}.embedded{margin:0!important;max-width:none!important;padding:0!important}.embedded>body>a{display:none}dialog{border-radius:12px;box-shadow:0 10px 50px #32446c22}dialog::backdrop{background:#283c6233;backdrop-filter:none}.status{border-radius:6px;background:#f9fcff;color:#48658f;border:1px solid #dbe5f4;box-shadow:0 5px 25px #405d8018;font-size:12px}
+</style>
+<script>if(window.self!==window.top){document.documentElement.classList.add('embedded');document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('embedded'));}</script>
+
 <style>body{font:16px system-ui;margin:40px auto;max-width:900px;padding:0 20px;background:#f6f7fa;color:#202737}h1{margin-bottom:8px}label{display:block;margin:20px 0 6px}input,textarea,select,button{font:inherit;padding:10px;border:1px solid #bdc6d3;border-radius:7px}input,textarea{box-sizing:border-box;width:100%}button{cursor:pointer;margin:16px 8px 0 0;background:white}button:disabled{opacity:.45}pre{white-space:pre-wrap;word-break:break-word;background:white;padding:20px;border-radius:10px}#message{color:#9b2929}small{color:#586578}</style>
-<a href="/">← 项目地图</a><h1>交给下一位协同者</h1><p>保存当前代码版本、变化与核查入口。输出始终是交接草稿。</p>
-<p id="version">正在读取版本…</p>
-<label for="kind">仓库来源</label><select id="kind"><option value="git_remote">Git 仓库地址</option><option value="local_path">本地路径</option></select>
+<body><div class="handoff-page"><div class="handoff-header"><div><span class="handoff-label">HANDOFF / DRAFT</span><h1>交接当前项目</h1><p>保留版本、变化、风险和下一步，让接手者沿着证据继续。</p></div><a href="/">返回工作空间 ↗</a></div><div class="handoff-grid"><aside class="handoff-context"><h2>交接上下文</h2><label for="kind">仓库来源</label><select id="kind"><option value="git_remote">Git 仓库地址</option><option value="local_path">本地路径</option></select>
 <input id="source" value="https://github.com/LingweiXingzhi/projectmind-core"><small>默认 Core；其他仓库请修改来源地址，来源地址不会切换正在运行的本地仓库。</small>
 <p id="mainInfo"></p><button id="main" disabled>对比 main 并生成</button><label for="base">比较基准提交（选填）</label><input id="base" placeholder="完整 SHA；留空则不附比较">
 <label for="ai">AI 解释原样响应列表（选填）</label><textarea id="ai" rows="3" placeholder='例如 [ /api/explain 的完整成功响应 ]'></textarea><small>只接收同一版本、同一次比较的候选结果；留空表示未提供。</small>
@@ -14,8 +17,11 @@
 <label for="blockers">阻塞</label><textarea id="blockers" maxlength="4000" rows="2"></textarea>
 <label for="nextSteps">下一步</label><textarea id="nextSteps" maxlength="4000" rows="2"></textarea>
 <small>只记录项目工作；这些备注尚未独立核实。</small></details>
-<div><button id="generate" disabled>生成交接包</button><button id="json" disabled>下载 JSON</button><button id="md" disabled>下载 Markdown</button><button id="copy" disabled>复制给 AI 的接手上下文</button></div><p id="message" role="status"></p><section id="summary" hidden><h2>本次交接</h2><p id="counts"></p><p id="review"></p><div id="unmapped"></div><p>地图适用版本：UNKNOWN；AI 内容为候选，工作备注尚未独立核实。</p></section><pre id="preview">生成后在这里预览。</pre>
-<script>
+</aside><main class="handoff-document"><div class="handoff-baseline"><p id="version">正在读取版本…</p>
+</div><div><button id="generate" disabled>生成交接包</button><button id="json" disabled>下载 JSON</button><button id="md" disabled>下载 Markdown</button><button id="copy" disabled>复制给 AI 的接手上下文</button></div><p id="message" role="status"></p><section id="summary" hidden><h2>本次交接</h2><p id="counts"></p><p id="review"></p><div id="unmapped"></div><p>地图适用版本：UNKNOWN；AI 内容为候选，工作备注尚未独立核实。</p></section><pre id="preview">生成后在这里预览。</pre>
+</main></div></div><style>
+body{max-width:none;margin:0;padding:0;background:#f8fafd;color:#415a7f}.handoff-page{padding:25px}.handoff-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:22px;border-bottom:1px solid #e3e9f3}.handoff-header h1{font-size:24px;margin:7px 0}.handoff-header p{font-size:11px;color:#8e9fb9;margin:0}.handoff-header>a{font-size:11px;color:#6387c2;text-decoration:none}.handoff-label{font-size:9px;letter-spacing:.08em;color:#899dc1}.handoff-grid{display:grid;grid-template-columns:270px minmax(0,1fr);gap:26px;padding-top:24px}.handoff-context{padding-right:24px;border-right:1px solid #e2e9f3}.handoff-context h2{font-size:12px;margin:0 0 20px;color:#6983aa}label{font-size:11px;color:#8196b7;margin:16px 0 6px}input,select,textarea{font-size:11px;padding:8px;background:#fcfdff}textarea{resize:vertical}small{font-size:10px;line-height:1.7;color:#98a9c1;display:block;margin-top:8px}button{font-size:11px;margin-top:10px;border-radius:6px}#generate,#main{background:#2265dd;color:white;border-color:#2265dd}#main{width:100%;font-size:11px}#preview{font:12px/1.9 SFMono-Regular,Menlo,monospace;background:#fcfdff;border:1px solid #e1e8f4;border-radius:6px;padding:24px;min-height:330px;color:#526f95;overflow-wrap:anywhere}#summary{background:#eff4fd;padding:18px;border:1px solid #dce7fa;border-radius:6px;margin-top:20px}#summary h2{font-size:14px;margin-top:0}#summary p,#unmapped{font-size:11px;line-height:1.8}#message{color:#b66661;font-size:11px}.handoff-baseline{border-left:2px solid #d2def2;padding-left:15px;margin-bottom:18px}.handoff-baseline p{font-size:10px;line-height:1.7;color:#7f97bb;overflow-wrap:anywhere}details{padding-top:20px;font-size:11px;color:#6b89b5}#mainInfo{font-size:10px;overflow-wrap:anywhere;color:#97a9c4}.embedded .handoff-header>a{display:none}@media(max-width:800px){.handoff-grid{grid-template-columns:1fr}.handoff-context{border-right:0;padding:0}.handoff-page{padding:20px}}
+</style><script>
 let snapshot, output, generation=0;
 const el=id=>document.getElementById(id);
 function clear(){generation++;el('summary').hidden=true;output=null;el('json').disabled=el('md').disabled=el('copy').disabled=true;el('preview').textContent='尚无有效交接包。';}
@@ -28,3 +34,4 @@ function download(format){if(!output)return;const text=format==='json'?JSON.stri
 el('copy').onclick=async()=>{if(!output)return;try{await navigator.clipboard.writeText(output.aiContext);el('message').textContent='已复制，可粘贴到 AI 对话中；此操作没有调用模型。';}catch(e){el('preview').textContent=output.aiContext;el('message').textContent='浏览器未允许复制；接手上下文已显示在下方，可手动选中复制。';}};
 el('json').onclick=()=>download('json');el('md').onclick=()=>download('md');refresh().catch(e=>el('message').textContent=e.message);
 </script></html>
+</body>

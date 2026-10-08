@@ -13,43 +13,45 @@
     <script src="/explorer-core.js" defer></script>
     <script src="/explorer.js" defer></script>
     <script src="/archworkbench.js" defer></script>
+    <script src="/governed-tasks.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="项目导航">
-        <div class="brand"><span class="brand-mark">P</span><span>ProjectMind<small>PROJECT COGNITION</small></span></div>
-        <div class="sidebar-label">当前工作区</div>
-        <div class="repo-card">
-          <span class="repo-icon">◇</span>
-          <div><strong id="repo-name">读取中…</strong><small>本地 Git 仓库</small></div>
-        </div>
-
-        <div class="sidebar-label space-top">产品导航</div>
-        <nav class="top-nav" aria-label="产品入口">
-          <div class="nav-item active" data-view="arch" role="button" tabindex="0"><span>◈</span> 架构工作台 <small>01</small></div>
-          <div class="nav-item" data-view="map" role="button" tabindex="0"><span>▦</span> 项目地图 <small>02</small></div>
-          <div class="nav-item" data-view="review" role="button" tabindex="0"><span>⇄</span> 变更审查 <small>03</small></div>
-          <div class="nav-item" data-view="collab" role="button" tabindex="0"><span>⎘</span> 协作交接 <small>04</small></div>
-          <div class="nav-item" data-view="explorer" role="button" tabindex="0"><span>❏</span> 仓库浏览 <small>05</small></div>
+        <div class="brand"><span class="brand-mark">P</span><span>ProjectMind</span></div>
+        <div class="repo-card"><div><strong id="repo-name">Project workspace</strong><small id="shell-repo-branch">Git · 读取中</small></div><span>⌄</span></div>
+        <nav class="top-nav" aria-label="工作空间">
+          <button class="nav-item active" data-view="home"><span>⌂</span> Overview</button>
+          <div class="sidebar-label">Understand</div>
+          <button class="nav-item" data-view="arch"><span>⬡</span> Architecture</button>
+          <button class="nav-item" data-view="explorer"><span>▧</span> Repository</button>
+          <div class="sidebar-label">Evolve</div>
+          <button class="nav-item" data-view="review"><span>⇄</span> Changes</button>
+          <button class="nav-item" data-view="decisions"><span>◇</span> Decisions</button>
+          <div class="sidebar-label">Collaborate</div>
+          <button class="nav-item" data-view="collab"><span>⇥</span> Handoff</button>
+          <button class="nav-item" data-view="worklog"><span>▤</span> Worklog</button>
         </nav>
-
-        <div class="sidebar-label space-top">高级 / 调试</div>
-        <div id="extension-links" class="advanced-links" aria-live="polite"><div class="extension-nav-note">正在读取…</div></div>
-        <div class="sidebar-note">
-          <span class="note-dot"></span>
-          <div><strong>人工边界</strong><p>地图由人整理，候选由规则起草；一切架构判断由人裁决。</p></div>
-        </div>
-        <div class="sidebar-footer">先看见项目全貌，再核查每一处来源。</div>
+        <div class="attention-nav"><div class="sidebar-label">Needs attention</div><button id="attention-link" class="nav-item" data-jump="home">正在读取项目状态…</button></div>
+        <div class="sidebar-tools"><button class="nav-item" id="sidebar-search"><span>⌕</span> Search <kbd>⌘K</kbd></button><details><summary class="nav-item"><span>⊞</span> Extensions</summary><div id="extension-links" class="advanced-links"></div></details><button class="nav-item" id="settings-open"><span>⚙</span> Settings</button></div>
       </aside>
 
       <main class="main-content">
         <header class="topbar">
-          <div class="breadcrumb">项目空间 <span>/</span> <strong id="breadcrumb-current">架构工作台</strong></div>
-          <div class="top-actions">
-            <span class="demo-pill"><span></span> 人工整理 · 演示图</span>
-            <button class="button ghost" id="refresh-button" type="button">刷新提交</button>
-          </div>
+          <div class="history-buttons"><button id="nav-back" class="icon-button" aria-label="后退">←</button><button id="nav-forward" class="icon-button" aria-label="前进">→</button></div>
+          <button id="command-open" class="search-trigger"><span>⌕</span> Search or jump to… <kbd>⌘K</kbd></button>
+          <div class="breadcrumb"><strong id="breadcrumb-current">Overview</strong></div>
+          <div class="top-actions"><button class="icon-button" id="toggle-inspector" title="切换详情面板" aria-label="切换详情面板">◫</button><button class="icon-button" id="refresh-button" title="刷新 Git 提交" aria-label="刷新 Git 提交">⟳</button><button class="icon-button" id="copy-link" title="复制当前页面链接" aria-label="复制当前页面链接">↗</button></div>
         </header>
+        <section id="view-home" class="view" aria-label="项目总览">
+          <div class="overview-heading"><div><h1 id="greeting">这是 ProjectMind</h1><p>理解项目 · 跟踪变化 · 形成共识 · 持续演进</p></div><div class="home-repository"><strong id="home-repo">Project workspace</strong><p id="home-identity">正在读取 Git 身份…</p><button class="button ghost" id="home-sync">⟳ Sync</button></div></div>
+          <h2 class="home-section-title">需要你关注 <small>基于当前项目的真实状态</small></h2>
+          <div id="home-attention" class="attention-grid"><div class="skeleton">读取项目状态…</div></div>
+          <div class="home-columns"><section><h2 class="home-section-title">继续工作</h2><div id="home-recent" class="activity-list"><div class="skeleton">读取工作区…</div></div></section><section><h2 class="home-section-title">项目记录 <button class="text-button" data-jump="worklog">查看全部 →</button></h2><div id="home-activity" class="activity-list"><div class="skeleton">读取工作日志…</div></div></section></div>
+          <div class="home-start"><span>开始理解一个项目</span><button class="button ghost" data-jump="arch">打开架构工作台 →</button><button class="button ghost" data-jump="explorer">浏览仓库 →</button></div>
+        </section>
+        <section id="view-decisions" class="view document-view" hidden aria-label="关键决策"><div class="document-heading"><h1>Decisions <small>关键决策</small></h1><p>记录背景、选择与依据。这里的工作记录尚未独立核实，分类不代表已批准。</p></div><iframe id="decisions-frame" title="关键决策记录" class="document-frame" data-src="/ext/worklog#decision"></iframe><p class="mode-note" hidden>本实例未提供人工地图，工作记录扩展不可用。</p></section>
+        <section id="view-worklog" class="view document-view" hidden aria-label="工作日志"><div class="document-heading"><h1>Worklog <small>项目记忆</small></h1></div><iframe id="worklog-frame" title="项目工作日志" class="document-frame" data-src="/ext/worklog"></iframe><p class="mode-note" hidden>本实例未提供人工地图，工作记录扩展不可用。</p></section>
 
         <!-- ======== 视图 4：仓库浏览（无地图模式为主视图） ======== -->
         <section id="view-explorer" class="view" hidden aria-label="仓库浏览">
@@ -57,16 +59,16 @@
             <section class="workspace">
               <div class="intro-row">
                 <div>
-                  <div class="eyebrow">REPO EXPLORER / 04</div>
-                  <h1>浏览真实仓库的已提交内容</h1>
+
+                  <h1>Repository <small>仓库浏览</small></h1>
                   <p class="intro-copy">目录、源码、符号与关系都绑定同一个固定提交；未提交的修改与未跟踪文件不属于这个版本。自动结果是技术结构，不是已确认的业务架构。</p>
                 </div>
               </div>
 
               <form id="explorer-open-form" class="compare-card">
-                <div class="compare-heading"><div><span class="eyebrow">STEP 1</span><h2>打开本机 Git 仓库</h2><p>输入仓库的本地绝对路径；版本默认 HEAD，也可填完整提交 SHA。</p></div></div>
+                <div class="compare-heading"><div><h2>打开本机 Git 仓库</h2><p>输入仓库的本地绝对路径；版本默认 HEAD，也可填完整提交 SHA。</p></div></div>
                 <div class="compare-controls">
-                  <label>仓库路径<input id="explorer-repo-path" type="text" spellcheck="false" placeholder="例如 G:\demo\sample-repo" /></label>
+                  <label>仓库路径<input id="explorer-repo-path" type="text" spellcheck="false" placeholder="例如 /Users/you/Desktop/project" /></label>
                   <label>版本<input id="explorer-revision" type="text" spellcheck="false" placeholder="HEAD 或完整 SHA" /></label>
                   <button class="button primary" type="submit">打开仓库</button>
                 </div>
@@ -74,12 +76,12 @@
               </form>
 
               <div id="explorer-header" class="compare-card" hidden>
-                <div class="compare-heading"><div><span class="eyebrow">OPENED</span><h2 id="explorer-title">—</h2><p id="explorer-coverage">—</p></div></div>
+                <div class="compare-heading"><div><h2 id="explorer-title">—</h2><p id="explorer-coverage">—</p></div></div>
                 <div id="explorer-skipped" class="compare-status" hidden></div>
               </div>
 
               <form id="explorer-compare-form" class="compare-card" hidden>
-                <div class="compare-heading"><div><span class="eyebrow">STEP 2</span><h2>比较两个提交的文件变化</h2><p>输入该仓库的两个完整提交 SHA；新增/修改/删除/重命名都可打开相应版本的源码。</p></div></div>
+                <div class="compare-heading"><div><h2>比较两个提交的文件变化</h2><p>输入该仓库的两个完整提交 SHA；新增/修改/删除/重命名都可打开相应版本的源码。</p></div></div>
                 <div class="compare-controls">
                   <label>基准提交 SHA<input id="explorer-base" type="text" spellcheck="false" placeholder="完整 40 位 SHA" /></label>
                   <div class="compare-arrow">→</div>
@@ -110,13 +112,13 @@
         </section>
 
         <!-- ======== 视图 0：架构工作台（本轮新主入口） ======== -->
-        <section id="view-arch" class="view" aria-label="架构工作台">
+        <section id="view-arch" class="view" hidden aria-label="架构工作台">
           <div class="content-grid">
             <section class="workspace">
               <div class="intro-row">
                 <div>
-                  <div class="eyebrow">ARCHITECTURE WORKBENCH / 01</div>
-                  <h1>说明情况，让 AI 先起草，由你纠正和确认</h1>
+
+                  <h1>Architecture <small>架构工作台</small></h1>
                   <p class="intro-copy">「分析已有项目」提交仓库与情况说明；「规划新项目」提交目标与约束。生成的是候选，一切确认由人完成。</p>
                 </div>
               </div>
@@ -124,14 +126,14 @@
               <div id="arch-sample-banner" class="compare-status arch-banner" hidden></div>
 
               <div class="compare-card" id="arch-entry-card">
-                <div class="compare-heading"><div><span class="eyebrow">STEP 1</span><h2>开始一个架构工作区</h2><p>两种入口：已有项目绑定固定提交的代码事实；新项目允许没有代码 SHA。</p></div></div>
+                <div class="compare-heading"><div><h2>开始一个架构工作区</h2><p>两种入口：已有项目绑定固定提交的代码事实；新项目允许没有代码 SHA。</p></div></div>
                 <div class="arch-tabs">
                   <button class="button ghost arch-tab active" data-entry="existing" type="button">分析已有项目</button>
                   <button class="button ghost arch-tab" data-entry="planning" type="button">规划新项目</button>
                 </div>
                 <form id="arch-create-existing" class="arch-entry-form">
                   <div class="compare-controls">
-                    <label>仓库本地路径<input id="arch-repo-path" type="text" spellcheck="false" placeholder="例如 G:\demo\sample-repo" /></label>
+                    <label>仓库本地路径<input id="arch-repo-path" type="text" spellcheck="false" placeholder="例如 /Users/you/Desktop/project" /></label>
                     <label>工作区名称<input id="arch-existing-title" type="text" placeholder="例如：示例项目架构认知" /></label>
                   </div>
                   <label class="arch-wide">情况说明（它做什么、团队关心的部分、已知问题）<textarea id="arch-existing-desc" rows="3" placeholder="用自然语言说明项目情况；AI 将结合代码事实起草候选图。"></textarea></label>
@@ -149,19 +151,21 @@
               </div>
 
               <div class="compare-card" id="arch-history-card" hidden>
-                <div class="compare-heading"><div><span class="eyebrow">HISTORY</span><h2>历史工作区</h2><p>重启或刷新后可重新打开；草稿保存在本实例数据目录。</p></div></div>
+                <div class="compare-heading"><div><h2>历史工作区</h2><p>重启或刷新后可重新打开；草稿保存在本实例数据目录。</p></div></div>
                 <div id="arch-history-list" class="arch-history"></div>
               </div>
 
               <div id="arch-workspace" hidden>
+                <div class="architecture-toolbar"><div class="canvas-tabs"><button class="active" data-arch-tab="canvas">图视图</button><button data-arch-tab="outline">列表视图</button><button data-arch-tab="versions">工作区</button></div><div class="toolbar-actions"><button class="button ghost" id="arch-new-workspace">新建工作区</button><button class="button ghost" id="arch-add-node">＋ 节点</button></div></div>
+                <div id="arch-outline" hidden></div>
                 <div class="revision-strip">
                   <div class="revision-icon">◈</div>
                   <div class="revision-copy"><span>工作区身份</span><strong id="arch-identity-line">—</strong></div>
                   <span id="arch-context-pill" class="branch-pill">—</span>
                 </div>
 
-                <div class="compare-card">
-                  <div class="compare-heading"><div><span class="eyebrow">STEP 2</span><h2>生成候选功能架构</h2><p>真实 AI 未配置时会如实显示；演示样例只用于验证界面。</p></div>
+                <div class="compare-card arch-generation">
+                  <div class="compare-heading"><div><h2>生成候选功能架构</h2><p>真实 AI 未配置时会如实显示；演示样例只用于验证界面。</p></div>
                     <span id="arch-gen-count" class="count-label">—</span></div>
                   <div class="compare-controls">
                     <button class="button primary" id="arch-generate-button" type="button">生成候选图（真实 AI）</button>
@@ -175,14 +179,14 @@
 
                 <div class="map-card">
                   <div class="map-card-header"><div><span class="map-icon">◎</span><strong>候选功能图</strong><span class="map-subtitle">点击节点查看与编辑 · 职责/接口/过程/证据</span></div><span id="arch-node-count" class="count-label">—</span></div>
-                  <div class="map-scroll"><div class="map-stage" id="arch-map-stage"></div></div>
+                  <div class="canvas-viewport"><div class="canvas-tools"><button id="canvas-fit" title="适应画布" aria-label="适应画布">↔</button><button id="canvas-zoom-in" title="放大" aria-label="放大">＋</button><button id="canvas-zoom-out" title="缩小" aria-label="缩小">−</button><span id="canvas-zoom">100%</span></div><div class="map-scroll" id="arch-canvas-scroll"><div class="map-stage" id="arch-map-stage"></div></div></div>
                   <div class="map-draft-bar"><span id="arch-draft-status">—</span><div>
-                    <button class="button ghost" id="arch-diff-button" type="button" disabled>候选前后对照</button>
+                    <button class="button ghost" id="arch-diff-button" type="button" disabled>对比版本</button>
                   </div></div>
                 </div>
 
                 <div class="compare-card" id="arch-correction-card">
-                  <div class="compare-heading"><div><span class="eyebrow">STEP 3</span><h2>自然语言纠正</h2><p>选中节点或区域，描述要改什么；预览确认后才应用到草稿。</p></div></div>
+                  <div class="compare-heading"><div><h2>自然语言纠正</h2><p>选中节点或区域，描述要改什么；预览确认后才应用到草稿。</p></div></div>
                   <div class="compare-controls">
                     <label class="arch-wide">纠正说明<input id="arch-correction-input" type="text" spellcheck="false" placeholder="例如：这块的职责说错了，它只负责 X" /></label>
                     <select id="arch-correction-mode" class="arch-wide" title="真实 AI 需要服务端模型配置；规则纠正由 C 的规则引擎生成">
@@ -198,9 +202,15 @@
                 </div>
 
                 <div class="compare-card">
-                  <div class="compare-heading"><div><span class="eyebrow">STEP 4</span><h2>偏差处理</h2><p>修正认知更新图草稿；修正实现生成有验收的开发任务。改图不会自动修改程序。</p></div></div>
+                  <div class="compare-heading"><div><h2>偏差处理</h2><p>修正认知更新图草稿；修正实现生成有验收的开发任务。改图不会自动修改程序。</p></div></div>
                   <div class="compare-controls">
                     <button class="button ghost" id="arch-sync-button" type="button" disabled>保存草稿到版本服务</button>
+                    <label for="arch-review-mode">本次复核范围
+                      <select id="arch-review-mode">
+                        <option value="code">固定代码事实（不含期望过程确认）</option>
+                        <option value="design">设计与期望过程（不证明实际运行）</option>
+                      </select>
+                    </label>
                     <button class="button ghost" id="arch-review-preview-button" type="button" disabled>人审预览（真实会话）</button>
                     <button class="button primary" id="arch-review-confirm-button" type="button" hidden disabled>确认接受</button>
                     <button class="button ghost" id="arch-review-reject-button" type="button" hidden disabled>拒绝</button>
@@ -213,12 +223,13 @@
                   <div id="arch-review-status" class="compare-status">人审必须经过 预览 → 确认 → 发布 三步；后端缺失时如实拒绝。</div>
                   <div id="arch-review-result" class="compare-result"></div>
                   <div id="arch-version-result" class="compare-result"></div>
+                  <section id="governed-task-panel" hidden aria-labelledby="governed-task-title"></section>
                 </div>
               </div>
             </section>
 
             <aside class="details" aria-labelledby="arch-details-title">
-              <div class="details-heading"><span class="eyebrow">WORKBENCH INSPECTOR</span><h2 id="arch-details-title">节点详情与编辑</h2><p>职责、接口、期望过程、证据与确认状态；直接编辑是纠正手段之一。</p></div>
+              <div class="details-heading"><h2 id="arch-details-title">Inspector</h2><p>职责、接口、期望过程、证据与确认状态；直接编辑是纠正手段之一。</p></div>
               <div id="arch-details-content" class="details-content"><div class="empty-details"><span>◈</span><strong>等待工作区</strong><p>创建或打开一个工作区后，点击图中的功能节点。</p></div></div>
             </aside>
           </div>
@@ -231,8 +242,8 @@
           <section class="workspace" aria-labelledby="page-title">
             <div class="intro-row">
               <div>
-                <div class="eyebrow">PROJECT MAP / 01</div>
-                <h1 id="page-title">从项目全貌进入细节</h1>
+
+                <h1 id="page-title">Project map <small>人工演示图</small></h1>
                 <p class="intro-copy">选择功能节点，查看职责、关系和固定代码版本中的实际来源。</p>
               </div>
               <button class="button primary" id="export-button" type="button" disabled>导出当前摘要 ↓</button>
@@ -252,7 +263,7 @@
             </div>
 
             <div class="compare-card" aria-labelledby="compare-title">
-              <div class="compare-heading"><div><span class="eyebrow">GIT CHANGE / 02</span><h2 id="compare-title">对照两个真实提交</h2><p>Git 列出变化文件；地图只标记来源文件发生变化的待复核节点。</p></div><span id="change-count" class="count-label">—</span></div>
+              <div class="compare-heading"><div><h2 id="compare-title">对照两个真实提交</h2><p>Git 列出变化文件；地图只标记来源文件发生变化的待复核节点。</p></div><span id="change-count" class="count-label">—</span></div>
               <div class="compare-controls">
                 <label>基准提交 SHA<input id="base-revision" type="text" spellcheck="false" placeholder="输入完整提交 ID" /></label>
                 <div class="compare-arrow">→</div>
@@ -264,7 +275,7 @@
             </div>
 
             <div class="ai-card" aria-labelledby="ai-title">
-              <div class="ai-heading"><div><span class="eyebrow">AI CANDIDATE / 03</span><h2 id="ai-title">解释选中部分的变化</h2><p>只分析该节点直接声明的变化来源。解释需要团队复核。</p></div><button class="button primary" id="explain-button" type="button" disabled>让 AI 解释</button></div>
+              <div class="ai-heading"><div><h2 id="ai-title">解释选中部分的变化</h2><p>只分析该节点直接声明的变化来源。解释需要团队复核。</p></div><button class="button primary" id="explain-button" type="button" disabled>让 AI 解释</button></div>
               <p class="ai-disclosure">点击后，所选节点的名称、演示描述、变化文件名及最多 12,000 个字符的 Git 差异会发送至 OpenAI。不会自动调用，也不会把解释写入正式项目模型。</p>
               <div id="ai-status" class="ai-status">正在检查 AI 配置…</div>
               <div id="ai-result" class="ai-result"></div>
@@ -274,7 +285,7 @@
           </section>
 
           <aside class="details" aria-labelledby="details-title">
-            <div class="details-heading"><span class="eyebrow">INSPECTOR</span><h2 id="details-title">节点详情</h2><p>选择地图中的节点，查看有用的信息与出处。</p></div>
+            <div class="details-heading"><h2 id="details-title">节点详情</h2><p>选择地图中的节点，查看有用的信息与出处。</p></div>
             <div id="details-content" class="details-content"><div class="empty-details"><span>⌁</span><strong>等待选择节点</strong><p>从左侧地图选择一个功能部分。</p></div></div>
           </aside>
         </div>
@@ -286,14 +297,14 @@
             <section class="workspace">
               <div class="intro-row">
                 <div>
-                  <div class="eyebrow">CHANGE REVIEW / 02</div>
-                  <h1>一次变更的完整证据链</h1>
+
+                  <h1>Changes <small>变更审查</small></h1>
                   <p class="intro-copy">Git 变化 × 代码事实 × 人工地图 × 上下文底座 → 候选提案；裁决权始终在人。</p>
                 </div>
               </div>
 
               <div class="compare-card">
-                <div class="compare-heading"><div><span class="eyebrow">STEP 1</span><h2>选择审查范围</h2><p>基准提交与目标提交决定本次审查的差异范围（与地图视图同一口径）。</p></div></div>
+                <div class="compare-heading"><div><h2>选择审查范围</h2><p>基准提交与目标提交决定本次审查的差异范围（与地图视图同一口径）。</p></div></div>
                 <div class="compare-controls">
                   <label>基准提交 SHA<input id="review-base" type="text" spellcheck="false" placeholder="留空则使用父提交" /></label>
                   <div class="compare-arrow">→</div>
@@ -305,17 +316,17 @@
 
               <div id="review-output" class="review-output" hidden>
                 <div class="compare-card">
-                  <div class="compare-heading"><div><span class="eyebrow">STEP 2</span><h2>Git 变化与代码事实</h2><p>来自 pinned 比对的变化文件，以及 B 扩展给出的声明事实。</p></div><span id="review-change-count" class="count-label">—</span></div>
+                  <div class="compare-heading"><div><h2>Git 变化与代码事实</h2><p>来自 pinned 比对的变化文件，以及 B 扩展给出的声明事实。</p></div><span id="review-change-count" class="count-label">—</span></div>
                   <div id="review-changes" class="compare-result"></div>
                 </div>
 
                 <div class="compare-card">
-                  <div class="compare-heading"><div><span class="eyebrow">STEP 3</span><h2>C 地图提案（候选 · 待人工裁决）</h2><p>规则起草的六类候选；全部为 PROPOSED 且需要人确认，不写入正式地图。</p></div><span id="review-proposal-count" class="count-label">—</span></div>
+                  <div class="compare-heading"><div><h2>C 地图提案（候选 · 待人工裁决）</h2><p>规则起草的六类候选；全部为 PROPOSED 且需要人确认，不写入正式地图。</p></div><span id="review-proposal-count" class="count-label">—</span></div>
                   <div id="review-proposals" class="review-proposals"></div>
                 </div>
 
                 <div class="compare-card">
-                  <div class="compare-heading"><div><span class="eyebrow">STEP 4</span><h2>需要人工处理与已知限制</h2><p>无法自动判断的信号（unresolved）与降级说明（limits）——不吞掉任何疑点。</p></div></div>
+                  <div class="compare-heading"><div><h2>需要人工处理与已知限制</h2><p>无法自动判断的信号（unresolved）与降级说明（limits）——不吞掉任何疑点。</p></div></div>
                   <div id="review-human" class="compare-result"></div>
                 </div>
               </div>
@@ -330,23 +341,27 @@
             <section class="workspace">
               <div class="intro-row">
                 <div>
-                  <div class="eyebrow">COLLABORATION / 03</div>
-                  <h1>协作与交接</h1>
+
+                  <h1>Handoff <small>协作交接</small></h1>
                   <p class="intro-copy">当前任务、延续上下文、工作日志与交接包——跨 Agent 协作的连续性都在这里。</p>
                 </div>
               </div>
               <div class="collab-tabs" role="tablist" aria-label="协作工具">
-                <button class="button ghost collab-tab active" data-page="/ext/worklog" type="button">工作日志</button>
+                <button class="button ghost collab-tab active" data-page="/ext/handoff" type="button">交接包</button>
                 <button class="button ghost collab-tab" data-page="/ext/continuity" type="button">延续上下文</button>
-                <button class="button ghost collab-tab" data-page="/ext/handoff" type="button">交接包</button>
+                <button class="button ghost collab-tab" data-page="/ext/worklog" type="button">工作日志</button>
               </div>
               <div class="collab-frame-wrap">
-                <iframe id="collab-frame" class="collab-frame" title="协作工具" data-src="/ext/worklog"></iframe>
+                <iframe id="collab-frame" class="collab-frame" title="协作工具" data-src="/ext/handoff"></iframe>
               </div>
             </section>
           </div>
         </section>
       </main>
+      <footer class="statusbar"><span id="status-branch">Git —</span><code id="status-commit">—</code><span id="status-model">未打开工作区</span><button id="status-review" data-jump="review">待复核 —</button><span id="status-ai">AI · 检查中</span><span id="status-network">◉ Local</span><button id="ask-projectmind">Ask ProjectMind… <kbd>⌘J</kbd></button></footer>
     </div>
+    <dialog id="command-dialog" class="command-dialog"><div class="command-input"><span>⌕</span><input id="command-input" type="search" placeholder="跳转页面、工作区或搜索节点…" aria-label="全局搜索"><button id="command-close" class="icon-button" aria-label="关闭搜索">×</button></div><div id="command-results" role="listbox" aria-label="搜索结果"></div><div class="command-footer">↑ ↓ 选择 · Enter 打开 · Esc 关闭 <span>ProjectMind</span></div></dialog>
+    <dialog id="settings-dialog" class="settings-dialog"><button class="icon-button" id="settings-close" aria-label="关闭设置">×</button><h2>工作空间设置</h2><label><input type="checkbox" id="compact-toggle"> 紧凑模式</label><label><input type="checkbox" id="inspector-toggle" checked> 显示详情面板</label><p>布局偏好只保存在当前浏览器。Git 事实、AI 候选和人工记录保持各自来源标识。</p></dialog>
+    <div id="shell-toast" class="shell-toast" role="status" aria-live="polite"></div>
   </body>
 </html>
