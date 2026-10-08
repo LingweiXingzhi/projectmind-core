@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>Context Authority Inspector</title>
+<title>上下文事实检查器</title>
 <style>
   body { font-family: Consolas, monospace; margin: 24px; background: #fafafa; color: #222; }
   h1 { font-size: 20px; } h2 { font-size: 15px; margin-top: 22px; border-bottom: 1px solid #ddd; }
@@ -21,16 +21,17 @@
 <script>if(window.self!==window.top){document.documentElement.classList.add('embedded');document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('embedded'));}</script>
 </head>
 <body>
-<h1>Context Authority Inspector</h1>
-<div class="small">派生视图 — 当前事实底座（不是需要人工维护的第二份真源）。registry hash: <span id="hash">…</span></div>
-<button onclick="load('state')">CURRENT</button>
-<button onclick="load('conflicts')">CONFLICTS</button>
-<button onclick="load('claims')">RAW CLAIMS</button>
-<div id="out">loading…</div>
+<h1>上下文事实检查器</h1>
+<div class="small">派生视图 — 当前事实底座（不是需要人工维护的第二份真源）。登记表指纹： <span id="hash">…</span></div>
+<button onclick="load('state')">当前事实</button>
+<button onclick="load('conflicts')">冲突</button>
+<button onclick="load('claims')">原始声明</button>
+<div id="out">正在读取…</div>
+<script src="/evidence-links.js"></script>
 <script>
 async function load(action) {
   const out = document.getElementById("out");
-  out.textContent = "loading…";
+  out.textContent = "正在读取…";
   try {
     const res = await fetch(`/api/extensions/context_authority?action=${action}`);
     const data = await res.json();
@@ -39,7 +40,7 @@ async function load(action) {
     if (action === "conflicts") return renderConflicts(data);
     out.replaceChildren(element("pre", JSON.stringify(data, null, 2)));
   } catch (error) {
-    out.textContent = `Context Authority unavailable: ${error.message}`;
+    out.textContent = `上下文事实服务不可用： ${error.message}`;
   }
 }
 function element(tag, text) {
@@ -55,22 +56,22 @@ function details(row, title) {
 function renderState(s) {
   document.getElementById("hash").textContent = s.registry_hash || "";
   const out = document.getElementById("out");
-  out.replaceChildren(element("h2", "CURRENT PROJECT STATE"));
+  out.replaceChildren(element("h2", "当前项目事实"));
   const table = element("table");
   const header = element("tr");
-  for (const title of ["key / scope", "value", "type", "evidence"]) header.append(element("th", title));
+  for (const title of ["字段 / 范围", "内容", "类型", "证据"]) header.append(element("th", title));
   table.append(header);
   const rows = s.current_by_scope || Object.entries(s.current || {}).map(([key, value]) => ({key, ...value}));
   for (const row of rows) {
     const tr = element("tr");
-    tr.append(element("td", `${row.key} / ${row.scope}`), element("td", JSON.stringify(row.value)), element("td", row.type));
+    tr.append(element("td", `${row.key} / ${row.scope}`), element("td", JSON.stringify(row.value)), element("td", projectmindUiLabel(row.type)));
     const td = element("td");
     td.append(details(row, (row.claim_ids || []).join(", ")));
     tr.append(td);
     table.append(tr);
   }
   out.append(table);
-  for (const [field, title] of [["conflicts", "CONFLICTS — HUMAN_REQUIRED"], ["registry_problems", "REGISTRY PROBLEMS — HUMAN_REQUIRED"], ["stale", "STALE / SUPERSEDED"], ["proposals", "PROPOSALS"], ["research", "RESEARCH"], ["historical", "HISTORICAL"], ["verification_unavailable", "VERIFICATION UNAVAILABLE"]]) {
+  for (const [field, title] of [["conflicts", "冲突 — 需要人工处理"], ["registry_problems", "登记表问题 — 需要人工处理"], ["stale", "过期 / 已被替代"], ["proposals", "候选提案"], ["research", "研究记录"], ["historical", "历史记录"], ["verification_unavailable", "无法核验"]]) {
     const items = s[field] || [];
     const heading = element("h2", `${title}: ${items.length}`);
     heading.className = items.length && ["conflicts", "registry_problems"].includes(field) ? "bad" : "warn";
@@ -79,9 +80,10 @@ function renderState(s) {
   }
 }
 function renderConflicts(c) {
-  document.getElementById("out").replaceChildren(element("h2", `Conflicts: ${(c.conflicts || []).length} — HUMAN_REQUIRED`), element("pre", JSON.stringify(c.conflicts || [], null, 2)));
+  document.getElementById("out").replaceChildren(element("h2", `冲突： ${(c.conflicts || []).length} — 需要人工处理`), element("pre", JSON.stringify(c.conflicts || [], null, 2)));
 }
 load("state");
 </script>
 </body>
 </html>
+
