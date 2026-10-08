@@ -255,8 +255,21 @@ def _call_responses(config: dict, instructions: str, payload: dict,
     raw = _post_json(config["base"] + "/responses", body, config["key"], timeout)
     if raw.get("status") != "completed":
         raise AIError("AI 服务未完成请求，请稍后重试。")
-    texts = [content.get("text", "") for item in raw.get("output", []) if item.get("type") == "message"
-             for content in item.get("content", []) if content.get("type") == "output_text"]
+    output = raw.get('output')
+    if not isinstance(output, list) or not all(isinstance(item, dict) for item in output):
+        raise AIError('AI 服务返回的 output 结构无效。')
+    texts = []
+    for item in output:
+        if item.get('type') != 'message':
+            continue
+        contents = item.get('content')
+        if not isinstance(contents, list) or not all(isinstance(value, dict) for value in contents):
+            raise AIError('AI 服务返回的消息结构无效。')
+        for content in contents:
+            if content.get('type') == 'output_text':
+                if not isinstance(content.get('text'), str):
+                    raise AIError('AI 服务返回的文字结构无效。')
+                texts.append(content['text'])
     if not texts:
         raise AIError("AI 服务没有返回可用文字。")
     return _parse_json_text("".join(texts), schema)
@@ -281,11 +294,11 @@ def _call_chat_completions(config: dict, instructions: str, payload: dict,
             raise
         body.pop("response_format", None)
         raw = _post_json(url, body, config["key"], timeout)
-    choices = raw.get("choices") or []
-    text = ""
-    if choices and isinstance(choices[0], dict):
-        message = choices[0].get("message") or {}
-        text = message.get("content") or ""
+    choices = raw.get('choices')
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict) \
+            or not isinstance(choices[0].get('message'), dict):
+        raise AIError('AI 服务返回的 choices/message 结构无效。')
+    text = choices[0]['message'].get('content')
     if not isinstance(text, str) or not text.strip():
         raise AIError("AI 服务没有返回可用文字。")
     return _parse_json_text(text, schema)

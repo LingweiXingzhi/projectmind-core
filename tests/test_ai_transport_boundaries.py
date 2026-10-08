@@ -68,3 +68,16 @@ class TransportBoundaryTests(unittest.TestCase):
             transport._validated({'SYNTHETIC-CREDENTIAL-FIELD':'x'},
                 {'type':'object','additionalProperties':False,'properties':{}})
         self.assertNotIn('SYNTHETIC',str(error.exception))
+
+    def test_valid_json_with_invalid_wire_shapes_is_controlled(self):
+        schema={'type':'object'}
+        config={'model':'fixture','key':'SYNTHETIC','base':'http://127.0.0.1:1'}
+        responses=[{'status':'completed','output':1},{'status':'completed','output':[1]},
+            {'status':'completed','output':[{'type':'message','content':'bad'}]},
+            {'status':'completed','output':[{'type':'message','content':[{'type':'output_text','text':[]}]}]}]
+        chats=[{'choices':1},{'choices':{}},{'choices':[1]}, {'choices':[{'message':'bad'}]},
+            {'choices':[{'message':{'content':[]}}]}]
+        for function,values in [(transport._call_responses,responses),(transport._call_chat_completions,chats)]:
+            for value in values:
+                with self.subTest(value=value),patch.object(transport,'_post_json',return_value=value):
+                    with self.assertRaises(transport.AIError):function(config,'fixture',{},'s',schema,1)
