@@ -5,6 +5,7 @@ This verifies ordering and cleanup, not a real systemd/Unix-user rehearsal.
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -13,11 +14,12 @@ from deployment.host import TEMPLATES
 from deployment.machine import inventory
 
 
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Linux maintenance requires flock and GNU mv; not a systemd PASS')
 class MaintenanceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.bin = self.root / 'bin'; self.bin.mkdir()
         self.log = self.root / 'events'
         self.env = dict(os.environ, PATH=str(self.bin)+':'+os.environ['PATH'], EVENTS=str(self.log))

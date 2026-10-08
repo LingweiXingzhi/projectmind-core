@@ -40,8 +40,10 @@ python3 -m deployment.host stage-release --source "$source_dir" --sha "$release_
 release_dir=/opt/projectmind/releases/$release_sha
 python3 -m venv "$release_dir/venv"
 "$release_dir/venv/bin/python" -m pip install -r "$release_dir/app/requirements-deploy.txt"
-chown -R root:root "$release_dir"
-chmod -R go-w "$release_dir"
+chown -R root:projectmind "$release_dir"
+# umask077 made the clone/venv private to root. Explicitly grant the service
+# group read/traverse/execute while keeping source and dependencies unwritable.
+python3 -m deployment.host set-release-permissions --release "$release_dir"
 if [[ ! -e /etc/projectmind/runtime.json ]]; then
     install -m 0600 -o projectmind -g projectmind "$bundle_dir/runtime.json" /etc/projectmind/runtime.json
 fi
