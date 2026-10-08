@@ -525,7 +525,10 @@ def call_model(instructions: str, payload: dict, schema_name: str, schema: dict,
         # UTF-8 bytes + protocol overhead conservatively bound ordinary text
         # input; chat may make its existing one bounded retry after HTTP 400.
         attempts = 2 if config['protocol'] == 'chat_completions' else 1
-        ticket = settings.reserve(attempts * (len(encoded) + 512 + config['outputLimit']))
+        # Unlimited managed mode omits the wire cap. Keep usage accounting;
+        # its unknown-usage estimate uses the existing response byte ceiling.
+        output_allowance = config.get('outputLimit', MAX_RESPONSE_BYTES)
+        ticket = settings.reserve(attempts * (len(encoded) + 512 + output_allowance))
     receiver = _USAGE_RECEIVER.set(usage.append)
     try:
         value = _validated(_isolated_call(message, deadline, cancel_event), schema)
