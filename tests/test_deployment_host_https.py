@@ -35,6 +35,9 @@ class HostHTTPSTests(unittest.TestCase):
         cls.password = secrets.token_urlsafe(24)
         accounts = cls.root/'accounts.json'; create_account_file(accounts, 'fixture', cls.password)
         code = tiny_code_repo(cls.root); arch = architecture_repo(cls.root)
+        cls.code, cls.arch = code, arch
+        subprocess.run(['git', '-C', str(arch), 'remote', 'add', 'origin',
+                        'https://example.invalid/acceptance-architecture-fixture.git'], check=True)
         private_json(cls.root/'runtime.json', {'schemaVersion': 'projectmind_deploy_v1', 'publicOrigin': cls.origin,
                      'accountsFile': str(accounts), 'dataRoot': str(cls.root/'state'), 'codeRepositories': [str(code)],
                      'architectureRepo': str(arch), 'architectureBranch': 'architecture/candidates/archloop-test'})
@@ -91,6 +94,45 @@ class HostHTTPSTests(unittest.TestCase):
         # that TLS alert and client hostname verification must reject the request.
         with self.assertRaises(ssl.SSLError):
             collect(f'https://wrong.example.invalid:{self.proxy_port}', ca=self.ca, connect_ip='127.0.0.1')
+
+    def test_acceptance_client_real_tls_session_and_registered_repository(self):
+        from archloop.acceptance import Acceptance
+        from archloop.acceptance_http import AcceptanceHTTP
+        client = AcceptanceHTTP(self.origin, ca=self.ca, connect_ip='127.0.0.1')
+        try:
+            client.login('fixture', self.password)
+            self.assertTrue(client.auth)
+            runner = Acceptance(self.origin, str(self.code), client=client,
+                                repo_key=client.repositories[0]['key'])
+            ws = runner.require_workspace()
+            status, value = runner.call('POST', f'/api/archloop/workspaces/{ws}/generate', {'mode': 'rule_based'})
+            self.assertEqual(status, 200); self.assertTrue(value['graph']['nodes'])
+            auth = dict(client.auth)
+        finally:
+            client.close()
+        self.assertFalse(client.auth)
+        status, _, _ = client.request('GET', '/api/archloop')
+        self.assertEqual(status, 401)
+
+    def test_acceptance_story_real_https_fixture_never_fakes_verified(self):
+        from archloop.acceptance import Acceptance
+        from archloop.acceptance_http import AcceptanceHTTP
+        client = AcceptanceHTTP(self.origin, ca=self.ca, connect_ip='127.0.0.1')
+        try:
+            client.login('fixture', self.password)
+            runner = Acceptance(self.origin, str(self.code), client=client,
+                repo_key=client.repositories[0]['key'], allow_fixture_writes=True)
+            report = runner.run()
+        finally:
+            client.close()
+        print(json.dumps({'acceptanceFixture': report}, ensure_ascii=False))
+        failures = [item for item in report['results'] if item['status'] == 'FAIL']
+        self.assertEqual(failures, [])
+        results = {item['item']: item['status'] for item in report['results']}
+        self.assertEqual(results['T19a'], 'PASS')
+        self.assertEqual(results['T19b'], 'NOT_RUN')
+        self.assertEqual(results['T21'], 'PASS')
+        self.assertEqual(results['T24'], 'NOT_RUN')
 
 
 if __name__ == '__main__': unittest.main()

@@ -246,4 +246,27 @@ class PublicHTTPTests(unittest.TestCase):
         self.assertEqual(status, 403, body)
 
 
+    def test_malformed_deep_or_nonfinite_json_is_400_without_writing_workspace(self):
+        auth = self.login()
+        before = self.request('GET', '/api/archloop/workspaces', auth=auth)[2]
+        cases = [b'{"context":"planning","title":"fixture","extra":'+b'['*1600+b'0'+b']'*1600+b'}',
+                 b'{"context":"planning","title":"fixture","extra":'+b'['*65+b'0'+b']'*65+b'}',
+                 b'{"context":"planning","title":"fixture","extra":NaN}',
+                 b'{"context":"planning","title":"fixture","extra":Infinity}',
+                 b'{"context":"planning","title":"fixture","extra":1e9999}']
+        for raw in cases:
+            with self.subTest(raw=raw[:50]):
+                connection = HTTPConnection('127.0.0.1', self.port, timeout=10)
+                try:
+                    connection.request('POST', '/api/archloop/workspaces', body=raw, headers={
+                        'Host': 'projectmind.example.invalid', 'Origin': ORIGIN,
+                        'Content-Type': 'application/json', **auth})
+                    response = connection.getresponse()
+                    value = json.loads(response.read())
+                    self.assertEqual(response.status, 400, value)
+                    self.assertEqual(value['error']['code'], 'INVALID_INPUT')
+                finally:
+                    connection.close()
+        self.assertEqual(before, self.request('GET', '/api/archloop/workspaces', auth=auth)[2])
+
 if __name__ == "__main__": unittest.main()
