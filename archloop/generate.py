@@ -178,7 +178,7 @@ def generate_candidate(request: dict, repo_facts: dict | None = None) -> dict:
     return {
         "status": "ai_generated",
         "origin": "ai_generated",
-        "model": ai_transport.ai_status().get("model"),
+        "model": ai_transport.last_model() or ai_transport.ai_status().get("model"),
         "graph": graph,
         "unknowns": raw.get("unknowns", []),
         "openQuestions": raw.get("openQuestions", []),

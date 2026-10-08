@@ -1,0 +1,433 @@
+{
+  "https": {
+    "schemaVersion": "local_https_rehearsal_v1",
+    "fixtureOnly": true,
+    "backend": "actual Waitress CLI",
+    "proxy": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=",
+    "localCertificateAndHostnameVerified": true,
+    "codeGitUnchanged": true,
+    "publicNetwork": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN",
+    "browser": "NOT_RUN_NOT_A_BROWSER_HARNESS",
+    "requests": 40,
+    "observations": [
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 401
+      },
+      {
+        "method": "POST",
+        "route": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/auth/session",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 409
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 409
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      }
+    ],
+    "publishedFixtures": [
+      {
+        "context": "existing_project",
+        "mapRevision": "sha256:69fe4971b41e2e0eea854d9ab81b704edf7b4b44f27d8297397bbad79f4b7aad",
+        "mapSourceRevision": "703f3489a30abc8e5acdb7c30f567a598d36d5a4",
+        "codeRevision": "9a78466f078db55118d06dc5d142f592653dafbb"
+      },
+      {
+        "context": "planning",
+        "mapRevision": "sha256:0027ca5fdbe67c5c93e3e763ad6efe72944675e1c3d257bfb3eff9e47b9d5a43",
+        "mapSourceRevision": "5cffa3deadac52f9fc82e409b3bb806b0e7c1a20",
+        "codeRevision": null
+      }
+    ],
+    "crossSessionConfirmRejected": true,
+    "crossSessionPublishRejected": true,
+    "csrfRejected": true,
+    "wrongOriginRejected": true,
+    "trustedActorFromSession": true,
+    "planningNoFakeCodeSHA": true,
+    "secondServingProcessRejected": true,
+    "governedTasks": [
+      {
+        "id": "fix-82962fe804cef7d74b7b562af358803f",
+        "workspaceId": "ws_20261008182501_d99023",
+        "mapRevision": "sha256:69fe4971b41e2e0eea854d9ab81b704edf7b4b44f27d8297397bbad79f4b7aad",
+        "revision": 2,
+        "status": "received",
+        "actorIdentity": "authenticated_account"
+      }
+    ],
+    "nativeHandoffSchema": true,
+    "sharedRecords": [
+      {
+        "id": "dfd9fdeadafd4ed48b7616ef0e1dea2d",
+        "workspaceId": "ws_20261008182501_d99023",
+        "version": 2,
+        "status": "ai_candidate",
+        "codeRevision": "9a78466f078db55118d06dc5d142f592653dafbb"
+      },
+      {
+        "id": "cbd25cf5e98a43fa902fc8ed4440a671",
+        "workspaceId": "ws_20261008182502_42bb52",
+        "version": 2,
+        "status": "ai_candidate",
+        "codeRevision": null
+      }
+    ],
+    "recordCASConflictRejected": true,
+    "recordActorFromSession": true,
+    "sourceLocalSHA": "99190135c0fbda8995db722040d1b8d8a968e723",
+    "sourceTree": "a8821b7c99f66e7f0a77cbf776228509eb96cd02",
+    "sourceWorkingTreeDirty": false
+  },
+  "browser": {
+    "schemaVersion": "projectmind_native_browser_rehearsal_v1",
+    "status": "PASS",
+    "fixtureOnly": true,
+    "engine": "actual Chromium",
+    "requests": 136,
+    "pageErrors": [],
+    "actorFromActualSession": true,
+    "nativeDialogs": true,
+    "registeredRepositorySelector": true,
+    "ruleCandidateApplied": true,
+    "pr75UserGuideExistingEntry": true,
+    "pr75InlineEditor": true,
+    "pr75PlanningEntryNoCodeSHA": true,
+    "expectedProcessSaved": true,
+    "fixtureDesignReviewPublished": true,
+    "crossBrowserConfirmRejected": 403,
+    "crossBrowserPublishRejected": 403,
+    "secureHttpOnlySameSiteCookie": true,
+    "governedTaskCreatedReceivedStarted": true,
+    "nativeHandoffDownloadUnchanged": true,
+    "encodedVersionRoute": true,
+    "secondBrowserReadsSameVersion": true,
+    "mobileViewport": {
+      "width": 430,
+      "scrollWidth": 430
+    },
+    "taskFormFieldsFit": true,
+    "mobileAccountControlsFit": true,
+    "browserLocalCertificateException": true,
+    "realSecondDevice": "NOT_RUN",
+    "publicNetwork": "NOT_RUN",
+    "realAI": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN"
+  },
+  "browserRuntime": {
+    "schemaVersion": "local_https_rehearsal_v1",
+    "fixtureOnly": true,
+    "backend": "actual Waitress CLI",
+    "proxy": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=",
+    "localCertificateAndHostnameVerified": true,
+    "codeGitUnchanged": true,
+    "publicNetwork": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN",
+    "browserReport": "BROWSER_REPORT.json",
+    "sourceLocalSHA": "99190135c0fbda8995db722040d1b8d8a968e723",
+    "sourceTree": "a8821b7c99f66e7f0a77cbf776228509eb96cd02",
+    "sourceWorkingTreeDirty": false
+  },
+  "dom": {
+    "result": "PASS_FULL_DOM_REAL_HTTP",
+    "scriptsLoaded": 12,
+    "requests": 121,
+    "scriptErrors": [],
+    "actorFromActualSession": true,
+    "registeredRepositorySelector": true,
+    "ruleCandidateApplied": true,
+    "expectedProcessSaved": true,
+    "fixtureDesignReviewPublished": true,
+    "governedTaskCreatedReceivedStarted": true,
+    "sharedRecordSavedEditedHistory": true,
+    "recordConflictRetainsInput": true,
+    "aiDecisionRemainsCandidate": true,
+    "nativeBrowser": "NOT_RUN",
+    "TLS": "SIMULATED_PROXY_HEADERS_ONLY",
+    "workspaceSwitchRetainsUnsavedInput": true,
+    "chineseLabels": true,
+    "unknownIdentifiersPreserved": true,
+    "nativeHandoffJsonCapturedUnchanged": true,
+    "layout": "NOT_RUN",
+    "realAI": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN",
+    "polyfills": [
+      "dialog",
+      "pointer capture",
+      "scroll",
+      "Blob URL/download capture"
+    ],
+    "codeGitUnchanged": true,
+    "sourceLocalSHA": "99190135c0fbda8995db722040d1b8d8a968e723",
+    "sourceWorkingTreeDirty": false
+  },
+  "restore": {
+    "schemaVersion": "cold_restore_fixture_v1",
+    "fixtureOnly": true,
+    "serviceStoppedBeforeCopy": true,
+    "sqliteIntegrity": "ok",
+    "bDocumentsEqual": true,
+    "aWorkspacesReopened": 2,
+    "architectureGitHeadEqual": true,
+    "newBrowserSessions": 0,
+    "scope": "same host, same registered code fixture; not cloud recovery",
+    "sourceLocalSHA": "99190135c0fbda8995db722040d1b8d8a968e723",
+    "sourceTree": "a8821b7c99f66e7f0a77cbf776228509eb96cd02",
+    "dSQLiteIntegrity": "ok",
+    "dTasksEqual": true,
+    "dTasksReopened": 1,
+    "dSessionsRestored": 0,
+    "workRecordsSQLiteIntegrity": "ok",
+    "workRecordsAndHistoryEqual": true,
+    "workRecordsReopened": 2
+  },
+  "selfReview": {
+    "sourceLocalSHA": "99190135c0fbda8995db722040d1b8d8a968e723",
+    "sourceTree": "a8821b7c99f66e7f0a77cbf776228509eb96cd02",
+    "frozenPR75": "3db7017e73ac0a34ab9234e9e806c6572b00dff9",
+    "pr74IncludedInPR75": true,
+    "pr75UXAssetsPreserved": [
+      "web/app.js",
+      "web/view.js",
+      "web/user-guide.js",
+      "web/user-guide.css",
+      "docs/user-flow/README.md",
+      "tests/browser/workspace.cjs"
+    ],
+    "introducedCredentialAndMachinePathPatterns": [],
+    "diffCheck": "PASS",
+    "jsShellSyntax": "PASS",
+    "review": [
+      "actual WSGI login/CSRF/session binding; forged headers cannot create trusted identity",
+      "registered repo aliases only; source75 UI inputs preserved",
+      "finite JSON max depth; worker total deadline, bounded IPC/admission, private credentials transport",
+      "release symlink/special/hardlink guards and root:service-group permissions; actual Linux identity NOT_RUN",
+      "PR74 runtime backup/source exclusion preserved; reverse target/runtime overlap additionally refused",
+      "boolean review mode enforced; public static facts never auto-confirm expected processes",
+      "UI untrusted data via textContent/input values; innerHTML matches fixed SVG icon definitions only"
+    ],
+    "scope": "deterministic self-review, not independent human approval"
+  },
+  "fullSuite": {
+    "total": 1102,
+    "passed": 1092,
+    "skipped": 10,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 310.784,
+    "exitCode": 0,
+    "skips": [
+      "test_evidence_is_real_at_pinned_revision (test_archloop_a_batch4_fixes.SelfCandidateEvidenceTests.test_evidence_is_real_at_pinned_revision) ... skipped 'pinned revision 803c6736d1ab 不在本 clone 中（浅克隆），无法本地核对'",
+      "test_deviations_are_unknown_without_traces_and_detected_with_them (test_archloop_a_stage23.CMouleIntegrationTests.test_deviations_are_unknown_without_traces_and_detected_with_them) ... skipped 'rule-based candidate has no process steps to compare'",
+      "test_failed_backup_preserves_old_link_and_stops (test_deployment_maintenance.MaintenanceTests.test_failed_backup_preserves_old_link_and_stops) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'",
+      "test_failed_proxy_stops_application_and_preserves_release (test_deployment_maintenance.MaintenanceTests.test_failed_proxy_stops_application_and_preserves_release) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'",
+      "test_failed_start_is_explicitly_stopped (test_deployment_maintenance.MaintenanceTests.test_failed_start_is_explicitly_stopped) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'",
+      "test_keep_stopped_backup_never_restarts (test_deployment_maintenance.MaintenanceTests.test_keep_stopped_backup_never_restarts) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'",
+      "test_normal_backup_failed_restart_is_stopped (test_deployment_maintenance.MaintenanceTests.test_normal_backup_failed_restart_is_stopped) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'",
+      "test_preflight_failure_does_not_stop_existing_service (test_deployment_maintenance.MaintenanceTests.test_preflight_failure_does_not_stop_existing_service) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'",
+      "test_stale_temporary_link_does_not_block_activation (test_deployment_maintenance.MaintenanceTests.test_stale_temporary_link_does_not_block_activation) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'",
+      "test_upgrade_backup_keeps_writes_stopped_until_switch (test_deployment_maintenance.MaintenanceTests.test_upgrade_backup_keeps_writes_stopped_until_switch) ... skipped 'Linux maintenance requires flock and GNU mv; not a systemd PASS'"
+    ]
+  },
+  "publicAcceptanceFixture": {
+    "summary": {
+      "PASS": 32,
+      "NOT_RUN": 5
+    },
+    "realAI": "NOT_RUN",
+    "humanReview": "NOT_RUN",
+    "secondCopy": "NOT_RUN"
+  },
+  "sources": {
+    "pr73": "b8322e024c4f23017fc85ecef155de75a31e65c1",
+    "pr74": "1ace7e265ea09fd84d515e6ddb0c7aad8a7378ca",
+    "pr75": "3db7017e73ac0a34ab9234e9e806c6572b00dff9"
+  }
+}

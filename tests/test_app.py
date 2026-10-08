@@ -131,15 +131,29 @@ class SnapshotTests(unittest.TestCase):
                         explain_change(repo, map_path, base, target, "selected")
 
     def test_model_request_is_stateless_and_collects_message_text(self) -> None:
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        import threading
         reply = {"status": "completed", "output": [
             {"type": "reasoning"},
             {"type": "message", "content": [{"type": "output_text", "text": json.dumps({
                 "summary": "Change", "observations": [], "possibleEffects": [], "unknowns": [], "evidencePaths": []})}]},
         ]}
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key", "PROJECTMIND_AI_MODEL": "test-model"}):
-            with patch("archloop.ai_transport.urlopen", return_value=BytesIO(json.dumps(reply).encode("utf-8"))) as post:
-                result = request_model({"changedEvidencePaths": [], "diff": "sample"})
-            body = json.loads(post.call_args.args[0].data)
+        bodies = []
+        class Provider(BaseHTTPRequestHandler):
+            def log_message(self, *args): pass
+            def do_POST(self):
+                bodies.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+                raw = json.dumps(reply).encode()
+                self.send_response(200); self.send_header("Content-Length", str(len(raw))); self.end_headers()
+                self.wfile.write(raw)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Provider)
+        thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+        self.addCleanup(server.server_close); self.addCleanup(server.shutdown)
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key", "PROJECTMIND_AI_MODEL": "test-model",
+                "PROJECTMIND_AI_BASE_URL": f"http://127.0.0.1:{server.server_port}",
+                "PROJECTMIND_AI_PROTOCOL": "responses"}):
+            result = request_model({"changedEvidencePaths": [], "diff": "sample"})
+            body = bodies[0]
             self.assertFalse(body["store"])
             self.assertEqual(body["text"]["format"]["type"], "json_schema")
             self.assertEqual(result["summary"], "Change")

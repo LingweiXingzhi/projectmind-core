@@ -918,7 +918,9 @@ class BackendB:
         if request.get("verifyCode") is None:
             verify_code = default_verify
         else:
-            verify_code = bool(request.get("verifyCode"))
+            if not isinstance(request["verifyCode"], bool):
+                raise ContractError("VALIDATION_FAILED", "verifyCode 必须是布尔值")
+            verify_code = request["verifyCode"]
         if verify_code and not draft["codeRepoId"]:
             raise ContractError("VALIDATION_FAILED",
                                 "规划工作区没有代码，不能做代码核查；请以 verifyCode=false 确认设计")
@@ -928,6 +930,11 @@ class BackendB:
             # the caller's malformed declaration and must be refused
             # (BATCH-2 A-05, BATCH-3 A-05)
             coverage = coverage_for(record, draft["graph"], verify_code)
+            if meta.get('browserSession') and verify_code:
+                # A public static-facts review does not confirm intended
+                # process behavior. Explicit human coverage/design review may
+                # include processes; do not infer that authority from files.
+                coverage['processes'] = []
         else:
             # an explicit coverage must be honoured or rejected: falling back to
             # the default would widen the review scope the caller declared

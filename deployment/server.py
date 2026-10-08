@@ -2,12 +2,14 @@
 import argparse
 import getpass
 import json
+import os
 from pathlib import Path
 
 from .access import AccessError, PublicAccess, _outside_git, add_account, check, create_account_file
 from .wsgi import Application, MAX_BODY
 from extensions.architecture_workspace.errors import WorkspaceError
 from archloop.contract import ContractError
+from archloop.ai_settings import SettingsError
 
 
 def build_application(config_path):
@@ -48,11 +50,22 @@ def build_application(config_path):
     service.bind_backend_d(GovernedTasks(service, backend, data, access.origin))
     from archloop.work_records import WorkspaceRecords
     service.bind_work_records(WorkspaceRecords(service, data, access.origin))
+    from archloop.ai_settings import AISettings
+    hosts = {'api.openai.com','maas.qianwenapi.com','dashscope.aliyuncs.com','dashscope-intl.aliyuncs.com',
+             'api.deepseek.com','api.moonshot.cn','openrouter.ai','open.bigmodel.cn'}
+    hosts.update(name.strip().lower() for name in os.environ.get('PROJECTMIND_AI_ALLOWED_HOSTS','').split(',') if name.strip())
+    check(all('/' not in name and ':' not in name and name for name in hosts), message='AI 服务登记应填写纯域名')
+    settings = AISettings(data / 'ai' / 'ai.sqlite3', allowed_hosts=hosts,
+                          shared_from_env=os.environ.get('PROJECTMIND_AI_SHARED_FROM_ENV') == '1')
+    editors = tuple(name.strip() for name in os.environ.get('PROJECTMIND_AI_SETTINGS_EDITORS', '').split(',') if name.strip())
+    check(set(editors).issubset(access.users), message='AI 配置账户必须是已登记账号；未设置时页面只读')
     handler = make_handler(repos[0] if repos else ROOT, None, explorer_registry=ExplorerRegistry(),
-                           archloop_service=service, public_origin=access.origin)
+                           archloop_service=service, public_origin=access.origin,
+                           ai_settings=settings, ai_settings_editors=editors)
     application = Application(handler, access, repos)
     application.service = service
     application.data_root = data
+    application.ai_settings = settings
     return application
 
 
@@ -96,7 +109,7 @@ def main():
                     channel_timeout=30, max_request_header_size=16384,
                     max_request_body_size=MAX_BODY, clear_untrusted_proxy_headers=True,
                     expose_tracebacks=False, ident="ProjectMind")
-    except (AccessError, WorkspaceError, ContractError, OSError, ValueError, TypeError, KeyError) as exc:
+    except (AccessError, WorkspaceError, ContractError, SettingsError, OSError, ValueError, TypeError, KeyError) as exc:
         code = f" / {exc.code}" if isinstance(exc, AccessError) else ""
         parser.exit(1, f"部署配置未通过：{type(exc).__name__}{code}。请检查私有配置与目录。\n")
 

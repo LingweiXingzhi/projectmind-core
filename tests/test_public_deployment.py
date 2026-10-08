@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 from deployment.access import AccessError, COOKIE, PublicAccess, add_account, create_account_file
 from deployment.server import build_application
@@ -244,6 +245,79 @@ class PublicHTTPTests(unittest.TestCase):
         status, _, body = self.request("POST", path + "/review-confirm", {
             "previewDigest": preview["previewDigest"], "decision": "accept"}, auth=renewed)
         self.assertEqual(status, 403, body)
+
+
+    def test_malformed_deep_or_nonfinite_json_is_400_without_writing_workspace(self):
+        auth = self.login()
+        before = self.request('GET', '/api/archloop/workspaces', auth=auth)[2]
+        cases = [b'{"context":"planning","title":"fixture","extra":'+b'['*1600+b'0'+b']'*1600+b'}',
+                 b'{"context":"planning","title":"fixture","extra":'+b'['*65+b'0'+b']'*65+b'}',
+                 b'{"context":"planning","title":"fixture","extra":NaN}',
+                 b'{"context":"planning","title":"fixture","extra":Infinity}',
+                 b'{"context":"planning","title":"fixture","extra":1e9999}']
+        for raw in cases:
+            with self.subTest(raw=raw[:50]):
+                connection = HTTPConnection('127.0.0.1', self.port, timeout=10)
+                try:
+                    connection.request('POST', '/api/archloop/workspaces', body=raw, headers={
+                        'Host': 'projectmind.example.invalid', 'Origin': ORIGIN,
+                        'Content-Type': 'application/json', **auth})
+                    response = connection.getresponse()
+                    value = json.loads(response.read())
+                    self.assertEqual(response.status, 400, value)
+                    self.assertEqual(value['error']['code'], 'INVALID_INPUT')
+                finally:
+                    connection.close()
+        self.assertEqual(before, self.request('GET', '/api/archloop/workspaces', auth=auth)[2])
+
+    def test_review_mode_rejects_coercion_before_generating_preview(self):
+        auth = self.login(); path, _ = self.workspace(auth)
+        for value in ("false", "true", 0, 1, [], {}):
+            with self.subTest(value=value):
+                status, _, result = self.request('POST', path + '/review-preview',
+                    {'reason': 'Fixture malformed review mode', 'verifyCode': value}, auth=auth)
+                self.assertEqual(status, 400, result)
+                self.assertEqual(result['error']['code'], 'VALIDATION_FAILED')
+        for value in (True, False):
+            status, _, result = self.request('POST', path + '/review-preview',
+                {'reason': 'Fixture explicit review mode', 'verifyCode': value}, auth=auth)
+            self.assertEqual(status, 200, result)
+            self.assertIs(result['verifyCode'], value)
+
+    def test_published_version_detail_accepts_encoded_and_literal_revision(self):
+        from urllib.parse import quote
+        auth = self.login()
+        path, envelope = self.workspace(auth)
+        status, _, preview = self.request('POST', path + '/review-preview',
+            {'reason': 'FIXTURE ONLY scoped code evidence review', 'verifyCode': True}, auth=auth)
+        self.assertEqual(status, 200, preview)
+        self.assertEqual(self.request('POST', path + '/review-confirm',
+            {'previewDigest': preview['previewDigest'], 'decision': 'accept'}, auth=auth)[0], 200)
+        status, _, published = self.request('POST', path + '/publish', {}, auth=auth)
+        self.assertEqual(status, 200, published)
+        revision = published['version']['mapRevision']
+        for segment in (revision, quote(revision, safe='')):
+            status, _, detail = self.request('GET', path + '/versions/' + segment, auth=auth)
+            self.assertEqual(status, 200, detail)
+            self.assertEqual(detail['version']['mapRevision'], revision)
+
+    def test_handover_attachment_keeps_public_login_and_version_binding(self):
+        from urllib.parse import urlencode
+        revision, source = 'sha256:' + 'a' * 64, 'b' * 40
+        packet = {'versionEnvelope': {'version': {'mapRevision': revision},
+                                     'provenance': {'mapSourceRevision': source}}}
+        path = '/api/archloop/workspaces/ws_fixture/handover?'
+        query = {'download': '1', 'mapRevision': revision, 'mapSourceRevision': source}
+        auth = self.login()
+        # Only payload is controlled; real Waitress, login, WSGI and handler run.
+        with patch.object(self.application.service, 'export_handover', return_value=packet):
+            status, headers, _ = self.request('GET', path + urlencode(query))
+            self.assertEqual(status, 401); self.assertNotIn('Content-Disposition', headers)
+            status, headers, result = self.request('GET', path + urlencode(query), auth=auth)
+            self.assertEqual(status, 200, result); self.assertEqual(result, packet)
+            self.assertEqual(headers['Content-Disposition'], 'attachment; filename="handover-aaaaaaaaaaaa.json"')
+            status, headers, result = self.request('GET', path + urlencode({**query, 'mapSourceRevision':'c'*40}), auth=auth)
+            self.assertEqual(status, 409, result); self.assertNotIn('Content-Disposition', headers)
 
 
 if __name__ == "__main__": unittest.main()

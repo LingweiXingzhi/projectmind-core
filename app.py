@@ -8,11 +8,13 @@ import json
 import math
 import os
 import re
+import sqlite3
 import subprocess
+from functools import wraps
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, unquote
 
 from extension_host import ExtensionContext, ExtensionError, ExtensionHost
 from repo_index import gitio
@@ -274,7 +276,7 @@ def explain_change(repo: Path, map_path: Path, base_ref: str, target_ref: str, n
         raise AIError("AI 服务返回的解释格式不正确。")
     if not set(result["evidencePaths"]).issubset(matching):
         raise AIError("AI 解释引用了本次变化范围外的文件，已拒绝显示。")
-    return {"status": "ai_candidate", "model": ai_status()["model"], "nodeId": node_id,
+    return {"status": "ai_candidate", "model": ai_transport.last_model() or ai_status()["model"], "nodeId": node_id,
             "baseRevision": comparison["baseRevision"], "targetRevision": comparison["targetRevision"],
             "changedEvidencePaths": sorted(matching), "diffTruncated": payload["diffTruncated"],
             "explanation": result,
@@ -343,7 +345,36 @@ def load_sample_graph() -> dict:
 
 def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None,
                  explorer_registry: ExplorerRegistry | None = None,
-                 archloop_service: WorkbenchService | None = None, public_origin: str | None = None):
+                 archloop_service: WorkbenchService | None = None, public_origin: str | None = None,
+                 ai_settings=None, ai_settings_editors=()):
+    def with_ai_runtime(method):
+        @wraps(method)
+        def wrapped(self, *args, **kwargs):
+            from archloop.ai_settings import SettingsError
+            trusted = getattr(self, 'trusted_operator', {})
+            if public_origin is not None:
+                identity = 'account:' + trusted['actor'] if trusted.get('browserSession') and trusted.get('actor') else None
+            else:
+                session = archloop_sessions.read(parse_session_cookie(self.headers.get('Cookie')))
+                identity = 'browser:' + session['aiProfile'] if session else None
+            self._ai_identity = identity
+            try:
+                mode = (self.headers.get('X-ProjectMind-AI-Mode') or ai_settings.selected(identity)) if ai_settings else 'shared'
+                if mode not in ('personal','shared'):
+                    mode = 'shared'
+                selected = ai_settings.profile(identity) if ai_settings and mode=='personal' else ai_settings
+            except SettingsError as exc:
+                self.send_json(exc.status, {'error':{'code':exc.code,'message':str(exc)}})
+                return
+            except (sqlite3.Error, OSError):
+                self.close_connection = True
+                self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, {'error':{'code':'AI_SETTINGS_UNAVAILABLE','message':'AI 私有存储暂不可用，请由运行者检查；没有回退到其他账户的 API。'}})
+                return
+            self._ai_mode = mode
+            self._ai_runtime = selected
+            with ai_transport.settings_context(selected):
+                return method(self, *args, **kwargs)
+        return wrapped
     # R2-Q1 (B1-b-02): in no-map mode no extension module may even be
     # imported — ExtensionHost construction exec_module()s every extension,
     # so the no-map instance loads none at all instead of blocking later.
@@ -477,7 +508,23 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 raise ValueError("Expected application/json")
             if len(raw) < 1 or len(raw) > max_bytes:
                 raise ValueError("Invalid request size")
-            request = json.loads(raw)
+            def invalid_constant(_):
+                raise ValueError("Expected finite JSON")
+            try:
+                request = json.loads(raw, parse_constant=invalid_constant)
+            except (ValueError, UnicodeError, RecursionError):
+                raise ValueError("Expected valid finite JSON") from None
+            stack = [(request, 0)]
+            while stack:
+                item, depth = stack.pop()
+                if depth > 64:
+                    raise ValueError("JSON nesting exceeds 64 levels")
+                if isinstance(item, float) and not math.isfinite(item):
+                    raise ValueError("Expected finite JSON")
+                if isinstance(item, dict):
+                    stack.extend((child, depth + 1) for child in item.values())
+                elif isinstance(item, list):
+                    stack.extend((child, depth + 1) for child in item)
             if not isinstance(request, dict):
                 raise ValueError("Expected JSON object")
             return request
@@ -531,7 +578,8 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 # Issue the server-side write session. The cookie stays
                 # HttpOnly; the CSRF token is only readable by the same-origin
                 # caller that asked for the session (D-A-02).
-                issued = archloop_sessions.issue(query.get("operator", ""))
+                previous = archloop_sessions.read(parse_session_cookie(self.headers.get('Cookie')))
+                issued = archloop_sessions.issue(query.get("operator", ""), ai_profile=previous.get('aiProfile') if previous else None)
                 cookie = (f"{SESSION_COOKIE}={issued['sessionId']}; HttpOnly; "
                           f"SameSite=Strict; Path=/; Max-Age={issued['ttlSeconds']}")
                 self.send_json(HTTPStatus.OK, {
@@ -660,7 +708,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.version_history(workspace_id))
                     return
                 if method == "GET" and len(rest) == 2 and rest[0] == "versions":
-                    self.send_json(HTTPStatus.OK, archloop_service.version_detail(workspace_id, rest[1]))
+                    self.send_json(HTTPStatus.OK, archloop_service.version_detail(workspace_id, unquote(rest[1])))
                     return
                 if method == "POST" and rest == ["import-version"]:
                     self.send_json(HTTPStatus.OK, archloop_service.import_version(workspace_id, body or {}))
@@ -692,7 +740,22 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.fix_task_markdown(workspace_id, rest[1]))
                     return
                 if method == "GET" and rest == ["handover"]:
-                    self.send_json(HTTPStatus.OK, archloop_service.export_handover(workspace_id))
+                    package = archloop_service.export_handover(workspace_id)
+                    if query.get("download") == "1":
+                        version = (package.get("versionEnvelope") or {}).get("version") or package
+                        provenance = (package.get("versionEnvelope") or {}).get("provenance") or package
+                        # A visible download must keep the version the user saw,
+                        # even if another browser publishes before this GET.
+                        if (query.get("mapRevision") != version.get("mapRevision")
+                                or query.get("mapSourceRevision") != provenance.get("mapSourceRevision")):
+                            raise ContractError("REVISION_CONFLICT", "交接版本已变化，请重新生成交接包后下载")
+                        revision = version.get("mapRevision", "")
+                        match = re.fullmatch(r"sha256:([0-9a-f]{64})", revision)
+                        filename = f"handover-{match.group(1)[:12]}.json" if match else "handover.json"
+                        self.send_bytes(HTTPStatus.OK, json.dumps(package, ensure_ascii=False).encode("utf-8"),
+                                        "application/json; charset=utf-8", filename=filename)
+                    else:
+                        self.send_json(HTTPStatus.OK, package)
                     return
                 if method == "POST" and rest == ["deviations"]:
                     self.send_json(HTTPStatus.OK, archloop_service.deviations(workspace_id, body or {}))
@@ -736,8 +799,72 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "sessionScoped": bool(session),
                     "sessionOperatorDeclared": bool(session.get("operator"))}
 
+        def _ai_settings_editor(self):
+            return not ai_settings.shared_from_env and (public_origin is None or getattr(self, 'trusted_operator', {}).get('actor') in ai_settings_editors)
+
+        def _handle_ai_settings(self, method, path, body=None, query=None):
+            from archloop.ai_settings import SettingsError
+            allowed, payload = self._explorer_access_allowed()
+            if not allowed:
+                self.send_json(HTTPStatus.FORBIDDEN, payload)
+                return
+            try:
+                if ai_settings is None:
+                    raise SettingsError('该实例未启用页面配置，请使用标准启动入口。', 'AI_SETTINGS_UNAVAILABLE', 503)
+                request = None
+                if method == 'POST':
+                    if public_origin is None:
+                        archloop_sessions.verify(parse_session_cookie(self.headers.get('Cookie')), self.headers.get(CSRF_HEADER))
+                    request = self.read_json_body(body, 16384)
+                mode = (request.get('mode') if request else (query or {}).get('mode', [self._ai_mode])[0]) or self._ai_mode
+                if mode not in ('personal','shared'):
+                    raise SettingsError('请选择个人 API 或共享演示模式。')
+                selected = ai_settings.profile(self._ai_identity) if mode=='personal' else ai_settings
+                editor = mode=='personal' or self._ai_settings_editor()
+                if method == 'POST':
+                    if path == '/api/ai-settings/select':
+                        if set(request) != {'mode'}:
+                            raise SettingsError('模式选择字段无效。')
+                        ai_settings.choose(self._ai_identity, mode)
+                    elif path != '/api/ai-settings/check' and not editor:
+                        raise SettingsError('共享演示配置由运行者管理；你可以直接使用已配置的模型。', 'AI_SETTINGS_FORBIDDEN', 403)
+                with ai_transport.settings_context(selected):
+                    if method=='POST' and path in ('/api/ai-settings/test', '/api/ai-settings/check'):
+                        if set(request) - {'mode'}:
+                            raise SettingsError('连接测试使用已保存配置，不接受临时端点。')
+                        schema = {'type':'object','properties':{'ok':{'type':'boolean'}},'required':['ok'],'additionalProperties':False}
+                        value = ai_transport.call_model('只输出 JSON 对象 {"ok":true}，用于模型连接测试。',
+                                                        {'purpose':'connection_test'}, 'projectmind_connection_probe', schema, timeout=15)
+                        if value['ok'] is not True:
+                            raise AIError('模型没有通过连接测试。')
+                        self.send_json(HTTPStatus.OK, {'connected':True,'budget':selected.budget(),
+                                                      'note':'API 当前可用：本次连接检查成功。'})
+                        return
+                    if method=='POST' and path=='/api/ai-settings':
+                        selected.save({key:value for key,value in request.items() if key!='mode'}, ai_transport.ai_config())
+                        if self._ai_identity:
+                            ai_settings.choose(self._ai_identity, mode)
+                    result = selected.public(ai_transport.ai_config(), can_edit=editor)
+                    result.update(mode=mode, personalLifetime='account' if public_origin else 'browser_session')
+                    self.send_json(HTTPStatus.OK, result)
+            except SettingsError as exc:
+                self.send_json(exc.status, {'error':{'code':exc.code,'message':str(exc)}})
+            except ContractError as exc:
+                self.send_json(exc.status, archloop_error_payload(exc))
+            except AIError as exc:
+                self.send_json(HTTPStatus.BAD_GATEWAY if path.endswith(('/test','/check')) else HTTPStatus.BAD_REQUEST,
+                               {'error':{'code':'AI_CONNECTION_FAILED','message':str(exc)}})
+            except sqlite3.Error:
+                self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, {'error':{'code':'AI_SETTINGS_UNAVAILABLE','message':'AI 私有存储暂不可用，请由运行者检查。'}})
+            except (ValueError, TypeError, OSError):
+                self.send_json(HTTPStatus.BAD_REQUEST, {'error':{'code':'AI_SETTINGS_INVALID','message':'配置未保存，请检查输入与私有存储。'}})
+
+        @with_ai_runtime
         def do_GET(self) -> None:
             request = urlparse(self.path)
+            if request.path == '/api/ai-settings':
+                self._handle_ai_settings('GET', request.path, query=parse_qs(request.query))
+                return
             if request.path == "/api/archloop" or request.path.startswith("/api/archloop/"):
                 try:
                     allowed, payload = self._explorer_access_allowed()
@@ -931,6 +1058,8 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "/governed-tasks.js": ("governed-tasks.js", "text/javascript; charset=utf-8"),
                     "/work-records.js": ("work-records.js", "text/javascript; charset=utf-8"),
                     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+                    "/user-guide.css": ("user-guide.css", "text/css; charset=utf-8"),
+                    "/user-guide.js": ("user-guide.js", "text/javascript; charset=utf-8"),
                 }
                 if request.path in assets:
                     filename, content_type = assets[request.path]
@@ -946,6 +1075,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             except (GitError, OSError, json.JSONDecodeError) as exc:
                 self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(exc)})
 
+        @with_ai_runtime
         def do_POST(self) -> None:
             path = urlparse(self.path).path
             body, body_error = self.consume_body()
@@ -960,6 +1090,9 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                                    {"error": {"code": "REQUEST_INCOMPLETE",
                                               "message": "请求体不完整或读取超时，连接已关闭"}})
                 return
+            if path in ('/api/ai-settings', '/api/ai-settings/test', '/api/ai-settings/check', '/api/ai-settings/select'):
+                self._handle_ai_settings('POST', path, body)
+                return
             if path == "/api/archloop" or path.startswith("/api/archloop/"):
                 # Write seam: loopback Host + same-service Origin only, a JSON
                 # body, and a live server-side session whose anti-forgery token
@@ -970,9 +1103,12 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.FORBIDDEN, payload)
                     return
                 try:
-                    self._archloop_session = archloop_sessions.verify(
-                        parse_session_cookie(self.headers.get("Cookie")),
-                        self.headers.get(CSRF_HEADER))
+                    if public_origin is None:
+                        self._archloop_session = archloop_sessions.verify(
+                            parse_session_cookie(self.headers.get("Cookie")),
+                            self.headers.get(CSRF_HEADER))
+                    # Public account/CSRF checks and trusted session are supplied
+                    # by the WSGI boundary before this handler is created.
                 except ContractError as exc:
                     self.send_json(exc.status, archloop_error_payload(exc))
                     return
@@ -1050,6 +1186,7 @@ def main() -> None:
     parser.add_argument("--map", type=Path, help="Curated map JSON for the chosen repository")
     parser.add_argument("--archloop-data", type=Path, default=ARCHLOOP_DATA_DEFAULT,
                         help="Architecture workbench workspace data root (keep outside source control)")
+    parser.add_argument('--ai-settings', type=Path, help='源代码外的 AI 私有配置/演示额度 SQLite；默认使用本机独立实例目录')
     # Real B version service (extensions/architecture_workspace). All paths are
     # server-side configuration; clients can never name a data root or repo.
     parser.add_argument("--archloop-backend-data", type=Path, default=None,
@@ -1111,7 +1248,13 @@ def main() -> None:
                 print("D 修正任务服务: 已接入（authoritative）", flush=True)
             except Exception as exc:  # a broken D must not fake availability
                 print(f"D 修正任务服务: 未接入（{type(exc).__name__}: {exc}）", flush=True)
-    handler = make_handler(repo, map_path, explorer_registry=registry, archloop_service=service)
+    from archloop.ai_settings import AISettings, SettingsError, default_settings_path
+    try:
+        settings = AISettings(args.ai_settings or default_settings_path(args.archloop_data),
+                              shared_from_env=os.environ.get('PROJECTMIND_AI_SHARED_FROM_ENV') == '1')
+    except SettingsError as exc:
+        parser.error(str(exc))
+    handler = make_handler(repo, map_path, explorer_registry=registry, archloop_service=service, ai_settings=settings)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), handler)
     if explorer_enabled:
         print(f"ProjectMind demo: http://127.0.0.1:{server.server_port} "

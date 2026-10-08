@@ -8,6 +8,7 @@ User=projectmind
 Group=projectmind
 WorkingDirectory=/opt/projectmind/app
 Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=-/etc/projectmind/ai.env
 ExecStart=/opt/projectmind/venv/bin/python -m deployment.server serve --config /etc/projectmind/runtime.json --port 8765
 Restart=on-failure
 RestartSec=5

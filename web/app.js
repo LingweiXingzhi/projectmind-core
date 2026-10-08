@@ -415,7 +415,7 @@ async function init() {
     aiMessage = null;
     loadLayout();
     for (const id of ["save-layout-button", "reset-layout-button", "export-draft-button"]) document.getElementById(id).disabled = false;
-    document.getElementById("repo-name").textContent = result.repository;
+    document.getElementById("repo-name").textContent = document.body.dataset.activeProjectTitle || "选择你的项目";
     document.getElementById("revision").textContent = result.revision;
     document.getElementById("branch-name").textContent = result.branch;
     document.getElementById("node-count").textContent = `${result.nodes.length} 个功能部分`;

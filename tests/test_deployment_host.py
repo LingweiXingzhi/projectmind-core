@@ -8,7 +8,8 @@ import tempfile
 import unittest
 
 from deployment.access import AccessError, create_account_file
-from deployment.host import prepare, render_domain, preflight, backup_bound, restore_bound, stage_release, private_json
+from deployment.host import (prepare, render_domain, preflight, backup_bound, restore_bound,
+                             stage_release, set_release_permissions, private_json)
 from deployment.lease import ServingLease
 from test_archloop_a_backend_b import tiny_code_repo, architecture_repo, run_git
 
@@ -143,6 +144,65 @@ class HostPreparationTests(unittest.TestCase):
         head = run_git(self.code, 'rev-parse', 'HEAD'); (self.code/'entry.py').write_text('dirty')
         with self.assertRaises(AccessError): stage_release(self.code, head, self.root/'releases')
         self.assertFalse((self.root/'releases').exists())
+
+    def installed_release(self):
+        head = run_git(self.code, 'rev-parse', 'HEAD')
+        previous = os.umask(0o077)
+        try:
+            stage_release(self.code, head, self.root/'releases')
+            release = self.root/'releases'/head
+            (release/'venv/bin').mkdir(parents=True)
+            script = release/'venv/bin/python'
+            script.write_text('#!/bin/sh\nexit 0\n'); script.chmod(0o700)
+        finally:
+            os.umask(previous)
+        return release
+
+    def test_install_umask077_service_group_can_read_but_never_write(self):
+        release = self.installed_release()
+        self.assertEqual(release.stat().st_mode & 0o777, 0o700)
+        private_before = self.accounts.stat().st_mode & 0o777
+        result = set_release_permissions(release)
+        self.assertTrue(result['serviceGroupReadOnly'])
+        for path in (release, release/'app', release/'app/.git', release/'venv/bin'):
+            self.assertEqual(path.stat().st_mode & 0o777, 0o750)
+        for path in (release/'app/entry.py', release/'app/.git/HEAD', release/'release.json'):
+            self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+        self.assertEqual((release/'venv/bin/python').stat().st_mode & 0o777, 0o750)
+        self.assertEqual(self.accounts.stat().st_mode & 0o777, private_before)
+        self.assertEqual(self.state.stat().st_mode & 0o777, 0o700)
+
+    def test_release_permissions_do_not_follow_external_symlinks(self):
+        release = self.installed_release()
+        outside = self.root/'private-outside'; outside.write_text('private'); outside.chmod(0o600)
+        (release/'venv/external').symlink_to(outside)
+        set_release_permissions(release)
+        self.assertEqual(outside.stat().st_mode & 0o777, 0o600)
+        self.assertTrue((release/'venv/external').is_symlink())
+
+    @unittest.skipUnless(hasattr(os, 'mkfifo'), 'POSIX special-file refusal')
+    def test_release_permissions_reject_special_files_before_chmod(self):
+        release = self.installed_release()
+        os.mkfifo(release/'unexpected-pipe')
+        with self.assertRaises(AccessError):
+            set_release_permissions(release)
+        self.assertEqual(release.stat().st_mode & 0o777, 0o700)
+
+    def test_restore_runtime_cannot_overlap_backup_source_or_target(self):
+        backup = self.root/'backup'; backup_bound(self.config, backup)
+        before = {str(p.relative_to(backup)): p.read_bytes() for p in backup.rglob('*') if p.is_file()}
+        cases = [(self.root/'recovered', backup/'runtime.json'),
+                 (self.root/'recovered', self.state/'runtime.json'),
+                 (self.root/'recovered', self.arch/'runtime.json'),
+                 (self.root/'runtime-parent'/'restored', self.root/'runtime-parent')]
+        for target, runtime in cases:
+            with self.subTest(runtime=runtime):
+                with self.assertRaises(AccessError):
+                    restore_bound(backup, self.config, target, runtime)
+                self.assertFalse(target.exists())
+                self.assertFalse(runtime.exists())
+        after = {str(p.relative_to(backup)): p.read_bytes() for p in backup.rglob('*') if p.is_file()}
+        self.assertEqual(before, after)
 
     def test_restore_rejects_nested_output(self):
         backup = self.root/'backup'; backup_bound(self.config, backup)

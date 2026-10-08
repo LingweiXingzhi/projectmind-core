@@ -185,8 +185,10 @@ class ArchLoopHTTPTests(unittest.TestCase):
         status, payload = self.request("POST", "/api/archloop/workspaces",
                                        {"context": "existing_project", "title": "x",
                                         "repoPath": "G:/definitely/not/a/repo"})
-        self.assertEqual(status, 500)
-        self.assertIn(payload["error"]["code"], ("INTERNAL", "BACKEND_UNAVAILABLE"))
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "VALIDATION_FAILED")
+        self.assertIn("检查路径", payload["error"]["message"])
+        self.assertNotIn("fatal:", payload["error"]["message"])
         status, payload2 = self.request("POST", "/api/archloop/workspaces",
                                         {"context": "existing_project", "title": {"nested": "object"},
                                          "repoPath": None})

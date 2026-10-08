@@ -78,6 +78,9 @@ add-account 原子写入并保留既有账号；新增账号在重启后生效�
 
 ## 三、启动应用和 HTTPS
 
+若要求 Key 完全由你在服务器后台私下输入，使用 [服务器托管共享 API](PRIVATE_SHARED_API.md)。
+服务模板可读取 Git/网站目录外的 `/etc/projectmind/ai.env`；启用 PROJECTMIND_AI_SHARED_FROM_ENV=1 后，共享 API 只取服务端环境，网页不能修改或回显共享 Key。
+
 ```sh
 python -m deployment.server serve \
   --config /etc/projectmind/runtime.json --port 8765
@@ -87,6 +90,17 @@ python -m deployment.server serve \
 各业务接口仍保留自身更小的限制。代理头不用于覆盖真实 socket peer 或登录身份。
 配置不完整、目录权限不合适、B 后端未接入时拒绝启动。
 模型端点配置与 C 的真实调用/追踪边界见 [模型与 C 接续](PROVIDER_AND_C.md)。未配置真实模型时规则候选仍明确标记为规则输出。
+
+页面 AI 接入支持个人 API 和平台 AI 两种使用方式：个人配置可在页面填写，平台共享 Key 按服务器托管方式私下配置，页面仅显示状态/额度。
+兼容旧共享配置 API 时，公网运行者在启动环境中设置
+`PROJECTMIND_AI_SETTINGS_EDITORS=wanghaining`（必须是已登记账号；多账号用逗号分隔），
+只有这些账号能经受保护接口修改/测试旧共享配置；当前界面不提供共享 Key 表单，其他账号可直接使用共享模型或配置自己的 API。
+默认未指定共享配置编辑者，所有账号对共享设置只读，仍可使用运行环境提供的共享模型。
+个人端点仅限默认登记的 HTTPS 域名；额外可信服务用 `PROJECTMIND_AI_ALLOWED_HOSTS=api.example.com` 登记纯域名。
+这两个运行环境设置变更需要重启；页面保存 Key、模型、额度立即生效。
+域名撤销后旧个人配置也不能再发出调用。老师入口 `/?demo=1#home` 仍需要正常登录；
+该参数控制展示和共享 API 选择，不提供登录或配置权限。
+操作步骤与应用预算限制见 [AI 接入交付](../user-flow/AI_ACCESS_DELIVERY_2026-10-08.md)。
 
 使用 Caddy 2.11.7 或经重新验证的后续版本：
 
@@ -110,6 +124,7 @@ PROJECTMIND_DOMAIN=你的真实域名 caddy run \
 - 当前冷备方式：先停止写入与应用服务，再一起保存 state 和 architecture（包括 .git）。
   不要单独复制运行中 SQLite 主文件并忽略 WAL/事务状态。
 - 账号文件和模型 API 环境配置另作私有备份；备份文件不能放入产品 Git 或公开下载目录。
+  页面保存的共享/个人 Key 和额度账本位于 state/ai，包含在冷备中；备份因此含 API 凭据，须作为私有数据管理。
 - 恢复到新的私有目录，校验 SQLite integrity_check、A/B 记录、架构 Git 对象和固定版本。
   第一阶段 A/B 同机恢复已验证；第二阶段增加 D 任务恢复检查，见对应交付证据。换机须重新获取对应代码历史、核对仓库身份与路径绑定。
 - 所有旧浏览器授权在重启后重新建立；恢复数据不恢复真实登录授权。
