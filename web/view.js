@@ -1,6 +1,6 @@
 // Workspace shell. Only existing read APIs are aggregated; source states are
 // never promoted to confirmed architecture or fabricated collaboration data.
-const VIEW_TITLES = {home:'Overview',arch:'Architecture',map:'Project map',review:'Changes',decisions:'Decisions',collab:'Handoff',worklog:'Worklog',explorer:'Repository'};
+const VIEW_TITLES = {home:'项目总览',arch:'架构工作台',map:'项目地图',review:'变更审查',decisions:'关键决策',collab:'协同交接',worklog:'工作日志',explorer:'仓库浏览'};
 let shellView='home';
 
 const shellIcons={
@@ -95,7 +95,7 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
       const open=cache.entries.filter(e=>e.category==='issue');
       const decisions=cache.entries.filter(e=>e.category==='decision');
       $('home-attention').replaceChildren(
-        panel(pending===undefined?'—':pending,'架构证据待复核',pending===undefined?['尚未完成提交对比','打开 Changes 选择审查范围']:pending?compare.reviewCandidates.slice(0,3).map(c=>cache.snapshot.nodes.find(n=>n.id===c.nodeId)?.title||c.nodeId):['本次比较未发现声明证据变化','这不代表架构已经过人审'],'review'),
+        panel(pending===undefined?'—':pending,'架构证据待复核',pending===undefined?['尚未完成提交对比','打开变更审查选择审查范围']:pending?compare.reviewCandidates.slice(0,3).map(c=>cache.snapshot.nodes.find(n=>n.id===c.nodeId)?.title||c.nodeId):['本次比较未发现声明证据变化','这不代表架构已经过人审'],'review'),
         panel(spaces.status==='fulfilled'?cache.workspaces.length:'—','可继续的工作区',spaces.status==='fulfilled'?[cache.workspaces[0]?.title||'创建你的第一个架构工作区','草稿 · 点击继续工作']:['工作区服务暂不可用'],'arch'),
         panel(logs.status==='fulfilled'?open.length:'—','待解决的记录',logs.status==='fulfilled'?[open[0]?.title||'当前没有待解决记录',`${decisions.length} 条决策记录 · 尚未独立核实`]:['项目记录服务暂不可用'],'worklog')
       );
@@ -115,8 +115,8 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
       const snapData=cache.snapshot;
       if(snapData){$('home-repo').textContent=snapData.repository;$('home-identity').textContent=`${snapData.branch} · ${short(snapData.revision)}`;$('shell-repo-branch').textContent=`Git · ${snapData.branch}`;$('status-branch').textContent=`Git · ${snapData.branch}`;$('status-commit').textContent=short(snapData.revision);$('status-commit').title=snapData.revision;}
       else {$('home-identity').textContent='Git 身份当前不可用';$('status-branch').textContent='Git 未读取';$('status-commit').textContent='—';}
-      $('status-review').textContent=`${pending===undefined?'—':pending} need review`;
-      $('status-ai').textContent=ai.status==='fulfilled'?(ai.value.configured?'AI ready':'AI 未配置'):'AI 状态未知';
+      $('status-review').textContent=`待复核 ${pending===undefined?'—':pending}`;
+      $('status-ai').textContent=ai.status==='fulfilled'?(ai.value.configured?'AI 已就绪':'AI 未配置'):'AI 状态未知';
       $('status-ai').title=ai.status==='fulfilled'?(ai.value.note||ai.value.model||''):ai.reason.message;
       $('attention-link').textContent=pending===undefined?'审查范围尚未确定':`${pending} 个节点证据待复核`;
       $('attention-link').dataset.jump='review';
@@ -128,7 +128,7 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
   $('home-sync').onclick=()=>{$('refresh-button').click();};
   $('refresh-button').addEventListener('click',()=>{overview(true);});
   const hour=new Date().getHours();$('greeting').textContent=`${hour<12?'上午好':hour<18?'下午好':'晚上好'}，这是 ProjectMind`;
-  document.addEventListener('projectmind:workspace',event=>{workspaceState=event.detail;$('status-model').textContent=`Draft ${short(workspaceState.identity.draftRevision)}`;$('status-model').title=workspaceState.workspace.title;loadedAt=0;});
+  document.addEventListener('projectmind:workspace',event=>{workspaceState=event.detail;$('status-model').textContent=`草稿 ${short(workspaceState.identity.draftRevision)}`;$('status-model').title=workspaceState.workspace.title;loadedAt=0;});
   // Search is read-only: navigation and existing nodes/workspaces only.
   const dialog=$('command-dialog');let commands=[],selection=0;
   function commandList(){

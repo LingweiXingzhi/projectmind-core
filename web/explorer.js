@@ -531,7 +531,7 @@ async function loadSymbols(path, ctx = null) {
         const range = symbol.end_line && symbol.end_line !== symbol.start_line
           ? `${symbol.start_line}-${symbol.end_line}` : `${symbol.start_line}`;
         const chip = explorerElement("button", "explorer-symbol-chip",
-          `${symbol.kind} ${symbol.name} · 行 ${range}`);
+          `${projectmindUiLabel(symbol.kind)} ${symbol.name} · 行 ${range}`);
         chip.type = "button";
         chip.title = symbol.qualified_name;
         chip.addEventListener("click", () => scrollToLine(symbol.start_line));
@@ -542,7 +542,7 @@ async function loadSymbols(path, ctx = null) {
         "该文件没有可识别的定义。"));
     } else {
       const detail = result.warnings && result.warnings.length
-        ? `${result.status}：${result.warnings.join("；")}` : result.status;
+        ? `${projectmindUiLabel(result.status)}：${result.warnings.join("；")}` : projectmindUiLabel(result.status);
       panel.appendChild(explorerElement("span", "explorer-symbols-note", `符号解析 ${detail}`));
     }
   } catch (error) {
@@ -594,7 +594,7 @@ async function loadRelations(path, ctx = null) {
     if (result.status !== "ok") {
       const detail = result.warnings && result.warnings.length
         ? `：${result.warnings.join("；")}` : "";
-      note(`静态导入关系 ${result.status}${detail}`);
+      note(`静态导入关系 ${projectmindUiLabel(result.status)}${detail}`);
     }
     if (result.imports && result.imports.length) {
       note(`导入（${result.imports.length}）：`);
@@ -606,7 +606,7 @@ async function loadRelations(path, ctx = null) {
           : resolution.status === "ambiguous"
             ? `→ 待确认（${(resolution.candidates || []).join(" / ")}）` : "→ 未解析";
         const chip = explorerElement("button", "explorer-symbol-chip",
-          `${item.kind} ${module} · 行 ${item.line} ${suffix}`);
+          `${projectmindUiLabel(item.kind)} ${module} · 行 ${item.line} ${suffix}`);
         chip.type = "button";
         if (resolution.status === "resolved" && resolution.targetPath) {
           // The jump stays bound to the relations response's own version
