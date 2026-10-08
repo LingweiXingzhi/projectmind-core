@@ -14,13 +14,22 @@
   let zoom = 1;
   let nodePositions = {};
   let workspacePaths={};
+  let handoverUrl=null;
+  window.addEventListener('beforeunload',()=>{if(handoverUrl)URL.revokeObjectURL(handoverUrl);});
   try{workspacePaths=JSON.parse(localStorage.getItem('projectmind:workspace-paths')||'{}')||{};}catch(e){}
   function rememberPath(id,path){workspacePaths[id]=path;try{localStorage.setItem('projectmind:workspace-paths',JSON.stringify(workspacePaths));}catch(e){}}
 
   const correctionCard = document.getElementById('arch-correction-card');
   const inspector = details.closest('.details');
   inspector.append(correctionCard);
-  function emitWorkspace() { document.dispatchEvent(new CustomEvent('projectmind:workspace', {detail:state.envelope})); }
+  function emitWorkspace() {
+    if(state.envelope)document.dispatchEvent(new CustomEvent('projectmind:workspace', {detail:state.envelope}));
+    document.dispatchEvent(new CustomEvent('projectmind:guide-state', {detail:{
+      envelope:state.envelope, selectedNodeId:state.selectedNodeId, busy:state.busy,
+      pendingCandidate:Boolean(state.pendingCandidate), syncedRevision:state.syncedRevision,
+      review:{...reviewFlow},
+    }}));
+  }
   function positionKey(){return `projectmind:arch-layout:${state.envelope?.workspace.workspaceId}`;}
   function setZoom(value){zoom=Math.max(.4,Math.min(1.6,value));stage.style.transform=`scale(${zoom})`;document.getElementById('canvas-zoom').textContent=`${Math.round(zoom*100)}%`;}
   document.getElementById('canvas-zoom-in').onclick=()=>setZoom(zoom+.1);
@@ -28,7 +37,7 @@
   document.getElementById('canvas-fit').onclick=()=>{const scroll=document.getElementById('arch-canvas-scroll');setZoom(Math.min(1,(scroll.clientWidth-60)/(parseFloat(stage.style.width)||720)));scroll.scrollLeft=scroll.scrollTop=0;};
   let pan=null;
   const scroll=document.getElementById('arch-canvas-scroll');
-  scroll.addEventListener('pointerdown',e=>{if(e.target.closest('.map-node')||e.button!==0)return;pan={x:e.clientX,y:e.clientY,left:scroll.scrollLeft,top:scroll.scrollTop};scroll.setPointerCapture(e.pointerId);scroll.style.cursor='grabbing';});
+  scroll.addEventListener('pointerdown',e=>{if(e.target.closest('.map-node,[data-edge-edit]')||e.button!==0)return;pan={x:e.clientX,y:e.clientY,left:scroll.scrollLeft,top:scroll.scrollTop};scroll.setPointerCapture(e.pointerId);scroll.style.cursor='grabbing';});
   scroll.addEventListener('pointermove',e=>{if(pan){scroll.scrollLeft=pan.left+pan.x-e.clientX;scroll.scrollTop=pan.top+pan.y-e.clientY;}});
   for(const type of ['pointerup','pointercancel'])scroll.addEventListener(type,()=>{pan=null;scroll.style.cursor='';});
   for(const tab of document.querySelectorAll('[data-arch-tab]'))tab.onclick=()=>{canvasTab=tab.dataset.archTab;renderCanvasTab();};
@@ -38,7 +47,17 @@
     document.getElementById('arch-outline').hidden=canvasTab!=='outline';
     document.getElementById('arch-history-card').hidden=canvasTab!=='versions';
   }
-  document.getElementById('arch-new-workspace').onclick=()=>{document.getElementById('view-arch').classList.remove('has-workspace');document.getElementById('arch-entry-card').hidden=false;document.getElementById('arch-history-card').hidden=false;document.getElementById('arch-workspace').hidden=true;document.getElementById('arch-entry-card').scrollIntoView({block:'start'});};
+  function beginEntry(context) {
+    state.envelope=null;state.pendingCandidate=null;state.selectedNodeId=null;state.lastGenerateStatus=null;state.syncedRevision=null;
+    clearReview();
+    document.getElementById('view-arch').classList.remove('has-workspace');
+    document.getElementById('arch-entry-card').hidden=false;
+    document.getElementById('arch-workspace').hidden=true;
+    document.querySelector(`.arch-tab[data-entry="${context==='planning'?'planning':'existing'}"]`).click();
+    loadHistory();emitWorkspace();
+  }
+  document.getElementById('arch-new-workspace').onclick=()=>{beginEntry();document.dispatchEvent(new CustomEvent('projectmind:choose-entry'));};
+  document.addEventListener('projectmind:begin-entry',event=>beginEntry(event.detail));
   document.getElementById('arch-add-node').onclick=async()=>{
     if(!requireDraft())return;
     const form=await workspaceDialog('新增架构节点',[['title','名称'],['summary','职责说明','textarea']], '添加到草稿');if(!form)return;
@@ -49,6 +68,15 @@
   };
   document.addEventListener('projectmind:open-workspace',async event=>{try{openEnvelope(await api('GET',`/api/archloop/workspaces/${encodeURIComponent(event.detail)}`));}catch(error){setStatus('arch-create-status',error.message,true);}});
   document.addEventListener('projectmind:select-node',event=>{if(graph()?.nodes.some(n=>n.id===event.detail)){state.selectedNodeId=event.detail;inspectorTab='overview';renderWorkspace();}});
+  function openNodeEditor(section='basics', edgeMatch=null) {
+    if(!graph()?.nodes.some(n=>n.id===state.selectedNodeId))return;
+    document.body.classList.remove('inspector-hidden');inspectorTab='edit';renderWorkspace();
+    const editorIds={relations:'arch-relation-editor',process:'arch-process-editor',evidence:'arch-evidence-editor',basics:'arch-basics-editor'};
+    let target=document.getElementById(editorIds[section]||editorIds.basics);
+    if(edgeMatch){const form=[...target.querySelectorAll('.ux-relation-edit')].find(item=>item.dataset.from===edgeMatch.from&&item.dataset.to===edgeMatch.to&&item.dataset.type===edgeMatch.type);if(form){form.open=true;target=form;}}
+    target?.scrollIntoView({block:'start',behavior:'smooth'});target?.querySelector('input,select')?.focus({preventScroll:true});
+  }
+  document.addEventListener('projectmind:edit-node',event=>openNodeEditor(event.detail?.section));
 
 
   const state = {
@@ -59,6 +87,7 @@
     busy: false,
     lastGenerateStatus: null, // survives re-renders (MID-1 finding 11)
     lastGenerateError: false,
+    syncedRevision: null, // this browser's successful sync, never inferred approval
   };
 
   function el(tag, className, content) {
@@ -256,6 +285,10 @@
   // ---------- workspace rendering ----------
 
   function openEnvelope(envelope) {
+    clearReview();
+    const sameWorkspace=state.envelope?.workspace.workspaceId===envelope.workspace.workspaceId;
+    const keepNode=sameWorkspace&&envelope.draft?.graph.nodes.some(n=>n.id===state.selectedNodeId)?state.selectedNodeId:null;
+    if(!sameWorkspace){state.lastGenerateStatus=null;state.lastGenerateError=false;}
     state.envelope = envelope;
     try { const saved=JSON.parse(localStorage.getItem(positionKey())||'{}');nodePositions=Object.fromEntries(Object.entries(saved||{}).filter(([id,p])=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<10000&&p.y<10000)); } catch(e){nodePositions={};}
     try { localStorage.setItem('projectmind:last-workspace',envelope.workspace.workspaceId); } catch(e){}
@@ -265,11 +298,14 @@
     document.getElementById('arch-history-card').hidden=true;
     document.getElementById('arch-add-node').disabled=!envelope.draft;
     state.pendingCandidate = null;
-    state.selectedNodeId = null;
+    state.selectedNodeId = keepNode;
     state.correctionPreview = null;
+    if(state.syncedRevision!==envelope.identity.draftRevision)state.syncedRevision=null;
     document.getElementById("arch-correction-input").value="";
     document.getElementById("arch-workspace").hidden = false;
     document.getElementById("arch-review-result").replaceChildren();
+    document.getElementById('arch-candidate-preview').replaceChildren();
+    document.getElementById('arch-candidate-preview').hidden=true;
     document.getElementById("arch-correction-preview").replaceChildren();
     renderWorkspace();
     document.getElementById('view-arch').scrollTop=0;
@@ -329,8 +365,9 @@
     document.getElementById("arch-sync-button").disabled = !hasDraft || state.busy;
     document.getElementById("arch-review-preview-button").disabled = !hasDraft || state.busy;
     document.getElementById("arch-versions-button").disabled = !hasDraft || state.busy;
-    document.getElementById("arch-handover-button").disabled = !hasDraft || state.busy;
-    document.getElementById("arch-fixtask-button").disabled = !hasDraft || state.busy;
+    document.getElementById("arch-handover-button").disabled = !envelope.lastPublish || state.busy;
+    document.getElementById("arch-handover-button").textContent=envelope.lastPublish&&!identity.mapSourceRevision?'导出上次确认版本的交接包':'导出同版交接包';
+    document.getElementById("arch-fixtask-button").disabled = !identity.mapSourceRevision || state.busy;
     const fixTasksButton = document.getElementById("arch-fixtasks-button");
     if (fixTasksButton) fixTasksButton.disabled = !hasDraft || state.busy;
     document.getElementById("arch-correction-button").disabled = !hasDraft || !state.selectedNodeId || state.busy;
@@ -390,7 +427,7 @@
     stage.style.width=`${Math.max(width,...positions.map(p=>p.x+NODE_W+30))}px`;
     stage.style.height=`${height}px`;
     setZoom(zoom);
-    const connections = svg("svg", { class: "connections", viewBox: `0 0 ${parseFloat(stage.style.width)} ${height}`, "aria-hidden": "true" });
+    const connections = svg("svg", { class: "connections", viewBox: `0 0 ${parseFloat(stage.style.width)} ${height}`, "aria-label": "功能关系，点击连线编辑" });
     const defs=svg('defs',{});const marker=svg('marker',{id:'arch-arrow',viewBox:'0 -4 8 8',refX:7,refY:0,markerWidth:6,markerHeight:6,orient:'auto'});marker.append(svg('path',{d:'M 0 -3 L 7 0 L 0 3',fill:'none',stroke:'#9cafcc','stroke-width':1}));defs.append(marker);connections.append(defs);
     const byId = new Map(current.nodes.map((node, index) => [node.id, positions[index]]));
     for (const edge of current.edges) {
@@ -406,6 +443,20 @@
         class: `connection-line${active ? " active" : ""}`,
         "data-from":edge.from,"data-to":edge.to,
       }));
+      const fromTitle=current.nodes.find(n=>n.id===edge.from)?.title||edge.from;
+      const toTitle=current.nodes.find(n=>n.id===edge.to)?.title||edge.to;
+      const hit=svg('path',{d:connectionPath(from,to),class:'ux-edge-hit',
+        'data-from':edge.from,'data-to':edge.to,'data-edge-edit':'true',
+        'aria-hidden':'true'});
+      const edit=()=>{state.selectedNodeId=edge.from;openNodeEditor('relations',edge);};
+      hit.addEventListener('click',edit);
+      connections.append(hit);
+      // A native button also makes horizontal/vertical lines with a zero-height
+      // SVG bounding box reachable by keyboard and easy to point at.
+      const control=el('button','ux-edge-control','✎');control.type='button';
+      control.dataset.from=edge.from;control.dataset.to=edge.to;control.dataset.edgeEdit='true';
+      control.setAttribute('aria-label',`编辑关系：${fromTitle} → ${toTitle} · ${edge.label}`);control.title=edge.label;
+      control.style.left=`${(x1+x2)/2-12}px`;control.style.top=`${(y1+y2)/2-12}px`;control.onclick=edit;stage.append(control);
     }
     connections.style.width=stage.style.width;connections.style.height=stage.style.height;
     stage.append(connections);
@@ -427,6 +478,7 @@
       button.addEventListener('pointerdown',event=>{if(event.button!==0)return;moved=false;drag={x:event.clientX,y:event.clientY,origin:{...positions[index]}};button.setPointerCapture(event.pointerId);});
       button.addEventListener('pointermove',event=>{if(!drag)return;const dx=(event.clientX-drag.x)/zoom,dy=(event.clientY-drag.y)/zoom;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;if(!moved)return;nodePositions[node.id]={x:Math.max(10,drag.origin.x+dx),y:Math.max(10,drag.origin.y+dy)};button.style.left=`${nodePositions[node.id].x}px`;button.style.top=`${nodePositions[node.id].y}px`;
         for(const line of connections.querySelectorAll('path[data-from]')){const a=nodePositions[line.dataset.from]||byId.get(line.dataset.from),b=nodePositions[line.dataset.to]||byId.get(line.dataset.to);if(!a||!b)continue;const x1=a.x+NODE_W/2,y1=a.y+NODE_H/2,x2=b.x+NODE_W/2,y2=b.y+NODE_H/2;line.setAttribute('d',connectionPath(a,b));}
+        for(const control of stage.querySelectorAll('.ux-edge-control')){const a=nodePositions[control.dataset.from]||byId.get(control.dataset.from),b=nodePositions[control.dataset.to]||byId.get(control.dataset.to);if(!a||!b)continue;control.style.left=`${(a.x+b.x)/2+NODE_W/2-12}px`;control.style.top=`${(a.y+b.y)/2+NODE_H/2-12}px`;}
       });
       button.addEventListener('pointerup',()=>{drag=null;if(moved){try{localStorage.setItem(positionKey(),JSON.stringify(nodePositions));setStatus('arch-draft-status','查看布局已保存在当前浏览器；没有改变架构关系。');}catch(e){setStatus('arch-draft-status','布局无法保存到当前浏览器。',true);}renderGraph();}});
       button.addEventListener('pointercancel',()=>{drag=null;renderGraph();});
@@ -455,6 +507,7 @@
         operations,
       });
       state.envelope = result;
+      clearReview();state.syncedRevision=null;
       setStatus("arch-draft-status", note || "修改已保存到草稿。");
       renderWorkspace();
       return true;
@@ -545,6 +598,7 @@
       applyOps([{ type: "update_node", nodeId: node.id, fields }], "职责修改已保存。");
     });
     const basics = el("section", "detail-section");
+    basics.id='arch-basics-editor';
     basics.append(el("h4", "section-title", "职责与状态"));
     basics.append(labeledField("名称", titleInput), labeledField("职责说明", summaryInput), labeledField("状态", statusSelect), saveBasics);
     details.append(basics);
@@ -569,6 +623,7 @@
 
     // evidence
     const evidenceSection = el("section", "detail-section");
+    evidenceSection.id='arch-evidence-editor';
     evidenceSection.append(el("h4", "section-title", `证据 · ${(node.evidence || []).length}`));
     (node.evidence || []).forEach((item, index) => {
       const card = el("div", "evidence-card");
@@ -630,7 +685,7 @@
 
   function renderProcessEditor(node) {
     const section = el("section", "detail-section");
-    section.append(el("h4", "section-title", `期望过程 · ${(node.process || []).length} 步（步骤 ID 保持稳定）`));
+    section.id='arch-process-editor';
     const steps = (node.process || []).map((step) => ({ ...step, inputs: [...(step.inputs || [])], outputs: [...(step.outputs || [])], branches: [...(step.branches || [])], next: [...(step.next || [])] }));
     const rows = [];
     // edits commit on every keystroke as well as on blur: relying on `change`
@@ -641,20 +696,23 @@
       element.addEventListener("change", handler);
     };
     const rebuild = () => {
-      section.replaceChildren(el("h4", "section-title", `期望过程 · ${steps.length} 步（步骤 ID 保持稳定）`));
+      section.replaceChildren(el("h4", "section-title", `期望执行步骤 · ${steps.length} 步`),el('p','ux-relation-help','先写步骤名称和这一步要发生什么。按实际顺序排列，点“保存过程”后才能用于开发任务。输入、输出和分支可稍后补充。'));
       steps.forEach((step, index) => {
         const row = el("div", "arch-step-row");
         const idTag = el("code", "arch-step-id", step.stepId);
         const titleInput = el("input");
         titleInput.value = step.title;
+        titleInput.placeholder='步骤名称，例如保存订单';titleInput.setAttribute('aria-label',`第 ${index+1} 步名称`);
         onEdit(titleInput, () => { step.title = titleInput.value; });
         const detailInput = el("input");
         detailInput.value = step.detail || "";
         detailInput.placeholder = "这一步发生什么";
+        detailInput.setAttribute('aria-label',`第 ${index+1} 步说明`);
         onEdit(detailInput, () => { step.detail = detailInput.value; });
         const lists = el("input");
         lists.value = [step.inputs, step.outputs, step.branches].map((list) => list.join("/")).join(" | ");
         lists.placeholder = "输入/输出/分支，用 | 分隔";
+        lists.setAttribute('aria-label',`第 ${index+1} 步输入输出分支`);
         onEdit(lists, () => {
           const [inputs, outputs, branches] = lists.value.split("|").map((part) => part.split("/").map((item) => item.trim()).filter(Boolean));
           step.inputs = inputs || []; step.outputs = outputs || []; step.branches = branches || [];
@@ -697,7 +755,9 @@
 
   function renderRelationEditor(current, node) {
     const section = el("section", "detail-section");
+    section.id='arch-relation-editor';
     section.append(el("h4", "section-title", `关系 · ${current.edges.filter((edge) => edge.from === node.id || edge.to === node.id).length}`));
+    section.append(el('p','ux-relation-help','修改现有关系可展开“修改这条关系”；选择目标、类型和说明可添加新关系。方向由起点 → 终点表示。保存会更新草稿，不会自动发布。'));
     for (const edge of current.edges) {
       if (edge.from !== node.id && edge.to !== node.id) continue;
       const other = current.nodes.find((item) => item.id === (edge.from === node.id ? edge.to : edge.from));
@@ -711,6 +771,21 @@
         applyOps([{ type: "remove_edge", match: { from: edge.from, to: edge.to, type: edge.type } }], "关系已删除。");
       });
       row.append(remove);
+      const edit=el('details','ux-relation-edit');edit.dataset.from=edge.from;edit.dataset.to=edge.to;edit.dataset.type=edge.type;edit.append(el('summary',null,'修改这条关系'));
+      const fromSelect=el('select'),toSelect=el('select'),kindSelect=el('select'),text=el('input');
+      for(const option of current.nodes){for(const select of [fromSelect,toSelect]){const item=el('option',null,option.title);item.value=option.id;select.append(item);}}
+      fromSelect.value=edge.from;toSelect.value=edge.to;
+      for(const [value,label] of [['static_reference','静态引用'],['functional_collaboration','功能协作'],['expected_sequence','期望先后']]){const item=el('option',null,label);item.value=value;kindSelect.append(item);}
+      kindSelect.value=edge.type;text.value=edge.label;
+      fromSelect.setAttribute('aria-label','关系起点');toSelect.setAttribute('aria-label','关系终点');kindSelect.setAttribute('aria-label','修改关系类型');text.setAttribute('aria-label','修改关系说明');
+      const save=el('button','button primary','保存这条关系');save.type='button';
+      save.onclick=()=>{
+        if(!fromSelect.value||!toSelect.value||fromSelect.value===toSelect.value||!text.value.trim()){setStatus('arch-draft-status','关系需要不同的起点与终点，以及说明。',true);return;}
+        // Existing CAS operation batch performs the replacement atomically.
+        applyOps([{type:'remove_edge',match:{from:edge.from,to:edge.to,type:edge.type}},
+          {type:'add_edge',edge:{from:fromSelect.value,to:toSelect.value,type:kindSelect.value,label:text.value.trim()}}],'关系修改已保存到草稿。');
+      };
+      edit.append(labeledField('起点',fromSelect),labeledField('终点',toSelect),labeledField('类型',kindSelect),labeledField('关系说明',text),save);row.append(edit);
       section.append(row);
     }
     const targets = el("select");
@@ -812,8 +887,16 @@
 
   function showCandidateForApply(result, message) {
     setGenStatus(message);
-    const area = document.getElementById("arch-review-result");
-    area.replaceChildren();
+    const area = document.getElementById("arch-candidate-preview");
+    area.replaceChildren();area.hidden=false;
+    area.append(el('h3',null,'候选预览 · 尚未应用'));
+    const graph=result.graph||{nodes:[],edges:[]};
+    area.append(el('p',null,`${graph.nodes.length} 个功能节点 · ${graph.edges.length} 条关系 · ${result.labeled||message}`));
+    const list=el('ul');
+    for(const node of graph.nodes)list.append(el('li',null,`${node.title}：${node.summary}`));
+    area.append(list);
+    for(const edge of graph.edges)area.append(el('p','ux-relation-help',`${graph.nodes.find(n=>n.id===edge.from)?.title||edge.from} → ${graph.nodes.find(n=>n.id===edge.to)?.title||edge.to}：${edge.label}`));
+    for(const note of [...(result.warnings||[]),...(result.unknowns||[]),...(result.openQuestions||[])])area.append(el('p','ux-relation-help',typeof note==='string'?note:JSON.stringify(note)));
     const apply = el("button", "button primary", "应用到草稿");
     apply.type = "button";
     apply.addEventListener("click", async () => {
@@ -826,6 +909,7 @@
         openEnvelope(envelope);
         setGenStatus(result.status === "dev_sample"
           ? "演示候选已作为草稿（标注保留）。"
+          : result.origin==='rule_based' ? '规则候选已应用为草稿（来源标记保留，仍需人工核对）。'
           : "AI 候选已应用为草稿（全部节点仍为候选状态）。");
       } catch (error) {
         setGenStatus(`应用失败（${error.code}）：${error.message}`, true);
@@ -833,7 +917,7 @@
     });
     const discard = el("button", "button ghost", "放弃该候选");
     discard.type = "button";
-    discard.addEventListener("click", () => { state.pendingCandidate = null; area.replaceChildren(); setGenStatus("候选已放弃。"); });
+    discard.addEventListener("click", () => { state.pendingCandidate = null; area.replaceChildren();area.hidden=true; setGenStatus("候选已放弃。");emitWorkspace(); });
     area.append(el("p", "ai-provenance", result.note), apply, discard);
   }
 
@@ -1065,7 +1149,13 @@
 
 // ---------- review / publish (real B version service, three steps) ----------
 
-  const reviewFlow = { actor: null, previewDigest: null };
+  const reviewFlow = { actor: null, previewDigest: null, accepted:false };
+  function clearReview() {
+    reviewFlow.actor=null;reviewFlow.previewDigest=null;reviewFlow.accepted=false;
+    for(const id of ['arch-review-confirm-button','arch-review-reject-button','arch-publish-button']){
+      const b=document.getElementById(id);b.hidden=true;b.disabled=true;
+    }
+  }
 
   document.getElementById("arch-sync-button").addEventListener("click", async () => {
     if (!state.envelope || !graph() || state.busy) return;
@@ -1078,6 +1168,7 @@
       area.append(el("p", "ai-item", "草稿已保存到真实版本服务（尚未人审，未产生版本）"));
       area.append(el("p", "ai-provenance", `服务端草稿修订：${result.bDraftRevision} · 本次操作 ${(result.operations || []).length} 条`));
       setStatus("arch-review-status", "已保存。下一步：人审预览。");
+      state.syncedRevision=state.envelope.identity.draftRevision;
       openEnvelope(await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}`));
     } catch (error) {
       setStatus("arch-review-status", `保存失败（${error.code}）：${error.message}`, true);
@@ -1094,6 +1185,7 @@
     if (!review) return;
     const actor = window.projectmindSession?.actor || review.actor;
     const { reason } = review;
+    clearReview();
     state.busy = true; renderWorkspace();
     setStatus("arch-review-status", "正在生成人审预览…");
     try {
@@ -1105,12 +1197,13 @@
         { actor, reason, verifyCode });
       reviewFlow.actor = actor;
       reviewFlow.previewDigest = preview.previewDigest;
+      reviewFlow.accepted=false;
       const area = document.getElementById("arch-review-result");
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", preview.labeled || "人审预览"));
       const coverage = preview.reviewCoverage;
       area.append(el("p", "ai-item",
-        `覆盖范围：节点 ${coverage.nodes.length} · 关系 ${coverage.edges.length} · 过程 ${coverage.processes.length} · 代码证据 ${coverage.evidence.length}（${coverage.scope}）`));
+        `覆盖范围：节点 ${coverage.nodes.length} · 关系 ${coverage.edges.length} · 过程 ${coverage.processes.length} · 依据/证据 ${coverage.evidence.length}（${coverage.scope}）`));
       for (const limit of preview.limits || []) area.append(el("p", "ai-provenance", limit));
       area.append(el("p", "ai-provenance", `预览摘要：${preview.previewDigest}`));
       const confirmButton = document.getElementById("arch-review-confirm-button");
@@ -1133,11 +1226,13 @@
         { previewDigest: reviewFlow.previewDigest, decision });
       const area = document.getElementById("arch-review-result");
       if (decision === "accept") {
+        reviewFlow.accepted=true;
         const publishButton = document.getElementById("arch-publish-button");
         publishButton.hidden = false; publishButton.disabled = false;
         area.append(el("p", "ai-item", "已确认：发布授权保存在服务端；点击发布产生不可变版本"));
         setStatus("arch-review-status", "已确认。发布授权保存在服务端，点击“发布不可变版本”产生版本。");
       } else {
+        clearReview();
         area.append(el("p", "ai-item", "已拒绝：没有产生版本。"));
         setStatus("arch-review-status", "已拒绝，未产生版本。");
       }
@@ -1199,17 +1294,18 @@
       const provenance = packageData.versionEnvelope?.provenance || packageData;
       const blob = new Blob([JSON.stringify(packageData, null, 2)], { type: "application/json" });
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
+      if(handoverUrl)URL.revokeObjectURL(handoverUrl);
+      handoverUrl=URL.createObjectURL(blob);link.href = handoverUrl;
       link.download = `handover-${version.mapId}-${String(version.mapRevision).slice(7, 19)}.json`;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      link.textContent='下载同版交接包 JSON';link.className='button primary';
       const area = document.getElementById("arch-version-result");
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", "同版交接包（可交给下一位副本）"));
       area.append(el("p", "ai-item", `图标识 ${version.mapId} · 图版本 ${version.mapRevision}`));
       area.append(el("p", "ai-item", `架构来源 ${provenance.mapSourceRevision} · 未解决偏差 ${(packageData.unresolvedDeviations || []).length} · 未关闭任务 ${(packageData.openFixTasks || []).length}`));
       area.append(el("p", "ai-provenance", packageData.importHint ? packageData.importHint.note : ""));
-      setStatus("arch-review-status", `同版交接包已导出：图标识 ${version.mapId} · 图版本 ${version.mapRevision} · 架构来源 ${provenance.mapSourceRevision}`);
+      area.append(link);
+      setStatus("arch-review-status", `同版交接包已生成，请点击下载保存：图标识 ${version.mapId} · 图版本 ${version.mapRevision} · 架构来源 ${provenance.mapSourceRevision}`);
     } catch (error) {
       setStatus("arch-review-status", `导出失败（${error.code}）：${error.message}`, true);
     }

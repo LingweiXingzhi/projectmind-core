@@ -71,6 +71,12 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
   const $=id=>document.getElementById(id);
   let cache={snapshot:null,workspaces:[],entries:[],compare:null};
   let loading=null,loadedAt=0,workspaceState=null;
+  function showProjectIdentity(){
+    const workspace=workspaceState?.workspace;
+    document.body.dataset.activeProjectTitle=workspace?.title||'';
+    $('repo-name').textContent=workspace?.title||'选择你的项目';
+    $('shell-repo-branch').textContent=!workspace?'导入已有项目 / 从想法开始':workspace.context==='planning'?'规划项目 · 尚无代码':`项目代码 · ${short(workspaceState.identity.codeRevision)}`;
+  }
   const make=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
   const short=s=>s?String(s).slice(0,8):'—';
   function toast(message){$('shell-toast').textContent=message;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('shell-toast').textContent='',4200);}
@@ -95,7 +101,7 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
       const open=cache.entries.filter(e=>e.category==='issue');
       const decisions=cache.entries.filter(e=>e.category==='decision');
       $('home-attention').replaceChildren(
-        panel(pending===undefined?'—':pending,'架构证据待复核',pending===undefined?['尚未完成提交对比','打开变更审查选择审查范围']:pending?compare.reviewCandidates.slice(0,3).map(c=>cache.snapshot.nodes.find(n=>n.id===c.nodeId)?.title||c.nodeId):['本次比较未发现声明证据变化','这不代表架构已经过人审'],'review'),
+        panel(pending===undefined?'—':pending,'演示图证据待复核',pending===undefined?['尚未完成提交对比','此处统计来自人工演示图']:pending?compare.reviewCandidates.slice(0,3).map(c=>cache.snapshot.nodes.find(n=>n.id===c.nodeId)?.title||c.nodeId):['演示图未发现声明证据变化','当前项目请进入对应架构工作台查看'],'review'),
         panel(spaces.status==='fulfilled'?cache.workspaces.length:'—','可继续的工作区',spaces.status==='fulfilled'?[cache.workspaces[0]?.title||'创建你的第一个架构工作区','草稿 · 点击继续工作']:['工作区服务暂不可用'],'arch'),
         panel(logs.status==='fulfilled'?open.length:'—','待解决的记录',logs.status==='fulfilled'?[open[0]?.title||'当前没有待解决记录',`${decisions.length} 条决策记录 · 尚未独立核实`]:['项目记录服务暂不可用'],'worklog')
       );
@@ -115,12 +121,13 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
       const snapData=cache.snapshot;
       if(snapData){$('home-repo').textContent=snapData.repository;$('home-identity').textContent=`${snapData.branch} · ${short(snapData.revision)}`;$('shell-repo-branch').textContent=`Git · ${snapData.branch}`;$('status-branch').textContent=`Git · ${snapData.branch}`;$('status-commit').textContent=short(snapData.revision);$('status-commit').title=snapData.revision;}
       else {$('home-identity').textContent='Git 身份当前不可用';$('status-branch').textContent='Git 未读取';$('status-commit').textContent='—';}
-      $('status-review').textContent=`待复核 ${pending===undefined?'—':pending}`;
+      $('status-review').textContent=`演示待复核 ${pending===undefined?'—':pending}`;
       $('status-ai').textContent=ai.status==='fulfilled'?(ai.value.configured?'AI 已就绪':'AI 未配置'):'AI 状态未知';
       $('status-ai').title=ai.status==='fulfilled'?(ai.value.note||ai.value.model||''):ai.reason.message;
-      $('attention-link').textContent=pending===undefined?'审查范围尚未确定':`${pending} 个节点证据待复核`;
+      $('attention-link').textContent=pending===undefined?'演示图审查范围尚未确定':`演示图 · ${pending} 个节点证据待复核`;
       $('attention-link').dataset.jump='review';
       loadedAt=Date.now();
+      showProjectIdentity();
     })().catch(e=>toast(`状态读取失败：${e.message}`)).finally(()=>loading=null);
     return loading;
   }
@@ -128,7 +135,10 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
   $('home-sync').onclick=()=>{$('refresh-button').click();};
   $('refresh-button').addEventListener('click',()=>{overview(true);});
   const hour=new Date().getHours();$('greeting').textContent=`${hour<12?'上午好':hour<18?'下午好':'晚上好'}，这是 ProjectMind`;
-  document.addEventListener('projectmind:workspace',event=>{workspaceState=event.detail;$('status-model').textContent=`草稿 ${short(workspaceState.identity.draftRevision)}`;$('status-model').title=workspaceState.workspace.title;loadedAt=0;});
+  document.addEventListener('projectmind:workspace',event=>{workspaceState=event.detail;$('status-model').textContent=`草稿 ${short(workspaceState.identity.draftRevision)}`;$('status-model').title=workspaceState.workspace.title;loadedAt=0;showProjectIdentity();});
+  function clearProjectIdentity(){workspaceState=null;$('status-model').textContent='未打开项目';$('status-model').title='';loadedAt=0;showProjectIdentity();}
+  document.addEventListener('projectmind:begin-entry',clearProjectIdentity);
+  document.getElementById('arch-new-workspace').addEventListener('click',clearProjectIdentity);
   // Search is read-only: navigation and existing nodes/workspaces only.
   const dialog=$('command-dialog');let commands=[],selection=0;
   function commandList(){
