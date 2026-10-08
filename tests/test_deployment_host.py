@@ -75,6 +75,12 @@ class HostPreparationTests(unittest.TestCase):
         run_git(self.code, 'remote', 'set-url', 'origin', 'https://token@example.invalid/private.git')
         with self.assertRaises(AccessError): preflight(self.config)
 
+    def test_public_activation_rejects_runtime_port_mismatch(self):
+        config = json.loads(self.config.read_text()); config['publicOrigin'] = 'https://pm.example.com:8443'
+        self.config.write_text(json.dumps(config))
+        with self.assertRaises(AccessError) as caught: preflight(self.config, public=True)
+        self.assertEqual(caught.exception.code, 'HOST_DOMAIN_INVALID')
+
     def test_preflight_rejects_architecture_branch_or_dirty_tree(self):
         run_git(self.arch, 'checkout', '-b', 'wrong')
         with self.assertRaises(AccessError): preflight(self.config)

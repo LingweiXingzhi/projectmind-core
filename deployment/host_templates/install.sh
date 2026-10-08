@@ -9,7 +9,7 @@ source_dir=$(realpath "$1")
 release_sha=$2
 bundle_dir=$(realpath "$3")
 [[ $release_sha =~ ^[0-9a-f]{40}$ ]] || exit 2
-[[ $(git -C "$source_dir" rev-parse HEAD) == "$release_sha" ]] || { echo '源码HEAD与目标版本不同' >&2; exit 1; }
+[[ $(git -c "safe.directory=$source_dir" -C "$source_dir" rev-parse HEAD) == "$release_sha" ]] || { echo '源码HEAD与目标版本不同' >&2; exit 1; }
 for file in runtime.json Caddyfile projectmind.service projectmind-proxy.service backup.sh activate.sh; do
     [[ -f "$bundle_dir/$file" && ! -L "$bundle_dir/$file" ]] || exit 1
 done

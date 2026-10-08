@@ -131,6 +131,7 @@ def preflight(config_path, source=None, expected_sha=None, public=False):
     config = read_config(config_path)
     domain = urlsplit(config['publicOrigin']).hostname
     if public:
+        check(urlsplit(config['publicOrigin']).port is None, 'HOST_DOMAIN_INVALID', '生产服务使用标准HTTPS端口443')
         check(not domain.endswith(('.invalid', '.test', '.example', '.internal', '.home.arpa')),
               'DOMAIN_PENDING', '准备阶段域名不能用于公网激活')
     bindings = code_bindings(config)
