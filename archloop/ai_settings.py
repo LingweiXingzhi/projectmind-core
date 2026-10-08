@@ -98,19 +98,29 @@ class AISettings:
                   if self.personal else dict(fallback))
         if not self.shared_from_env:
             result.update(json.loads(row["config"]))
-        result["outputLimit"] = row["output_limit"]
+        if self.unlimited:
+            result.pop("outputLimit", None)
+        else:
+            result["outputLimit"] = row["output_limit"]
         return result
+
+    @property
+    def unlimited(self):
+        """Only the server operator can remove managed shared token ceilings."""
+        return self.shared_from_env and os.environ.get('PROJECTMIND_AI_UNLIMITED') == '1'
 
     def budget(self):
         with self._database() as db:
             row = db.execute("SELECT * FROM settings WHERE id=1").fetchone()
             pending = db.execute("SELECT COUNT(*) FROM reservations").fetchone()[0]
-        return {"tokenLimit": row["token_limit"], "outputLimit": row["output_limit"],
+        return {"tokenLimit": None if self.unlimited else row["token_limit"],
+                "outputLimit": None if self.unlimited else row["output_limit"],
                 "chargedTokens": row["charged"], "reportedTokens": row["reported"],
                 "estimatedTokens": row["estimated"],
-                "remainingTokens": max(0, row["token_limit"] - row["charged"]),
+                "remainingTokens": None if self.unlimited else max(0, row["token_limit"] - row["charged"]),
                 "pendingRequests": pending, "scope": "personal_profile" if self.personal else "shared_instance",
-                "note": "共享演示额度；未返回可信用量的调用按预留额计入。不是供应商账单。"}
+                "note": ("共享 API 不设应用侧 token 上限，使用服务商默认输出限制；用量持续记录。不是供应商账单。"
+                         if self.unlimited else "共享演示额度；未返回可信用量的调用按预留额计入。不是供应商账单。")}
 
     def public(self, config, *, can_edit):
         result = {"canEdit": can_edit, "configured": config["configured"],
@@ -165,7 +175,7 @@ class AISettings:
         ticket = uuid.uuid4().hex
         with self._database() as db:
             row = db.execute("SELECT token_limit,charged FROM settings WHERE id=1").fetchone()
-            if row["charged"] + amount > row["token_limit"]:
+            if not self.unlimited and row["charged"] + amount > row["token_limit"]:
                 raise SettingsError("演示额度不足以覆盖这次输入和输出。请缩短输入，或由运行者增加额度。", "AI_DEMO_LIMIT", 429)
             db.execute("UPDATE settings SET charged=charged+? WHERE id=1", (amount,))
             db.execute("INSERT INTO reservations VALUES (?,?)", (ticket, amount))
