@@ -42,7 +42,25 @@
 
 ## 验证与边界
 
-- 全量单元/集成回归、真实公共 HTTP 验收、真实浏览器核对、冷备/停机测试均在本分支
-  执行；日志与报告在交付包 `test-results/`、`evidence/`。
-- 未验收项如实记录：公网/域名、第二设备、真实 AI/任务验证器、Linux 守护与证书续期
+- 本机（Windows）执行并在交付包中留有记录的：全量单元/集成回归
+  （`test-results/full-suite-*.log`，1046 项、failures=0、4 项平台 error 且与起点逐项比较）、
+  本地入口的真实 HTTP 验收（`test-results/local-acceptance*.json`，21/21 PASS）、
+  D 权威任务全生命周期含真实命令核验（`test-results/d-lifecycle-evidence.json`）、
+  真实浏览器中文界面/任务列表/交接包下载/小屏布局（`snapshots/`）。
+- 未在本机执行的（作者以 `skipUnless(os.name=='posix')` 显式门在 POSIX，本机无
+  `fcntl` 与 0700/0600 语义）：公共 HTTPS 入口（Waitress+Caddy）、治理/共享记录端到端、
+  单实例租约、停机冷备 CLI —— 记为 NOT_RUN，其 POSIX 证据见 #61–#67 各自交付文档。
+- 未验收项：公网/域名、第二设备、真实 AI 模型、真实项目任务验证器、Linux 守护与证书续期
   （NOT_RUN）。部署准备合入不等于授权发布公网。
+
+## 审计与复审
+
+- 冻结版本 `51a119400ad74cc2163400c1bfc975b18233b08f` 交只读 Codex 审计，结论
+  `CHANGES_REQUESTED`（F-01 治理 adapter 缺两个导入；F-02 C 偏差响应丢三个字段；F-03 ai_status
+  的 baseUrl 放错分支）。三项均为本轮合并失误，已按下述方式最小修复：
+  - F-01：补回 `from copy import deepcopy` / `from dataclasses import replace`（来源原文）。
+  - F-02：按 #66 固定来源补回 `rejectedTraces` / `inconclusive` / `coveredNodes`。
+  - F-03：未按审计建议把 baseUrl 补回已配置分支 —— 那会使来源 #66 的边界测试真实失败（公共状态
+    不得回显可含凭据的端点）；最终两个分支都不再返回 baseUrl，并移除 generate 状态里的死字段。
+- 修复后重跑全量回归与本地入口真实 HTTP 验收（21/21 PASS），提交固定新 SHA 后做一次完整复审；
+  详细复现、根因与验证见交付包 `LOCAL_FIXES.md`、`SELF_CHECK.md` 与 `evidence/audit_fix_probes.py`。

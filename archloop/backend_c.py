@@ -312,6 +312,8 @@ def deviations_for(graph: dict, observed_traces: list, identity: dict | None = N
     reply = module.detect_process_deviations(projected, observed_traces or [])
     result = {"status": reply.get("status"), "verdict": reply.get("verdict"),
               "deviations": reply.get("deviations", []),
+              "rejectedTraces": reply.get("rejectedTraces", []),
+              "inconclusive": reply.get("inconclusive", []), "coveredNodes": reply.get("coveredNodes", []),
               "reason": reply.get("reason", ""),
               "labeled": "C 规则偏差检测：静态图与提供的追踪数据对照；无追踪证据时为 UNKNOWN"}
     for deviation in result["deviations"]:

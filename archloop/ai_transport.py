@@ -124,7 +124,7 @@ def ai_status() -> dict:
                 "note": f"AI 配置无效：{exc}"}
     if not config["configured"]:
         return {"configured": False, "model": None, "protocol": config["protocol"],
-                "provider": config["host"], "baseUrl": config["base"], "baseUrl": config["base"],
+                "provider": config["host"],
                 "note": ("AI 生成尚未配置。需在启动程序前设置 OPENAI_API_KEY（或 "
                          "PROJECTMIND_AI_API_KEY）与 PROJECTMIND_AI_MODEL；"
                          "其他厂商用 PROJECTMIND_AI_BASE_URL 指向其兼容端点。")}

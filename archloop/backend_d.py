@@ -475,6 +475,8 @@ __all__ = ["BackendD", "GovernedTasks", "make_command_verification_provider", "K
 # binds BackendD above. Both wrap the same D FixTaskService store.
 # ---------------------------------------------------------------------------
 """Configured, authenticated A/B -> D task bridge for one shared server."""
+from copy import deepcopy
+from dataclasses import replace
 import threading
 
 from .contract import ERROR_CODES

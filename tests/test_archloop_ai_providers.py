@@ -179,7 +179,10 @@ class ChatCompletionsProviderTests(unittest.TestCase):
     def test_real_generation_endpoint_via_authenticated_entry(self) -> None:
         # Adapt the fixed-source test to this deployment's actual account
         # boundary; no local-declaration session substitutes for HTTPS auth.
-        from test_public_deployment import PublicHTTPTests
+        try:
+            from test_public_deployment import PublicHTTPTests
+        except ImportError:  # package-style discovery (python -m unittest tests.X)
+            from tests.test_public_deployment import PublicHTTPTests
         class Runtime(PublicHTTPTests):
             pass
         Runtime.setUpClass(); self.addCleanup(Runtime.tearDownClass)
