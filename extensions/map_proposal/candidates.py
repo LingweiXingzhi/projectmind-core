@@ -300,7 +300,9 @@ def detect_process_deviations(graph: dict, observed_traces: list) -> dict:
             "warnings": [],
         }
     for index, trace in enumerate(observed_traces):
-        if not isinstance(trace, dict) or not isinstance(trace.get("called_steps"), list):
+        if not isinstance(trace, dict) or not isinstance(trace.get("called_steps"), list) \
+                or len(trace['called_steps']) > 200 or not all(isinstance(step, str) and len(step) <= 200
+                                                              for step in trace['called_steps']):
             rejected.append({"traceIndex": index, "reason": "轨迹缺少 called_steps 列表，无法作为观察证据"})
             continue
         if expected_repo is not None and trace.get("codeRepoId") != expected_repo:

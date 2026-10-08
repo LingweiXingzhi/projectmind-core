@@ -945,8 +945,8 @@ class WorkbenchService:
         if draft is None:
             raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
         traces = request.get("observedTraces")
-        if traces is not None and not isinstance(traces, list):
-            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表（可为空）")
+        if traces is not None and (not isinstance(traces, list) or len(traces) > 200):
+            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表，最多 200 条（可为空）")
         result = self._c_call("deviations_for",
                                   {"graph": draft["graph"], "traces": traces or [],
                                    "identity": record.get("identity")})
