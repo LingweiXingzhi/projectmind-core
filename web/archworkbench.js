@@ -929,7 +929,9 @@
     if (!state.envelope || state.busy || !requireSavedEditors()) return;
     state.busy = true;
     renderWorkspace();
-    setGenStatus("正在调用已配置模型生成候选图…（最长约 1 分钟）");
+    const wait = state.envelope.generation?.requestTimeoutSeconds;
+    const waitHint = Number.isFinite(wait) && wait > 0 ? `（最长约 ${Math.ceil(wait / 60)} 分钟）` : "（请等待完整结果）";
+    setGenStatus(`正在调用已配置模型生成候选图…${waitHint}。请勿重复提交。`);
     try {
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, {});
       if (result.status === "ai_generated") {
