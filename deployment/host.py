@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 from urllib.parse import urlsplit
 
@@ -176,7 +177,8 @@ def backup_bound(config_path, output):
 
 def restore_bound(backup, config_path, output, runtime_output):
     backup = _outside_git(backup); target = _outside_git(output); runtime = _outside_git(runtime_output)
-    check(not target.exists() and not runtime.exists() and not runtime.is_relative_to(target), 'HOST_OUTPUT_EXISTS')
+    check(not target.exists() and not runtime.exists()
+          and not runtime.is_relative_to(target) and not target.is_relative_to(runtime), 'HOST_OUTPUT_EXISTS')
     config = read_config(config_path)
     receipt = backup.with_name(backup.name + '.binding.json')
     check(receipt.is_file() and not receipt.is_symlink() and receipt.stat().st_size <= 65536
@@ -232,6 +234,37 @@ def stage_release(source, sha, releases):
     return {'head': sha, 'tree': git(app, 'rev-parse', 'HEAD^{tree}'), 'activated': False}
 
 
+def set_release_permissions(release):
+    """Grant the installed service group read/traverse, never source writes.
+
+    install.sh sets root:projectmind ownership first. Do not follow venv/Git
+    symlinks or chmod targets outside the release; reject special/hardlinked
+    files before changing any mode. Private runtime/state are not in releases.
+    """
+    release = Path(release)
+    check(release.is_absolute() and not release.is_symlink(), 'HOST_RELEASE_INVALID')
+    release = _outside_git(release)
+    check((release/'release.json').is_file() and (release/'app/.git').is_dir()
+          and (release/'venv/bin/python').is_file(), 'HOST_RELEASE_INVALID')
+    metadata = json.loads((release/'release.json').read_text())
+    check(metadata.get('schemaVersion') == 'projectmind_release_v1'
+          and SHA.fullmatch(release.name) and metadata.get('head') == release.name
+          and git(release/'app', 'rev-parse', 'HEAD') == release.name, 'HOST_RELEASE_INVALID')
+    modes = []
+    for path in [release, *release.rglob('*')]:
+        mode = path.lstat().st_mode
+        if stat.S_ISLNK(mode):
+            continue
+        check(stat.S_ISDIR(mode) or stat.S_ISREG(mode), 'HOST_RELEASE_INVALID')
+        check(not stat.S_ISREG(mode) or path.stat().st_nlink == 1, 'HOST_RELEASE_INVALID')
+        modes.append((path, 0o750 if stat.S_ISDIR(mode) or mode & 0o111 else 0o640))
+    for path, mode in modes:
+        path.chmod(mode)
+    return {'schemaVersion': 'projectmind_release_permissions_v1',
+            'serviceGroupReadOnly': True, 'pathsChecked': len(modes),
+            'symlinkTargetsChanged': False}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -245,6 +278,7 @@ def main():
     p.add_argument('--output', required=True, type=Path); p.add_argument('--runtime-output', required=True, type=Path)
     p = sub.add_parser('stage-release'); p.add_argument('--source', required=True, type=Path)
     p.add_argument('--sha', required=True); p.add_argument('--releases', required=True, type=Path)
+    p = sub.add_parser('set-release-permissions'); p.add_argument('--release', required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.command == 'prepare': result = prepare(args.output, args.domain)
@@ -252,7 +286,8 @@ def main():
         elif args.command == 'preflight': result = preflight(args.config, args.source, args.expected_sha, args.public)
         elif args.command == 'backup': result = backup_bound(args.config, args.output)
         elif args.command == 'restore': result = restore_bound(args.backup, args.config, args.output, args.runtime_output)
-        else: result = stage_release(args.source, args.sha, args.releases)
+        elif args.command == 'stage-release': result = stage_release(args.source, args.sha, args.releases)
+        else: result = set_release_permissions(args.release)
         print(json.dumps(result, ensure_ascii=False))
     except Exception as exc:
         # Configuration and command stderr can contain private paths/remotes.

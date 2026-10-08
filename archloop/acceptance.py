@@ -15,6 +15,7 @@ Usage (server already running, e.g. on port 8801):
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
 import re
@@ -24,12 +25,17 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from .acceptance_http import AcceptanceHTTP
 
 ORIGIN_FALLBACK = None
 # the repository this runner itself lives in: T24 must cover THIS project's
 # tracked files, not whichever demo repository happens to be bound
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FULL_SHA_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
+
+
+def _git_env():
+    return {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
 
 
 def _same_path(left: str, right: str) -> bool:
@@ -48,7 +54,7 @@ def _git_object_exists(repo: str, revision: str) -> bool:
     try:
         probe = subprocess.run(["git", "-C", str(repo), "cat-file", "-e", revision + "^{commit}"],
                                capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=60)
+                               errors="replace", timeout=60, env=_git_env())
     except (OSError, subprocess.SubprocessError):
         return False
     return probe.returncode == 0
@@ -147,7 +153,7 @@ def _git_tracked_counts(repo: str, revision: str) -> tuple[int | None, int | Non
     try:
         listing = subprocess.run(["git", "-C", str(repo), "ls-tree", "-r", "-z", "--name-only",
                                   revision], capture_output=True, text=True, encoding="utf-8",
-                                 errors="replace", timeout=60)
+                                 errors="replace", timeout=60, env=_git_env())
     except (OSError, subprocess.SubprocessError):
         return None, None
     if listing.returncode != 0:
@@ -203,8 +209,43 @@ def self_coverage_verdict(status, body, repo: str, identity: dict | None = None,
     return ("PASS" if ok else "FAIL"), evidence
 
 
+def independent_self_coverage_verdict(status, body, repo, identity):
+    try:
+        probe = subprocess.run(['git', '-C', str(repo), 'rev-parse', 'HEAD'],
+                               capture_output=True, text=True, timeout=60, env=_git_env())
+        head = probe.stdout.strip() if probe.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        head = None
+    exists = _git_object_exists(repo, head)
+    tracked, python = _git_tracked_counts(repo, head) if exists else (None, None)
+    status, evidence = self_coverage_verdict(status, body, repo, identity=identity,
+        revision_exists=exists, expected_revision=head, expected_tracked=tracked, expected_python=python)
+    evidence['headSource'] = 'independent git rev-parse HEAD'
+    return status, evidence
+
+
+def native_handover_tamper_verdict(package):
+    from copy import deepcopy
+    from extensions.handoff.architecture import ArchitectureError, validate_handoff
+    try:
+        validate_handoff(package)  # The original must actually be valid.
+        changed = deepcopy(package)
+        changed['versionEnvelope']['version']['graph']['nodes'][0]['description'] = 'tampered fixture'
+        validate_handoff(changed)
+    except ArchitectureError as exc:
+        # Invalid ORIGINAL data is not evidence of detecting our tamper.
+        if 'changed' not in locals():
+            return 'FAIL', {'code': exc.code, 'originalValid': False}
+        return ('PASS' if exc.code == 'EVIDENCE_MISMATCH' else 'FAIL'), {
+            'code': exc.code, 'originalValid': True, 'scope': 'native packet integrity only; second-copy Git import NOT_RUN'}
+    except (KeyError, IndexError, TypeError):
+        return 'FAIL', {'originalValid': False, 'code': 'INVALID_HANDOFF_SHAPE'}
+    return 'FAIL', {'code': 'TAMPER_NOT_DETECTED'}
+
+
 class Acceptance:
-    def __init__(self, base_url: str, repo: str, arch_repo: str | None = None):
+    def __init__(self, base_url: str, repo: str, arch_repo: str | None = None, *,
+                 client=None, repo_key=None, self_repo_key=None, allow_fixture_writes=False):
         self.base_url = base_url.rstrip("/")
         self.repo = repo
         self.arch_repo = arch_repo
@@ -218,6 +259,10 @@ class Acceptance:
         # (http, body) of the tamper comparison captured while the workspace
         # still matched the published version (recorded as T21); None = not run
         self.tamper_result = None
+        self.client = client or AcceptanceHTTP(self.base_url)
+        self.repo_key = repo_key
+        self.self_repo_key = self_repo_key
+        self.allow_fixture_writes = allow_fixture_writes
 
     # ---------- helpers ----------
     def record(self, item: str, title: str, status: str, evidence) -> None:
@@ -225,31 +270,38 @@ class Acceptance:
                              "evidence": evidence if isinstance(evidence, str)
                              else json.dumps(evidence, ensure_ascii=False)[:1500]})
 
-    def establish_session(self) -> tuple[str | None, str | None]:
-        """Real HTTP session bootstrap: cookie + CSRF token from the server."""
-        import urllib.parse
+    def establish_session(self):
+        """Local write session; HTTPS uses the authenticated account session."""
+        if self.client.public.scheme == 'https':
+            if not self.client.auth:
+                raise ValueError('HTTPS acceptance requires login')
+            return
+        from urllib.parse import quote
         from http.cookies import SimpleCookie
         from .web_session import SESSION_COOKIE
-        url = f"{self.base_url}/api/archloop/session?operator={urllib.parse.quote(self.operator)}"
-        request = urllib.request.Request(url, method="GET")
-        request.add_header("Origin", self.origin)
-        with urllib.request.urlopen(request, timeout=30) as response:
-            body = json.loads(response.read().decode("utf-8"))
-            raw = response.headers.get("Set-Cookie") or ""
-        jar = SimpleCookie()
-        jar.load(raw)
-        cookie = f"{SESSION_COOKIE}={jar[SESSION_COOKIE].value}" if SESSION_COOKIE in jar else None
-        self._session = (cookie, body.get("csrfToken"))
-        return self._session
+        status, headers, body = self.client.request(
+            'GET', '/api/archloop/session?operator=' + quote(self.operator))
+        jar = SimpleCookie(); jar.load(headers.get('Set-Cookie', ''))
+        if status != 200 or SESSION_COOKIE not in jar or not (body or {}).get('csrfToken'):
+            raise ValueError('Local acceptance session unavailable')
+        self.client.auth = {'Cookie': SESSION_COOKIE + '=' + jar[SESSION_COOKIE].value,
+                            'X-CSRF-Token': body['csrfToken']}
 
     def call(self, method: str, path: str, payload=None, origin=True, session=True):
-        return _request(self.base_url, method, path, payload,
-                        self.origin if origin else None,
-                        session=self._session if session else None)
+        if isinstance(payload, dict) and 'repoPath' in payload and self.client.public.scheme == 'https':
+            alias = self.self_repo_key if _same_path(payload['repoPath'], str(REPO_ROOT)) else self.repo_key
+            if not alias or alias not in {entry.get('key') for entry in self.client.repositories}:
+                raise ValueError('验收仓库必须在已登录服务端清单中明确登记')
+            payload = {**payload, 'repoPath': alias}
+        status, _, body = self.client.request(method, path, payload, origin=origin, authenticated=session)
+        return status, body
 
     def git(self, *args):
-        return subprocess.run(["git", "-C", self.repo, *args], capture_output=True,
-                              text=True, encoding="utf-8", errors="replace").stdout.strip()
+        result = subprocess.run(["git", "-C", self.repo, *args], capture_output=True,
+                              text=True, encoding="utf-8", errors="replace", timeout=60, env=_git_env())
+        if result.returncode:
+            raise RuntimeError('验收 Git 命令未成功（不回显本机路径或环境）')
+        return result.stdout.strip()
 
     def require_workspace(self) -> str:
         if not self.workspace_id:
@@ -273,6 +325,10 @@ class Acceptance:
 
     # ---------- the 28 items ----------
     def run(self) -> dict:
+        if not self.allow_fixture_writes or _same_path(self.repo, str(REPO_ROOT)):
+            raise ValueError('验收会改动代码/发布样例图，只能显式指定可丢弃 fixture')
+        if self.git('status', '--porcelain'):
+            raise ValueError('验收 fixture 必须没有已有修改')
         # public write seam: establish the server-side session first, then
         # prove that a write without it is refused (D-A-02)
         self.establish_session()
@@ -280,8 +336,8 @@ class Acceptance:
                                     {"context": "planning", "title": "无会话写入"},
                                     session=False)
         self.record("T00", "无服务端会话/防伪令牌的写入口被拒绝",
-                    "PASS" if status == 403 and (refused or {}).get("error", {}).get("code")
-                    in ("FORBIDDEN_SESSION", "FORBIDDEN_CSRF") else "FAIL",
+                    "PASS" if status in (401, 403) and (refused or {}).get("error", {}).get("code")
+                    in ("FORBIDDEN_SESSION", "FORBIDDEN_CSRF", "LOGIN_REQUIRED", "AUTH_REQUIRED") else "FAIL",
                     {"http": status, "code": (refused or {}).get("error", {}).get("code")})
         ws = self.require_workspace()
         planning = self.require_planning()
@@ -427,28 +483,22 @@ class Acceptance:
 
         if version.get("mapRevision"):
             status, package_now = self.call("GET", f"/api/archloop/workspaces/{ws}/handover")
-            tampered_now = json.loads(json.dumps(package_now or {}))
-            if tampered_now.get("graph"):
-                tampered_now["graph"]["nodes"][0]["summary"] = "被改过的交接包"
-            status, bad_now = self.call("POST", "/api/archloop/import-handover",
-                                        {"package": tampered_now, "repoPath": self.repo,
-                                         "workspaceId": ws,
-                                         # the version service CAS-guards the reader:
-                                         # it must name the revision it believes is
-                                         # current, which right after publish is the
-                                         # published version itself
-                                         "expectedMapRevision": package_now.get("mapRevision")})
-            self.tamper_result = (status, bad_now)
+            if status == 200 and (package_now or {}).get('schemaVersion') == 'architecture_handoff_v1':
+                self.native_tamper_result = native_handover_tamper_verdict(package_now)
+            elif status == 200 and (package_now or {}).get('graph', {}).get('nodes'):
+                tampered_now = json.loads(json.dumps(package_now))
+                tampered_now['graph']['nodes'][0]['summary'] = '被改过的交接包'
+                status, bad_now = self.call('POST', '/api/archloop/import-handover', {
+                    'package': tampered_now, 'repoPath': self.repo, 'workspaceId': ws,
+                    'expectedMapRevision': package_now.get('mapRevision')})
+                self.tamper_result = (status, bad_now)
 
         # T13 evidence jump to the fixed revision
-        status, evidence = self.call("GET", f"/api/repo-explorer/open", {
-            "repoPath": self.repo, "revision": identity["codeRevision"]}, origin=True) \
-            if False else (None, None)
         evidence_paths = [e["path"] for node in envelope["draft"]["graph"]["nodes"] for e in node.get("evidence", [])
                           if e.get("kind") == "code_fact"]
         if evidence_paths:
-            status, blob = _request(self.base_url, "POST", "/api/repo-explorer/open",
-                                    {"repoPath": self.repo, "revision": identity["codeRevision"]})
+            status, blob = self.call('POST', '/api/repo-explorer/open',
+                                     {'repoPath': self.repo, 'revision': identity['codeRevision']})
             self.record("T13", "证据按完整 SHA 定位（固定提交的文件证据）",
                         "PASS" if status == 200 else "PARTIAL",
                         {"http": status, "evidencePaths": evidence_paths[:3],
@@ -463,7 +513,7 @@ class Acceptance:
         # recheck/rebind path is exercised (not a no-op second run)
         with open(changed, "a", encoding="utf-8") as handle:
             handle.write(f"# acceptance run {time.time():.6f}\n")
-        self.git("add", ".")
+        self.git("add", "--", "acceptance_change.py")
         self.git("-c", "user.email=a@local", "-c", "user.name=a", "commit", "-m", "acceptance change")
         after = self.git("rev-parse", "HEAD")
         committed = after != before
@@ -515,80 +565,85 @@ class Acceptance:
         self.record("T17", "修正认知产生新草稿（编辑与纠正均写入草稿）", "PASS",
                     {"draftRevision": record["draft"]["draftRevision"], "note": "见 T03/T04 的实际写入"})
 
-        # T18 fix-implementation task. The fix is delivered as a real scoped
-        # commit on an independent branch (D rejects main/master submissions,
-        # out-of-scope files and non-inherited baselines).
-        fix_branch = "acceptance/fix-" + time.strftime("%H%M%S")
-        fix_scope = ["acceptance_change.py"]
-        self.git("checkout", "-b", fix_branch)
-        fix_target = Path(self.repo) / "acceptance_change.py"
-        with open(fix_target, "a", encoding="utf-8") as handle:
-            handle.write("# acceptance fix %s\n" % time.time())
-        self.git("add", "acceptance_change.py")
-        self.git("-c", "user.email=a@local", "-c", "user.name=a", "commit", "-m", "acceptance scoped fix")
-        fix_commit = self.git("rev-parse", "HEAD")
-        status, task = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks", {
-            "deviation": "验收：期望步骤在实现中被绕过", "acceptance": "重新执行验收用例并通过",
-            "expectedProcessRef": f"{node_id}/s1", "evidence": evidence_paths[:1],
-            "scope": fix_scope, "actor": "验收操作者"})
-        task_ok = status == 200 and (task.get("id") or task.get("taskId")) and task.get("status") == "queued"
-        task_id = (task or {}).get("id") or (task or {}).get("taskId")
-        self.record("T18", "修正实现创建可交付的持久化任务",
-                    "PASS" if task_ok else "FAIL",
-                    {"taskId": task_id, "status": (task or {}).get("status"),
-                     "targetCodeRevision": (task or {}).get("codeRevision"),
-                     "scope": (task or {}).get("scope"), "error": (task or {}).get("error")})
-        if task_ok:
-            status, listing = self.call("GET", f"/api/archloop/workspaces/{ws}/fix-tasks")
-            self.record("T18b", "任务可列出并带验收条件",
-                        "PASS" if listing.get("tasks") and listing["tasks"][0].get("acceptance") else "FAIL",
-                        {"count": len(listing.get("tasks", []))})
-            task_revision = task.get("revision")
-            task_map = task.get("mapRevision")
-            status, received = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
-                                         {"status": "received", "note": "验收实施者接手任务",
-                                          "expectedRevision": task_revision, "expectedMapRevision": task_map})
-            self.record("T18c", "实施者接手任务（D 权威状态机）",
-                        "PASS" if status == 200 and received.get("status") == "received" else "FAIL",
-                        {"status": (received or {}).get("status"), "error": (received or {}).get("error")})
-            task_revision = received.get("revision")
-            status, started = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
-                                        {"status": "in_progress", "note": "在独立分支实施限定范围改动",
-                                         "expectedRevision": task_revision, "expectedMapRevision": task_map})
-            self.record("T18d", "实施开始（in_progress）",
-                        "PASS" if status == 200 and started.get("status") == "in_progress" else "FAIL",
-                        {"status": (started or {}).get("status"), "error": (started or {}).get("error")})
-            task_revision = started.get("revision")
-            status, fixcommit = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
-                                          {"status": "submitted",
-                                           "commitSha": fix_commit, "summary": "验收修复提交",
-                                           "expectedRevision": task_revision, "expectedMapRevision": task_map})
-            self.record("T19a", "实施提交回挂后进入 verification_pending（不自动关闭）",
-                        "PASS" if status == 200 and fixcommit.get("status") == "verification_pending" else "FAIL",
-                        {"status": (fixcommit or {}).get("status"),
-                         "error": (fixcommit or {}).get("error"), "commit": fix_commit})
-            task_revision = fixcommit.get("revision")
-            status, verified = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
-                                         {"status": "verified",
-                                          "reason": "本轮实测通过，人确认关闭偏差",
-                                          "expectedRevision": task_revision, "expectedMapRevision": task_map})
-            verification = (verified or {}).get("verification") or {}
-            self.record("T19b", "人确认本轮实测核查结论后关闭偏差",
-                        "PASS" if status == 200 and verified.get("status") == "verified" else "FAIL",
-                        {"status": (verified or {}).get("status"),
-                         "exitCode": verification.get("exitCode"),
-                         "outputDigest": verification.get("outputDigest"),
-                         "error": (verified or {}).get("error")})
-        self.git("checkout", "-")
+        if self.client.public.scheme == 'https':
+            self.check_tasks(ws)
+        else:
+            # T18 fix-implementation task. The fix is delivered as a real scoped
+            # commit on an independent branch (D rejects main/master submissions,
+            # out-of-scope files and non-inherited baselines).
+            fix_branch = "acceptance/fix-" + time.strftime("%H%M%S")
+            fix_scope = ["acceptance_change.py"]
+            self.git("checkout", "-b", fix_branch)
+            fix_target = Path(self.repo) / "acceptance_change.py"
+            with open(fix_target, "a", encoding="utf-8") as handle:
+                handle.write("# acceptance fix %s\n" % time.time())
+            self.git("add", "acceptance_change.py")
+            self.git("-c", "user.email=a@local", "-c", "user.name=a", "commit", "-m", "acceptance scoped fix")
+            fix_commit = self.git("rev-parse", "HEAD")
+            status, task = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks", {
+                "deviation": "验收：期望步骤在实现中被绕过", "acceptance": "重新执行验收用例并通过",
+                "expectedProcessRef": f"{node_id}/s1", "evidence": evidence_paths[:1],
+                "scope": fix_scope, "actor": "验收操作者"})
+            task_ok = status == 200 and (task.get("id") or task.get("taskId")) and task.get("status") == "queued"
+            task_id = (task or {}).get("id") or (task or {}).get("taskId")
+            self.record("T18", "修正实现创建可交付的持久化任务",
+                        "PASS" if task_ok else "FAIL",
+                        {"taskId": task_id, "status": (task or {}).get("status"),
+                         "targetCodeRevision": (task or {}).get("codeRevision"),
+                         "scope": (task or {}).get("scope"), "error": (task or {}).get("error")})
+            if task_ok:
+                status, listing = self.call("GET", f"/api/archloop/workspaces/{ws}/fix-tasks")
+                self.record("T18b", "任务可列出并带验收条件",
+                            "PASS" if listing.get("tasks") and listing["tasks"][0].get("acceptance") else "FAIL",
+                            {"count": len(listing.get("tasks", []))})
+                task_revision = task.get("revision")
+                task_map = task.get("mapRevision")
+                status, received = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                             {"status": "received", "note": "验收实施者接手任务",
+                                              "expectedRevision": task_revision, "expectedMapRevision": task_map})
+                self.record("T18c", "实施者接手任务（D 权威状态机）",
+                            "PASS" if status == 200 and received.get("status") == "received" else "FAIL",
+                            {"status": (received or {}).get("status"), "error": (received or {}).get("error")})
+                task_revision = received.get("revision")
+                status, started = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                            {"status": "in_progress", "note": "在独立分支实施限定范围改动",
+                                             "expectedRevision": task_revision, "expectedMapRevision": task_map})
+                self.record("T18d", "实施开始（in_progress）",
+                            "PASS" if status == 200 and started.get("status") == "in_progress" else "FAIL",
+                            {"status": (started or {}).get("status"), "error": (started or {}).get("error")})
+                task_revision = started.get("revision")
+                status, fixcommit = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                              {"status": "submitted",
+                                               "commitSha": fix_commit, "summary": "验收修复提交",
+                                               "expectedRevision": task_revision, "expectedMapRevision": task_map})
+                self.record("T19a", "实施提交回挂后进入 verification_pending（不自动关闭）",
+                            "PASS" if status == 200 and fixcommit.get("status") == "verification_pending" else "FAIL",
+                            {"status": (fixcommit or {}).get("status"),
+                             "error": (fixcommit or {}).get("error"), "commit": fix_commit})
+                task_revision = fixcommit.get("revision")
+                status, verified = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
+                                             {"status": "verified",
+                                              "reason": "本轮实测通过，人确认关闭偏差",
+                                              "expectedRevision": task_revision, "expectedMapRevision": task_map})
+                verification = (verified or {}).get("verification") or {}
+                self.record("T19b", "人确认本轮实测核查结论后关闭偏差",
+                            "PASS" if status == 200 and verified.get("status") == "verified" else "FAIL",
+                            {"status": (verified or {}).get("status"),
+                             "exitCode": verification.get("exitCode"),
+                             "outputDigest": verification.get("outputDigest"),
+                             "error": (verified or {}).get("error")})
+            self.git("checkout", "-")
 
         # T20/T21 same-version handover to a second copy is verified by the test suite;
         # here we export the package and confirm the identities.
         status, handover = self.call("GET", f"/api/archloop/workspaces/{ws}/handover")
-        self.record("T20", "同版交接包导出（图版本+架构来源+核查范围）",
-                    "PASS" if status == 200 and handover.get("mapSourceRevision") else "FAIL",
-                    {"mapId": (handover or {}).get("mapId"), "mapRevision": (handover or {}).get("mapRevision"),
-                     "mapSourceRevision": (handover or {}).get("mapSourceRevision"),
-                     "error": (handover or {}).get("error")})
+        packet = handover or {}
+        native = packet.get('schemaVersion') == 'architecture_handoff_v1'
+        handover_version = packet.get('versionEnvelope', {}).get('version', {}) if native else packet
+        self.record('T20', '同版交接包导出（非第二副本验收）',
+                    'PASS' if status == 200 and handover_version.get('mapRevision') else 'FAIL',
+                    {'schemaVersion': packet.get('schemaVersion'), 'mapRevision': handover_version.get('mapRevision'),
+                     'secondCopyImport': 'NOT_RUN', 'error': packet.get('error')})
         tampered = json.loads(json.dumps(handover or {}))
         if tampered.get("graph"):
             tampered["graph"]["nodes"][0]["summary"] = "被改过的交接包"
@@ -597,65 +652,33 @@ class Acceptance:
         # service would refuse the import for a reason that proves nothing about
         # content tampering. A refusal for an unrelated reason is NOT evidence
         # of tamper detection and must not pass (BATCH-2 ACCEPTANCE-01).
-        if self.tamper_result is not None:
+        if getattr(self, 'native_tamper_result', None) is not None:
+            t21_status, t21_evidence = self.native_tamper_result
+        elif self.tamper_result is not None:
             t21_status, t21_evidence = handover_tamper_verdict(*self.tamper_result)
             t21_evidence["at"] = "publish 后立即（工作区仍与该版本一致时）"
         else:
             t21_status, t21_evidence = "NOT_RUN", "本次运行没有产生可核对的已发布版本"
-        self.record("T21", "被改过的交接包被内容指纹比对识别（以 Git 版本为准）",
+        self.record("T21", "被改过的交接包被内容指纹比对识别（范围见证据）",
                     t21_status, t21_evidence)
 
         # T22 AI not configured degrades honestly
         self.record("T22", "AI 未配置时诚实降级（NOT_RUN，不用样例冒充）",
-                    "PASS", {"generation": (self.call("GET", "/api/archloop")[1] or {}).get("generation")})
+                    'PASS' if t01_status == 'NOT_RUN' else 'NOT_RUN',
+                    {'generationResult': t01_status, 'note': '已配置时不能声称执行过未配置场景'})
 
         # T23 real AI candidate verification
         self.record("T23", "真实 AI 候选与证据验证", "NOT_RUN",
-                    "本机没有 OPENAI_API_KEY / PROJECTMIND_AI_MODEL；T01 的同一路径会在配置后原样运行")
+                    {'generationResult': t01_status, 'generationEvidence': t01_evidence,
+                     'reason': '生成成功与候选语义/证据人工验收分开；本程序不代替真实人审'})
 
-        # T24 ProjectMind self graph coverage: bind a workspace to THIS
-        # repository (the code under audit) and require real coverage of its
-        # tracked files at a pinned commit — the demo workspace used elsewhere
-        # in this run is not ProjectMind itself (BATCH-2 ACCEPTANCE-01)
-        status, self_ws = self.call("POST", "/api/archloop/workspaces", {
-            "context": "existing_project", "title": "自身覆盖（T24）",
-            "repoPath": str(REPO_ROOT),
-            "description": "ProjectMind 自身职责候选覆盖：读取本仓库固定提交的代码事实。"})
-        self_id = (self_ws or {}).get("workspace", {}).get("workspaceId")
-        if status != 200 or not self_id:
-            self.record("T24", "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）", "FAIL",
-                        {"http": status, "error": (self_ws or {}).get("error"),
-                         "repo": str(REPO_ROOT)})
-        else:
-            self_identity = (self_ws or {}).get("identity") or {}
-            status, rule = self.call("POST", f"/api/archloop/workspaces/{self_id}/generate",
-                                     {"mode": "rule_based"})
-            # The expected revision is read from the audited checkout itself
-            # (REPO_ROOT, the code this runner lives in) — never echoed back
-            # from the service response. Comparing the response against itself
-            # would accept any existing commit; the independent HEAD proves the
-            # version actually under audit (BATCH-4 ACCEPTANCE-01).
-            local_head = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
-                                        capture_output=True, text=True,
-                                        encoding="utf-8").stdout.strip()
-            exists = _git_object_exists(str(REPO_ROOT), local_head)
-            tracked_local, python_local = (None, None)
-            if exists:
-                tracked_local, python_local = _git_tracked_counts(str(REPO_ROOT), local_head)
-            t24_status, t24_evidence = self_coverage_verdict(
-                status, rule, str(REPO_ROOT), identity=self_identity, revision_exists=exists,
-                expected_revision=local_head, expected_tracked=tracked_local,
-                expected_python=python_local)
-            t24_evidence["headSource"] = "独立读取：验收器对被测 checkout 执行 git rev-parse HEAD"
-            t24_evidence["identityMatchesIndependentHead"] = (
-                self_identity.get("codeRevision") == local_head)
-            self.record("T24", "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）",
-                        t24_status, t24_evidence)
+        t24_status, t24_evidence = self.check_self_coverage()
+        self.record('T24', 'ProjectMind 自身职责候选覆盖（固定提交事实）', t24_status, t24_evidence)
 
         # T25 legacy explorer / read-only proposals / CA untouched
         status, legacy = self.call("GET", "/api/archloop/legacy-map")
         self.record("T25", "旧 Explorer 与只读提案路径回归（旧接口仍可用）",
-                    "PASS" if status in (200, 404) else "FAIL",
+                    'PASS' if status == 200 else ('NOT_RUN' if status == 404 else 'FAIL'),
                     {"legacyMapHttp": status, "note": "完整回归见 tests 全量套件"})
         status, undescribed = self.call("POST", f"/api/archloop/workspaces/{ws}/correction-preview", {})
         self.record("T25b", "无效纠正请求被机器码拒绝（不是 500）",
@@ -667,6 +690,107 @@ class Acceptance:
                     "PASS" if status in (403, 409) else "FAIL",
                     {"http": status, "code": (again or {}).get("error", {}).get("code")})
 
+        return self.check_planning(planning)
+
+    def check_tasks(self, ws):
+        path = f'/api/archloop/workspaces/{ws}'
+        status, listing = self.call('GET', path + '/fix-tasks')
+        if status != 200 or (listing or {}).get('backend', {}).get('kind') != 'd_governed_tasks':
+            self.record('T18', '治理任务创建', 'NOT_RUN', {'reason': '本次服务没有真实 D governance 接口'})
+            self.record('T19a', '治理任务提交回挂', 'NOT_RUN', {'reason': '依赖 T18'})
+            self.record('T19b', '真实验证与人工确认', 'NOT_RUN', {'reason': '本程序不伪造真实验证/人工确认'})
+            return
+        # T14 changed the binding. Publish that NEW fixture version before
+        # creating a task; an old publication must not bypass D's version CAS.
+        self.call('POST', path + '/sync', {})
+        status, preview = self.call('POST', path + '/review-preview',
+                                    {'reason': '可丢弃验收样例：复核过程与新绑定',
+                                     'coverage': self.fixture_coverage(ws)})
+        if status != 200:
+            self.record('T18', '治理任务创建', 'FAIL', {'phase': 'fixture_review', 'http': status})
+            return
+        status, _ = self.call('POST', path + '/review-confirm',
+                              {'previewDigest': preview['previewDigest'], 'decision': 'accept'})
+        if status != 200:
+            self.record('T18', '治理任务创建', 'FAIL', {'phase': 'fixture_confirm', 'http': status})
+            return
+        status, _ = self.call('POST', path + '/publish', {})
+        if status != 200:
+            self.record('T18', '治理任务创建', 'FAIL', {'phase': 'fixture_publish', 'http': status})
+            return
+        status, hints = self.call('GET', path + '/fix-task-hints')
+        if status != 200 or not hints.get('canCreate'):
+            self.record('T18', '治理任务创建', 'NOT_RUN', {'http': status, 'reason': (hints or {}).get('disabledReason')})
+            return
+        process = hints['processes'][0]
+        status, task = self.call('POST', path + '/fix-tasks', {
+            'expectedMapRevision': hints['mapRevision'], 'expectedDraftRevision': hints['draftRevision'],
+            'expectedProcessRef': {'processId': process['id'], 'stepIds': [process['steps'][0]['id']]},
+            'deviation': 'Synthetic fixture observation; not a real team deviation',
+            'scope': ['acceptance_change.py'], 'acceptance': 'Real verifier and human review required',
+            'evidence': [{'kind': 'test_observation', 'detail': 'Synthetic fixture only; real verifier NOT_RUN',
+                          'codeRepoId': hints['codeRepoId'], 'codeRevision': hints['codeRevision']}]})
+        ok = status == 200 and (task or {}).get('status') == 'queued'
+        self.record('T18', '真实治理接口持久化样例任务', 'PASS' if ok else 'FAIL',
+                    {'http': status, 'status': (task or {}).get('status'), 'error': (task or {}).get('error')})
+        if not ok:
+            return
+        task_path = path + '/fix-tasks/' + task['id'] + '/governance'
+        for next_status in ('received', 'in_progress'):
+            status, task = self.call('POST', task_path, {
+                'action': 'transition', 'status': next_status, 'description': 'Synthetic fixture transition',
+                'expectedRevision': task['revision'], 'expectedMapRevision': task['mapRevision']})
+            if status != 200:
+                self.record('T19a', '治理任务回挂', 'FAIL', {'phase': next_status, 'http': status})
+                return
+        self.git('checkout', '-b', 'acceptance-fixture-' + str(time.time_ns()))
+        with (Path(self.repo) / 'acceptance_change.py').open('a', encoding='utf-8') as handle:
+            handle.write('# synthetic task delivery\n')
+        self.git('add', '--', 'acceptance_change.py')
+        self.git('-c', 'user.email=fixture@example.invalid', '-c', 'user.name=fixture',
+                 'commit', '-m', 'Synthetic task delivery')
+        status, submitted = self.call('POST', task_path, {
+            'action': 'submit', 'revision': self.git('rev-parse', 'HEAD'), 'evidence': 'Synthetic commit only',
+            'expectedRevision': task['revision'], 'expectedMapRevision': task['mapRevision']})
+        self.record('T19a', '真实提交回挂后待验证（不关闭偏差）',
+                    'PASS' if status == 200 and (submitted or {}).get('status') == 'verification_pending' else 'FAIL',
+                    {'http': status, 'status': (submitted or {}).get('status'), 'error': (submitted or {}).get('error')})
+        status, preview = self.call('POST', task_path, {'action': 'verification_preview'})
+        code = (preview or {}).get('error', {}).get('code')
+        expected = status == 200 or code == 'BACKEND_UNAVAILABLE'
+        self.record('T19b', '真实验证与人工确认', 'NOT_RUN' if expected else 'FAIL', {
+            'previewHttp': status, 'verificationConfigured': (submitted or {}).get('backend', {}).get('verificationConfigured'),
+            'reason': '预览/测试提交不等于真实人审；不调用 confirm_verification', 'error': (preview or {}).get('error')})
+
+    def fixture_coverage(self, ws):
+        from .backend_b import a_to_b_graph, coverage_for
+        status, envelope = self.call('GET', f'/api/archloop/workspaces/{ws}')
+        if status != 200:
+            raise ValueError('无法读取样例复核覆盖')
+        identity = envelope['identity']
+        graph = a_to_b_graph(envelope['draft']['graph'], code_repo_id=identity['codeRepoId'],
+                             code_revision=identity['codeRevision'])['graph']
+        return coverage_for({'identity': identity}, graph, verify_code=False)
+
+    def check_self_coverage(self):
+        if self.client.auth and not self.self_repo_key:
+            return 'NOT_RUN', {'reason': 'ProjectMind 被测代码未显式登记 self-repo-key'}
+        status, self_ws = self.call('POST', '/api/archloop/workspaces', {
+            "context": "existing_project", "title": "自身覆盖（T24）",
+            "repoPath": str(REPO_ROOT),
+            "description": "ProjectMind 自身职责候选覆盖：读取本仓库固定提交的代码事实。"})
+        self_id = (self_ws or {}).get("workspace", {}).get("workspaceId")
+        if status != 200 or not self_id:
+            return 'FAIL', {'http': status, 'error': (self_ws or {}).get('error')}
+        else:
+            self_identity = (self_ws or {}).get("identity") or {}
+            status, rule = self.call("POST", f"/api/archloop/workspaces/{self_id}/generate",
+                                     {"mode": "rule_based"})
+            t24_status, t24_evidence = independent_self_coverage_verdict(
+                status, rule, str(REPO_ROOT), self_identity)
+            return t24_status, t24_evidence
+
+    def check_planning(self, planning):
         # T27 planning design graph (no code) end to end
         status, plan_gen = self.call("POST", f"/api/archloop/workspaces/{planning}/generate",
                                      {"mode": "rule_based"})
@@ -674,6 +798,7 @@ class Acceptance:
                     "PASS" if status == 200 else "FAIL",
                     {"nodes": len((plan_gen or {}).get("graph", {}).get("nodes", [])),
                      "status": (plan_gen or {}).get("status")})
+        plan_published = None
         if status == 200:
             status, plan_applied = self.call("POST", f"/api/archloop/workspaces/{planning}/apply-candidate",
                                              {"candidateId": plan_gen["candidateId"]})
@@ -727,8 +852,32 @@ def main() -> int:
     parser.add_argument("--repo", required=True, help="验收用固定代码仓库路径")
     parser.add_argument("--out", required=True)
     parser.add_argument("--arch-repo", default=None)
+    parser.add_argument('--username', help='HTTPS 测试账号；密码用交互输入，不进入参数/报告')
+    parser.add_argument('--ca', type=Path)
+    parser.add_argument('--connect-ip', help='显式本地 TLS 连接；仍校验 origin 证书/hostname')
+    parser.add_argument('--repo-key', help='服务端 registered: 仓库 key')
+    parser.add_argument('--self-repo-key', help='服务端登记的本次 ProjectMind 代码 key（可选）')
+    parser.add_argument('--allow-fixture-writes', action='store_true', help='仅可丢弃样例仓库：会提交样例代码并发布样例架构')
     args = parser.parse_args()
-    report = Acceptance(args.base_url, args.repo, args.arch_repo).run()
+    client = AcceptanceHTTP(args.base_url, ca=args.ca, connect_ip=args.connect_ip)
+    runner = Acceptance(args.base_url, args.repo, args.arch_repo, client=client,
+                        repo_key=args.repo_key, self_repo_key=args.self_repo_key,
+                        allow_fixture_writes=args.allow_fixture_writes)
+    try:
+        if args.username:
+            client.login(args.username, getpass.getpass('验收账号密码（不记录）: '))
+        if args.base_url.startswith('https:') and not client.auth:
+            raise ValueError('生产 HTTPS 验收需要真实登录')
+        report = runner.run()
+    except Exception as exc:
+        runner.record('RUNNER', '验收中止；未执行项不能算 PASS', 'FAIL', {'exception': type(exc).__name__})
+        report = runner._finish()
+    finally:
+        try:
+            client.close()
+        except Exception as exc:
+            runner.record('LOGOUT', '验收会话未能注销', 'FAIL', {'exception': type(exc).__name__})
+            report = runner._finish()
     target = Path(args.out)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -742,7 +891,8 @@ def main() -> int:
                   "真实 AI（T01/T23）、真实浏览器多步故事与第二副本导入分别单独登记。"]
     target.with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")
     print(json.dumps(report["summary"], ensure_ascii=False))
-    return 0
+    return 1 if report['summary'].get('FAIL') else (2 if any(
+        key != 'PASS' and count for key, count in report['summary'].items()) else 0)
 
 
 if __name__ == "__main__":

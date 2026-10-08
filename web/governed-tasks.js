@@ -148,7 +148,10 @@
       function chooseProcess() { steps.replaceChildren(); const chosen = hints.processes.find(p => p.id === process.value);
         for (const [index, step] of chosen.steps.entries()) { const option = element('option', step.title || step.id); option.value = step.id; option.selected = index === 0; steps.append(option); } }
       process.onchange = chooseProcess; chooseProcess();
-      form.append(element('p', `操作者：${window.projectmindSession.actor}（登录账户）`), process, steps);
+      form.append(element('p', `操作者：${window.projectmindSession.actor}（登录账户）`));
+      for (const [label, input] of [['已确认的期望过程', process], ['本任务涉及的步骤', steps]]) {
+        const wrapper = element('label', label); wrapper.append(input); form.append(wrapper);
+      }
       const kind = element('select'); kind.name = 'kind'; kind.required = true;
       kind.setAttribute('aria-label', '实际观察来源');
       const empty = element('option', '选择实际观察来源'); empty.value = ''; empty.disabled = true; empty.selected = true;
@@ -156,7 +159,7 @@
       for (const [value, label] of [['test_observation', '测试观察（参与者记录）'], ['trace_observation', '运行跟踪观察（参与者记录）']]) {
         const option = element('option', label); option.value = value; kind.append(option);
       }
-      form.append(kind);
+      const kindLabel = element('label', '实际观察来源'); kindLabel.append(kind); form.append(kindLabel);
       for (const [name, label] of [['deviation', '实际观察与期望的差异'], ['scope', '允许改动的仓库相对路径，每行一个'],
                                   ['observation', '观察证据与复现说明'], ['acceptance', '验收要求']]) {
         const input = element('textarea'); input.name = name; input.rows = 3; input.required = true;

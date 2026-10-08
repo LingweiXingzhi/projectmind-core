@@ -285,3 +285,14 @@ body{font-size:13px;min-width:360px}button,input,textarea,select{font:inherit}bu
 #view-arch:not(.has-workspace) .content-grid{grid-template-columns:1fr}#view-arch:not(.has-workspace) .details{display:none}#view-arch:not(.has-workspace) #arch-entry-card{max-width:850px}#view-arch:not(.has-workspace) #arch-history-card{max-width:850px}#view-arch:not(.has-workspace) .intro-copy{max-width:850px}.statusbar #status-branch{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.details{position:relative}.compare-arrow{color:#86a3d1}.review-output{padding-bottom:25px}
 .ui-icon{display:block;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}.icon-button .ui-icon{width:17px;height:17px}.nav-item .ui-icon{width:16px;height:16px}.node-summary{-webkit-line-clamp:2!important}#arch-map-stage .node-title{-webkit-line-clamp:1}.map-node .node-summary{-webkit-line-clamp:2!important}.sidebar .brand-mark{font-size:16px}
 .shared-records{padding:20px;overflow:auto;flex:1;min-height:0}.shared-records form{display:grid;gap:12px;max-width:820px}.shared-records label{display:grid;gap:6px}.shared-records textarea{min-height:160px;resize:vertical}.shared-records article{padding:14px 0;border-bottom:1px solid var(--border)}.shared-records pre{white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto}
+
+/* Governed task controls retain their contracts in the integrated workbench. */
+#governed-task-panel form{display:grid;gap:12px;max-width:820px}
+#governed-task-panel form label{display:flex;flex-direction:column;gap:6px;min-width:0;color:#657187;font-size:12px}
+#governed-task-panel form select,#governed-task-panel form textarea{width:100%;box-sizing:border-box}
+#governed-task-panel form textarea{resize:vertical;min-height:90px}
+#governed-task-panel form select[multiple]{min-height:90px}
+#governed-task-panel form button[type=submit]{justify-self:start}
+@media(min-width:701px){#governed-task-panel form{grid-template-columns:repeat(2,minmax(0,1fr))}#governed-task-panel form>p,#governed-task-panel form>button{grid-column:1/-1}}
+@media(max-width:700px){.search-trigger{flex:0 0 30px;padding:6px;justify-content:center;white-space:nowrap}.search-trigger .search-label,.search-trigger kbd{display:none}.top-actions{flex-shrink:0}}
+@media(max-width:700px){.authenticated-controls{min-width:0;flex-wrap:nowrap!important;gap:6px!important}.authenticated-controls span{max-width:120px!important}.authenticated-controls button{white-space:nowrap}.top-actions #copy-link{display:none}}

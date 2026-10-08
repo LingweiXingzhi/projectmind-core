@@ -37,7 +37,7 @@ sys.path.insert(0, str(ROOT))
 from extensions.map_proposal import engine, facts_adapter, model  # noqa: E402
 
 REAL_B_ROOT = Path(os.environ.get(
-    "PROJECTMIND_REAL_B_ROOT", r"G:\jiagou\projectmind-integration-bd"))
+    "PROJECTMIND_REAL_B_ROOT", str(ROOT)))
 REAL_B_FACTS = REAL_B_ROOT / "extensions" / "code_facts" / "facts.py"
 
 A_CLASS = "class A:\n    pass\n"
@@ -277,7 +277,10 @@ class RealBIntegrationTests(unittest.TestCase):
         install_real_b(self)
         repo = ROOT
         target = git(repo, "rev-parse", "HEAD")
-        base = git(repo, "rev-parse", "HEAD~5")
+        depth = min(5, int(git(repo, "rev-list", "--first-parent", "--count", "HEAD")) - 1)
+        if depth < 1:
+            self.skipTest("no parent commit available; upstream history is not verified")
+        base = git(repo, "rev-parse", f"HEAD~{depth}")
         raw = subprocess.run(
             ["git", "-C", str(repo), "diff", "--name-status", "-M", base, target],
             check=True, capture_output=True, text=True).stdout

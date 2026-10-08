@@ -45,11 +45,11 @@ release_dir=/opt/projectmind/releases/$release_sha
 python3 -m venv "$release_dir/venv"
 "$release_dir/venv/bin/python" -m pip install -r "$release_dir/app/requirements-deploy.txt"
 umask 077
-chown -R root:root "$release_dir"
-chmod 0755 /opt/projectmind /opt/projectmind/releases
-chmod -R go-w "$release_dir"
-# Prove the service account can really read and execute the release before the
-# install is called complete; a silent permission gap must not reach activation.
+chown -R root:projectmind "$release_dir"
+# umask077 made the clone/venv private to root. Explicitly grant the service
+# group read/traverse/execute while keeping source and dependencies unwritable.
+python3 -m deployment.host set-release-permissions --release "$release_dir"
+# Preserve #74's real service-account guards after group-only permissions.
 runuser -u projectmind -- test -r "$release_dir/app/app.py"
 runuser -u projectmind -- test -x "$release_dir/venv/bin/python"
 if [[ ! -e /etc/projectmind/runtime.json ]]; then

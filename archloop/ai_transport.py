@@ -36,9 +36,15 @@ previous behaviour is unchanged.
 from __future__ import annotations
 
 import json
+from contextvars import ContextVar
 import math
 import ipaddress
 import os
+from pathlib import Path
+import subprocess
+import sys
+import threading
+import time
 from http import HTTPStatus
 from http.client import HTTPException
 from urllib.error import HTTPError, URLError
@@ -54,9 +60,93 @@ class AINotConfigured(AIError):
     """AI generation requested but no model is configured on the server."""
 
 
+class AITimeout(AIError):
+    """The entire call budget expired, including queued time and retry."""
+
+
+class AICancelled(AIError):
+    """A trusted caller cancelled this call; the worker has been reaped."""
+
+
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_REQUEST_BYTES = 1024 * 1024
+_WORKERS = threading.BoundedSemaphore(4)
+_POLL_SECONDS = 0.05
+_CALL_DEADLINE = ContextVar('model_call_deadline', default=None)
+
+
+def _check_budget(deadline, cancel_event):
+    if cancel_event is not None and cancel_event.is_set():
+        raise AICancelled('模型请求已取消。')
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise AITimeout('模型请求超过整体时间限制。')
+    return remaining
+
+
+def _isolated_call(message, deadline, cancel_event):
+    """Kill/reap the actual network process on expiry; no detached thread.
+
+    A fresh interpreter is safe for threaded WSGI callers and also contains
+    blocking DNS/TLS. Both chat attempts run in the same single-budget worker.
+    """
+    acquired = False
+    process = None
+    try:
+        while not acquired:
+            remaining = _check_budget(deadline, cancel_event)
+            acquired = _WORKERS.acquire(timeout=min(remaining, _POLL_SECONDS))
+        remaining = _check_budget(deadline, cancel_event)
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+        env.pop('PYTHONPATH', None)
+        process = subprocess.Popen([sys.executable, '-u', '-m', 'archloop.ai_worker'],
+            cwd=Path(__file__).resolve().parents[1], env=env, stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        first = True
+        while True:
+            remaining = _check_budget(deadline, cancel_event)
+            try:
+                raw, _ = process.communicate(input=message if first else None,
+                                             timeout=min(remaining, _POLL_SECONDS))
+                break
+            except subprocess.TimeoutExpired:
+                first = False
+        _check_budget(deadline, cancel_event)
+        if process.returncode != 0 or len(raw) > MAX_RESPONSE_BYTES + 8192:
+            raise AIError('模型工作者未完成有效响应。')
+        try:
+            result = json.loads(raw, parse_constant=_invalid_constant)
+        except (ValueError, UnicodeError, RecursionError):
+            raise AIError('模型工作者未完成有效响应。') from None
+        if not isinstance(result, dict) or not isinstance(result.get('ok'), bool):
+            raise AIError('模型工作者未完成有效响应。')
+        if not result['ok']:
+            message = result.get('message')
+            if not isinstance(message, str):
+                raise AIError('模型工作者未完成有效响应。')
+            error = AITimeout if result.get('kind') == 'timeout' else AIError
+            raise error(message)
+        if 'value' not in result:
+            raise AIError('模型工作者未完成有效响应。')
+        return result['value']
+    except (OSError, subprocess.SubprocessError):
+        raise AIError('模型工作者无法启动或通信。') from None
+    finally:
+        try:
+            if process is not None:
+                if process.poll() is None:
+                    process.kill()
+                # Reap even when cancelled before input. communicate() may
+                # have cached a result without closing a broken input pipe.
+                process.communicate(timeout=2)
+        finally:
+            if process is not None:
+                for pipe in (process.stdin, process.stdout):
+                    if pipe is not None:
+                        pipe.close()
+            if acquired:
+                _WORKERS.release()
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -198,13 +288,21 @@ def _validated(value, schema: dict) -> dict:
     return value
 
 
-def _post_json(url: str, body: dict, key: str, timeout: int) -> dict:
+def _encode_request(body):
     try:
         encoded = json.dumps(body, ensure_ascii=False, allow_nan=False).encode('utf-8')
     except (ValueError, TypeError):
         raise AIError('模型请求不是有效的 JSON 内容。') from None
     if len(encoded) > MAX_REQUEST_BYTES:
         raise AIError('模型请求超过当前 1 MiB 上限。')
+    return encoded
+
+
+def _post_json(url: str, body: dict, key: str, timeout: float) -> dict:
+    encoded = _encode_request(body)
+    deadline = _CALL_DEADLINE.get()
+    if deadline is not None:
+        timeout = min(timeout, _check_budget(deadline, None))
     request = Request(url, data=encoded,
                       headers={"Authorization": f"Bearer {key}",
                                "Content-Type": "application/json"},
@@ -217,6 +315,8 @@ def _post_json(url: str, body: dict, key: str, timeout: int) -> dict:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
             if len(raw) > MAX_RESPONSE_BYTES:
                 raise AIError('模型响应超过当前 2 MiB 上限。')
+            if deadline is not None:
+                _check_budget(deadline, None)
             value = json.loads(raw, parse_constant=_invalid_constant)
             if not isinstance(value, dict):
                 raise AIError('模型响应必须是 JSON 对象。')
@@ -226,6 +326,9 @@ def _post_json(url: str, body: dict, key: str, timeout: int) -> dict:
         exc.close()
         raise AIError(f"AI 服务返回 HTTP {code}。请检查模型、密钥、额度或端点地址。") from None
     except (URLError, TimeoutError, OSError, HTTPException) as exc:
+        if deadline is not None and (isinstance(exc, TimeoutError)
+                or isinstance(getattr(exc, 'reason', None), TimeoutError)):
+            raise AITimeout('模型请求超过整体时间限制。') from None
         raise AIError("无法连接 AI 服务，请检查 PROJECTMIND_AI_BASE_URL 与网络后重试。") from exc
     except (ValueError, UnicodeDecodeError, RecursionError):
         raise AIError('模型响应不是有效的 JSON 内容。') from None
@@ -242,9 +345,15 @@ def _payload_text(payload):
         raise AIError('模型输入不是有效的 JSON 内容。') from None
 
 
-def _call_responses(config: dict, instructions: str, payload: dict,
-                    schema_name: str, schema: dict, timeout: int) -> dict:
-    body = {
+def _request_body(config, instructions, payload, schema_name, schema):
+    if config['protocol'] == 'chat_completions':
+        structure = STRUCTURE_INSTRUCTION.format(
+            schema=json.dumps(schema, ensure_ascii=False, separators=(",", ":"), allow_nan=False))
+        return {"model": config["model"], "messages": [
+            {"role": "system", "content": instructions + structure},
+            {"role": "user", "content": _payload_text(payload)}], "stream": False,
+            "response_format": {"type": "json_object"}}
+    return {
         "model": config["model"],
         "store": False,
         "instructions": instructions,
@@ -252,6 +361,11 @@ def _call_responses(config: dict, instructions: str, payload: dict,
         "text": {"format": {"type": "json_schema", "name": schema_name,
                             "strict": True, "schema": schema}},
     }
+
+
+def _call_responses(config: dict, instructions: str, payload: dict,
+                    schema_name: str, schema: dict, timeout: int) -> dict:
+    body = _request_body(dict(config, protocol='responses'), instructions, payload, schema_name, schema)
     raw = _post_json(config["base"] + "/responses", body, config["key"], timeout)
     if raw.get("status") != "completed":
         raise AIError("AI 服务未完成请求，请稍后重试。")
@@ -277,12 +391,7 @@ def _call_responses(config: dict, instructions: str, payload: dict,
 
 def _call_chat_completions(config: dict, instructions: str, payload: dict,
                            schema_name: str, schema: dict, timeout: int) -> dict:
-    structure = STRUCTURE_INSTRUCTION.format(
-        schema=json.dumps(schema, ensure_ascii=False, separators=(",", ":")))
-    messages = [{"role": "system", "content": instructions + structure},
-                {"role": "user", "content": _payload_text(payload)}]
-    body = {"model": config["model"], "messages": messages, "stream": False,
-            "response_format": {"type": "json_object"}}
+    body = _request_body(dict(config, protocol='chat_completions'), instructions, payload, schema_name, schema)
     url = config["base"] + "/chat/completions"
     try:
         raw = _post_json(url, body, config["key"], timeout)
@@ -322,15 +431,34 @@ def _parse_json_text(text: str, schema: dict) -> dict:
 
 
 def call_model(instructions: str, payload: dict, schema_name: str, schema: dict,
-               timeout: int = 60) -> dict:
-    """Send one bounded JSON request to the configured provider."""
+               timeout: float = 60, *, cancel_event: threading.Event | None = None) -> dict:
+    """One total-budget call; cancellation is a trusted server-side Event."""
+    started = time.monotonic()
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) \
+            or not math.isfinite(timeout) or timeout <= 0:
+        raise AIError('模型整体时间限制必须是有限正数。')
+    if cancel_event is not None and not isinstance(cancel_event, threading.Event):
+        raise AIError('模型取消信号无效。')
+    deadline = started + timeout
+    _check_budget(deadline, cancel_event)
     config = ai_config()
     if not config["configured"]:
         raise AINotConfigured("AI 生成尚未配置。")
-    if config["protocol"] == "responses":
-        return _call_responses(config, instructions, payload, schema_name, schema, timeout)
-    return _call_chat_completions(config, instructions, payload, schema_name, schema, timeout)
+    try:
+        # Validate the exact wire body before admission or IPC. Oversized
+        # input must not start a worker, much less contact a provider.
+        _encode_request(_request_body(config, instructions, payload, schema_name, schema))
+        message = json.dumps({'config': config, 'instructions': instructions, 'payload': payload,
+            'schemaName': schema_name, 'schema': schema, 'timeout': timeout, 'deadline': deadline},
+            ensure_ascii=False, allow_nan=False).encode()
+    except (ValueError, TypeError, RecursionError):
+        raise AIError('模型输入不是有效的 JSON 内容。') from None
+    if len(message) > 4 * MAX_REQUEST_BYTES:
+        raise AIError('模型请求超过当前输入上限。')
+    value = _validated(_isolated_call(message, deadline, cancel_event), schema)
+    _check_budget(deadline, cancel_event)
+    return value
 
 
-__all__ = ["AIError", "AINotConfigured", "ai_config", "ai_status", "call_model",
+__all__ = ["AIError", "AINotConfigured", "AITimeout", "AICancelled", "ai_config", "ai_status", "call_model",
            "DEFAULT_BASE_URL", "PROTOCOLS", "HTTPStatus"]
