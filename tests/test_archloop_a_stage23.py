@@ -144,7 +144,11 @@ class CMouleIntegrationTests(unittest.TestCase):
         self.assertIn("追踪", unknown["reason"])
         record = self.service.store.load_workspace(workspace_id)
         node = record["draft"]["graph"]["nodes"][0]
-        traces = [{"called_steps": [node["process"][0]["stepId"]]}] if node.get("process") else []
+        identity = record.get("identity") or {}
+        traces = ([{"called_steps": [node["process"][0]["stepId"]],
+                    "codeRepoId": identity.get("codeRepoId"),
+                    "codeRevision": identity.get("codeRevision")}]
+                  if node.get("process") else [])
         if not traces:
             self.skipTest("rule-based candidate has no process steps to compare")
         detected = self.service.deviations(workspace_id, {"observedTraces": traces})

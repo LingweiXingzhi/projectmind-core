@@ -1,0 +1,251 @@
+{
+  "base_url": "http://127.0.0.1:8891",
+  "repo": "G:/jiagou/codex-bridge/architecture-loop/ZCODE-ABCD-20261008-0115/tmp/acceptance-repo",
+  "generated_at": "2026-10-08T02:40:13+0800",
+  "summary": {
+    "PASS": 38,
+    "NOT_RUN": 2
+  },
+  "results": [
+    {
+      "item": "T00",
+      "title": "无服务端会话/防伪令牌的写入口被拒绝",
+      "status": "PASS",
+      "evidence": "{\"http\": 403, \"code\": \"FORBIDDEN_SESSION\"}"
+    },
+    {
+      "item": "T01",
+      "title": "已有项目经真实 AI 生成初图",
+      "status": "NOT_RUN",
+      "evidence": "{\"http\": 200, \"status\": \"NOT_RUN_AWAITING_CONFIGURATION\", \"origin\": \"none\", \"model\": null, \"nodes\": 0, \"mapRevision\": null, \"note\": \"服务端未配置模型；没有生成任何候选图。配置后重试，或明确使用演示模式。\", \"error\": null}"
+    },
+    {
+      "item": "T02",
+      "title": "生成的是功能图而不是文件树",
+      "status": "PASS",
+      "evidence": "{\"status\": \"rule_based\", \"origin\": \"rule_based\", \"nodes\": [{\"id\": \"node_root\", \"title\": \"模块: root\"}, {\"id\": \"node_archloop\", \"title\": \"模块: archloop\"}, {\"id\": \"node_repo_index\", \"title\": \"模块: repo_index\"}, {\"id\": \"node_tests\", \"title\": \"模块: tests\"}], \"contextCoverage\": {\"codeRevision\": \"85c18e7de7e056de52aae20e2daf4bb764df0d07\", \"trackedFiles\": 355, \"pythonFiles\": 170, \"filesIncluded\": 37, \"docsIncluded\": 6, \"symbolsIncluded\": 302, \"charsIncluded\": 136914, \"notIncluded\": 132, \"excluded\": 1, \"selectionRule\": \"入口同名文件优先，其次按路径深度；有界文件数/字符数预算，确定性顺序\"}}"
+    },
+    {
+      "item": "T02b",
+      "title": "候选应用到草稿",
+      "status": "PASS",
+      "evidence": "{\"draftRevision\": \"maprev-34c3c701f5953b645f0206aafe06d98b1eed00c1-349be7ca\", \"nodes\": 4}"
+    },
+    {
+      "item": "T03",
+      "title": "自然语言纠正（规则引擎）返回局部操作与前后差异",
+      "status": "PASS",
+      "evidence": "{\"origin\": \"rule_based\", \"labeled\": \"规则纠正预览（C 规则引擎，非 AI）\", \"operations\": [{\"type\": \"update_node\", \"nodeId\": \"node_root\", \"fields\": {\"summary\": \"管理 root 核心逻辑，包含 20 个已识别代码符号; [纠正]: 该职责只负责读取路径\"}, \"reason\": \"用户自然语言指令修正: 该职责只负责读取路径\"}], \"diffKeys\": [\"nodes\", \"edges\", \"baseMapRevision\", \"targetMapRevision\"]}"
+    },
+    {
+      "item": "T04/T05",
+      "title": "手工编辑职责/关系/过程（含分支与允许失败路径）",
+      "status": "PASS",
+      "evidence": "{\"http\": 200, \"operations\": [\"update_node\", \"add_edge\", \"update_process\"], \"error\": null}"
+    },
+    {
+      "item": "T05b",
+      "title": "过程步骤保留稳定 stepId、分支与失败路径",
+      "status": "PASS",
+      "evidence": "{\"step\": {\"stepId\": \"s1\", \"title\": \"人工步骤\", \"detail\": \"验收\", \"inputs\": [], \"outputs\": [], \"branches\": [\"分支A\"], \"next\": [\"s2\"], \"allowedFailures\": [\"允许失败路径\"]}}"
+    },
+    {
+      "item": "T06",
+      "title": "刷新重开后草稿仍在且内容一致",
+      "status": "PASS",
+      "evidence": "{\"draftRevision\": \"maprev-c956241deb66fa54112d0d93e65152ad47451d89-baeb58a9\"}"
+    },
+    {
+      "item": "T07",
+      "title": "两个客户端同草稿写入冲突时不覆盖",
+      "status": "PASS",
+      "evidence": "{\"http\": 409, \"code\": \"REVISION_CONFLICT\"}"
+    },
+    {
+      "item": "T08",
+      "title": "草稿保存到真实版本服务（真实持久化）",
+      "status": "PASS",
+      "evidence": "{\"bDraftId\": \"draft-dd9713206100faa4304c5f13b479b8f3\", \"bDraftRevision\": 1, \"error\": null}"
+    },
+    {
+      "item": "T09",
+      "title": "未获批不能发布（必须先预览+确认）",
+      "status": "PASS",
+      "evidence": "{\"http\": 403, \"code\": \"HUMAN_REVIEW_REQUIRED\"}"
+    },
+    {
+      "item": "T10a",
+      "title": "人审预览：真实会话、覆盖范围、令牌留在服务端",
+      "status": "PASS",
+      "evidence": "{\"http\": 200, \"coverage\": {\"scope\": \"partial\", \"nodes\": [\"node_archloop\", \"node_repo_index\", \"node_root\", \"node_tests\"], \"edges\": [\"edge-99af4f89a9e2626e310c2963\"], \"processes\": [\"process-node_root\"], \"evidence\": [\"ev-0e0481fc43d605a2ea987a15\", \"ev-0e17467700330460f3e41280\", \"ev-112b3f765039a7dca1634081\", \"ev-17b45afa30a9432b05130e1c\", \"ev-1d8f9af12296ea7800e56217\", \"ev-26a2b51081e3e59097f2edb9\", \"ev-2ed82689c37cbfba49862149\", \"ev-6b0a6a3d412e93f0f10fe4ee\", \"ev-6eb8c016277396bbeddd4e3b\", \"ev-8d96c10392555b5a519bc139\", \"ev-9adf1b11237c8c70f4e8f3e4\", \"ev-a38333c551396e2ae0b4de3b\", \"ev-a79791041740cd611f460cfc\", \"ev-ae8ebca23ea64d01f52cb3a4\", \"ev-af89b45c4de8ec7c7f75b93b\", \"ev-bd0d1236ded68f836d7cfe73\", \"ev-cd7c5c253a2abf7e397616df\", \"ev-d33386459ca3f84c304b27da\", \"ev-dc9d17d5aec57cbe3ce0d905\", \"ev-dedd24843faa2cdc2a09dad8\"]}, \"tokenLeaked\": false, \"error\": null}"
+    },
+    {
+      "item": "T10b",
+      "title": "批准后产生不可变版本（真实架构 Git 提交）",
+      "status": "PASS",
+      "evidence": "{\"http\": 200, \"mapRevision\": \"sha256:6f0d56ee81ab1800df52b38ca16da6984b82f2cbf01be99b05559e9a857b5dba\", \"mapSourceRevision\": \"60d25776a0f8a1c4dd081fe9d690e4fc105139f8\", \"status\": \"confirmed_cognition\", \"error\": null}"
+    },
+    {
+      "item": "T11",
+      "title": "旧版本可读取（不可变 envelope）",
+      "status": "PASS",
+      "evidence": "{\"http\": 200}"
+    },
+    {
+      "item": "T12",
+      "title": "代码 SHA / 图版本 / 架构来源版本三者独立",
+      "status": "PASS",
+      "evidence": "{\"identity\": {\"workspaceId\": \"ws_20261008023936_ce84d2\", \"codeRepoId\": \"repo-dcbb5ef1af3b792b5c15c85573e3e07478f180cdc523aaab3c52339c30712929\", \"mapId\": \"map-5bc47a97fce9d292274173ce44819e68\", \"codeRevision\": \"85c18e7de7e056de52aae20e2daf4bb764df0d07\", \"mapRevision\": \"sha256:6f0d56ee81ab1800df52b38ca16da6984b82f2cbf01be99b05559e9a857b5dba\", \"draftRevision\": \"maprev-c956241deb66fa54112d0d93e65152ad47451d89-baeb58a9\", \"mapSourceRevision\": \"60d25776a0f8a1c4dd081fe9d690e4fc105139f8\", \"verifiedCodeRevision\": \"85c18e7de7e056de52aae20e2daf4bb764df0d07\"}}"
+    },
+    {
+      "item": "T12b",
+      "title": "发布事实在草稿未变时可见（核查 SHA 不为空）",
+      "status": "PASS",
+      "evidence": "{\"verifiedCodeRevision\": \"85c18e7de7e056de52aae20e2daf4bb764df0d07\"}"
+    },
+    {
+      "item": "T13",
+      "title": "证据按完整 SHA 定位（固定提交的文件证据）",
+      "status": "PASS",
+      "evidence": "{\"http\": 200, \"evidencePaths\": [\"app.py\", \"app.py\", \"app.py\"], \"note\": \"证据文件在固定提交中存在由 B 的证据核查与代码事实模块保证\"}"
+    },
+    {
+      "item": "T14a",
+      "title": "真实代码提交后复核定位受影响对象",
+      "status": "PASS",
+      "evidence": "{\"old\": \"85c18e7de7e056de52aae20e2daf4bb764df0d07\", \"new\": \"47e742b83d1aba13867bdab739b568265e72184a\", \"committed\": true, \"staleNodes\": []}"
+    },
+    {
+      "item": "T14b",
+      "title": "回挂新提交（本地记录，不自动声称已验证）",
+      "status": "PASS",
+      "evidence": "{\"identity\": {\"workspaceId\": \"ws_20261008023936_ce84d2\", \"codeRepoId\": \"repo-dcbb5ef1af3b792b5c15c85573e3e07478f180cdc523aaab3c52339c30712929\", \"mapId\": \"map-5bc47a97fce9d292274173ce44819e68\", \"codeRevision\": \"47e742b83d1aba13867bdab739b568265e72184a\", \"mapRevision\": \"maprev-c956241deb66fa54112d0d93e65152ad47451d89\", \"draftRevision\": \"maprev-c956241deb66fa54112d0d93e65152ad47451d89-baeb58a9\", \"mapSourceRevision\": null, \"verifiedCodeRevision\": null}}"
+    },
+    {
+      "item": "T16",
+      "title": "缺少追踪证据时偏差为 UNKNOWN",
+      "status": "PASS",
+      "evidence": "{\"verdict\": \"UNKNOWN\", \"reason\": \"缺少可验证的运行时执行追踪数据；静态导入关系不代表运行时执行调用链。\"}"
+    },
+    {
+      "item": "T15",
+      "title": "有证据时的过程偏差候选（规则，可人裁决）",
+      "status": "PASS",
+      "evidence": "{\"verdict\": \"DEVIATION_DETECTED\", \"node\": \"node_root\", \"observedSteps\": [\"s1\"], \"expectedSteps\": [\"s1\", \"s2\"], \"deviations\": 1, \"rejectedTraces\": 0}"
+    },
+    {
+      "item": "T17",
+      "title": "修正认知产生新草稿（编辑与纠正均写入草稿）",
+      "status": "PASS",
+      "evidence": "{\"draftRevision\": \"maprev-c956241deb66fa54112d0d93e65152ad47451d89-baeb58a9\", \"note\": \"见 T03/T04 的实际写入\"}"
+    },
+    {
+      "item": "T18",
+      "title": "修正实现创建可交付的持久化任务",
+      "status": "PASS",
+      "evidence": "{\"taskId\": \"fix-00c27825d307c3e58871a323a69a6705\", \"status\": \"queued\", \"targetCodeRevision\": \"85c18e7de7e056de52aae20e2daf4bb764df0d07\", \"scope\": [\"acceptance_change.py\"], \"error\": null}"
+    },
+    {
+      "item": "T18b",
+      "title": "任务可列出并带验收条件",
+      "status": "PASS",
+      "evidence": "{\"count\": 1}"
+    },
+    {
+      "item": "T18c",
+      "title": "实施者接手任务（D 权威状态机）",
+      "status": "PASS",
+      "evidence": "{\"status\": \"received\", \"error\": null}"
+    },
+    {
+      "item": "T18d",
+      "title": "实施开始（in_progress）",
+      "status": "PASS",
+      "evidence": "{\"status\": \"in_progress\", \"error\": null}"
+    },
+    {
+      "item": "T19a",
+      "title": "实施提交回挂后进入 verification_pending（不自动关闭）",
+      "status": "PASS",
+      "evidence": "{\"status\": \"verification_pending\", \"error\": null, \"commit\": \"ff47df6d46515726adfe61f174f22a3ba2441a3f\"}"
+    },
+    {
+      "item": "T19b",
+      "title": "人确认本轮实测核查结论后关闭偏差",
+      "status": "PASS",
+      "evidence": "{\"status\": \"verified\", \"exitCode\": 0, \"outputDigest\": \"sha256:e038553a06df97d79575d0261f4b4b964b6f06a2a5a3ee3422331db9772b84c1\", \"error\": null}"
+    },
+    {
+      "item": "T20",
+      "title": "同版交接包导出（图版本+架构来源+核查范围）",
+      "status": "PASS",
+      "evidence": "{\"mapId\": \"map-5bc47a97fce9d292274173ce44819e68\", \"mapRevision\": \"sha256:6f0d56ee81ab1800df52b38ca16da6984b82f2cbf01be99b05559e9a857b5dba\", \"mapSourceRevision\": \"60d25776a0f8a1c4dd081fe9d690e4fc105139f8\", \"error\": null}"
+    },
+    {
+      "item": "T21",
+      "title": "被改过的交接包被内容指纹比对识别（以 Git 版本为准）",
+      "status": "PASS",
+      "evidence": "{\"http\": 200, \"code\": null, \"comparison\": {\"contentMatches\": false, \"revisionMatches\": true, \"mapIdMatches\": true, \"note\": \"交接包内容与架构 Git 实际版本不一致（包可能被改过或过期）：以 Git 版本为准，并请核对交接来源\"}, \"packageMapIdMismatch\": null, \"error\": null, \"at\": \"publish 后立即（工作区仍与该版本一致时）\"}"
+    },
+    {
+      "item": "T22",
+      "title": "AI 未配置时诚实降级（NOT_RUN，不用样例冒充）",
+      "status": "PASS",
+      "evidence": "{\"generation\": {\"configured\": false, \"model\": null, \"note\": \"AI 生成尚未配置。需在启动程序前设置 OPENAI_API_KEY 和 PROJECTMIND_AI_MODEL。\"}}"
+    },
+    {
+      "item": "T23",
+      "title": "真实 AI 候选与证据验证",
+      "status": "NOT_RUN",
+      "evidence": "本机没有 OPENAI_API_KEY / PROJECTMIND_AI_MODEL；T01 的同一路径会在配置后原样运行"
+    },
+    {
+      "item": "T24",
+      "title": "ProjectMind 自身职责候选覆盖（规则引擎按固定提交事实）",
+      "status": "PASS",
+      "evidence": "{\"repo\": \"G:\\\\jiagou\\\\codex-bridge\\\\architecture-loop\\\\ZCODE-ABCD-20261008-0115\\\\tmp\\\\acceptance-repo\", \"identityRepoPath\": null, \"workspaceRevision\": \"47e742b83d1aba13867bdab739b568265e72184a\", \"coverageRevision\": \"47e742b83d1aba13867bdab739b568265e72184a\", \"localHead\": \"47e742b83d1aba13867bdab739b568265e72184a\", \"revisionExistsInGit\": true, \"revisionMatchesCoverage\": true, \"repoMatchesBinding\": true, \"trackedFiles\": 356, \"localTrackedFiles\": 356, \"pythonFiles\": 171, \"localPythonFiles\": 171, \"treeMatchesRepository\": true, \"filesIncluded\": 38, \"nodes\": 4, \"http\": 200, \"error\": null, \"note\": \"绑定仓库即本次被验收的 ProjectMind 代码（其文件数与本仓库该提交的真实文件树一致）；正式图内容仍由负责人在界面批准\", \"headSource\": \"独立读取：验收器对被测 checkout 执行 git rev-parse HEAD\", \"identityMatchesIndependentHead\": true}"
+    },
+    {
+      "item": "T25",
+      "title": "旧 Explorer 与只读提案路径回归（旧接口仍可用）",
+      "status": "PASS",
+      "evidence": "{\"legacyMapHttp\": 200, \"note\": \"完整回归见 tests 全量套件\"}"
+    },
+    {
+      "item": "T25b",
+      "title": "无效纠正请求被机器码拒绝（不是 500）",
+      "status": "PASS",
+      "evidence": "{\"http\": 400}"
+    },
+    {
+      "item": "T26",
+      "title": "没有新授权时重复发布被拒（不重复产生版本）",
+      "status": "PASS",
+      "evidence": "{\"http\": 403, \"code\": \"HUMAN_REVIEW_REQUIRED\"}"
+    },
+    {
+      "item": "T27a",
+      "title": "无代码规划：按目标/约束生成设计候选（无代码事实）",
+      "status": "PASS",
+      "evidence": "{\"nodes\": 3, \"status\": \"rule_based\"}"
+    },
+    {
+      "item": "T27b",
+      "title": "规划草稿不含代码事实证据（依据是需求）",
+      "status": "PASS",
+      "evidence": "{\"evidenceKinds\": [\"requirement\"]}"
+    },
+    {
+      "item": "T27c",
+      "title": "设计确认产生 confirmed_design 版本（与实现状态分开）",
+      "status": "PASS",
+      "evidence": "{\"status\": \"confirmed_design\", \"codeRevision\": null, \"error\": null}"
+    },
+    {
+      "item": "T28",
+      "title": "规划图关联真实代码后仍保留设计历史（不等于已实现）",
+      "status": "PASS",
+      "evidence": "{\"context\": \"mixed\", \"designHistory\": null, \"error\": null}"
+    }
+  ]
+}

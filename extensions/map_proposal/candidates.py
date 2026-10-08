@@ -281,16 +281,34 @@ def detect_process_deviations(graph: dict, observed_traces: list) -> dict:
     expected_revision = graph.get("codeRevision")
     usable: list[tuple[int, dict]] = []
     rejected: list[dict] = []
+    if expected_repo is None and expected_revision is None:
+        # There is no repository/revision to check the observation against
+        # (e.g. a planning/design process): the identity of the evidence can
+        # not be verified, so no verdict beyond UNKNOWN may be reported
+        # (FINAL-R2-C-01).
+        return {
+            "status": "ok",
+            "verdict": "UNKNOWN",
+            "deviations": [],
+            "rejectedTraces": [{"traceIndex": index,
+                                "reason": "声明过程没有可核对的仓库/版本身份，观察轨迹无法归属"}
+                               for index in range(len(observed_traces))],
+            "inconclusive": [],
+            "coveredNodes": [],
+            "reason": "图没有给出可核对的 codeRepoId/codeRevision；无身份的观察不能判定一致或偏差，"
+                      "结论保持 UNKNOWN。",
+            "warnings": [],
+        }
     for index, trace in enumerate(observed_traces):
         if not isinstance(trace, dict) or not isinstance(trace.get("called_steps"), list):
             rejected.append({"traceIndex": index, "reason": "轨迹缺少 called_steps 列表，无法作为观察证据"})
             continue
-        if expected_repo is not None and trace.get("codeRepoId") not in (None, expected_repo):
-            rejected.append({"traceIndex": index, "reason": "轨迹声明的是另一个代码仓库身份（codeRepoId 不匹配）",
+        if expected_repo is not None and trace.get("codeRepoId") != expected_repo:
+            rejected.append({"traceIndex": index, "reason": "轨迹声明的是另一个代码仓库身份（codeRepoId 不匹配或未声明）",
                              "traceRepoId": trace.get("codeRepoId"), "expectedRepoId": expected_repo})
             continue
-        if expected_revision is not None and trace.get("codeRevision") not in (None, expected_revision):
-            rejected.append({"traceIndex": index, "reason": "轨迹记录的是另一个代码版本（codeRevision 不匹配）",
+        if expected_revision is not None and trace.get("codeRevision") != expected_revision:
+            rejected.append({"traceIndex": index, "reason": "轨迹记录的是另一个代码版本（codeRevision 不匹配或未声明）",
                              "traceRevision": trace.get("codeRevision"), "expectedRevision": expected_revision})
             continue
         usable.append((index, trace))
@@ -311,27 +329,59 @@ def detect_process_deviations(graph: dict, observed_traces: list) -> dict:
                 inconclusive.append({"traceIndex": index, "nodeId": target_id,
                                      "reason": "轨迹未覆盖该节点声明的任何步骤，不足以判断一致性"})
                 continue
+            # A trace is conclusive only when it contains the *whole* declared
+            # chain. A partial observation (e.g. only the last step ran) is not
+            # evidence of alignment — it is either a bypass or insufficient
+            # evidence, never ALIGNED (FINAL-C-01).
+            missing = [step for step in expected_steps if step not in called_steps]
+            if missing:
+                # report the first declared step that never ran (and the step
+                # that should have led into it, when that one did run)
+                first_missing = next(index_ for index_, step in enumerate(expected_steps)
+                                     if step not in called_steps)
+                prior = expected_steps[first_missing - 1] if first_missing > 0 else None
+                if prior is None and not any(step in called_steps for step in expected_steps):
+                    inconclusive.append({"traceIndex": index, "nodeId": target_id,
+                                         "reason": "轨迹只包含不在声明链上的步骤，无法定位偏差"})
+                    continue
+                deviations.append({
+                    "deviationId": f"dev_{target_id}_{prior or 'start'}_{missing[0]}",
+                    "nodeId": target_id,
+                    # an executed step whose declared successor did not run is
+                    # the classic bypass; a chain that never started at its
+                    # first step is an incomplete chain
+                    "type": "bypassed_step" if prior else "incomplete_chain",
+                    "expectedStep": missing[0],
+                    "priorStep": prior,
+                    "missingSteps": missing,
+                    "evidence": trace,
+                    "recommendation": "可选择【修正认知】更新期望执行过程，或【修正实现】创建代码补丁任务。"
+                })
+                continue
+            positions = [called_steps.index(step) for step in expected_steps]
+            if positions != sorted(positions):
+                reversed_pair = next(
+                    (expected_steps[i], expected_steps[i + 1])
+                    for i in range(len(expected_steps) - 1)
+                    if called_steps.index(expected_steps[i]) > called_steps.index(expected_steps[i + 1]))
+                deviations.append({
+                    "deviationId": f"dev_{target_id}_{reversed_pair[0]}_{reversed_pair[1]}",
+                    "nodeId": target_id,
+                    "type": "out_of_order",
+                    "expectedStep": reversed_pair[1],
+                    "priorStep": reversed_pair[0],
+                    "evidence": trace,
+                    "recommendation": "可选择【修正认知】更新期望执行过程，或【修正实现】创建代码补丁任务。"
+                })
+                continue
             covered_nodes.add(target_id)
-            for idx in range(len(expected_steps) - 1):
-                cur_step = expected_steps[idx]
-                next_step = expected_steps[idx + 1]
-                if cur_step in called_steps and next_step not in called_steps:
-                    deviations.append({
-                        "deviationId": f"dev_{target_id}_{cur_step}_{next_step}",
-                        "nodeId": target_id,
-                        "type": "bypassed_step",
-                        "expectedStep": next_step,
-                        "priorStep": cur_step,
-                        "evidence": trace,
-                        "recommendation": "可选择【修正认知】更新期望执行过程，或【修正实现】创建代码补丁任务。"
-                    })
 
     if deviations:
         verdict = "DEVIATION_DETECTED"
         reason = ""
     elif covered_nodes:
         verdict = "ALIGNED"
-        reason = "轨迹覆盖了这些节点声明的步骤且未发现绕过；一致性仅在覆盖范围内成立。"
+        reason = "轨迹完整包含这些节点声明的步骤链且顺序一致；一致性仅在覆盖范围内成立。"
     else:
         verdict = "UNKNOWN"
         reason = ("没有一条轨迹覆盖图上声明的期望步骤，或轨迹来自其他仓库/版本；"

@@ -55,6 +55,33 @@ def to_b_proposal(candidate: dict, *, context: dict) -> dict:
 
     from .backend_b import a_to_b_graph
 
+    # The candidate states the identity it was generated for; projecting it
+    # into another repository/revision would silently re-label its evidence
+    # (FINAL-BC-01). Only a bootstrap context is a valid target here: a patch
+    # must carry operations, not a graph (FINAL-BC-02).
+    if context.get("draftId") is not None:
+        raise ContractError(
+            "VALIDATION_FAILED",
+            "已有草稿的交换需要 operations 形式的 patch；本冻结适配器只支持 bootstrap 候选，"
+            "请使用操作引擎生成 patch")
+    for field in ("codeRepoId", "codeRevision", "mode"):
+        declared = candidate.get(field)
+        bound = context.get(field)
+        if field == "mode":
+            # planning candidates carry mode=planning; code candidates repeat
+            # the context mode
+            if declared is not None and declared != bound:
+                raise ContractError("STALE_CONTEXT",
+                                    f"候选的 {field} 与服务端上下文不同：{declared!r} ≠ {bound!r}")
+            continue
+        if declared != bound:
+            raise ContractError(
+                "STALE_CONTEXT",
+                f"候选声明的 {field} 与服务端上下文不同：{declared!r} ≠ {bound!r}；"
+                "不能把另一仓库/版本的候选投影成本上下文的内容")
+    if bound is not None and candidate.get("verifiedCodeRevision") is not None:
+        raise ContractError("EVIDENCE_MISMATCH", "初图候选不能自带已核查代码版本")
+
     graph, warnings = candidate_to_graph(candidate, context=context.get("mode", "existing_project"))
     projected = a_to_b_graph(graph, code_repo_id=context.get("codeRepoId"),
                              code_revision=context.get("codeRevision"))

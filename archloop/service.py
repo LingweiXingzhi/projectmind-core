@@ -746,11 +746,15 @@ class WorkbenchService:
         self.store.load_workspace(workspace_id)
         backend_d = self._backend_d()
         if backend_d is not None:
+            # ownership is checked BEFORE any state change: reading the task and
+            # validating its workspace first, so a request for another
+            # workspace's task can never write and then be rejected (FINAL-D-01)
+            current = backend_d.get_task(task_id)
+            if current.get("workspaceId") != workspace_id:
+                raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
             # D owns the task state machine; the operator comes from the
             # server-side write session, never from the request body
             task = backend_d.update(task_id, request, server_context)
-            if task.get("workspaceId") != workspace_id:
-                raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
             self.store.append_history(workspace_id, {
                 "type": "fix_task_update", "at": _utcnow(), "taskId": task_id,
                 "status": task.get("status"), "backend": "d_fix_tasks"})

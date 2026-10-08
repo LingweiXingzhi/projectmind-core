@@ -58,6 +58,26 @@
 `state/controller_selfcheck.json` 属于上一轮运行目录，本轮不使用该调度器。
 真实 AI（T01/T23）与物理跨设备仍 `NOT_RUN`，见验收报告。
 
+## 真实 AI 的厂商接入（本轮补充）
+
+传输层（`archloop/ai_transport.py`）支持两种线协议，端点只从服务端环境变量读取：
+
+| 变量 | 说明 |
+| --- | --- |
+| `PROJECTMIND_AI_API_KEY` / `OPENAI_API_KEY` | 密钥（服务端；不落日志、不回页面） |
+| `PROJECTMIND_AI_MODEL` | 模型 ID |
+| `PROJECTMIND_AI_BASE_URL` | 兼容端点（默认 OpenAI 官方） |
+| `PROJECTMIND_AI_PROTOCOL` | `auto` / `responses` / `chat_completions` |
+
+- `responses`：OpenAI Responses API（严格 JSON schema，服务端强制）。
+- `chat_completions`：DeepSeek、DashScope（百炼兼容模式）、Moonshot/Kimi、智谱 GLM v4、OpenRouter、
+  vLLM/Ollama/LM Studio 与各类 OpenAI 兼容网关的通用形态；**schema 由本程序在服务端二次校验**，
+  厂商忽略 `response_format` 也不会把不合结构的图写入草稿；厂商若以 HTTP 400 拒绝
+  `response_format`，有一次受控重试（不带该字段）。
+- 配置错误（非 http(s)、含凭据、未知协议）在 `ai_config()` 受控拒绝，`/api/ai-status` 如实说明。
+- 真实厂商调用未在本机验证（无任何厂商密钥）：以本地实现的 OpenAI 兼容服务做真实 HTTP 端到端验证，
+  见 `tests/test_archloop_ai_providers.py`（10 例，含生成端点产出 `ai_generated` 候选）。
+
 ## 验证入口
 
 ```sh

@@ -50,7 +50,43 @@ $env:PROJECTMIND_AI_MODEL = "你账户可使用的模型 ID"
 python app.py
 ```
 
-点击按钮后，只会向 OpenAI 发送选中节点的人工演示描述、直接关联的变化文件名和最多 12,000 个字符的 Git 差异。请求使用 `store: false`；密钥只留在本地服务端环境变量中，不进入地图文件或浏览器。页面把返回内容标为“AI 候选”，要求人对照来源复核。未配置时其它功能照常可用。API 调用可能产生费用；是否能成功取决于所用账户、模型和网络。
+### 用什么厂商的 API（可选，国产与中转都能接）
+
+传输层支持两种线协议，端点只从服务端环境变量读取；**任何 OpenAI 兼容的厂商都可直接使用，不需要改代码**：
+
+| 变量 | 说明 |
+| --- | --- |
+| `PROJECTMIND_AI_API_KEY` 或 `OPENAI_API_KEY` | 密钥（只在服务端；日志与页面都不显示） |
+| `PROJECTMIND_AI_MODEL` | 模型 ID，如 `deepseek-chat`、`qwen-plus`、`kimi-k2.6`、`glm-4-plus`、`gpt-4o-mini` |
+| `PROJECTMIND_AI_BASE_URL` | 厂商端点，如 `https://api.deepseek.com/v1`；不设置则用 OpenAI 官方端点 |
+| `PROJECTMIND_AI_PROTOCOL` | `auto`（默认）/ `responses` / `chat_completions`；`auto` 对 `api.openai.com` 用 Responses，其它端点用 `chat/completions` |
+
+常见厂商（以各家控制台当前文档为准）：
+
+```powershell
+# DeepSeek
+$env:PROJECTMIND_AI_API_KEY = "sk-..."; $env:PROJECTMIND_AI_MODEL = "deepseek-chat"
+$env:PROJECTMIND_AI_BASE_URL = "https://api.deepseek.com/v1"
+# 阿里云百炼 / 通义千问（OpenAI 兼容模式）
+$env:PROJECTMIND_AI_API_KEY = "sk-..."; $env:PROJECTMIND_AI_MODEL = "qwen-plus"
+$env:PROJECTMIND_AI_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+# Moonshot / Kimi
+$env:PROJECTMIND_AI_API_KEY = "sk-..."; $env:PROJECTMIND_AI_MODEL = "kimi-k2.6"
+$env:PROJECTMIND_AI_BASE_URL = "https://api.moonshot.cn/v1"
+# 智谱 GLM
+$env:PROJECTMIND_AI_API_KEY = "...."; $env:PROJECTMIND_AI_MODEL = "glm-4-plus"
+$env:PROJECTMIND_AI_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+# 本地/自建（vLLM、Ollama、LM Studio、LiteLLM 代理等）
+$env:PROJECTMIND_AI_API_KEY = "not-needed"; $env:PROJECTMIND_AI_MODEL = "本地模型名"
+$env:PROJECTMIND_AI_BASE_URL = "http://127.0.0.1:11434/v1"
+```
+
+配置生效后打开 `/api/ai-status`（或在架构工作台看生成区提示）可确认：会显示模型、厂商主机与协议。
+兼容端点里的 JSON 结构由本程序在服务端再校验一次——厂商不遵守 `response_format` 也不会把不合结构的图写进草稿。
+不想自己拼厂商差异的话，也可以本地跑 [LiteLLM](https://github.com/BerriAI/litellm)（`litellm --model ...`）或其它 OpenAI 兼容网关，
+然后把 `PROJECTMIND_AI_BASE_URL` 指向它。
+
+点击按钮后，只会向配置的端点发送选中节点的人工演示描述、直接关联的变化文件名和最多 12,000 个字符的 Git 差异。请求使用 `store: false`；密钥只留在本地服务端环境变量中，不进入地图文件或浏览器。页面把返回内容标为“AI 候选”，要求人对照来源复核。未配置时其它功能照常可用。API 调用可能产生费用；是否能成功取决于所用账户、模型和网络。
 
 这一步验证“图 → 详情 → Git 来源 → 版本变化 → 待复核候选 → 可选 AI 解释 → 临时布局与导出”的运行路径。演示图不代表自动识别出的架构，也不代表团队批准的正式 Project Model。
 

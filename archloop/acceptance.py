@@ -543,26 +543,35 @@ class Acceptance:
             self.record("T18b", "任务可列出并带验收条件",
                         "PASS" if listing.get("tasks") and listing["tasks"][0].get("acceptance") else "FAIL",
                         {"count": len(listing.get("tasks", []))})
+            task_revision = task.get("revision")
+            task_map = task.get("mapRevision")
             status, received = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
-                                         {"status": "received", "note": "验收实施者接手任务"})
+                                         {"status": "received", "note": "验收实施者接手任务",
+                                          "expectedRevision": task_revision, "expectedMapRevision": task_map})
             self.record("T18c", "实施者接手任务（D 权威状态机）",
                         "PASS" if status == 200 and received.get("status") == "received" else "FAIL",
                         {"status": (received or {}).get("status"), "error": (received or {}).get("error")})
+            task_revision = received.get("revision")
             status, started = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
-                                        {"status": "in_progress", "note": "在独立分支实施限定范围改动"})
+                                        {"status": "in_progress", "note": "在独立分支实施限定范围改动",
+                                         "expectedRevision": task_revision, "expectedMapRevision": task_map})
             self.record("T18d", "实施开始（in_progress）",
                         "PASS" if status == 200 and started.get("status") == "in_progress" else "FAIL",
                         {"status": (started or {}).get("status"), "error": (started or {}).get("error")})
+            task_revision = started.get("revision")
             status, fixcommit = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
                                           {"status": "submitted",
-                                           "commitSha": fix_commit, "summary": "验收修复提交"})
+                                           "commitSha": fix_commit, "summary": "验收修复提交",
+                                           "expectedRevision": task_revision, "expectedMapRevision": task_map})
             self.record("T19a", "实施提交回挂后进入 verification_pending（不自动关闭）",
                         "PASS" if status == 200 and fixcommit.get("status") == "verification_pending" else "FAIL",
                         {"status": (fixcommit or {}).get("status"),
                          "error": (fixcommit or {}).get("error"), "commit": fix_commit})
+            task_revision = fixcommit.get("revision")
             status, verified = self.call("POST", f"/api/archloop/workspaces/{ws}/fix-tasks/{task_id}",
                                          {"status": "verified",
-                                          "reason": "本轮实测通过，人确认关闭偏差"})
+                                          "reason": "本轮实测通过，人确认关闭偏差",
+                                          "expectedRevision": task_revision, "expectedMapRevision": task_map})
             verification = (verified or {}).get("verification") or {}
             self.record("T19b", "人确认本轮实测核查结论后关闭偏差",
                         "PASS" if status == 200 and verified.get("status") == "verified" else "FAIL",
