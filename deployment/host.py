@@ -187,10 +187,12 @@ def restore_bound(backup, config_path, output, runtime_output):
           and binding.get('codeRepositories') == code_bindings(config)
           and binding.get('architectureBranch') == config['architectureBranch'], 'RESTORE_BINDING_MISMATCH',
           '请保留原登记路径、来源和完整代码版本；本工具不自动迁移工作区身份')
-    check(not target.is_relative_to(backup) and not backup.is_relative_to(target), 'HOST_CONFIG_INVALID')
+    check(not target.is_relative_to(backup) and not backup.is_relative_to(target)
+          and not runtime.is_relative_to(backup) and not backup.is_relative_to(runtime), 'HOST_CONFIG_INVALID')
     for value in [config['dataRoot'], config['architectureRepo'], *config['codeRepositories']]:
         path = Path(value).resolve()
-        check(not target.is_relative_to(path) and not path.is_relative_to(target), 'HOST_CONFIG_INVALID')
+        check(not target.is_relative_to(path) and not path.is_relative_to(target)
+              and not runtime.is_relative_to(path) and not path.is_relative_to(runtime), 'HOST_CONFIG_INVALID')
     old_data = _outside_git(config['dataRoot'])
     # Refuse recovery while the configured source service is running. A fresh
     # host may have no old data; activation still requires a separate preflight.

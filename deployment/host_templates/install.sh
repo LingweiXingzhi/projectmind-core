@@ -36,12 +36,22 @@ install -d -m 0750 -o root -g projectmind /etc/projectmind
 install -d -m 0700 -o projectmind -g projectmind /srv/projectmind-backups
 install -d -m 0700 -o caddy -g caddy /var/lib/caddy
 cd "$source_dir"
+# The 077 umask above protects private files; mkdir()/venv honour the ambient
+# umask, so building the release tree under it would leave it root-only (0700)
+# and the projectmind account could not traverse it or run the release venv.
+umask 022
 python3 -m deployment.host stage-release --source "$source_dir" --sha "$release_sha" --releases /opt/projectmind/releases
 release_dir=/opt/projectmind/releases/$release_sha
 python3 -m venv "$release_dir/venv"
 "$release_dir/venv/bin/python" -m pip install -r "$release_dir/app/requirements-deploy.txt"
+umask 077
 chown -R root:root "$release_dir"
+chmod 0755 /opt/projectmind /opt/projectmind/releases
 chmod -R go-w "$release_dir"
+# Prove the service account can really read and execute the release before the
+# install is called complete; a silent permission gap must not reach activation.
+runuser -u projectmind -- test -r "$release_dir/app/app.py"
+runuser -u projectmind -- test -x "$release_dir/venv/bin/python"
 if [[ ! -e /etc/projectmind/runtime.json ]]; then
     install -m 0600 -o projectmind -g projectmind "$bundle_dir/runtime.json" /etc/projectmind/runtime.json
 fi
