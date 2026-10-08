@@ -11,6 +11,17 @@ from extensions.handoff.architecture import ArchitectureError, inspect_version_h
 
 @unittest.skipUnless(os.name == 'posix', 'Public deployment requires POSIX permissions')
 class PublicHandoverExportTests(governed_fixtures.PublicGovernedTaskTests):
+    def test_public_collaboration_assets_are_served_after_login(self):
+        auth = self.login()
+        status, _, page = self.request('GET', '/', auth=auth)
+        self.assertEqual(status, 200)
+        self.assertIn(b'/collaboration.js', page)
+        self.assertIn(b'id="collab-shared"', page)
+        status, headers, script = self.request('GET', '/collaboration.js', auth=auth)
+        self.assertEqual(status, 200, script)
+        self.assertIn('text/javascript', headers['Content-Type'])
+        self.assertIn(b'collab-context-refresh', script)
+
     def version_envelope(self, path, publication):
         service = self.application.service
         record = service.store.load_workspace(path.rsplit('/', 1)[-1])
