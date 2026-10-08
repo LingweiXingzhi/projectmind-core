@@ -306,7 +306,8 @@
     } else {
       const generation = envelope.generation || {};
       genStatus.textContent = generation.configured
-        ? `已就绪：模型 ${generation.model}。点击生成候选图。`
+        ? `已就绪：${generation.model} @ ${generation.provider || "已配置端点"}`
+          + `${generation.protocol ? "（" + generation.protocol + "）" : ""}。点击生成候选图。`
         : (generation.note || "AI 未配置。");
     }
 
