@@ -75,22 +75,26 @@
     const result = await response.json(); connection = result; return result;
   }
   function showConnection(planning = false, initialMode = null) {
-    const d = dialog(presentation?'老师演示 · AI 接入状态':'选择 AI 使用方式', presentation?'这是老师展示页，不显示 API 密钥输入。共享 API 由运行者在普通工作台配置。':'用自己的 API 消耗自己的平台额度；老师演示使用我们提供的共享 API。');
+    const d = dialog('AI 服务', presentation?'直接使用平台提供的 AI，无需填写 API 密钥。':'默认使用平台提供的 AI，无需填写密钥。也可以选择接入自己的 API。');
     const status = make('p', '正在读取配置…', 'ux-connection-status'); status.setAttribute('role', 'status');
     const budget = make('p', '', 'ux-ai-budget'); budget.setAttribute('role','status');
     const form = make('form', undefined, 'ux-ai-settings');form.hidden=true;
     const fields={},advanced=make('details',undefined,'ux-ai-advanced');advanced.append(make('summary','高级设置与额度'));
     const modes=make('div',undefined,'ux-actions');let mode='shared',requestedMode=initialMode;
     async function selectMode(value){if(busy)return;if(dirty&&!window.confirm('切换模式会放弃尚未保存的 API 配置，继续吗？'))return;lock(true);try{load(await window.projectmindAISettingsRequest('/api/ai-settings/select',{mode:value}));}catch(error){status.textContent=error.message;}finally{lock(false);}}
-    const personal=button('用自己的 API',()=>selectMode('personal'));
-    const shared=button('老师演示 · 共享 API',()=>selectMode('shared'));
-    modes.append(personal,shared);modes.hidden=presentation;
+    const personal=button('使用自己的 API（可选）',()=>selectMode('personal'));
+    const shared=button('使用平台 AI',()=>selectMode('shared'),true);
+    modes.append(shared,personal);modes.hidden=presentation;
+    const serverHelp=make('details',undefined,'ux-ai-advanced ux-ai-server-help');serverHelp.hidden=true;
+    serverHelp.append(make('summary','管理员：服务器配置说明'),
+      make('p','由管理员在服务器的私有环境变量或 Secrets 中填写密钥。老师只访问网页，调用计入平台共享额度。'),
+      make('p','启用 PROJECTMIND_AI_SHARED_FROM_ENV=1，配置 PROJECTMIND_AI_API_KEY、PROJECTMIND_AI_BASE_URL 和 PROJECTMIND_AI_MODEL 后重启服务。共享密钥不在本页面输入，不放入前端代码或 GitHub。'));
     for(const [id,label,type,placeholder] of [
       ['baseUrl','服务地址（API Base URL）','url','https://你的服务地址/v1'],
       ['apiKey','API 密钥','password','只存服务端，不回显'],
       ['model','模型名称 / ID','text','填写服务商提供的模型 ID'],
       ['protocol','协议','select',''],
-      ['tokenLimit','演示总额度（token）','number','50000'],
+      ['tokenLimit','个人使用总额度（token）','number','50000'],
       ['outputLimit','单次最多输出（token）','number','2048']]){
       const input=make(type==='select'?'select':'input');input.name=id;input.setAttribute('aria-label',label);
       if(type!=='select'){input.type=type;input.placeholder=placeholder;input.required=id!=='apiKey';input.spellcheck=false;}
@@ -113,13 +117,16 @@
       finally{lock(false);}
     });
     const controls=make('div',undefined,'ux-actions');controls.append(save,test);advanced.append(explanation);form.append(controls);
-    function showBudget(value){if(!value){budget.textContent='该实例没有演示额度信息。';return;}budget.textContent=`${mode==='personal'?'个人 API':'老师演示'}：剩余 ${value.remainingTokens.toLocaleString()} / 总额 ${value.tokenLimit.toLocaleString()} token；单次输出最多 ${value.outputLimit}。已用或预留 ${value.chargedTokens.toLocaleString()}（供应商报告 ${value.reportedTokens.toLocaleString()}，保守估算 ${value.estimatedTokens.toLocaleString()}）。`;}
+    function showBudget(value){if(!value){budget.textContent='该服务暂未提供额度信息。';return;}budget.textContent=`${mode==='personal'?'个人 API 额度':'平台共享额度'}：剩余 ${value.remainingTokens.toLocaleString()} / 总额 ${value.tokenLimit.toLocaleString()} token；单次输出最多 ${value.outputLimit}。已用或预留 ${value.chargedTokens.toLocaleString()}（供应商报告 ${value.reportedTokens.toLocaleString()}，保守估算 ${value.estimatedTokens.toLocaleString()}）。`;}
     function lock(value){busy=value;for(const field of Object.values(fields))field.disabled=value;personal.disabled=value;shared.disabled=value;preset.disabled=value;save.disabled=value;test.disabled=value||dirty||!saved?.configured;}
-    function load(value){saved=value;mode=value.mode||'shared';if(!presentation){activeAIMode=mode;try{sessionStorage.setItem('projectmind:ai-mode',mode);}catch(_){}}connection=value;showBudget(value.budget);personal.setAttribute('aria-pressed',String(mode==='personal'));shared.setAttribute('aria-pressed',String(mode==='shared'));status.textContent=value.configured?`${mode==='personal'?'个人 API':'老师演示共享模型'}已配置：${value.model}。${mode==='personal'?'调用消耗你自己的平台额度。':'老师无需填写 API。'}实际可用性以连接测试和生成结果为准。`:`${mode==='personal'?'填写你的 API 地址、密钥和模型后保存即可；会话到期需重新填写，不自动使用共享 Key。':'共享演示模型尚未配置，请由运行者填写。'}无需重启服务。`;
-      const editable=value.canEdit&&!presentation;
-      form.hidden=!editable;configure.hidden=!(presentation&&value.canEdit);note.textContent=value.managedBy==='server_environment'?'共享 API 由运行者在服务器环境变量或 Secrets 中配置，此页不输入或保存共享 Key。老师直接使用模型与统一额度。':editable?(mode==='personal'?`个人配置保留在服务端，${value.personalLifetime==='account'?'仅当前登录账号可使用':'绑定当前浏览器会话；服务重启或会话到期后需重新填写'}。`:'运行者配置共享演示 API，供老师使用。')+'更换地址时需重新填写密钥；密钥不会回显。':'演示使用运行者提供的共享模型和统一额度；配置及额度调整由运行者管理。';
+    function load(value){saved=value;mode=value.mode||'shared';if(!presentation){activeAIMode=mode;try{sessionStorage.setItem('projectmind:ai-mode',mode);}catch(_){}}connection=value;showBudget(value.budget);personal.setAttribute('aria-pressed',String(mode==='personal'));shared.setAttribute('aria-pressed',String(mode==='shared'));
+      status.textContent=mode==='shared'?(value.configured?`平台 AI 已配置：${value.model}。实际可用性以生成结果为准。`:'平台 AI 尚未启用。管理员完成服务器配置后即可使用。'):(value.configured?`个人 API 已配置：${value.model}。调用消耗你自己的平台额度，实际可用性以连接测试和生成结果为准。`:'填写自己的服务地址、密钥和模型后保存即可；会话到期需重新填写，不自动使用平台 Key。');
+      const editable=mode==='personal'&&value.canEdit&&!presentation;
+      form.hidden=!editable;serverHelp.hidden=mode!=='shared'||presentation;
+      if(!editable)fields.apiKey.value='';
+      note.textContent=mode==='shared'?'老师无需填写或获取 Key。平台密钥由管理员在服务器私有配置中管理，本页仅查看状态和额度。':`个人配置保留在服务端，${value.personalLifetime==='account'?'仅当前登录账号可使用':'绑定当前浏览器会话；服务重启或会话到期后需重新填写'}。更换地址时需重新填写密钥；密钥不会回显。`;
       if(editable){fields.baseUrl.value=value.baseUrl;fields.apiKey.value='';fields.apiKey.required=!value.hasKey;fields.apiKey.placeholder=value.hasKey?'已保存；留空沿用同一地址的密钥':'填写你的 API 密钥';fields.model.value=value.model||'';fields.protocol.value=value.configured?(value.protocol||'auto'):'auto';fields.tokenLimit.value=value.budget.tokenLimit;fields.outputLimit.value=value.budget.outputLimit;}
-      dirty=false;lock(false);continueButton.textContent=planning?(value.configured?'继续 · 输入项目想法':'先记录项目想法'):'返回工作台';renderNext();
+      dirty=false;lock(false);continueButton.textContent=planning?(value.configured?(mode==='shared'?'使用平台 AI，继续':'继续 · 输入项目想法'):'先记录项目想法'):'返回工作台';renderNext();
     }
     for(const field of Object.values(fields))field.addEventListener('input',()=>{dirty=true;test.disabled=true;});
     fields.protocol.addEventListener('change',()=>{dirty=true;test.disabled=true;});
@@ -134,8 +141,7 @@
     const check=async()=>{if(busy)return;if(dirty&&!window.confirm('刷新会放弃尚未保存的 API 配置，继续吗？'))return;lock(true);status.textContent='正在读取配置…';try{const value=await window.projectmindAISettingsRequest('/api/ai-settings'+(requestedMode?'?mode='+requestedMode:''),undefined,'GET');requestedMode=null;load(value);}catch(error){status.textContent=error.message;form.hidden=true;try{await readConnection();renderNext();}catch(_){} }finally{lock(false);}};
     const actions=make('div',undefined,'ux-actions');actions.append(button('刷新状态与额度',check),continueButton);
     const demo=make('a','打开展示入口（不显示配置表单）','button ghost');demo.href='/?demo=1#home';demo.target='_blank';demo.rel='noopener';
-    const configure=make('a','我是运行者 · 配置共享 API','button primary');configure.href='/?configure-ai=shared#arch';configure.hidden=true;
-    d.append(modes,status,budget,note,configure,form,actions);if(!presentation)d.append(demo);check();
+    d.append(modes,status,budget,note,form,serverHelp,actions);if(!presentation)d.append(demo);check();
   }
   function help() {
     const d = dialog('按这条流程使用', '普通操作都围绕当前项目的功能图展开。需要时再打开代码、日志和任务。');

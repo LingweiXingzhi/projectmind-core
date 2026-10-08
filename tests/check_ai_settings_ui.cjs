@@ -33,20 +33,26 @@ async function scenario(demo,configure=false){
  const field=name=>form.elements.namedItem(name);
  const input=(name,value)=>{field(name).value=value;field(name).dispatchEvent(new w.Event('input',{bubbles:true}));};
  if(demo){
-   assert.equal(form.hidden,true);assert.equal(button('用自己的 API').parentElement.hidden,true);
-   assert.equal(dialog.querySelector('a[href="/?configure-ai=shared#arch"]').hidden,false,'runtime editor can find the input form');
-   assert.ok(dialog.textContent.includes('老师无需填写 API'));
+   assert.equal(form.hidden,true);assert.equal(button('使用自己的 API（可选）').parentElement.hidden,true);
+   assert.equal(dialog.querySelector('a[href="/?configure-ai=shared#arch"]'),null,'teacher is not sent to enter a shared key');
+   assert.equal(dialog.querySelector('.ux-ai-server-help').hidden,true);
+   assert.ok(dialog.textContent.includes('老师无需填写或获取 Key'));
    await w.fetch('http://127.0.0.1:8899/api/archloop/workspaces/ws/generate',{method:'POST'});
    assert.equal(network.at(-1).headers.get('X-ProjectMind-AI-Mode'),'shared');
  }else{
+   assert.equal(dialog.querySelector('h2').textContent,'AI 服务');
+   assert.equal(form.hidden,true,'shared API never shows a key entry even when the legacy backend reports canEdit');
+   assert.equal(dialog.querySelector('.ux-ai-server-help').hidden,false);
+   assert.equal(dialog.querySelector('.ux-ai-server-help').open,false);
    assert.equal(field('apiKey').value,'');assert.equal(form.querySelector('details').open,false);
-   button('用自己的 API').click();await settle();
+   button('使用自己的 API（可选）').click();await settle();
+   assert.equal(form.hidden,false);assert.equal(dialog.querySelector('.ux-ai-server-help').hidden,true);
    assert.equal(field('protocol').value,'auto','unconfigured defaults to auto, not the resolved OpenAI protocol');
    button('填入千问平台兼容地址').click();
    assert.equal(field('baseUrl').value,'https://maas.qianwenapi.com/compatible-mode/v1');
    input('apiKey','SYNTHETIC-DOM-NOT-A-REAL-KEY');input('model','fixture-model');
    assert.equal(button('测试已保存的连接').disabled,true);
-   const before=requests.length;button('老师演示 · 共享 API').click();await settle();
+   const before=requests.length;button('使用平台 AI').click();await settle();
    assert.equal(requests.length,before,'cancelled mode switch retains unsaved fields');
    button('刷新状态与额度').click();await settle();assert.equal(requests.length,before,'cancelled refresh retains unsaved fields');
    assert.equal(field('apiKey').value,'SYNTHETIC-DOM-NOT-A-REAL-KEY');
@@ -58,10 +64,11 @@ async function scenario(demo,configure=false){
    await w.fetch('/api/archloop/session');assert.equal(network.at(-1).headers,undefined,'renewal remains available');
    assert.equal(w.sessionStorage.getItem('projectmind:ai-mode'),'personal');
    button('测试已保存的连接').click();await settle();assert.ok(dialog.textContent.includes('49,985'));
-   approve=true;button('老师演示 · 共享 API').click();await settle();
-   assert.equal(field('model').value,'shared-fixture');assert.equal(field('apiKey').value,'');
+   approve=true;button('使用平台 AI').click();await settle();
+   assert.equal(form.hidden,true);assert.equal(field('apiKey').value,'');
+   assert.ok(dialog.querySelector('.ux-connection-status').textContent.includes('平台 AI 已配置'));
    assert.equal(d.querySelector('a[href="/?demo=1#home"]').target,'_blank');
  }
  dom.window.close();
 }
-(async()=>{await scenario(false);await scenario(true);await scenario(false,true);console.log('PASS: personal/shared separation, auto protocol, preset, explicit save/test, cleared key, dirty input retention, demo fields hidden and shared request header, direct runtime configuration link.');})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{await scenario(false);await scenario(true);await scenario(false,true);console.log('PASS: platform AI state without shared key form, server setup help, personal API option, save/test/cleared key, dirty input retention, teacher shared routing and legacy configuration link opens status only.');})().catch(error=>{console.error(error);process.exitCode=1;});
