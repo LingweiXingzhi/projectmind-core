@@ -56,7 +56,7 @@ class TransportBoundaryTests(unittest.TestCase):
                 network.assert_not_called()
 
     def test_request_size_and_nonfinite_input_refused_before_contact(self):
-        with self.env('http://127.0.0.1:1/v1'),patch.object(transport,'urlopen') as network:
+        with self.env('http://127.0.0.1:1/v1'),patch.object(transport.subprocess,'Popen') as network:
             for payload in ({'body':'x'*(transport.MAX_REQUEST_BYTES+1)},{'n':float('nan')}):
                 with self.assertRaises(transport.AIError):transport.call_model('fixture',payload,'s',{'type':'object'})
             network.assert_not_called()

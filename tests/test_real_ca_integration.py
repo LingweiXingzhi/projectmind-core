@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT))
 from extensions.map_proposal import ca_adapter, engine  # noqa: E402
 
 REAL_CA_ROOT = Path(os.environ.get(
-    "PROJECTMIND_REAL_CA_ROOT", r"G:\jiagou\projectmind-context-authority"))
+    "PROJECTMIND_REAL_CA_ROOT", str(ROOT)))
 REAL_CA_PACKAGE = REAL_CA_ROOT / "extensions" / "context_authority" / "context_pack.py"
 
 A_CLASS = "class A:\n    pass\n"

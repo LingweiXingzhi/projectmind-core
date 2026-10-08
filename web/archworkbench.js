@@ -330,9 +330,14 @@
     document.getElementById("arch-review-preview-button").disabled = !hasDraft || state.busy;
     document.getElementById("arch-versions-button").disabled = !hasDraft || state.busy;
     document.getElementById("arch-handover-button").disabled = !hasDraft || state.busy;
-    document.getElementById("arch-fixtask-button").disabled = !hasDraft || state.busy;
+    const localTaskButton = document.getElementById('arch-fixtask-button');
+    localTaskButton.disabled = !hasDraft || state.busy;
+    localTaskButton.hidden = Boolean(window.projectmindSession);
     const fixTasksButton = document.getElementById("arch-fixtasks-button");
-    if (fixTasksButton) fixTasksButton.disabled = !hasDraft || state.busy;
+    if (fixTasksButton) {
+      fixTasksButton.disabled = !hasDraft || state.busy;
+      fixTasksButton.hidden = Boolean(window.projectmindSession);
+    }
     document.getElementById("arch-correction-button").disabled = !hasDraft || !state.selectedNodeId || state.busy;
     for (const id of ["arch-deviations-button", "arch-incremental-button"]) {
       const button = document.getElementById(id);
@@ -977,6 +982,10 @@
     const area = document.getElementById("arch-review-result");
     area.replaceChildren();
     area.append(el("div", "ai-candidate-label", listing.source || "修正实现任务（D 权威任务状态）"));
+    if (listing.backend?.kind === 'd_governed_tasks') {
+      area.append(el('p', 'ai-item', '在下方的修正任务面板中创建、接手和回挂任务。'));
+      return;
+    }
     const tasks = listing.tasks || [];
     if (!tasks.length) {
       area.append(el("p", "ai-item", "该工作区还没有修正任务；先在图上选中节点并创建。"));
@@ -1100,7 +1109,8 @@
       // the declared operator is bound to the server-side write session, so
       // fix tasks created later are attributed to the same declaration
       await ensureSession(actor);
-      const verifyCode = state.envelope.workspace.context !== "planning";
+      const verifyCode = state.envelope.workspace.context !== "planning"
+        && (document.getElementById('arch-review-mode')?.value || 'code') !== 'design';
       const preview = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/review-preview`,
         { actor, reason, verifyCode });
       reviewFlow.actor = actor;
@@ -1340,4 +1350,3 @@
 
   loadHistory();
 })();
-

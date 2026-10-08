@@ -6,13 +6,14 @@ import argparse
 import shlex
 import json
 import math
+import math
 import os
 import re
 import subprocess
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, unquote
 
 from extension_host import ExtensionContext, ExtensionError, ExtensionHost
 from repo_index import gitio
@@ -477,7 +478,23 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 raise ValueError("Expected application/json")
             if len(raw) < 1 or len(raw) > max_bytes:
                 raise ValueError("Invalid request size")
-            request = json.loads(raw)
+            def invalid_constant(_):
+                raise ValueError("Expected finite JSON")
+            try:
+                request = json.loads(raw, parse_constant=invalid_constant)
+            except (ValueError, UnicodeError, RecursionError):
+                raise ValueError("Expected valid finite JSON") from None
+            stack = [(request, 0)]
+            while stack:
+                item, depth = stack.pop()
+                if depth > 64:
+                    raise ValueError("JSON nesting exceeds 64 levels")
+                if isinstance(item, float) and not math.isfinite(item):
+                    raise ValueError("Expected finite JSON")
+                if isinstance(item, dict):
+                    stack.extend((child, depth + 1) for child in item.values())
+                elif isinstance(item, list):
+                    stack.extend((child, depth + 1) for child in item)
             if not isinstance(request, dict):
                 raise ValueError("Expected JSON object")
             return request
@@ -660,7 +677,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.version_history(workspace_id))
                     return
                 if method == "GET" and len(rest) == 2 and rest[0] == "versions":
-                    self.send_json(HTTPStatus.OK, archloop_service.version_detail(workspace_id, rest[1]))
+                    self.send_json(HTTPStatus.OK, archloop_service.version_detail(workspace_id, unquote(rest[1])))
                     return
                 if method == "POST" and rest == ["import-version"]:
                     self.send_json(HTTPStatus.OK, archloop_service.import_version(workspace_id, body or {}))
@@ -970,9 +987,13 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.FORBIDDEN, payload)
                     return
                 try:
-                    self._archloop_session = archloop_sessions.verify(
-                        parse_session_cookie(self.headers.get("Cookie")),
-                        self.headers.get(CSRF_HEADER))
+                    if public_origin is None:
+                        self._archloop_session = archloop_sessions.verify(
+                            parse_session_cookie(self.headers.get("Cookie")),
+                            self.headers.get(CSRF_HEADER))
+                    # In public mode, _explorer_access_allowed already required
+                    # the genuine WSGI session object. That boundary checks
+                    # login and X-ProjectMind-CSRF before creating this Handler.
                 except ContractError as exc:
                     self.send_json(exc.status, archloop_error_payload(exc))
                     return
