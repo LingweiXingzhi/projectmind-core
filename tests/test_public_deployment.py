@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 from deployment.access import AccessError, COOKIE, PublicAccess, add_account, create_account_file
 from deployment.server import build_application
@@ -299,5 +300,24 @@ class PublicHTTPTests(unittest.TestCase):
             status, _, detail = self.request('GET', path + '/versions/' + segment, auth=auth)
             self.assertEqual(status, 200, detail)
             self.assertEqual(detail['version']['mapRevision'], revision)
+
+    def test_handover_attachment_keeps_public_login_and_version_binding(self):
+        from urllib.parse import urlencode
+        revision, source = 'sha256:' + 'a' * 64, 'b' * 40
+        packet = {'versionEnvelope': {'version': {'mapRevision': revision},
+                                     'provenance': {'mapSourceRevision': source}}}
+        path = '/api/archloop/workspaces/ws_fixture/handover?'
+        query = {'download': '1', 'mapRevision': revision, 'mapSourceRevision': source}
+        auth = self.login()
+        # Only payload is controlled; real Waitress, login, WSGI and handler run.
+        with patch.object(self.application.service, 'export_handover', return_value=packet):
+            status, headers, _ = self.request('GET', path + urlencode(query))
+            self.assertEqual(status, 401); self.assertNotIn('Content-Disposition', headers)
+            status, headers, result = self.request('GET', path + urlencode(query), auth=auth)
+            self.assertEqual(status, 200, result); self.assertEqual(result, packet)
+            self.assertEqual(headers['Content-Disposition'], 'attachment; filename="handover-aaaaaaaaaaaa.json"')
+            status, headers, result = self.request('GET', path + urlencode({**query, 'mapSourceRevision':'c'*40}), auth=auth)
+            self.assertEqual(status, 409, result); self.assertNotIn('Content-Disposition', headers)
+
 
 if __name__ == "__main__": unittest.main()

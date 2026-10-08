@@ -89,11 +89,21 @@ class WorkbenchService:
     def probe_repo(self, repo_path: str) -> dict:
         git = self._require_git()
         from pathlib import Path as _Path
-        repo = _Path(repo_path)
+        repo = _Path(repo_path).expanduser()
         if self.allowed_repositories is not None and repo.resolve() not in self.allowed_repositories:
             raise ContractError("REQUEST_FORBIDDEN", "代码仓库未在服务器登记")
-        root = git(repo, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").strip()
-        head = git(repo, "rev-parse", "HEAD").decode().strip()
+        if repo_path.startswith(("https://", "http://", "git@", "ssh://")):
+            raise ContractError("VALIDATION_FAILED", "这里需要运行服务的电脑上的 Git 项目目录。请先克隆 GitHub 项目，再填写本地目录。")
+        if not repo.is_dir():
+            raise ContractError("VALIDATION_FAILED", "找不到这个项目目录。请检查路径，并确认目录位于运行服务的电脑上。")
+        try:
+            root = git(repo, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").strip()
+        except Exception as exc:
+            raise ContractError("VALIDATION_FAILED", "无法读取这个 Git 项目。请选择已克隆的 Git 仓库目录，并检查目录访问权限。") from exc
+        try:
+            head = git(repo, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
+        except Exception as exc:
+            raise ContractError("VALIDATION_FAILED", "这个仓库还没有可读取的代码提交。请先完成首次 Git 提交，再导入项目。") from exc
         try:
             remote = git(repo, "remote", "get-url", "origin").decode("utf-8", errors="replace").strip()
         except Exception:

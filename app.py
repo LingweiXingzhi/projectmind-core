@@ -708,7 +708,22 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     self.send_json(HTTPStatus.OK, archloop_service.fix_task_markdown(workspace_id, rest[1]))
                     return
                 if method == "GET" and rest == ["handover"]:
-                    self.send_json(HTTPStatus.OK, archloop_service.export_handover(workspace_id))
+                    package = archloop_service.export_handover(workspace_id)
+                    if query.get("download") == "1":
+                        version = (package.get("versionEnvelope") or {}).get("version") or package
+                        provenance = (package.get("versionEnvelope") or {}).get("provenance") or package
+                        # A visible download must keep the version the user saw,
+                        # even if another browser publishes before this GET.
+                        if (query.get("mapRevision") != version.get("mapRevision")
+                                or query.get("mapSourceRevision") != provenance.get("mapSourceRevision")):
+                            raise ContractError("REVISION_CONFLICT", "交接版本已变化，请重新生成交接包后下载")
+                        revision = version.get("mapRevision", "")
+                        match = re.fullmatch(r"sha256:([0-9a-f]{64})", revision)
+                        filename = f"handover-{match.group(1)[:12]}.json" if match else "handover.json"
+                        self.send_bytes(HTTPStatus.OK, json.dumps(package, ensure_ascii=False).encode("utf-8"),
+                                        "application/json; charset=utf-8", filename=filename)
+                    else:
+                        self.send_json(HTTPStatus.OK, package)
                     return
                 if method == "POST" and rest == ["deviations"]:
                     self.send_json(HTTPStatus.OK, archloop_service.deviations(workspace_id, body or {}))
