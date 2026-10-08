@@ -806,8 +806,9 @@ class WorkbenchService:
 
     def export_handover(self, workspace_id: str) -> dict:
         record = self.store.load_workspace(workspace_id)
-        if self.backend_d is not None:
-            return self.backend_d.handover(record)
+        governed = self._governed_tasks()
+        if governed is not None:
+            return governed.handover(record)
         binding = record.get("backendB") or {}
         if not binding.get("workspaceId"):
             raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务，无法导出同版交接包")
