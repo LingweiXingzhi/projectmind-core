@@ -13,6 +13,7 @@
 | `deployment.host render-domain` | 保留现有仓库、数据、架构配置，生成匹配真实域名的 runtime/Caddy 新副本 |
 | `deployment.host stage-release` | 从干净且非浅克隆的本地来源安装指定完整 SHA 的独立 Git 副本，保留历史、不激活、不覆盖 |
 | `deployment.host preflight` | 检查私有权限、Git 完整性、代码来源、架构候选分支、精确应用提交；不启动服务、不初始化业务库 |
+| `deployment.machine` | 只读盘点主机依赖、独立账号、时钟和容量；阻塞返回2，不代表公网验收 |
 | `deployment.host backup/restore` | 复用原冷备，新增来源绑定收据；恢复到新目录，不自动重绑工作区、不恢复登录授权 |
 | `install.sh` | 显式 root 安装独立版本/venv/服务文件，不启动服务，不覆盖账号或既有 runtime/Caddy |
 | `activate.sh` | 实机预检、原版本冷备、停止服务、原子切换版本、检查真实后端401，再启动HTTPS；失败保持停止 |
@@ -34,6 +35,21 @@ python3 -m deployment.host prepare --output /tmp/projectmind-host-ready
 
 选择支持 Python 3.10+、Git 和 systemd 的 Linux 主机。使用官方安装方式准备 Python/venv、Git、Caddy（本轮演练为2.11.7），不执行来源不明的远程脚本。
 本工具不采购资源、不设置云账号、不修改云防火墙。
+
+安装前和安装后各运行一次主机盘点（输出须为新文件）：
+
+```sh
+python3 -m deployment.machine --output /tmp/projectmind-machine-before.json
+# 安装后再次运行，必要时按实际业务规模提高 --minimum-free-gib。
+python3 -m deployment.machine --output /tmp/projectmind-machine-after.json
+```
+
+安装前缺少projectmind账号是预期条件，安装脚本会创建；caddy账号和systemd须先具备。
+盘点退出2表示尚有阻塞，0只表示主机依赖满足。服务active/enabled只是观测，不计作公网通过。
+默认每个目标卷2GiB只是安装最低线，源码历史、数据库、附件和多代备份需按实际规模预留。
+安装与激活/备份共用维护锁；依赖检查在创建账号和目录之前执行。
+安装中途失败会保留已生成的发布目录，不自动覆盖或删除。核对失败日志及目录后，
+由管理员明确处理未完成的独立发布目录，再重试；业务state/architecture不得删除。
 
 1. 通过正常 Git 授权获取完整私有仓库历史，凭据不写入 remote URL。checkout 本轮或后续审定提交，确认工作区干净。
 2. 在该固定源码目录生成准备包。以 root 执行：
@@ -111,6 +127,9 @@ sudo bash /opt/projectmind/backup.sh /srv/projectmind-backups/你选择的新备
 收据记录代码路径、origin哈希和固定提交，校验完整性，不提供签名来源证明。
 账号、runtime、model.env、Caddy证书应另作私有备份；内存登录/人审授权不恢复。
 备份失败时应用保持停止，查看原因并修复后再启动，不能拿失败目录继续写数据。
+升级内部使用 `backup.sh 新目录 --keep-stopped`，备份完成后不短暂恢复写入；普通独立备份成功后恢复原活动服务。
+启动失败、后端验收失败或代理重启失败都会明确停止应用，终止自动重启重试；原数据、冷备及发布目录保留。
+原子切换使用本次操作独有的临时链接目录，失败清理自己的临时文件，不删除之前遗留的文件。
 停止短时间写入属于冷备约定，不能当作无停机热备。
 
 恢复仅到新目录；原配置对应数据根运行时会拒绝恢复。保留同样的登记代码路径、来源和完整HEAD，工具不自动迁移旧工作区身份：
@@ -139,5 +158,7 @@ root执行恢复后，须将恢复目录及新runtime交给projectmind拥有（r
 最终独立审计、两条开发线全部功能差异核对、共享日志附件等既有未收口项保留；本轮不合并main或批准正式Model。
 
 官方参考：[Caddy 自动HTTPS](https://caddyserver.com/docs/automatic-https)、[Caddy systemd服务](https://caddyserver.com/docs/running#linux-service)。
+
+完整服务器交付条件和验收顺序见 [HOST_ACCEPTANCE.md](HOST_ACCEPTANCE.md)。
 
 Project Model Impact：MINOR。补齐既有deployment内部运维，不改变公共业务接口或认知批准权限。

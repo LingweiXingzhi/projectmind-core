@@ -5,7 +5,8 @@
 固定起点：PR #68 / `5be9af307ef1f631af3301e5f2521dfea3f4d436`。
 独立分支：`feat/69-host-readiness-20261008`。
 最终运行源码远端提交：`2fa41db622efde036fde0ef2c5a5b4d701319afc`，tree `3d2745d415f64d700b7ee1babd56bf713ad516fe`。
-后续只增加本交付与验收证据，不改运行源码。
+该提交为第一轮运行源码基线。用户要求继续后追加维护失败路径与主机盘点，
+最新运行版本以PR #70最新完整HEAD为准；续作证据见 `verification/host-maintenance-20261008/`。
 
 已补齐可执行的域名前准备包、保留既有源的域名切换、固定SHA发布安装、只读预检、
 排他维护/停机备份、来源绑定的新目录恢复、显式代码回退及HTTPS登录检查。
@@ -41,6 +42,18 @@
 证据入口：[SUMMARY.json](verification/host-ready-20261008/SUMMARY.json)、
 [CODE_MANIFEST.json](verification/host-ready-20261008/CODE_MANIFEST.json)、
 [SHA256.json](verification/host-ready-20261008/SHA256.json)。
+
+## 用户要求继续后的补齐
+
+修复升级备份后短暂恢复写入、启动失败仍可能自动重启、代理重启失败未停止应用、
+固定临时链接遗留阻塞等维护失败路径。安装先检查systemd/Python/账号依赖且共用维护锁，
+服务自身启动前也拒绝占位域名。新增只读 `deployment.machine` 和 [HOST_ACCEPTANCE.md](HOST_ACCEPTANCE.md)。
+
+本次全仓源码快照回归1037项：1022通过、15跳过、0失败，143.224秒。
+全仓运行期间的小幅模板/前置依赖检查调整另由最终部署专项覆盖：34项全通过，4.985秒。
+专项再次执行真实Caddy/Waitress TLS与两会话14检查；维护故障测试的service/user控制明确为模拟。
+当前容器主机盘点准确返回BLOCKED/5，不冒充实机已满足；新准备包生成成功，不启动服务。
+新证据与精确代码SHA256见 [SUMMARY.json](verification/host-maintenance-20261008/SUMMARY.json)。
 
 ## Project Model Impact
 

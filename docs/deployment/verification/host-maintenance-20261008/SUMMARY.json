@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "projectmind_host_maintenance_evidence_v1",
+  "remoteParent": "30ca9ac162975819c273ede66e4929374b0b2924",
+  "fullSuite": {
+    "total": 1037,
+    "passed": 1022,
+    "skipped": 15,
+    "seconds": 143.224,
+    "exitCode": 0,
+    "scope": "local exact source snapshot; not complete upstream history; final small template/prerequisite changes additionally covered by final deployment run"
+  },
+  "finalDeployment": {
+    "total": 34,
+    "passed": 34,
+    "seconds": 4.985,
+    "exitCode": 0
+  },
+  "serviceControl": "SIMULATED in failure injection tests; not systemd acceptance",
+  "tls": "actual Caddy/Waitress, custom local CA and hostname validation, 14 authenticated checks",
+  "machine": {
+    "status": "BLOCKED",
+    "blocked": 5,
+    "servicesChanged": false
+  },
+  "publicDeployed": false,
+  "realServiceUser": "NOT_RUN (root-only UID/GID mapping)",
+  "remaining": "see HOST_ACCEPTANCE.md"
+}

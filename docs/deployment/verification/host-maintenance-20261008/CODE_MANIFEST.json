@@ -1,0 +1,8 @@
+{
+  "deployment/machine.py": "6e7d7e20437b673d9021c2ae92771d665e9d0805821f97a4f58183c0908aa5e1",
+  "deployment/host_templates/activate.sh": "ca45b11e34e10cb4384fb9c58a61c677cffb43b257688bbbefd97446f5a08870",
+  "deployment/host_templates/backup.sh": "15fe486a22290f9047610c4d05e2bcfa27eecdf46b3775196ca344fdee5cf624",
+  "deployment/host_templates/install.sh": "7ec53c9ab3243a89183df6a55c1cb2b48c15834b4caaa5c8ef8f41855d1b81bf",
+  "deployment/host_templates/projectmind.service": "66b4904bfc818c834a1edf2925e07724e8b7e9b2709bffc66ccd82bdb5540b04",
+  "tests/test_deployment_maintenance.py": "e14c85b34b650cb06184947d12c60b3a19a4175aeec81fdda018be5734e81f60"
+}

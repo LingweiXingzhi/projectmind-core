@@ -11,7 +11,7 @@ Group=projectmind
 WorkingDirectory=/opt/projectmind/current/app
 Environment=PYTHONDONTWRITEBYTECODE=1
 EnvironmentFile=-/etc/projectmind/model.env
-ExecStartPre=/opt/projectmind/current/venv/bin/python -m deployment.host preflight --config /etc/projectmind/runtime.json
+ExecStartPre=/opt/projectmind/current/venv/bin/python -m deployment.host preflight --config /etc/projectmind/runtime.json --public
 ExecStart=/opt/projectmind/current/venv/bin/python -m deployment.server serve --config /etc/projectmind/runtime.json --port 8765
 Restart=on-failure
 RestartSec=5

@@ -5,6 +5,23 @@ umask 077
 [[ $EUID == 0 && $# == 1 && $1 =~ ^[0-9a-f]{40}$ ]] || { echo '用法（root）：activate.sh 完整提交SHA' >&2; exit 2; }
 exec 9>/run/lock/projectmind-maintenance.lock
 flock -n 9 || { echo "已有部署维护操作" >&2; exit 1; }
+activation_started=0
+next_link=''
+# After any failed activation, stop restart-policy retries and retain all data.
+cleanup() {
+    status=$?
+    trap - EXIT
+    if [[ $status != 0 && $activation_started == 1 ]]; then
+        systemctl stop projectmind.service || true
+        echo '激活未完成，应用保持停止；保留发布目录、当前链接及冷备，核对后显式回退。' >&2
+    fi
+    if [[ -n $next_link ]]; then
+        rm -f -- "$next_link" || true
+        rmdir "${next_link%/*}" || true
+    fi
+    exit "$status"
+}
+trap cleanup EXIT
 release_sha=$1
 release_dir=/opt/projectmind/releases/$release_sha
 [[ -d "$release_dir/app/.git" && -x "$release_dir/venv/bin/python" ]] || exit 1
@@ -24,11 +41,18 @@ PY
 previous=''
 if [[ -L /opt/projectmind/current ]]; then
     previous=$(readlink -f /opt/projectmind/current)
-    PROJECTMIND_MAINTENANCE_LOCKED=1 /opt/projectmind/backup.sh "/srv/projectmind-backups/before-$release_sha-$(date -u +%Y%m%dT%H%M%SZ)"
+    activation_started=1
+    PROJECTMIND_MAINTENANCE_LOCKED=1 /opt/projectmind/backup.sh "/srv/projectmind-backups/before-$release_sha-$(date -u +%Y%m%dT%H%M%SZ)" --keep-stopped
 fi
+activation_started=1
 systemctl stop projectmind.service
-ln -s "$release_dir" /opt/projectmind/.current-next
-mv -Tf /opt/projectmind/.current-next /opt/projectmind/current
+# Own a unique temporary directory; an interrupted older run cannot block this run.
+next_dir=$(mktemp -d /opt/projectmind/.activate.XXXXXXXX)
+next_link=$next_dir/current
+ln -s "$release_dir" "$next_link"
+mv -Tf "$next_link" /opt/projectmind/current
+rmdir "$next_dir"
+next_link=''
 if ! systemctl start projectmind.service; then
     echo '启动失败，保留数据和备份。服务保持停止；核对兼容性后显式回退。' >&2; exit 1
 fi

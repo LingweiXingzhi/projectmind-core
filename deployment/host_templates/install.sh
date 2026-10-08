@@ -5,6 +5,17 @@ umask 077
 if [[ $# != 3 || $EUID != 0 ]]; then
     echo '用法（root）：bash install.sh 完整源码副本 完整提交SHA 准备包目录' >&2; exit 2
 fi
+exec 9>/run/lock/projectmind-maintenance.lock
+flock -n 9 || { echo "已有部署维护操作" >&2; exit 1; }
+# Check host prerequisites before creating users or release directories.
+[[ -d /run/systemd/system ]] || { echo '须在真实systemd Linux主机安装' >&2; exit 1; }
+for command in git python3 runuser useradd install flock systemctl; do command -v "$command" >/dev/null; done
+python3 -c 'import sys, venv, ensurepip; assert sys.version_info >= (3, 10), "需要Python3.10+"'
+id caddy >/dev/null 2>&1 || { echo 'Caddy 系统账号未配置' >&2; exit 1; }
+[[ $(id -u caddy) != 0 && $(id -g caddy) != 0 ]] || { echo 'caddy须为独立非root账号' >&2; exit 1; }
+if id projectmind >/dev/null 2>&1; then
+    [[ $(id -u projectmind) != 0 && $(id -g projectmind) != 0 ]] || { echo 'projectmind须为独立非root账号' >&2; exit 1; }
+fi
 source_dir=$(realpath "$1")
 release_sha=$2
 bundle_dir=$(realpath "$3")
