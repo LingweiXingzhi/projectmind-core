@@ -931,6 +931,8 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "/governed-tasks.js": ("governed-tasks.js", "text/javascript; charset=utf-8"),
                     "/work-records.js": ("work-records.js", "text/javascript; charset=utf-8"),
                     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+                    "/user-guide.css": ("user-guide.css", "text/css; charset=utf-8"),
+                    "/user-guide.js": ("user-guide.js", "text/javascript; charset=utf-8"),
                 }
                 if request.path in assets:
                     filename, content_type = assets[request.path]

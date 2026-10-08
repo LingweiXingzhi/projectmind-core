@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ProjectMind · 项目认知空间</title>
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/user-guide.css" />
     <script src="/app.js" defer></script>
     <script src="/evidence-links.js" defer></script>
     <script src="/review.js" defer></script>
@@ -15,6 +16,7 @@
     <script src="/archworkbench.js" defer></script>
     <script src="/governed-tasks.js" defer></script>
     <script src="/work-records.js" defer></script>
+    <script src="/user-guide.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -45,6 +47,11 @@
           <div class="top-actions"><button class="icon-button" id="toggle-inspector" title="切换详情面板" aria-label="切换详情面板">◫</button><button class="icon-button" id="refresh-button" title="刷新 Git 提交" aria-label="刷新 Git 提交">⟳</button><button class="icon-button" id="copy-link" title="复制当前页面链接" aria-label="复制当前页面链接">↗</button></div>
         </header>
         <section id="view-home" class="view" aria-label="项目总览">
+          <section class="ux-welcome" aria-labelledby="ux-welcome-title">
+            <div><h1 id="ux-welcome-title">先把项目讲清楚，再和团队一起推进</h1><p>导入已有代码，或从一个想法开始。查看功能图、修正理解、确认版本，最后交给队友。</p></div>
+            <button class="button primary" id="ux-start">开始 / 添加项目</button>
+            <button class="button ghost" id="ux-help">使用流程</button>
+          </section>
           <div class="overview-heading"><div><h1 id="greeting">这是 ProjectMind</h1><p>理解项目 · 跟踪变化 · 形成共识 · 持续演进</p></div><div class="home-repository"><strong id="home-repo">项目工作空间</strong><p id="home-identity">正在读取 Git 身份…</p><button class="button ghost" id="home-sync">⟳ 同步</button></div></div>
           <h2 class="home-section-title">需要你关注 <small>基于当前项目的真实状态</small></h2>
           <div id="home-attention" class="attention-grid"><div class="skeleton">读取项目状态…</div></div>
@@ -133,20 +140,22 @@
                   <button class="button ghost arch-tab" data-entry="planning" type="button">规划新项目</button>
                 </div>
                 <form id="arch-create-existing" class="arch-entry-form">
+                  <p class="ux-entry-help">填写运行服务的电脑上的 Git 项目目录，例如 C:\Projects\MyApp。GitHub 项目需先下载为本地 Git 仓库；普通文件夹需先建立 Git 并提交代码。导入只读取已提交的版本，不会修改代码。</p>
                   <div class="compare-controls">
-                    <label>仓库本地路径<input id="arch-repo-path" type="text" spellcheck="false" placeholder="例如 /Users/you/Desktop/project" /></label>
-                    <label>工作区名称<input id="arch-existing-title" type="text" placeholder="例如：示例项目架构认知" /></label>
+                    <label>仓库本地路径<input id="arch-repo-path" type="text" spellcheck="false" placeholder="例如 C:\Projects\MyApp 或 /home/me/project" /></label>
+                    <label>项目名称<input id="arch-existing-title" type="text" placeholder="例如：社区借书" /></label>
                   </div>
                   <label class="arch-wide">情况说明（它做什么、团队关心的部分、已知问题）<textarea id="arch-existing-desc" rows="3" placeholder="用自然语言说明项目情况；AI 将结合代码事实起草候选图。"></textarea></label>
-                  <button class="button primary" type="submit">创建工作区</button>
+                  <button class="button primary" type="submit">导入项目，开始理解</button>
                 </form>
                 <form id="arch-create-planning" class="arch-entry-form" hidden>
+                  <p class="ux-entry-help">先说清楚谁使用、要解决什么问题、有哪些约束。保存想法后，下一步起草功能图；AI 接入未完成时可以稍后继续。</p>
                   <div class="compare-controls">
-                    <label>工作区名称<input id="arch-planning-title" type="text" placeholder="例如：新服务设计" /></label>
+                    <label>项目名称<input id="arch-planning-title" type="text" placeholder="例如：新服务设计" /></label>
                   </div>
                   <label class="arch-wide">目标<textarea id="arch-planning-goals" rows="2" placeholder="要达成什么？主要场景是什么？"></textarea></label>
                   <label class="arch-wide">约束<textarea id="arch-planning-constraints" rows="2" placeholder="技术栈、期限、合规、团队分工等"></textarea></label>
-                  <button class="button primary" type="submit">创建规划工作区</button>
+                  <button class="button primary" type="submit">保存想法，开始规划</button>
                 </form>
                 <div id="arch-create-status" class="compare-status">尚未创建工作区。历史工作区会显示在下方，可继续打开。</div>
               </div>
@@ -157,6 +166,11 @@
               </div>
 
               <div id="arch-workspace" hidden>
+                <section id="ux-next" class="ux-next" aria-labelledby="ux-next-title">
+                  <div><p id="ux-project-title" class="ux-eyebrow"></p><h2 id="ux-next-title">下一步</h2><p id="ux-next-copy"></p></div>
+                  <div class="ux-actions"><button class="button primary" id="ux-next-action"></button><button class="button ghost" id="ux-workflow-help">查看使用流程</button></div>
+                  <ol class="ux-steps"><li>导入 / 想法</li><li>起草功能图</li><li>查看并修改</li><li>确认一个版本</li><li>交接 / 跟进</li></ol>
+                </section>
                 <div class="architecture-toolbar"><div class="canvas-tabs"><button class="active" data-arch-tab="canvas">图视图</button><button data-arch-tab="outline">列表视图</button><button data-arch-tab="versions">工作区</button></div><div class="toolbar-actions"><button class="button ghost" id="arch-new-workspace">新建工作区</button><button class="button ghost" id="arch-add-node">＋ 节点</button></div></div>
                 <div id="arch-outline" hidden></div>
                 <div class="revision-strip">
@@ -171,15 +185,17 @@
                   <div class="compare-controls">
                     <button class="button primary" id="arch-generate-button" type="button">生成候选（真实 AI）</button>
                     <button class="button ghost" id="arch-rulegen-button" type="button" title="C 的规则引擎：不冒充 AI，全部为待确认候选">规则候选（C 引擎）</button>
-                    <button class="button ghost" id="arch-sample-button" type="button" title="明确标注的演示数据，不是 AI 生成">演示样例</button>
+                    <details class="ux-sample-options"><summary>体验样例</summary><p>样例只供学习操作，不能作为真实项目提交人审。</p><button class="button ghost" id="arch-sample-button" type="button" title="明确标注的演示数据，不是 AI 生成">载入演示样例</button></details>
                     <button class="button ghost" id="arch-recheck-button" type="button" hidden>检查代码变化</button>
                   </div>
                   <div id="arch-generate-status" class="compare-status">尚未生成。</div>
+                  <div id="arch-candidate-preview" class="ux-candidate-preview" hidden></div>
                   <div id="arch-recheck-result" class="compare-result"></div>
                 </div>
 
                 <div class="map-card">
-                  <div class="map-card-header"><div><span class="map-icon">◎</span><strong>候选功能图</strong><span class="map-subtitle">点击节点查看与编辑 · 职责/接口/过程/证据</span></div><span id="arch-node-count" class="count-label">—</span></div>
+                  <div class="map-card-header"><div><span class="map-icon">◎</span><strong>项目功能图 · 草稿</strong><span class="map-subtitle">点击节点查看，点击连线修改关系</span></div><span id="arch-node-count" class="count-label">—</span></div>
+                  <div class="ux-map-actions"><strong id="ux-selected">先选中一个功能节点</strong><button class="button ghost" id="ux-edit-node" disabled>编辑节点</button><button class="button ghost" id="ux-edit-relations" disabled>编辑关系</button><button class="button ghost" id="ux-correct-node" disabled>用文字纠正</button><span>拖动只调整位置；节点和关系修改会保存到草稿。</span></div>
                   <div class="canvas-viewport"><div class="canvas-tools"><button id="canvas-fit" title="适应画布" aria-label="适应画布">↔</button><button id="canvas-zoom-in" title="放大" aria-label="放大">＋</button><button id="canvas-zoom-out" title="缩小" aria-label="缩小">−</button><span id="canvas-zoom">100%</span></div><div class="map-scroll" id="arch-canvas-scroll"><div class="map-stage" id="arch-map-stage"></div></div></div>
                   <div class="map-draft-bar"><span id="arch-draft-status">—</span><div>
                     <button class="button ghost" id="arch-diff-button" type="button" disabled>对比版本</button>
@@ -199,22 +215,21 @@
                   <div id="arch-correction-preview" class="compare-result"></div>
                 </div>
 
-                <div class="compare-card">
-                  <div class="compare-heading"><div><h2>偏差处理</h2><p>修正认知更新图草稿；修正实现生成有验收的开发任务。改图不会自动修改程序。</p></div></div>
+                <div class="compare-card" id="ux-review-panel">
+                  <div class="compare-heading"><div><h2>确认版本，再交给队友</h2><p>编辑会保存草稿。确认版本需依次保存版本草稿 → 预览范围 → 确认接受 → 发布版本；你没确认的内容不会自动通过。</p></div></div>
                   <div class="compare-controls">
-                    <button class="button ghost" id="arch-sync-button" type="button" disabled>保存草稿到版本服务</button>
-                    <button class="button ghost" id="arch-review-preview-button" type="button" disabled>人审预览（真实会话）</button>
+                    <button class="button ghost" id="arch-sync-button" type="button" disabled>1 · 保存版本草稿</button>
+                    <button class="button ghost" id="arch-review-preview-button" type="button" disabled>2 · 预览待确认内容</button>
                     <button class="button primary" id="arch-review-confirm-button" type="button" hidden disabled>确认接受</button>
                     <button class="button ghost" id="arch-review-reject-button" type="button" hidden disabled>拒绝</button>
-                    <button class="button primary" id="arch-publish-button" type="button" hidden disabled>发布不可变版本</button>
+                    <button class="button primary" id="arch-publish-button" type="button" hidden disabled>4 · 发布确认版本</button>
                     <button class="button ghost" id="arch-versions-button" type="button" disabled>版本历史</button>
                     <button class="button ghost" id="arch-handover-button" type="button" disabled>导出同版交接包</button>
-                    <button class="button ghost" id="arch-fixtask-button" type="button" disabled>修正实现：创建开发任务</button>
-                    <button class="button ghost" id="arch-fixtasks-button" type="button" disabled>修正任务列表（接手/回挂/核验）</button>
                   </div>
                   <div id="arch-review-status" class="compare-status">人审必须经过 预览 → 确认 → 发布 三步；后端缺失时如实拒绝，不产生版本。</div>
                   <div id="arch-review-result" class="compare-result"></div>
                   <div id="arch-version-result" class="compare-result"></div>
+                  <details class="ux-task-help"><summary>代码需要修改？交给队友实施</summary><p>图的理解不对，先编辑节点或用文字纠正；代码行为不符合预期，再创建开发任务。先给选中节点补充期望过程和代码证据，队友接手后回挂实际提交、实测，并由人确认关闭。</p><p id="ux-task-prereqs"></p><div class="compare-controls"><button class="button ghost" id="ux-task-process" disabled>填写期望执行步骤</button><button class="button ghost" id="ux-task-evidence" disabled>补充代码证据</button><button class="button ghost" id="arch-fixtask-button" type="button" disabled>为选中节点创建开发任务</button><button class="button ghost" id="arch-fixtasks-button" type="button" disabled>查看任务进度 / 接手 / 核验</button></div></details>
                   <section id="governed-task-panel" hidden aria-labelledby="governed-task-title"></section>
                 </div>
               </div>
@@ -229,6 +244,7 @@
 
         <!-- ======== 视图 1：项目地图 ======== -->
         <section id="view-map" class="view" hidden aria-label="项目地图">
+        <div class="ux-legacy-note"><strong>这是人工整理的演示图。</strong><span>这里只能查看和调整本机布局。修改功能职责和关系，请打开项目的架构工作台。</span><button class="button primary" id="ux-open-workbench">打开可编辑工作台</button></div>
         <div class="needs-map-note" hidden><strong>需要人工地图：</strong>本实例未提供 --map，地图功能不可用；请使用「仓库浏览」查看已提交内容，或用 --map 启动并加载人工地图。</div>
         <div class="content-grid">
           <section class="workspace" aria-labelledby="page-title">
