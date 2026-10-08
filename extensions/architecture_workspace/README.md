@@ -121,3 +121,16 @@ PROJECTMIND_ARCHITECTURE_DATA_ROOT 时 GET 如实返回 integration_pending。
 
 函数、字段、A/C/D 调用顺序与错误见 B_CONTRACT_CANDIDATE_V1.md。
 正式公共 CONTRACT_V1 由 A 汇总，B 不修改公共接口或正式 Model。
+
+历史双面样例与旧验证日志保留在
+[B 固定归档提交](https://github.com/LingweiXingzhi/projectmind-core/tree/58a9ee8a25cb9b240cd1baa5bb674c0c0e528e89/extensions/architecture_workspace)。
+整项目分支复用运行代码和测试；上述历史大样例不重复纳入本轮部署差异。
+
+## 公网部署准备（未部署）
+
+用户暂时没有服务器/域名。本轮只准备和验证本地接线。
+完整项目状态见 [最新项目复查](FULL_PROJECT_REASSESSMENT_2026-10-08.md)，
+启动、预检和数据持久化步骤见 [本机运行手册](DEPLOYMENT_LOCAL_RUNBOOK.md)。
+`python -m extensions.architecture_workspace.deployment_preflight --help`
+提供只读预检；完成诊断但仍未部署时退出码为 2。
+当前公共入口只接受本机来源，实际公网接入仍需 A 协调登录与 Host/Origin 契约。

@@ -1069,7 +1069,8 @@
       [["actor", "本机操作者（声明，绑定本机会话）"], ["reason", "审阅理由（随预览与版本记录）", "textarea"]],
       "生成预览");
     if (!review) return;
-    const { actor, reason } = review;
+    const actor = window.projectmindSession?.actor || review.actor;
+    const { reason } = review;
     state.busy = true; renderWorkspace();
     setStatus("arch-review-status", "正在生成人审预览…");
     try {
@@ -1208,7 +1209,8 @@
       [["operator", "本机操作者（声明，绑定本机会话）"], ["deviation", "偏差描述", "textarea"], ["acceptance", "验收标准", "textarea"]],
       "生成任务");
     if (!review) return;
-    const { operator, deviation, acceptance } = review;
+    const operator = window.projectmindSession?.actor || review.operator;
+    const { deviation, acceptance } = review;
     state.busy = true;
     renderWorkspace();
     try {
@@ -1260,7 +1262,7 @@
         rebind.addEventListener("click", async () => {
           const review=await workspaceDialog('复核后回挂',[['actor','复核人（本机操作者声明）']], '确认回挂');
           if(!review)return;
-          const actor=review.actor;
+          const actor=window.projectmindSession?.actor||review.actor;
           try {
             const envelope = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/rebind`,
               { expectedNewCodeRevision: result.newCodeRevision, actor, note: "复核后回挂" });

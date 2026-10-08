@@ -21,10 +21,14 @@ from .storage import Store
 
 
 class HumanReviewGateway:
-    def __init__(self, service, allowed_origin, *, max_sessions=128):
+    def __init__(self, service, allowed_origin, *, max_sessions=128, trusted_https_proxy=False):
         parsed = urlsplit(allowed_origin)
-        require(parsed.scheme == "http" and parsed.hostname in ("127.0.0.1", "::1", "localhost")
-                and parsed.port and not parsed.path and not parsed.query and not parsed.fragment)
+        if trusted_https_proxy is True:
+            from .deployment_preflight import validate_origin
+            validate_origin(allowed_origin, public=True)
+        else:
+            require(parsed.scheme == "http" and parsed.hostname in ("127.0.0.1", "::1", "localhost")
+                    and parsed.port and not parsed.path and not parsed.query and not parsed.fragment)
         require(type(max_sessions) is int and max_sessions > 0,
                 detail="本机会话容量必须是正整数")
         self.service = service

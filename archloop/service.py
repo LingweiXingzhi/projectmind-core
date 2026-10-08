@@ -8,6 +8,7 @@ missing-backend case (BACKEND_UNAVAILABLE) and any dev-sample origin.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timezone
 
@@ -43,7 +44,7 @@ def stable_repo_id(repo_path: str, remote: str | None) -> str:
 
 
 class WorkbenchService:
-    def __init__(self, data_root, adapter: AdapterRegistry | None = None) -> None:
+    def __init__(self, data_root, adapter: AdapterRegistry | None = None, *, allowed_repositories=None) -> None:
         self.store = DraftStore(data_root)
         self.adapter = adapter or AdapterRegistry()
         # Git access is injected by app.py so this module reuses the host's
@@ -57,6 +58,9 @@ class WorkbenchService:
         # roots its verification provider may resolve commits in.
         self.backend_d = None
         self.code_repo_roots: list[str] = []
+        from pathlib import Path
+        self.allowed_repositories = (None if allowed_repositories is None
+                                     else frozenset(Path(p).resolve() for p in allowed_repositories))
 
     # ---------- injected git access ----------
 
@@ -85,6 +89,8 @@ class WorkbenchService:
         git = self._require_git()
         from pathlib import Path as _Path
         repo = _Path(repo_path)
+        if self.allowed_repositories is not None and repo.resolve() not in self.allowed_repositories:
+            raise ContractError("REQUEST_FORBIDDEN", "代码仓库未在服务器登记")
         root = git(repo, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").strip()
         head = git(repo, "rev-parse", "HEAD").decode().strip()
         try:
@@ -1186,7 +1192,8 @@ class WorkbenchService:
                 raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
             self._sample_guard(draft)
             backend_b = self._backend_b()
-            actor = (request.get("actor") or "").strip()
+            actor = (meta.get("actor") if meta.get("browserSession") else request.get("actor")) or ""
+            actor = actor.strip()
             if not actor:
                 raise ContractError("VALIDATION_FAILED", "人审预览需要 actor（本机操作者声明）")
             self._ensure_synced(record, backend_b)
@@ -1212,6 +1219,8 @@ class WorkbenchService:
                 "at": _utcnow(), "expiresInSeconds": result["expiresInSeconds"],
                 "bDraftRevision": b_draft["draftRevision"],
                 "aDraftRevision": draft["draftRevision"]}
+            if meta.get("browserSession"):
+                record["backendB"]["lastPreview"]["browserSession"] = meta["browserSession"]
             record["backendB"]["sessionSecret"] = {
                 "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
                 "actor": actor, "at": _utcnow()}
@@ -1248,6 +1257,7 @@ class WorkbenchService:
             backend_b = self._backend_b()
             binding = record.get("backendB") or {}
             last = binding.get("lastPreview")
+            self._browser_review_binding(last, meta)
             session = binding.get("sessionSecret") or {}
             if not last or not session:
                 raise ContractError("HUMAN_REVIEW_REQUIRED", "没有先执行人审预览；请先预览再确认")
@@ -1299,6 +1309,7 @@ class WorkbenchService:
             self._sample_guard(draft)
             backend_b = self._backend_b()
             binding = record.get("backendB") or {}
+            self._browser_review_binding(binding.get("lastPreview"), meta)
             publication = binding.get("publication")
             if not publication:
                 raise ContractError("HUMAN_REVIEW_REQUIRED",
@@ -1352,6 +1363,15 @@ class WorkbenchService:
                 "envelope": self._envelope(record),
                 "labeled": "B 版本服务产生并经 Git 提交的不可变认知版本",
             }
+
+    @staticmethod
+    def _browser_review_binding(preview, meta):
+        stored = (preview or {}).get("browserSession")
+        current = meta.get("browserSession")
+        if stored is not None or current is not None:
+            if not isinstance(stored, str) or not isinstance(current, str) \
+                    or not stored.isascii() or not current.isascii() or not hmac.compare_digest(stored, current):
+                raise ContractError("REQUEST_FORBIDDEN", "人审预览属于另一个浏览器会话，请在当前会话重新预览")
 
     def version_history(self, workspace_id: str) -> dict:
         record = self.store.load_workspace(workspace_id)
