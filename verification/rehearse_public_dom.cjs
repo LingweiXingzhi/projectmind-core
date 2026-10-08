@@ -94,11 +94,50 @@ async function main(config) {
   await wait(()=>find('开始实施'),'task received');find('开始实施').click();await dialog('FIXTURE ONLY started');
   await wait(()=>find('回挂实现提交'),'task in progress');
   assert.match(w.document.querySelector('#governed-task-panel article h4').textContent,/in_progress/);
+  w.activateView('worklog');
+  const recordPanel=w.document.querySelector('[data-shared-records=all]');
+  await wait(()=>recordPanel.querySelector('form'),'shared record form');
+  const within=(panel,text)=>[...panel.querySelectorAll('button')].find(b=>b.textContent===text);
+  within(recordPanel,'新建记录').click();
+  let recordForm=recordPanel.querySelector('form');
+  recordForm.elements.title.value='Synthetic DOM shared log';recordForm.elements.body.value='Fixture only participant progress';
+  submit(recordForm);
+  await wait(()=>within(recordPanel,'Synthetic DOM shared log'),'shared record saved');
+  within(recordPanel,'Synthetic DOM shared log').click();recordForm=recordPanel.querySelector('form');
+  recordForm.elements.body.value='Synthetic edited log';submit(recordForm);
+  await wait(()=>recordPanel.querySelector('article')?.textContent.includes('v2'),'edited record CAS');
+  within(recordPanel,'查看历史').click();await wait(()=>recordPanel.querySelector('article pre'),'record history');
+  assert.match(recordPanel.querySelector('article pre').textContent,/"version": 1/);
+  // Race a real second request against the editor; conflict must retain entered text.
+  const id=recordPanel.querySelector('select').value;
+  const endpoint='/api/archloop/workspaces/'+encodeURIComponent(id);
+  const current=await (await w.fetch(endpoint)).json();
+  const listing=await (await w.fetch(endpoint+'/records')).json();const item=listing.entries[0];
+  const external=await w.fetch(endpoint+'/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    category:item.category,date:item.date,title:item.title,body:'Synthetic other request edit',origin:'human',id:item.id,
+    expectedVersion:item.version,expectedMapRevision:current.identity.mapRevision,expectedDraftRevision:current.identity.draftRevision})});
+  assert.equal(external.status,200);recordForm=recordPanel.querySelector('form');
+  recordForm.elements.body.value='Synthetic retained unsaved input';submit(recordForm);
+  await wait(()=>recordPanel.querySelector('[role=status]').textContent.includes('输入已保留'),'conflict message');
+  assert.equal(recordForm.elements.body.value,'Synthetic retained unsaved input');
+  w.activateView('decisions');const decisions=w.document.querySelector('[data-shared-records=decision]');
+  within(decisions,'新建记录').click();const decisionForm=decisions.querySelector('form');
+  decisionForm.elements.title.value='Synthetic AI decision alternative';decisionForm.elements.body.value='Not approved';decisionForm.elements.origin.value='ai';
+  submit(decisionForm);await wait(()=>within(decisions,'Synthetic AI decision alternative'),'AI candidate decision');
+  assert.match(decisions.querySelector('article').textContent,/AI 候选/);
+  assert.match(decisions.textContent,/不代表团队批准/);
+  const next=await (await w.fetch('/api/archloop/workspaces',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({context:'planning',title:'Synthetic other workspace',goals:'Fixture only',constraints:'No fake code',description:'Fixture'})})).json();
+  w.document.dispatchEvent(new w.CustomEvent('projectmind:workspace',{detail:next}));
+  await wait(()=>recordPanel.querySelector('[role=status]').textContent.includes('未保存输入已保留'),'workspace switch keeps unsaved text');
+  assert.equal(recordForm.elements.body.value,'Synthetic retained unsaved input');
   assert.equal(errors.length,0,errors.join('; '));
   const result={result:'PASS_FULL_DOM_REAL_HTTP',scriptsLoaded:scripts.length,requests:observations.length,
     scriptErrors:errors,actorFromActualSession:true,registeredRepositorySelector:true,
     ruleCandidateApplied:true,expectedProcessSaved:true,fixtureDesignReviewPublished:true,
-    governedTaskCreatedReceivedStarted:true,nativeBrowser:'NOT_RUN',TLS:'SIMULATED_PROXY_HEADERS_ONLY',
+    governedTaskCreatedReceivedStarted:true,sharedRecordSavedEditedHistory:true,recordConflictRetainsInput:true,
+    aiDecisionRemainsCandidate:true,nativeBrowser:'NOT_RUN',TLS:'SIMULATED_PROXY_HEADERS_ONLY',
+    workspaceSwitchRetainsUnsavedInput:true,
     layout:'NOT_RUN',realAI:'NOT_RUN',realTeamApproval:'NOT_RUN',polyfills:['dialog','pointer capture','scroll']};
   dom.window.close();return result;
 }

@@ -14,6 +14,7 @@
     <script src="/explorer.js" defer></script>
     <script src="/archworkbench.js" defer></script>
     <script src="/governed-tasks.js" defer></script>
+    <script src="/work-records.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -50,8 +51,8 @@
           <div class="home-columns"><section><h2 class="home-section-title">继续工作</h2><div id="home-recent" class="activity-list"><div class="skeleton">读取工作区…</div></div></section><section><h2 class="home-section-title">项目记录 <button class="text-button" data-jump="worklog">查看全部 →</button></h2><div id="home-activity" class="activity-list"><div class="skeleton">读取工作日志…</div></div></section></div>
           <div class="home-start"><span>开始理解一个项目</span><button class="button ghost" data-jump="arch">打开架构工作台 →</button><button class="button ghost" data-jump="explorer">浏览仓库 →</button></div>
         </section>
-        <section id="view-decisions" class="view document-view" hidden aria-label="关键决策"><div class="document-heading"><h1>关键决策 <small>背景与依据</small></h1><p>记录背景、选择与依据。这里的工作记录尚未独立核实，分类不代表已批准。</p></div><iframe id="decisions-frame" title="关键决策记录" class="document-frame" data-src="/ext/worklog#decision"></iframe><p class="mode-note" hidden>本实例未提供人工地图，工作记录扩展不可用。</p></section>
-        <section id="view-worklog" class="view document-view" hidden aria-label="工作日志"><div class="document-heading"><h1>工作日志 <small>项目记忆</small></h1></div><iframe id="worklog-frame" title="项目工作日志" class="document-frame" data-src="/ext/worklog"></iframe><p class="mode-note" hidden>本实例未提供人工地图，工作记录扩展不可用。</p></section>
+        <section id="view-decisions" class="view document-view" hidden aria-label="关键决策"><div class="document-heading"><h1>关键决策 <small>背景与依据</small></h1><p>记录背景、选择与依据。这里的工作记录尚未独立核实，分类不代表已批准。</p></div><div data-shared-records="decision" class="shared-records" hidden></div><iframe id="decisions-frame" title="关键决策记录" class="document-frame" data-src="/ext/worklog#decision"></iframe><p class="mode-note" hidden>本实例未提供人工地图，工作记录扩展不可用。</p></section>
+        <section id="view-worklog" class="view document-view" hidden aria-label="工作日志"><div class="document-heading"><h1>工作日志 <small>项目记忆</small></h1></div><div data-shared-records="all" class="shared-records" hidden></div><iframe id="worklog-frame" title="项目工作日志" class="document-frame" data-src="/ext/worklog"></iframe><p class="mode-note" hidden>本实例未提供人工地图，工作记录扩展不可用。</p></section>
 
         <!-- ======== 视图 4：仓库浏览（无地图模式为主视图） ======== -->
         <section id="view-explorer" class="view" hidden aria-label="仓库浏览">

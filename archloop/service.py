@@ -54,10 +54,11 @@ class WorkbenchService:
         # Optional real B version service (single adapter layer: backend_b.py).
         # Bound by app.py from server-side configuration only.
         self.backend_b = None
-# Optional D fix-task authority (backend_d.py) and the registered code
+        # Optional D fix-task authority (backend_d.py) and the registered code
         # roots its verification provider may resolve commits in.
         self.backend_d = None
         self.code_repo_roots: list[str] = []
+        self.work_records = None
         from pathlib import Path
         self.allowed_repositories = (None if allowed_repositories is None
                                      else frozenset(Path(p).resolve() for p in allowed_repositories))
@@ -1143,7 +1144,30 @@ class WorkbenchService:
             "persistence": self._backend_label(),
             "governedTasks": self._governed_tasks().status() if self._governed_tasks() is not None else {
                 "available": False, "reason": "未绑定新任务治理层"},
+            "workRecords": self.work_records.status() if self.work_records is not None else {
+                "available": False, "reason": "未绑定共享工作记录服务"},
         }
+
+    def bind_work_records(self, backend):
+        self.work_records = backend
+
+    def records_backend(self):
+        if self.work_records is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定共享工作记录服务')
+        return self.work_records
+
+    def list_work_records(self, workspace_id=None):
+        return self.records_backend().listing(workspace_id)
+
+    def save_work_record(self, workspace_id, request, meta):
+        with workspace_lock(workspace_id):
+            return self.records_backend().save(self.store.load_workspace(workspace_id), request, meta)
+
+    def work_record_history(self, workspace_id, entry_id):
+        return self.records_backend().history(workspace_id, entry_id)
+
+    def export_work_records(self, workspace_id):
+        return self.records_backend().export(workspace_id)
 
     def fix_task_hints(self, workspace_id):
         governed = self._governed_tasks()
