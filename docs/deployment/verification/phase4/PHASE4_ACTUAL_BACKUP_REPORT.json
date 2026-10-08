@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "actual_cold_backup_rehearsal_v1",
+  "fixtureOnly": true,
+  "result": "PASS",
+  "sourceLocalSHA": "4f2d163b6b79fdf5760f321096eb97132946660f",
+  "sourceTree": "d3d5d244b7aaa8f1a2f5359565491121d9508d70",
+  "sourceWorkingTreeDirty": false,
+  "sourceProductionRun": "phase3 TLS fixture, stopped before backup",
+  "commandsExitCodes": [
+    0,
+    0
+  ],
+  "sourceDataUnchanged": true,
+  "architectureHeadUnchanged": true,
+  "accountsAndRuntimeConfigIncluded": false,
+  "verification": {
+    "schemaVersion": "projectmind_cold_backup_v1",
+    "complete": true,
+    "filesVerified": 49,
+    "architecture": {
+      "head": "a76127af4f18945d4f5101d322afd77d43472a03",
+      "branch": "architecture/candidates/archloop-test"
+    },
+    "sqliteIntegrity": {
+      "b/workspace.sqlite3": "ok",
+      "d/continuity.sqlite3": "ok",
+      "work-records/records.sqlite3": "ok"
+    },
+    "scope": "private cold copy; restore and new-host source binding require separate checks"
+  }
+}

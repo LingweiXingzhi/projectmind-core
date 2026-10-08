@@ -343,7 +343,7 @@ def load_sample_graph() -> dict:
 
 def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None,
                  explorer_registry: ExplorerRegistry | None = None,
-                 archloop_service: WorkbenchService | None = None):
+                 archloop_service: WorkbenchService | None = None, public_origin: str | None = None):
     # R2-Q1 (B1-b-02): in no-map mode no extension module may even be
     # imported — ExtensionHost construction exec_module()s every extension,
     # so the no-map instance loads none at all instead of blocking later.
@@ -427,6 +427,19 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
 
         def _explorer_access_allowed(self) -> tuple[bool, dict | None]:
             """Loopback Host + same-service Origin only (accepted R2-Q4)."""
+            if public_origin is not None:
+                # Only the authenticated WSGI boundary supplies this Python
+                # object; no HTTP identity/forwarded header creates it.
+                operator = getattr(self, "trusted_operator", None)
+                if not isinstance(operator, dict) or not operator.get("browserSession"):
+                    return False, {"error": {"code": "REQUEST_FORBIDDEN", "message": "需要受保护的浏览器会话"}}
+                from urllib.parse import urlsplit
+                if self.headers.get("Host") != urlsplit(public_origin).netloc:
+                    return False, {"error": {"code": "FORBIDDEN_HOST", "message": "入口主机不匹配"}}
+                origin = self.headers.get("Origin")
+                if origin != public_origin and (self.command != "GET" or origin is not None):
+                    return False, origin_rejected_payload()
+                return True, None
             port = self.server.server_address[1]
             host = self.headers.get("Host", "")
             if host not in (f"127.0.0.1:{port}", f"localhost:{port}"):
@@ -562,6 +575,9 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
             if method == "GET" and parts == ["workspaces"]:
                 self.send_json(HTTPStatus.OK, archloop_service.list_workspaces())
                 return
+            if method == "GET" and parts == ["records"]:
+                self.send_json(HTTPStatus.OK, archloop_service.list_work_records())
+                return
             if method == "POST" and parts == ["workspaces"]:
                 self.send_json(HTTPStatus.OK, archloop_service.create_workspace(body or {}))
                 return
@@ -570,6 +586,18 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 rest = parts[2:]
                 if method == "GET" and not rest:
                     self.send_json(HTTPStatus.OK, archloop_service.open_workspace(workspace_id))
+                    return
+                if rest == ["records"]:
+                    if method == "GET":
+                        self.send_json(HTTPStatus.OK, archloop_service.list_work_records(workspace_id))
+                    else:
+                        self.send_json(HTTPStatus.OK, archloop_service.save_work_record(workspace_id, body or {}, self._review_meta()))
+                    return
+                if method == "GET" and rest == ["records", "export"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.export_work_records(workspace_id))
+                    return
+                if method == "GET" and len(rest) == 3 and rest[0] == "records" and rest[2] == "history":
+                    self.send_json(HTTPStatus.OK, archloop_service.work_record_history(workspace_id, rest[1]))
                     return
                 if method == "GET" and rest == ["diff"]:
                     self.send_json(HTTPStatus.OK, archloop_service.draft_diff(workspace_id))
@@ -603,7 +631,8 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     return
                 if method == "POST" and rest == ["fix-task"]:
                     self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(
-                        workspace_id, body or {}, server_context=self._server_context()))
+                        workspace_id, body or {}, server_context=self._server_context(),
+                        meta=self._review_meta()))
                     return
                 if method == "POST" and rest == ["rebind"]:
                     self.send_json(HTTPStatus.OK, archloop_service.rebind_code_revision(workspace_id, body or {}))
@@ -645,7 +674,15 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     return
                 if method == "POST" and rest == ["fix-tasks"]:
                     self.send_json(HTTPStatus.OK, archloop_service.create_fix_task(
-                        workspace_id, body or {}, server_context=self._server_context()))
+                        workspace_id, body or {}, server_context=self._server_context(),
+                        meta=self._review_meta()))
+                    return
+                if method == "GET" and rest == ["fix-task-hints"]:
+                    self.send_json(HTTPStatus.OK, archloop_service.fix_task_hints(workspace_id))
+                    return
+                if len(rest) == 3 and rest[0] == "fix-tasks" and rest[2] == "governance" and method == "POST":
+                    self.send_json(HTTPStatus.OK, archloop_service.governed_task_action(
+                        workspace_id, rest[1], body or {}, self._review_meta()))
                     return
                 if len(rest) == 2 and rest[0] == "fix-tasks" and method == "POST":
                     self.send_json(HTTPStatus.OK, archloop_service.update_fix_task(
@@ -684,6 +721,7 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                 "peer": self.client_address[0] if self.client_address else "",
                 "host": self.headers.get("Host", ""),
                 "origin": self.headers.get("Origin", ""),
+                **getattr(self, "trusted_operator", {}),
             }
 
         def _server_context(self) -> dict:
@@ -890,6 +928,8 @@ def make_handler(repo: Path, map_path: Path, extensions_root: Path | None = None
                     "/extensions.js": ("extensions.js", "text/javascript; charset=utf-8"),
                     "/extension.js": ("extension.js", "text/javascript; charset=utf-8"),
                     "/archworkbench.js": ("archworkbench.js", "text/javascript; charset=utf-8"),
+                    "/governed-tasks.js": ("governed-tasks.js", "text/javascript; charset=utf-8"),
+                    "/work-records.js": ("work-records.js", "text/javascript; charset=utf-8"),
                     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
                 }
                 if request.path in assets:

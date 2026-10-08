@@ -1,0 +1,25 @@
+{
+  "result": "PASS_FULL_DOM_REAL_HTTP",
+  "scriptsLoaded": 10,
+  "requests": 49,
+  "scriptErrors": [],
+  "actorFromActualSession": true,
+  "registeredRepositorySelector": true,
+  "ruleCandidateApplied": true,
+  "expectedProcessSaved": true,
+  "fixtureDesignReviewPublished": true,
+  "governedTaskCreatedReceivedStarted": true,
+  "nativeBrowser": "NOT_RUN",
+  "TLS": "SIMULATED_PROXY_HEADERS_ONLY",
+  "layout": "NOT_RUN",
+  "realAI": "NOT_RUN",
+  "realTeamApproval": "NOT_RUN",
+  "polyfills": [
+    "dialog",
+    "pointer capture",
+    "scroll"
+  ],
+  "codeGitUnchanged": true,
+  "sourceLocalSHA": "453553face25ae045c80e941e33e68bcff875ca2",
+  "sourceWorkingTreeDirty": false
+}

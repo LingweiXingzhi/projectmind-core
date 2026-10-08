@@ -1,0 +1,32 @@
+[
+  {
+    "path": "web/extension.html",
+    "machineControlsPreserved": true,
+    "extraHelperScripts": 1
+  },
+  {
+    "path": "web/index.html",
+    "machineControlsPreserved": true,
+    "extraHelperScripts": 0
+  },
+  {
+    "path": "extensions/handoff/index.html",
+    "machineControlsPreserved": true,
+    "extraHelperScripts": 0
+  },
+  {
+    "path": "extensions/code_facts/index.html",
+    "machineControlsPreserved": true,
+    "extraHelperScripts": 0
+  },
+  {
+    "path": "extensions/team_footprints/index.html",
+    "machineControlsPreserved": true,
+    "extraHelperScripts": 0
+  },
+  {
+    "path": "extensions/context_authority/index.html",
+    "machineControlsPreserved": true,
+    "extraHelperScripts": 1
+  }
+]

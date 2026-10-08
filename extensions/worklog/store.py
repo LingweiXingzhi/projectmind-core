@@ -145,12 +145,12 @@ class Store:
             fail('记录不存在', 404)
         return json.loads(row['document'])
 
-    def save(self, data, revision, attachment=None, db=None):
+    def save(self, data, revision, attachment=None, db=None, *, server_fields=None):
         item = metadata(data)
         if db is None:
             with self.connect() as conn:
                 conn.execute('BEGIN IMMEDIATE')
-                return self.save(data, revision, attachment, conn)
+                return self.save(data, revision, attachment, conn, server_fields=server_fields)
         entry_id = data.get('id')
         previous = self.get(entry_id, db) if entry_id else None
         if previous and (type(data.get('expectedVersion')) is not int or data['expectedVersion'] != previous['version']):
@@ -159,6 +159,9 @@ class Store:
         item.update(id=entry_id or uuid.uuid4().hex, version=previous['version'] + 1 if previous else 1,
                     createdAt=previous['createdAt'] if previous else stamp, updatedAt=stamp,
                     codeRevision=revision, attachment=attachment or (previous.get('attachment') if previous else None))
+        if server_fields is not None:
+            # Optional trusted deployment adapter context; never data from the legacy JSON request.
+            item.update(server_fields)
         document = json.dumps(item, ensure_ascii=False)
         db.execute('INSERT OR REPLACE INTO entries VALUES(?,?,?)', (item['id'], item['version'], document))
         db.execute('INSERT INTO history VALUES(?,?,?)', (item['id'], item['version'], document))

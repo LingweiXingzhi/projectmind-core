@@ -8,6 +8,7 @@ missing-backend case (BACKEND_UNAVAILABLE) and any dev-sample origin.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timezone
 
@@ -43,7 +44,7 @@ def stable_repo_id(repo_path: str, remote: str | None) -> str:
 
 
 class WorkbenchService:
-    def __init__(self, data_root, adapter: AdapterRegistry | None = None) -> None:
+    def __init__(self, data_root, adapter: AdapterRegistry | None = None, *, allowed_repositories=None) -> None:
         self.store = DraftStore(data_root)
         self.adapter = adapter or AdapterRegistry()
         # Git access is injected by app.py so this module reuses the host's
@@ -57,6 +58,10 @@ class WorkbenchService:
         # roots its verification provider may resolve commits in.
         self.backend_d = None
         self.code_repo_roots: list[str] = []
+        self.work_records = None
+        from pathlib import Path
+        self.allowed_repositories = (None if allowed_repositories is None
+                                     else frozenset(Path(p).resolve() for p in allowed_repositories))
 
     # ---------- injected git access ----------
 
@@ -85,6 +90,8 @@ class WorkbenchService:
         git = self._require_git()
         from pathlib import Path as _Path
         repo = _Path(repo_path)
+        if self.allowed_repositories is not None and repo.resolve() not in self.allowed_repositories:
+            raise ContractError("REQUEST_FORBIDDEN", "代码仓库未在服务器登记")
         root = git(repo, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").strip()
         head = git(repo, "rev-parse", "HEAD").decode().strip()
         try:
@@ -726,6 +733,14 @@ class WorkbenchService:
             return None
         return backend_d
 
+    def _governed_tasks(self):
+        """#62 authenticated task bridge (GovernedTasks) when the shared-server
+        entry bound it; app.py's local entry binds BackendD above instead."""
+        backend_d = getattr(self, "backend_d", None)
+        if backend_d is None or not hasattr(backend_d, "action"):
+            return None
+        return backend_d
+
     def list_fix_tasks(self, workspace_id: str) -> dict:
         self.store.load_workspace(workspace_id)
         backend_d = self._backend_d()
@@ -734,6 +749,9 @@ class WorkbenchService:
             listing["workspaceId"] = workspace_id
             listing["statuses"] = list(fix_tasks_module.STATUSES)
             return listing
+        governed = self._governed_tasks()
+        if governed is not None:
+            return governed.tasks(workspace_id)
         tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
         return {"workspaceId": workspace_id, "tasks": tasks,
                 "statuses": list(fix_tasks_module.STATUSES),
@@ -759,6 +777,8 @@ class WorkbenchService:
                 "type": "fix_task_update", "at": _utcnow(), "taskId": task_id,
                 "status": task.get("status"), "backend": "d_fix_tasks"})
             return task
+        if self._governed_tasks() is not None:
+            raise ContractError('VALIDATION_FAILED', '治理任务须使用任务 governance 接口及固定版本 CAS')
         with workspace_lock(workspace_id):
             task = fix_tasks_module.update_task(self.store.root, workspace_id, task_id, request)
             self.store.append_history(workspace_id, {
@@ -774,6 +794,10 @@ class WorkbenchService:
                 raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
             return {**backend_d.markdown(task_id), "taskId": task_id,
                     "filename": f"{task_id}.md"}
+        governed = self._governed_tasks()
+        if governed is not None:
+            self.store.load_workspace(workspace_id)
+            return governed.markdown(workspace_id, task_id)
         task = fix_tasks_module.load_task(self.store.root, workspace_id, task_id)
         return {"taskId": task_id, "markdown": fix_tasks_module.task_markdown(task),
                 "filename": f"{task_id}.md"}
@@ -782,6 +806,9 @@ class WorkbenchService:
 
     def export_handover(self, workspace_id: str) -> dict:
         record = self.store.load_workspace(workspace_id)
+        governed = self._governed_tasks()
+        if governed is not None:
+            return governed.handover(record)
         binding = record.get("backendB") or {}
         if not binding.get("workspaceId"):
             raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务，无法导出同版交接包")
@@ -919,8 +946,8 @@ class WorkbenchService:
         if draft is None:
             raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
         traces = request.get("observedTraces")
-        if traces is not None and not isinstance(traces, list):
-            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表（可为空）")
+        if traces is not None and (not isinstance(traces, list) or len(traces) > 200):
+            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表，最多 200 条（可为空）")
         result = self._c_call("deviations_for",
                                   {"graph": draft["graph"], "traces": traces or [],
                                    "identity": record.get("identity")})
@@ -1116,7 +1143,46 @@ class WorkbenchService:
             "adapter": self.adapter.listing(),
             "generation": generate_module.generate_status(),
             "persistence": self._backend_label(),
+            "governedTasks": self._governed_tasks().status() if self._governed_tasks() is not None else {
+                "available": False, "reason": "未绑定新任务治理层"},
+            "workRecords": self.work_records.status() if self.work_records is not None else {
+                "available": False, "reason": "未绑定共享工作记录服务"},
         }
+
+    def bind_work_records(self, backend):
+        self.work_records = backend
+
+    def records_backend(self):
+        if self.work_records is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定共享工作记录服务')
+        return self.work_records
+
+    def list_work_records(self, workspace_id=None):
+        return self.records_backend().listing(workspace_id)
+
+    def save_work_record(self, workspace_id, request, meta):
+        with workspace_lock(workspace_id):
+            return self.records_backend().save(self.store.load_workspace(workspace_id), request, meta)
+
+    def work_record_history(self, workspace_id, entry_id):
+        return self.records_backend().history(workspace_id, entry_id)
+
+    def export_work_records(self, workspace_id):
+        return self.records_backend().export(workspace_id)
+
+    def fix_task_hints(self, workspace_id):
+        governed = self._governed_tasks()
+        if governed is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return governed.hints(self.store.load_workspace(workspace_id))
+
+    def governed_task_action(self, workspace_id, task_id, request, meta):
+        governed = self._governed_tasks()
+        if governed is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return governed.action(self.store.load_workspace(workspace_id), task_id, request, meta)
 
     @staticmethod
     def _require_meta(meta) -> dict:
@@ -1186,7 +1252,8 @@ class WorkbenchService:
                 raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
             self._sample_guard(draft)
             backend_b = self._backend_b()
-            actor = (request.get("actor") or "").strip()
+            actor = (meta.get("actor") if meta.get("browserSession") else request.get("actor")) or ""
+            actor = actor.strip()
             if not actor:
                 raise ContractError("VALIDATION_FAILED", "人审预览需要 actor（本机操作者声明）")
             self._ensure_synced(record, backend_b)
@@ -1212,6 +1279,8 @@ class WorkbenchService:
                 "at": _utcnow(), "expiresInSeconds": result["expiresInSeconds"],
                 "bDraftRevision": b_draft["draftRevision"],
                 "aDraftRevision": draft["draftRevision"]}
+            if meta.get("browserSession"):
+                record["backendB"]["lastPreview"]["browserSession"] = meta["browserSession"]
             record["backendB"]["sessionSecret"] = {
                 "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
                 "actor": actor, "at": _utcnow()}
@@ -1248,6 +1317,7 @@ class WorkbenchService:
             backend_b = self._backend_b()
             binding = record.get("backendB") or {}
             last = binding.get("lastPreview")
+            self._browser_review_binding(last, meta)
             session = binding.get("sessionSecret") or {}
             if not last or not session:
                 raise ContractError("HUMAN_REVIEW_REQUIRED", "没有先执行人审预览；请先预览再确认")
@@ -1299,6 +1369,7 @@ class WorkbenchService:
             self._sample_guard(draft)
             backend_b = self._backend_b()
             binding = record.get("backendB") or {}
+            self._browser_review_binding(binding.get("lastPreview"), meta)
             publication = binding.get("publication")
             if not publication:
                 raise ContractError("HUMAN_REVIEW_REQUIRED",
@@ -1352,6 +1423,15 @@ class WorkbenchService:
                 "envelope": self._envelope(record),
                 "labeled": "B 版本服务产生并经 Git 提交的不可变认知版本",
             }
+
+    @staticmethod
+    def _browser_review_binding(preview, meta):
+        stored = (preview or {}).get("browserSession")
+        current = meta.get("browserSession")
+        if stored is not None or current is not None:
+            if not isinstance(stored, str) or not isinstance(current, str) \
+                    or not stored.isascii() or not current.isascii() or not hmac.compare_digest(stored, current):
+                raise ContractError("REQUEST_FORBIDDEN", "人审预览属于另一个浏览器会话，请在当前会话重新预览")
 
     def version_history(self, workspace_id: str) -> dict:
         record = self.store.load_workspace(workspace_id)
@@ -1712,12 +1792,15 @@ class WorkbenchService:
         return self._envelope(record)
 
     def create_fix_task(self, workspace_id: str, request: dict,
-                        server_context: dict | None = None) -> dict:
+                        server_context: dict | None = None, meta: dict | None = None) -> dict:
         with workspace_lock(workspace_id):
             record = self.store.load_workspace(workspace_id)
             draft = record.get("draft")
             if draft is None:
                 raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            governed = self._governed_tasks()
+            if governed is not None:
+                return governed.create(record, request, meta)
             mode = request.get("mode", "production")
             if mode == DEV_SAMPLE_MODE:
                 return self._sample_fix_task(record, draft, request)

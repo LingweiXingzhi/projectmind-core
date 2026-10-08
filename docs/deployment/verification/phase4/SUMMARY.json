@@ -1,0 +1,19 @@
+{
+  "runtimeLocalSHA": "4f2d163b6b79fdf5760f321096eb97132946660f",
+  "runtimeRemoteSHA": "999c0d38a3e42ecf53f5fdf69ffd3eb6def69d7e",
+  "runtimeTree": "d3d5d244b7aaa8f1a2f5359565491121d9508d70",
+  "tests": {
+    "backup": {
+      "tests": 6,
+      "seconds": 0.758,
+      "exitCode": 0
+    },
+    "public": {
+      "tests": 27,
+      "seconds": 10.668,
+      "exitCode": 0
+    }
+  },
+  "fullRegressionThisStage": "NOT_RERUN; changes limited to backup CLI, prior phase3 full984 passed",
+  "cloudRestore": "NOT_RUN"
+}

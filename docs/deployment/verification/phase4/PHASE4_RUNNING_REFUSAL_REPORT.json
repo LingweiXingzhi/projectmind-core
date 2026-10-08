@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "actual_backup_running_refusal_v1",
+  "fixtureOnly": true,
+  "sourceLocalSHA": "4f2d163b6b79fdf5760f321096eb97132946660f",
+  "actualServingCLI": true,
+  "backupExitCode": 1,
+  "code": "DATA_ROOT_IN_USE",
+  "outputCreated": false
+}

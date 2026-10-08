@@ -1,0 +1,33 @@
+{
+  "result": "PASS_FULL_DOM_REAL_HTTP",
+  "scriptsLoaded": 11,
+  "requests": 119,
+  "scriptErrors": [],
+  "actorFromActualSession": true,
+  "registeredRepositorySelector": true,
+  "ruleCandidateApplied": true,
+  "expectedProcessSaved": true,
+  "fixtureDesignReviewPublished": true,
+  "governedTaskCreatedReceivedStarted": true,
+  "sharedRecordSavedEditedHistory": true,
+  "recordConflictRetainsInput": true,
+  "aiDecisionRemainsCandidate": true,
+  "nativeBrowser": "NOT_RUN",
+  "TLS": "SIMULATED_PROXY_HEADERS_ONLY",
+  "workspaceSwitchRetainsUnsavedInput": true,
+  "chineseLabels": true,
+  "unknownIdentifiersPreserved": true,
+  "nativeHandoffJsonCapturedUnchanged": true,
+  "layout": "NOT_RUN",
+  "realAI": "NOT_RUN",
+  "realTeamApproval": "NOT_RUN",
+  "polyfills": [
+    "dialog",
+    "pointer capture",
+    "scroll",
+    "Blob URL/download capture"
+  ],
+  "codeGitUnchanged": true,
+  "sourceLocalSHA": "edd555c26a224e2e07f245b3246d9ab68a1b1068",
+  "sourceWorkingTreeDirty": false
+}

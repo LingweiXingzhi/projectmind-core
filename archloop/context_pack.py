@@ -46,8 +46,13 @@ SECRET_COMPOUND_COMPONENTS = ("apikey", "authkey", "accesskey", "secretkey", "pr
                               "clientsecret", "accesstoken", "authtoken", "refreshtoken",
                               "sessiontoken", "bearertoken", "idtoken", "apitoken")
 # documentation placeholders are not credentials (a README shows how to set a key)
-PLACEHOLDER_MARKERS = ("你的", "<", ">", "your", "xxx", "example", "placeholder",
-                       "changeme", "todo", "redacted", "*", "…")
+def _placeholder_value(value: str) -> bool:
+    """Explicit documentation value, never a word in the key name/random token."""
+    value = value.strip().lower()
+    if value.startswith('sk-'):
+        value = value[3:]
+    return bool(re.fullmatch(r'[x*…]+', value) or re.fullmatch(r'<[^<>]+>', value)
+                or re.match(r'^(?:你的|your|example|placeholder|changeme|todo|redacted)(?:[_ -]|$)', value))
 
 
 def _key_name_is_secret(name: str) -> bool:
@@ -88,14 +93,13 @@ def _looks_like_secret(text: str) -> bool:
     for pattern in CONTENT_SECRET_PATTERNS:
         for match in re.finditer(pattern, text, re.I):
             fragment = match.group(0).lower()
-            if any(marker in fragment for marker in PLACEHOLDER_MARKERS):
+            if _placeholder_value(fragment):
                 continue
             return True
     for match in KEY_VALUE_PATTERN.finditer(text):
         if not _key_name_is_secret(match.group(1)):
             continue
-        fragment = match.group(0).lower()
-        if any(marker in fragment for marker in PLACEHOLDER_MARKERS):
+        if _placeholder_value(match.group(3)):
             continue
         return True
     return False

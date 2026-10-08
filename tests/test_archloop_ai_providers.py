@@ -176,6 +176,30 @@ class ChatCompletionsProviderTests(unittest.TestCase):
         self.assertEqual(generated["origin"], "ai_generated")
         self.assertTrue(all(node["provenance"] == "ai_candidate" for node in generated["graph"]["nodes"]))
 
+    def test_real_generation_endpoint_via_authenticated_entry(self) -> None:
+        # Adapt the fixed-source test to this deployment's actual account
+        # boundary; no local-declaration session substitutes for HTTPS auth.
+        try:
+            from test_public_deployment import PublicHTTPTests
+        except ImportError:  # package-style discovery (python -m unittest tests.X)
+            from tests.test_public_deployment import PublicHTTPTests
+        class Runtime(PublicHTTPTests):
+            pass
+        Runtime.setUpClass(); self.addCleanup(Runtime.tearDownClass)
+        runner = Runtime(); auth = runner.login()
+        def post(path, payload):
+            status, _, result = runner.request('POST', path, payload, auth=auth)
+            self.assertEqual(status, 200, result)
+            return result
+
+        workspace = post("/api/archloop/workspaces",
+                         {"context": "planning", "title": "厂商路径", "goals": "让下一个人接着做"})
+        workspace_id = workspace["workspace"]["workspaceId"]
+        generated = post(f"/api/archloop/workspaces/{workspace_id}/generate", {"mode": "production"})
+        self.assertEqual(generated["status"], "ai_generated")
+        self.assertEqual(generated["origin"], "ai_generated")
+        self.assertTrue(all(node["provenance"] == "ai_candidate" for node in generated["graph"]["nodes"]))
+
     def test_provider_without_response_format_still_works(self) -> None:
         with unittest.mock.patch.dict(os.environ, {"PROJECTMIND_AI_BASE_URL": self.provider.base}):
             self.provider.handler.reject_response_format = True

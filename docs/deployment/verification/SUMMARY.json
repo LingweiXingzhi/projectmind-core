@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "public_preparation_verification_v1",
+  "runtimeLocalSHA": "c949398334367773289038695e42816541b511a0",
+  "runtimeTree": "fa339ed193b10476e8714e828c1d9f859c4ec945",
+  "upstreamSHA": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
+  "upstreamTree": "dba0238e1fba1b453fb6b3f803d71ab7fd37b4c1",
+  "upstreamHistoryPresent": false,
+  "fullRegression": {
+    "command": "TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v",
+    "result": "OK",
+    "tests": 936,
+    "passed": 913,
+    "skipped": 23,
+    "seconds": 218.455,
+    "skippedCases": [
+      "test_deviations_are_unknown_without_traces_and_detected_with_them (test_archloop_a_stage23.CMouleIntegrationTests.test_deviations_are_unknown_without_traces_and_detected_with_them) ... skipped 'rule-based candidate has no process steps to compare'",
+      "test_real_history_end_to_end_deterministic_no_map_write (test_real_b_integration.RealBIntegrationTests.test_real_history_end_to_end_deterministic_no_map_write) ... skipped 'real B implementation not found: G:\\\\jiagou\\\\projectmind-integration-bd/extensions/code_facts/facts.py'",
+      "test_real_wanted_paths_removed_path_strictness (test_real_b_integration.RealBIntegrationTests.test_real_wanted_paths_removed_path_strictness) ... skipped 'real B implementation not found: G:\\\\jiagou\\\\projectmind-integration-bd/extensions/code_facts/facts.py'",
+      "test_s02_s13_real_collector_supplied_pipeline (test_real_b_integration.RealBIntegrationTests.test_s02_s13_real_collector_supplied_pipeline) ... skipped 'real B implementation not found: G:\\\\jiagou\\\\projectmind-integration-bd/extensions/code_facts/facts.py'",
+      "test_s06_real_base_delta_gives_responsibility_change (test_real_b_integration.RealBIntegrationTests.test_s06_real_base_delta_gives_responsibility_change) ... skipped 'real B implementation not found: G:\\\\jiagou\\\\projectmind-integration-bd/extensions/code_facts/facts.py'",
+      "test_s14_real_revision_mismatch_rejected_same_revision_safe (test_real_b_integration.RealBIntegrationTests.test_s14_real_revision_mismatch_rejected_same_revision_safe) ... skipped 'real B implementation not found: G:\\\\jiagou\\\\projectmind-integration-bd/extensions/code_facts/facts.py'",
+      "test_s15_real_collector_unavailable_and_exception (test_real_b_integration.RealBIntegrationTests.test_s15_real_collector_unavailable_and_exception) ... skipped 'real B implementation not found: G:\\\\jiagou\\\\projectmind-integration-bd/extensions/code_facts/facts.py'",
+      "test_p05b_t1_context_enrichment_labeled_relevant_only (test_real_ca_integration.RealCAIntegrationTests.test_p05b_t1_context_enrichment_labeled_relevant_only) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "test_p05b_t3_head_confirmed_against_pin (test_real_ca_integration.RealCAIntegrationTests.test_p05b_t3_head_confirmed_against_pin) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "test_p05b_t3_head_contradiction_marks_pack_untrusted (test_real_ca_integration.RealCAIntegrationTests.test_p05b_t3_head_contradiction_marks_pack_untrusted) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "test_real_pack_metadata_round_trip (test_real_ca_integration.RealCAIntegrationTests.test_real_pack_metadata_round_trip) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "test_s19_s25_real_pack_conflict_routing_and_poison_non_attach (test_real_ca_integration.RealCAIntegrationTests.test_s19_s25_real_pack_conflict_routing_and_poison_non_attach) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "test_s20_real_stale_partition_never_read (test_real_ca_integration.RealCAIntegrationTests.test_s20_real_stale_partition_never_read) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "test_s21_real_multi_scope_both_in_selection_layer (test_real_ca_integration.RealCAIntegrationTests.test_s21_real_multi_scope_both_in_selection_layer) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "test_s24_tampered_real_pack_rejected_whole_pack_discarded (test_real_ca_integration.RealCAIntegrationTests.test_s24_tampered_real_pack_rejected_whole_pack_discarded) ... skipped 'real CA implementation not found: G:\\\\jiagou\\\\projectmind-context-authority/extensions/context_authority/context_pack.py'",
+      "skipped 'node is not available for the pure-function harness'",
+      "skipped 'node is not available for the pure-function harness'",
+      "skipped 'node is not available for the pure-function harness'",
+      "skipped 'node is not available for the pure-function harness'",
+      "test_added_file (test_ui_evidence_links.EvidenceLinkDecisionTests.test_added_file) ... skipped 'node is not available for the pure-function harness'",
+      "test_deleted_file (test_ui_evidence_links.EvidenceLinkDecisionTests.test_deleted_file) ... skipped 'node is not available for the pure-function harness'",
+      "test_modified_file (test_ui_evidence_links.EvidenceLinkDecisionTests.test_modified_file) ... skipped 'node is not available for the pure-function harness'",
+      "test_renamed_file (test_ui_evidence_links.EvidenceLinkDecisionTests.test_renamed_file) ... skipped 'node is not available for the pure-function harness'"
+    ],
+    "rawLog": {
+      "file": "full-candidate-tests.log",
+      "sha256": "1494fa14b6515dbc5226cb91c62a228c51407d1a74acdcce28e0d6c3eabf54b5",
+      "bytes": 190830
+    },
+    "skippedCasesRecorded": 23
+  },
+  "targetedRegression": {
+    "command": "python -m unittest discover -s tests -p test_public_*.py -v",
+    "result": "OK",
+    "tests": 15,
+    "seconds": 2.697,
+    "includedInFullSuite": true,
+    "rawLog": {
+      "file": "public-final-tests.log",
+      "sha256": "02c322526bc0f2a13f376f1fcee5ab840dc8bad06e717208d16e4c793f9b9c98",
+      "bytes": 5102
+    }
+  },
+  "productionHTTPS": {
+    "result": "PASS",
+    "requests": 24,
+    "includedInFullSuite": false,
+    "report": "HTTPS_REPORT.json",
+    "harness": "verification/rehearse_public_https.py"
+  },
+  "coldRestore": {
+    "result": "PASS",
+    "report": "RESTORE_REPORT.json",
+    "scope": "same-host private fixture; not cloud recovery"
+  },
+  "caddyConfig": {
+    "result": "PASS",
+    "version": "2.11.7",
+    "command": "PROJECTMIND_DOMAIN=projectmind.example.invalid caddy adapt --config deployment/Caddyfile --adapter caddyfile --validate",
+    "rawLog": {
+      "file": "caddy-final-validation.log",
+      "sha256": "e2ae81d02007a4b63a10807ba4b1c11a8f7a67ad4c2741a1dd204eedfa553cf0",
+      "bytes": 1340
+    }
+  },
+  "browser": {
+    "result": "NOT_RUN",
+    "reason": "Native Chromium launch rejected by macOS MachPort permission (1100/SIGTRAP); no elevation requested"
+  },
+  "notRun": [
+    "real public domain/network",
+    "Linux systemd execution",
+    "real AI generation",
+    "cross-device browser continuation",
+    "new D/UI integration",
+    "formal Project Model approval"
+  ],
+  "localHistoryCheck": "W6 passed on an exact upstream source snapshot followed by the actual development commit; not complete upstream history verification",
+  "failedRehearsals": [
+    "First baseline source-only run: 800 tests, 776 passed, 23 skipped, W6 HEAD~1 error because no parent commit",
+    "Portable harness first restore assertion used provenance instead of identity; harness corrected and full HTTPS + cold restore rerun passed"
+  ]
+}
