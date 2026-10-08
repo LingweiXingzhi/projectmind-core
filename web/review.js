@@ -138,15 +138,15 @@ async function renderChanges(base, target, changes, declaredPaths) {
       });
     } else {
       path.textContent = display;
-      path.title="未声明为地图证据路径；现有证据接口不能读取该路径。可在 Repository 查看。";
+      path.title="未声明为地图证据路径；现有证据接口不能读取该路径。可在仓库浏览查看。";
     }
     const badge = document.createElement("span");
     badge.className = "review-fact-badge";
     if (skipped.has(change.path)) {
-      badge.textContent = "未解析";badge.title="B: skipped，不能据此判断不存在";
+      badge.textContent = "未解析";badge.title="代码事实：已跳过，不能据此判断不存在";
       badge.classList.add("warn");
     } else if (factPaths.has(change.path)) {
-      badge.textContent = "事实";badge.title="B: 已声明的固定版本代码事实";
+      badge.textContent = "事实";badge.title="代码事实：已声明的固定版本代码事实";
       badge.classList.add("ok");
     } else {
       badge.textContent = "无条目";badge.title="B 没有声明条目，不代表不存在";
@@ -179,7 +179,7 @@ function renderProposals(review) {
     subject.textContent = proposal.subject;
     const status = document.createElement("span");
     status.className = "review-status-pill";
-    status.textContent = `${proposal.status}${proposal.human_required ? " · 需人工" : ""}`;
+    status.textContent = `${projectmindUiLabel(proposal.status)}${proposal.human_required ? " · 需人工" : ""}`;
     head.append(kind, subject, status);
     card.append(head);
 
@@ -204,7 +204,7 @@ function renderProposals(review) {
     for (const item of proposal.evidence || []) {
       const line = document.createElement("span");
       line.className = "review-evidence-item";
-      line.textContent = `${item.kind}: ${item.path || item.detail || ""}`;
+      line.textContent = `${projectmindUiLabel(item.kind)}： ${item.path || item.detail || ""}`;
       evidence.append(line);
     }
     card.append(evidence);
@@ -243,3 +243,4 @@ currentRevision().then((snapshot) => {
 }).catch(() => {
   reviewTarget.textContent = "读取失败";
 });
+
