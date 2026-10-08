@@ -8,6 +8,19 @@
     if (cls) node.className = cls;
     return node;
   };
+  const presentation = new URLSearchParams(location.search).has('demo');
+  let activeAIMode=null;
+  try{const stored=sessionStorage.getItem('projectmind:ai-mode');if(['personal','shared'].includes(stored))activeAIMode=stored;}catch(_){}
+  const originalFetch=window.fetch.bind(window);
+  window.fetch=(input,init={})=>{
+    const target=new URL(typeof input==='string'?input:input.url,location.href);
+    const selected=presentation?'shared':activeAIMode;
+    // Session renewal must work even when the private profile has expired.
+    // The following generation stays personal and refuses an unconfigured key.
+    if(!selected||target.origin!==location.origin||target.pathname==='/api/archloop/session')return originalFetch(input,init);
+    const headers=new Headers(init.headers||(typeof input==='string'?undefined:input.headers));headers.set('X-ProjectMind-AI-Mode',selected);
+    return typeof input==='string'?originalFetch(input,{...init,headers}):originalFetch(new Request(input,{...init,headers}));
+  };
   let current = null;
   let nextAction = () => {};
   let connection = null;
@@ -61,28 +74,68 @@
     if (!response.ok) throw Error(`无法读取 AI 状态（HTTP ${response.status}）`);
     const result = await response.json(); connection = result; return result;
   }
-  function showConnection(planning = false) {
-    const d = dialog('AI 接入', '接入状态由正在运行的服务提供。先检查配置，再开始生成。');
-    const status = make('p', '正在检查…', 'ux-connection-status'); status.setAttribute('role', 'status');
-    const help = make('div');
-    help.append(make('p', '当前版本需要由运行服务的人配置 API 密钥、模型和服务地址，然后重启服务。页面还不能保存 API 配置。'));
-    const details = make('details'); details.append(make('summary', '本机运行者：查看配置方法'));
-    details.append(make('p', '在启动 Python 的终端设置 PROJECTMIND_AI_API_KEY、PROJECTMIND_AI_MODEL；使用兼容服务时还需设置 PROJECTMIND_AI_BASE_URL。配置后重启同一个实例。支持的协议与具体示例见仓库 README。不要把密钥放到项目描述里。'));
-    help.append(details);
-    const actions = make('div', undefined, 'ux-actions');
-    const continueButton = button(planning ? '先记录项目想法' : '返回工作台', () => { d.close(); if (planning) startRoute('planning'); });
-    const check = async () => {
-      status.textContent = '正在检查…';
-      try {
-        const ai = await readConnection();
-        status.textContent = ai.configured ? `服务已配置：${ai.model || '已选择模型'}。实际生成是否成功，以生成结果为准。` : 'AI 尚未配置：现在可以记录想法，真实 AI 生成尚不可用。';
-        help.hidden = Boolean(ai.configured);
-        continueButton.textContent = planning ? (ai.configured ? '继续 · 输入项目想法' : '先记录项目想法') : '返回工作台';
-        renderNext();
-      } catch (error) { status.textContent = error.message; }
-    };
-    actions.append(button('重新检查接入', check), continueButton);
-    d.append(status, help, actions); check();
+  function showConnection(planning = false, initialMode = null) {
+    const d = dialog(presentation?'老师演示 · AI 接入状态':'选择 AI 使用方式', presentation?'这是老师展示页，不显示 API 密钥输入。共享 API 由运行者在普通工作台配置。':'用自己的 API 消耗自己的平台额度；老师演示使用我们提供的共享 API。');
+    const status = make('p', '正在读取配置…', 'ux-connection-status'); status.setAttribute('role', 'status');
+    const budget = make('p', '', 'ux-ai-budget'); budget.setAttribute('role','status');
+    const form = make('form', undefined, 'ux-ai-settings');form.hidden=true;
+    const fields={},advanced=make('details',undefined,'ux-ai-advanced');advanced.append(make('summary','高级设置与额度'));
+    const modes=make('div',undefined,'ux-actions');let mode='shared',requestedMode=initialMode;
+    async function selectMode(value){if(busy)return;if(dirty&&!window.confirm('切换模式会放弃尚未保存的 API 配置，继续吗？'))return;lock(true);try{load(await window.projectmindAISettingsRequest('/api/ai-settings/select',{mode:value}));}catch(error){status.textContent=error.message;}finally{lock(false);}}
+    const personal=button('用自己的 API',()=>selectMode('personal'));
+    const shared=button('老师演示 · 共享 API',()=>selectMode('shared'));
+    modes.append(personal,shared);modes.hidden=presentation;
+    for(const [id,label,type,placeholder] of [
+      ['baseUrl','服务地址（API Base URL）','url','https://你的服务地址/v1'],
+      ['apiKey','API 密钥','password','只存服务端，不回显'],
+      ['model','模型名称 / ID','text','填写服务商提供的模型 ID'],
+      ['protocol','协议','select',''],
+      ['tokenLimit','演示总额度（token）','number','50000'],
+      ['outputLimit','单次最多输出（token）','number','2048']]){
+      const input=make(type==='select'?'select':'input');input.name=id;input.setAttribute('aria-label',label);
+      if(type!=='select'){input.type=type;input.placeholder=placeholder;input.required=id!=='apiKey';input.spellcheck=false;}
+      if(id==='apiKey')input.autocomplete='new-password';
+      if(type==='number'){input.min=id==='tokenLimit'?'1000':'128';input.max=id==='tokenLimit'?'1000000':'8192';input.step='1';}
+      if(type==='select')for(const [value,text] of [['auto','自动选择'],['responses','Responses'],['chat_completions','Chat Completions（兼容接口）']]){const option=make('option',text);option.value=value;input.append(option);}
+      const labelEl=make('label',label);labelEl.append(input);(['protocol','tokenLimit','outputLimit'].includes(id)?advanced:form).append(labelEl);fields[id]=input;
+    }
+    form.append(advanced);
+    const preset=button('填入千问平台兼容地址',()=>{fields.baseUrl.value='https://maas.qianwenapi.com/compatible-mode/v1';fields.protocol.value='chat_completions';dirty=true;test.disabled=true;});form.append(preset);
+    const explanation=make('p','总额度包含生成、纠正和连接测试。保存不会清零已用额度；请求前会预留输入与输出，未知用量保守计入。','ux-entry-help');
+    const note=make('p','', 'ux-entry-help');
+    let saved=null,busy=false,dirty=false;
+    const save=button('保存并开始使用',()=>{} ,true);save.type='submit';
+    const test=button('测试已保存的连接', async()=>{
+      if(busy||dirty)return;
+      lock(true);status.textContent='正在向已保存的模型发送连接测试…';
+      try{const result=await window.projectmindAISettingsRequest('/api/ai-settings/test',{mode});status.textContent=result.note;showBudget(result.budget);}
+      catch(error){status.textContent=error.message;await refreshBudget();}
+      finally{lock(false);}
+    });
+    const controls=make('div',undefined,'ux-actions');controls.append(save,test);advanced.append(explanation);form.append(controls);
+    function showBudget(value){if(!value){budget.textContent='该实例没有演示额度信息。';return;}budget.textContent=`${mode==='personal'?'个人 API':'老师演示'}：剩余 ${value.remainingTokens.toLocaleString()} / 总额 ${value.tokenLimit.toLocaleString()} token；单次输出最多 ${value.outputLimit}。已用或预留 ${value.chargedTokens.toLocaleString()}（供应商报告 ${value.reportedTokens.toLocaleString()}，保守估算 ${value.estimatedTokens.toLocaleString()}）。`;}
+    function lock(value){busy=value;for(const field of Object.values(fields))field.disabled=value;personal.disabled=value;shared.disabled=value;preset.disabled=value;save.disabled=value;test.disabled=value||dirty||!saved?.configured;}
+    function load(value){saved=value;mode=value.mode||'shared';if(!presentation){activeAIMode=mode;try{sessionStorage.setItem('projectmind:ai-mode',mode);}catch(_){}}connection=value;showBudget(value.budget);personal.setAttribute('aria-pressed',String(mode==='personal'));shared.setAttribute('aria-pressed',String(mode==='shared'));status.textContent=value.configured?`${mode==='personal'?'个人 API':'老师演示共享模型'}已配置：${value.model}。${mode==='personal'?'调用消耗你自己的平台额度。':'老师无需填写 API。'}实际可用性以连接测试和生成结果为准。`:`${mode==='personal'?'填写你的 API 地址、密钥和模型后保存即可；会话到期需重新填写，不自动使用共享 Key。':'共享演示模型尚未配置，请由运行者填写。'}无需重启服务。`;
+      const editable=value.canEdit&&!presentation;
+      form.hidden=!editable;configure.hidden=!(presentation&&value.canEdit);note.textContent=value.managedBy==='server_environment'?'共享 API 由运行者在服务器环境变量或 Secrets 中配置，此页不输入或保存共享 Key。老师直接使用模型与统一额度。':editable?(mode==='personal'?`个人配置保留在服务端，${value.personalLifetime==='account'?'仅当前登录账号可使用':'绑定当前浏览器会话；服务重启或会话到期后需重新填写'}。`:'运行者配置共享演示 API，供老师使用。')+'更换地址时需重新填写密钥；密钥不会回显。':'演示使用运行者提供的共享模型和统一额度；配置及额度调整由运行者管理。';
+      if(editable){fields.baseUrl.value=value.baseUrl;fields.apiKey.value='';fields.apiKey.required=!value.hasKey;fields.apiKey.placeholder=value.hasKey?'已保存；留空沿用同一地址的密钥':'填写你的 API 密钥';fields.model.value=value.model||'';fields.protocol.value=value.configured?(value.protocol||'auto'):'auto';fields.tokenLimit.value=value.budget.tokenLimit;fields.outputLimit.value=value.budget.outputLimit;}
+      dirty=false;lock(false);continueButton.textContent=planning?(value.configured?'继续 · 输入项目想法':'先记录项目想法'):'返回工作台';renderNext();
+    }
+    for(const field of Object.values(fields))field.addEventListener('input',()=>{dirty=true;test.disabled=true;});
+    fields.protocol.addEventListener('change',()=>{dirty=true;test.disabled=true;});
+    form.addEventListener('submit',async event=>{event.preventDefault();if(busy||!form.reportValidity())return;lock(true);status.textContent='正在保存服务端配置…';
+      const value={};for(const [id,field] of Object.entries(fields))value[id]=field.type==='number'?Number(field.value):field.value.trim();value.mode=mode;
+      try{load(await window.projectmindAISettingsRequest('/api/ai-settings',value));status.textContent='配置已保存并立即生效。下一步可测试连接，再开始生成。';}
+      catch(error){status.textContent=error.message;}
+      finally{lock(false);}
+    });
+    async function refreshBudget(){try{const value=await window.projectmindAISettingsRequest('/api/ai-settings?mode='+mode,undefined,'GET');showBudget(value.budget);}catch(_){} }
+    const continueButton=button(planning?'先记录项目想法':'返回工作台',()=>{d.close();if(planning)startRoute('planning');});
+    const check=async()=>{if(busy)return;if(dirty&&!window.confirm('刷新会放弃尚未保存的 API 配置，继续吗？'))return;lock(true);status.textContent='正在读取配置…';try{const value=await window.projectmindAISettingsRequest('/api/ai-settings'+(requestedMode?'?mode='+requestedMode:''),undefined,'GET');requestedMode=null;load(value);}catch(error){status.textContent=error.message;form.hidden=true;try{await readConnection();renderNext();}catch(_){} }finally{lock(false);}};
+    const actions=make('div',undefined,'ux-actions');actions.append(button('刷新状态与额度',check),continueButton);
+    const demo=make('a','打开展示入口（不显示配置表单）','button ghost');demo.href='/?demo=1#home';demo.target='_blank';demo.rel='noopener';
+    const configure=make('a','我是运行者 · 配置共享 API','button primary');configure.href='/?configure-ai=shared#arch';configure.hidden=true;
+    d.append(modes,status,budget,note,configure,form,actions);if(!presentation)d.append(demo);check();
   }
   function help() {
     const d = dialog('按这条流程使用', '普通操作都围绕当前项目的功能图展开。需要时再打开代码、日志和任务。');
@@ -202,6 +255,7 @@
   document.addEventListener('projectmind:prepare-task-review',()=>{prepareTask();reveal('ux-review-panel');});
   document.addEventListener('projectmind:review-rejected',()=>{intent='correct';renderNext();if(current?.selectedNodeId)edit();});
   $('ux-check-ai').onclick=()=>showConnection();
+  if(new URLSearchParams(location.search).get('configure-ai')==='shared'&&!presentation)showConnection(false,'shared');
   $('ux-start').onclick = choices;
   $('ux-help').onclick = $('ux-workflow-help').onclick = help;
   $('ux-next-action').onclick = () => nextAction();

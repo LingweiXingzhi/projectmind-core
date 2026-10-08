@@ -47,6 +47,23 @@ class ColdBackupTests(unittest.TestCase):
             self.assertEqual(raised.exception.code,'DATA_ROOT_IN_USE')
         self.assertFalse(self.output.exists())
 
+    def test_ai_private_configuration_and_quota_survive_cold_restore(self):
+        from archloop.ai_settings import AISettings
+        from archloop import ai_transport as ai
+        settings=AISettings(self.state/'ai/ai.sqlite3')
+        with ai.settings_context(settings):
+            settings.save({'baseUrl':'https://api.openai.com/v1','apiKey':'SYNTHETIC-COLD-BACKUP-NOT-A-REAL-KEY',
+                           'model':'fixture','protocol':'auto','tokenLimit':50000,'outputLimit':128},ai.ai_config())
+        ticket=settings.reserve(2000);settings.settle(ticket,41)
+        result=cold_backup(self.config,self.output)
+        self.assertEqual(result['sqliteIntegrity']['ai/ai.sqlite3'],'ok')
+        restored=AISettings(self.output/'state/ai/ai.sqlite3')
+        self.assertEqual(restored.budget()['chargedTokens'],41)
+        self.assertEqual(restored.path.stat().st_mode&0o777,0o600)
+        with ai.settings_context(restored):
+            self.assertEqual(ai.ai_config()['model'],'fixture')
+            self.assertNotIn('SYNTHETIC-COLD-BACKUP',json.dumps(restored.public(ai.ai_config(),can_edit=True)))
+
     def test_existing_output_preserved_and_nested_output_rejected(self):
         self.output.mkdir();marker=self.output/'keep.txt';marker.write_text('preserve')
         with self.assertRaises(AccessError):cold_backup(self.config,self.output)

@@ -49,7 +49,7 @@ class WriteSessionRegistry:
         for key in expired:
             self._sessions.pop(key, None)
 
-    def issue(self, operator: str = "") -> dict:
+    def issue(self, operator: str = "", *, ai_profile: str | None = None) -> dict:
         """Create a server-side session and return its identifiers.
 
         The caller (app.py) puts the cookie on the response; only the CSRF
@@ -66,9 +66,17 @@ class WriteSessionRegistry:
             csrf = secrets.token_urlsafe(24)
             declared = (operator or "").strip()[:OPERATOR_LIMIT]
             self._sessions[session_id] = {"csrf": csrf, "operator": declared,
+                                          "aiProfile": ai_profile or secrets.token_urlsafe(24),
                                           "created": now, "lastSeen": now}
             return {"sessionId": session_id, "csrfToken": csrf,
                     "ttlSeconds": self._ttl, "operator": declared}
+
+    def read(self, session_id: str | None) -> dict | None:
+        """Server-side cookie lookup for private AI profile reads, not write authority."""
+        with self._lock:
+            self._prune(time.monotonic())
+            item = self._sessions.get(session_id)
+            return dict(item) if item else None
 
     def verify(self, session_id: str | None, csrf_token: str | None) -> dict:
         """Return the live session or refuse with a machine code."""

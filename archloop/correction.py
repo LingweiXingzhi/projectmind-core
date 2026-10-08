@@ -131,7 +131,7 @@ def correct_with_model(record: dict, draft: dict, instruction: str, selected: li
         "explanation": raw.get("explanation", ""),
         "unknowns": raw.get("unknowns", []),
         "openQuestions": raw.get("openQuestions", []),
-        "model": ai_transport.ai_status().get("model"),
+        "model": ai_transport.last_model() or ai_transport.ai_status().get("model"),
     }
 
 

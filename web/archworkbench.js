@@ -203,6 +203,12 @@
     try { return await writeSession.pending; } finally { writeSession.pending = null; }
   }
 
+  window.projectmindAISettingsRequest = async (path, body, method='POST') => {
+    const target=new URL(path,location.origin);
+    if(target.origin!==location.origin||!['/api/ai-settings','/api/ai-settings/test','/api/ai-settings/select'].includes(target.pathname))throw Error('无效的 AI 配置操作');
+    if(method==='GET')await ensureSession();
+    return api(method,path,body);
+  };
   async function api(method, path, body) {
     const options = { method, headers: {} };
     if (body !== undefined) {

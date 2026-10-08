@@ -2,7 +2,7 @@
 import json
 import sys
 
-from .ai_transport import AIError, AITimeout, _CALL_DEADLINE, _call_chat_completions, _call_responses
+from .ai_transport import AIError, AITimeout, _CALL_DEADLINE, _call_chat_completions, _call_responses, worker_usage
 
 
 def main():
@@ -19,6 +19,7 @@ def main():
                     'kind': 'timeout' if isinstance(exc, AITimeout) else 'error'}
     except Exception:
         response = {'ok': False, 'message': '模型工作者未完成有效响应。'}
+    response['usage'] = worker_usage()
     sys.stdout.buffer.write(json.dumps(response, ensure_ascii=False, allow_nan=False).encode())
     sys.stdout.buffer.flush()
 

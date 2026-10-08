@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import json
 from contextvars import ContextVar
+from contextlib import contextmanager
 import math
 import ipaddress
 import os
@@ -74,6 +75,31 @@ MAX_REQUEST_BYTES = 1024 * 1024
 _WORKERS = threading.BoundedSemaphore(4)
 _POLL_SECONDS = 0.05
 _CALL_DEADLINE = ContextVar('model_call_deadline', default=None)
+_SETTINGS = ContextVar('model_runtime_settings', default=None)
+_USAGE_RECEIVER = ContextVar('model_usage_receiver', default=None)
+_NETWORK_USAGE = ContextVar('model_network_usage', default=())
+_USAGE_UNCERTAIN = ContextVar('model_usage_uncertain', default=False)
+_LAST_MODEL = ContextVar('last_called_model', default=None)
+
+
+@contextmanager
+def settings_context(settings):
+    token = _SETTINGS.set(settings)
+    model_token = _LAST_MODEL.set(None)
+    try:
+        yield
+    finally:
+        _SETTINGS.reset(token)
+        _LAST_MODEL.reset(model_token)
+
+
+def last_model():
+    return _LAST_MODEL.get()
+
+
+def worker_usage():
+    values = _NETWORK_USAGE.get()
+    return sum(values) if values and not _USAGE_UNCERTAIN.get() else None
 
 
 def _check_budget(deadline, cancel_event):
@@ -121,6 +147,9 @@ def _isolated_call(message, deadline, cancel_event):
             raise AIError('模型工作者未完成有效响应。') from None
         if not isinstance(result, dict) or not isinstance(result.get('ok'), bool):
             raise AIError('模型工作者未完成有效响应。')
+        receiver = _USAGE_RECEIVER.get()
+        if receiver is not None:
+            receiver(result.get('usage'))
         if not result['ok']:
             message = result.get('message')
             if not isinstance(message, str):
@@ -170,12 +199,23 @@ STRUCTURE_INSTRUCTION = (
 
 
 def ai_config() -> dict:
-    """Server-side AI configuration (env only; validated, never echoed)."""
+    """Validated server-side configuration; private instance settings override env."""
     key = (os.environ.get("PROJECTMIND_AI_API_KEY")
            or os.environ.get("OPENAI_API_KEY") or "").strip()
     model = os.environ.get("PROJECTMIND_AI_MODEL", "").strip()
     base = (os.environ.get("PROJECTMIND_AI_BASE_URL") or DEFAULT_BASE_URL).strip().rstrip("/")
     protocol = (os.environ.get("PROJECTMIND_AI_PROTOCOL") or "auto").strip().lower()
+    settings = _SETTINGS.get()
+    values = {"key": key, "model": model, "base": base, "protocol": protocol}
+    if settings is not None:
+        values = settings.configuration(values)
+    result = validate_config(values["key"], values["model"], values["base"], values["protocol"])
+    if "outputLimit" in values:
+        result["outputLimit"] = values["outputLimit"]
+    return result
+
+
+def validate_config(key, model, base, protocol):
 
     parts = urlsplit(base)
     if parts.scheme not in ("http", "https") or not parts.netloc or not parts.hostname:
@@ -213,15 +253,18 @@ def ai_status() -> dict:
         return {"configured": False, "model": None, "protocol": None, "provider": None,
                 "note": f"AI 配置无效：{exc}"}
     if not config["configured"]:
-        return {"configured": False, "model": None, "protocol": config["protocol"],
+        result = {"configured": False, "model": None, "protocol": config["protocol"],
                 "provider": config["host"],
-                "note": ("AI 生成尚未配置。需在启动程序前设置 OPENAI_API_KEY（或 "
-                         "PROJECTMIND_AI_API_KEY）与 PROJECTMIND_AI_MODEL；"
-                         "其他厂商用 PROJECTMIND_AI_BASE_URL 指向其兼容端点。")}
-    return {"configured": True, "model": config["model"], "protocol": config["protocol"],
+                "note": "AI 尚未配置。运行者可在 AI 接入中保存服务地址、密钥与模型。"}
+    else:
+        result = {"configured": True, "model": config["model"], "protocol": config["protocol"],
             "provider": config["host"],
             "note": (f"服务端已配置模型 {config['model']} @ {config['host']}"
                      f"（{config['protocol']}）；生成结果是待确认的 AI 候选。")}
+    settings = _SETTINGS.get()
+    if settings is not None:
+        result["budget"] = settings.budget()
+    return result
 
 
 def _schema_problems(value, schema, path: str = "$") -> list[str]:
@@ -320,8 +363,20 @@ def _post_json(url: str, body: dict, key: str, timeout: float) -> dict:
             value = json.loads(raw, parse_constant=_invalid_constant)
             if not isinstance(value, dict):
                 raise AIError('模型响应必须是 JSON 对象。')
+            usage = value.get('usage')
+            total = usage.get('total_tokens') if isinstance(usage, dict) else None
+            if total is None and isinstance(usage, dict):
+                inputs = usage.get('input_tokens', usage.get('prompt_tokens'))
+                outputs = usage.get('output_tokens', usage.get('completion_tokens'))
+                if type(inputs) is int and type(outputs) is int and inputs >= 0 and outputs >= 0:
+                    total = inputs + outputs
+            if type(total) is int and 0 < total <= 10000000:
+                _NETWORK_USAGE.set((*_NETWORK_USAGE.get(), total))
+            else:
+                _USAGE_UNCERTAIN.set(True)
             return value
     except HTTPError as exc:
+        _USAGE_UNCERTAIN.set(True)
         code = exc.code
         exc.close()
         raise AIError(f"AI 服务返回 HTTP {code}。请检查模型、密钥、额度或端点地址。") from None
@@ -349,11 +404,15 @@ def _request_body(config, instructions, payload, schema_name, schema):
     if config['protocol'] == 'chat_completions':
         structure = STRUCTURE_INSTRUCTION.format(
             schema=json.dumps(schema, ensure_ascii=False, separators=(",", ":"), allow_nan=False))
-        return {"model": config["model"], "messages": [
+        result = {"model": config["model"], "messages": [
             {"role": "system", "content": instructions + structure},
             {"role": "user", "content": _payload_text(payload)}], "stream": False,
             "response_format": {"type": "json_object"}}
-    return {
+        if "outputLimit" in config:
+            field = "max_completion_tokens" if config.get("host") == "api.openai.com" else "max_tokens"
+            result[field] = config["outputLimit"]
+        return result
+    result = {
         "model": config["model"],
         "store": False,
         "instructions": instructions,
@@ -361,6 +420,9 @@ def _request_body(config, instructions, payload, schema_name, schema):
         "text": {"format": {"type": "json_schema", "name": schema_name,
                             "strict": True, "schema": schema}},
     }
+    if "outputLimit" in config:
+        result["max_output_tokens"] = config["outputLimit"]
+    return result
 
 
 def _call_responses(config: dict, instructions: str, payload: dict,
@@ -444,10 +506,11 @@ def call_model(instructions: str, payload: dict, schema_name: str, schema: dict,
     config = ai_config()
     if not config["configured"]:
         raise AINotConfigured("AI 生成尚未配置。")
+    _LAST_MODEL.set(config['model'])
     try:
         # Validate the exact wire body before admission or IPC. Oversized
         # input must not start a worker, much less contact a provider.
-        _encode_request(_request_body(config, instructions, payload, schema_name, schema))
+        encoded = _encode_request(_request_body(config, instructions, payload, schema_name, schema))
         message = json.dumps({'config': config, 'instructions': instructions, 'payload': payload,
             'schemaName': schema_name, 'schema': schema, 'timeout': timeout, 'deadline': deadline},
             ensure_ascii=False, allow_nan=False).encode()
@@ -455,9 +518,24 @@ def call_model(instructions: str, payload: dict, schema_name: str, schema: dict,
         raise AIError('模型输入不是有效的 JSON 内容。') from None
     if len(message) > 4 * MAX_REQUEST_BYTES:
         raise AIError('模型请求超过当前输入上限。')
-    value = _validated(_isolated_call(message, deadline, cancel_event), schema)
-    _check_budget(deadline, cancel_event)
-    return value
+    settings = _SETTINGS.get()
+    ticket, usage = None, []
+    if settings is not None:
+        settings.authorize_provider(config)
+        # UTF-8 bytes + protocol overhead conservatively bound ordinary text
+        # input; chat may make its existing one bounded retry after HTTP 400.
+        attempts = 2 if config['protocol'] == 'chat_completions' else 1
+        ticket = settings.reserve(attempts * (len(encoded) + 512 + config['outputLimit']))
+    receiver = _USAGE_RECEIVER.set(usage.append)
+    try:
+        value = _validated(_isolated_call(message, deadline, cancel_event), schema)
+        _check_budget(deadline, cancel_event)
+        return value
+    finally:
+        _USAGE_RECEIVER.reset(receiver)
+        if ticket is not None:
+            actual = usage[0] if usage else None
+            settings.settle(ticket, actual)
 
 
 __all__ = ["AIError", "AINotConfigured", "AITimeout", "AICancelled", "ai_config", "ai_status", "call_model",
