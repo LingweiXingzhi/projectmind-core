@@ -1000,6 +1000,17 @@
         actions.append(button);
       };
       const act = async (body, note) => {
+        // D's authoritative store needs a declared local operator in the
+        // server-side write session; declare one before any state change
+        // (same declaration pattern as the review and create flows).
+        let operator = window.projectmindSession?.actor || writeSession.operator;
+        if (!operator) {
+          const declared = await workspaceDialog("声明本机操作者",
+            [["actor", "本机操作者（声明，绑定本机会话）"]], "继续");
+          if (!declared) return;
+          operator = declared.actor;
+        }
+        await ensureSession(operator);
         state.busy = true; renderWorkspace();
         try {
           // state changes carry the revision and map revision this page saw;
