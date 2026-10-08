@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "cold_restore_fixture_v1",
+  "fixtureOnly": true,
+  "serviceStoppedBeforeCopy": true,
+  "sqliteIntegrity": "ok",
+  "bDocumentsEqual": true,
+  "aWorkspacesReopened": 2,
+  "architectureGitHeadEqual": true,
+  "newBrowserSessions": 0,
+  "scope": "same host, same registered code fixture; not cloud recovery",
+  "sourceLocalSHA": "2cd00c48d3bcc621610ddd644c4bd252fce6ce8d",
+  "sourceTree": "e277db08694ab686c7755d5c59b9b32cb9e5f7ac",
+  "dSQLiteIntegrity": "ok",
+  "dTasksEqual": true,
+  "dTasksReopened": 1,
+  "dSessionsRestored": 0,
+  "workRecordsSQLiteIntegrity": "ok",
+  "workRecordsAndHistoryEqual": true,
+  "workRecordsReopened": 2
+}

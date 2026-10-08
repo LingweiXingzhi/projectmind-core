@@ -1,0 +1,21 @@
+{
+    admin unix//var/lib/caddy/projectmind-admin.sock
+}
+@DOMAIN@ {
+    encode gzip
+    request_body {
+        max_size 1MB
+    }
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        -Server
+    }
+    reverse_proxy 127.0.0.1:8765 {
+        header_up -Forwarded
+        header_up -X-Forwarded-User
+        header_up -X-ProjectMind-Actor
+        header_up -X-ProjectMind-Session
+    }
+}
