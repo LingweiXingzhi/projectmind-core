@@ -45,6 +45,8 @@ def build_application(config_path):
     service.bind_backend_b(backend)
     from archloop.backend_d import GovernedTasks
     service.bind_backend_d(GovernedTasks(service, backend, data, access.origin))
+    from archloop.work_records import WorkspaceRecords
+    service.bind_work_records(WorkspaceRecords(service, data, access.origin))
     handler = make_handler(repos[0] if repos else ROOT, None, explorer_registry=ExplorerRegistry(),
                            archloop_service=service, public_origin=access.origin)
     application = Application(handler, access, repos)

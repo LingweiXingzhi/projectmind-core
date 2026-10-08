@@ -113,7 +113,7 @@ try:
     registered_key=request('GET','/api/auth/session',auth=auth)[2]['repositories'][0]['key']
     assert request('POST','/api/archloop/workspaces',{},auth={'Cookie':auth['Cookie']})[0]==403
     assert request('POST','/api/archloop/workspaces',{},auth=auth,request_origin='https://evil.example.invalid')[0]==403
-    publications=[]; tasks=[]
+    publications=[]; tasks=[]; records=[]
     for planning in (False,True):
         payload={'context':'planning' if planning else 'existing_project','title':'TLS fixture only',
             'goals':'保存设计','constraints':'不伪造实现','description':'isolated fixture'}
@@ -143,6 +143,19 @@ try:
         if planning:assert published['version']['codeRevision'] is None and published['version']['verifiedCodeRevision'] is None
         publications.append({'context':payload['context'],'mapRevision':published['version']['mapRevision'],
             'mapSourceRevision':published['provenance']['mapSourceRevision'],'codeRevision':published['version']['codeRevision']})
+        opened=request('GET',path,auth=auth)[2]
+        record_body={'category':'decision','date':'2026-10-08','title':'Synthetic TLS participant record',
+            'body':'FIXTURE ONLY: not approved project cognition','origin':'human','author':'FORGED_JSON_AUTHOR',
+            'expectedMapRevision':opened['identity']['mapRevision'],
+            'expectedDraftRevision':opened['identity']['draftRevision']}
+        status,_,entry=request('POST',path+'/records',record_body,auth);assert status==200
+        entry=entry['entry'];assert entry['author']=='browser-fixture' and entry['recordAuthority']=='participant_claim'
+        edit={**record_body,'id':entry['id'],'expectedVersion':entry['version'],'origin':'ai'}
+        status,_,updated=request('POST',path+'/records',edit,other);assert status==200
+        updated=updated['entry'];assert updated['status']=='ai_candidate' and updated['version']==2
+        assert request('POST',path+'/records',edit,auth)[0]==409
+        assert request('GET',path+'/records',auth=auth)[2]['entries']==[updated]
+        records.append(updated)
         if not planning:
             status,_,hints=request('GET',path+'/fix-task-hints',auth=auth);assert status==200 and hints['canCreate']
             process=hints['processes'][0]
@@ -174,6 +187,9 @@ try:
         'csrfRejected':True,'wrongOriginRejected':True,'trustedActorFromSession':True,
         'planningNoFakeCodeSHA':True,'secondServingProcessRejected':True,
         'governedTasks':tasks,'nativeHandoffSchema':bool(tasks),
+        'sharedRecords':[{'id':v['id'],'workspaceId':v['workspaceId'],'version':v['version'],
+            'status':v['status'],'codeRevision':v['codeRevision']} for v in records],
+        'recordCASConflictRejected':True,'recordActorFromSession':True,
         'sourceLocalSHA':run_git(SOURCE,'rev-parse','HEAD'),'sourceTree':run_git(SOURCE,'rev-parse','HEAD^{tree}'),
         'sourceWorkingTreeDirty':bool(run_git(SOURCE,'status','--porcelain'))}
     (fixture/'HTTPS_REPORT.json').write_text(json.dumps(report,indent=2)+'\n')
@@ -201,6 +217,12 @@ def d_tasks(path):
         assert connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
         return connection.execute('SELECT id,revision,document FROM architecture_fix_tasks ORDER BY id').fetchall()
 assert d_tasks(fixture/'state/d/continuity.sqlite3') == d_tasks(restored/'state/d/continuity.sqlite3')
+def work_records(path):
+    with sqlite3.connect(f'file:{path.resolve()}?mode=ro',uri=True) as connection:
+        assert connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
+        return {table:connection.execute(f'SELECT id,version,document FROM {table} ORDER BY id,version').fetchall()
+            for table in ('entries','history')}
+assert work_records(fixture/'state/work-records/records.sqlite3') == work_records(restored/'state/work-records/records.sqlite3')
 assert run_git(arch,"rev-parse","HEAD") == run_git(restored/"architecture","rev-parse","HEAD")
 restore_config = dict(config, dataRoot=str(restored/"state"), architectureRepo=str(restored/"architecture"))
 restore_path = restored / "runtime.json"
@@ -218,11 +240,13 @@ assert len(application.access.sessions) == 0
 reopened=application.service.backend_d.service.listing()
 assert [(v['id'],v['revision'],v['status']) for v in reopened] == [(v['id'],v['revision'],v['status']) for v in tasks]
 assert len(application.service.backend_d.gateway.sessions)==0
+assert sorted(application.service.work_records.store.listing(),key=lambda v:v['id']) == sorted(records,key=lambda v:v['id'])
 restore_report = {"schemaVersion":"cold_restore_fixture_v1", "fixtureOnly":True,
     "serviceStoppedBeforeCopy":True, "sqliteIntegrity":"ok", "bDocumentsEqual":True,
     "aWorkspacesReopened":len(rows), "architectureGitHeadEqual":True, "newBrowserSessions":0,
     "scope":"same host, same registered code fixture; not cloud recovery",
     "sourceLocalSHA":report["sourceLocalSHA"], "sourceTree":report["sourceTree"]}
 restore_report.update(dSQLiteIntegrity='ok',dTasksEqual=True,dTasksReopened=len(reopened),dSessionsRestored=0)
+restore_report.update(workRecordsSQLiteIntegrity='ok',workRecordsAndHistoryEqual=True,workRecordsReopened=len(records))
 (restored/"RESTORE_REPORT.json").write_text(json.dumps(restore_report,indent=2)+"\n")
 print(json.dumps({"https":report,"restore":restore_report}))
