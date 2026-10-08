@@ -67,6 +67,11 @@ def main():
     serve = commands.add_parser("serve")
     serve.add_argument("--config", required=True, type=Path)
     serve.add_argument("--port", type=int, default=8765)
+    backup = commands.add_parser("backup", help="停机后冷备私有数据与架构 Git，不覆盖已有目录")
+    backup.add_argument("--config", required=True, type=Path)
+    backup.add_argument("--output", required=True, type=Path)
+    inspect = commands.add_parser("inspect-backup", help="只读核验冷备清单、SQLite 和架构 Git")
+    inspect.add_argument("--directory", required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.command in ("create-account", "add-account"):
@@ -75,6 +80,10 @@ def main():
             function = create_account_file if args.command == "create-account" else add_account
             function(args.file, args.username, password)
             print("账号文件已保存，权限为0600；新增账号在服务重启后生效。")
+        elif args.command in ("backup", "inspect-backup"):
+            from .backup import cold_backup, inspect_backup
+            result = cold_backup(args.config, args.output) if args.command == "backup" else inspect_backup(args.directory)
+            print(json.dumps(result))
         else:
             check(0 < args.port <= 65535)
             application = build_application(args.config)
@@ -87,7 +96,8 @@ def main():
                     max_request_body_size=MAX_BODY, clear_untrusted_proxy_headers=True,
                     expose_tracebacks=False, ident="ProjectMind")
     except (AccessError, WorkspaceError, ContractError, OSError, ValueError, TypeError, KeyError) as exc:
-        parser.exit(1, f"部署配置未通过：{type(exc).__name__}。请检查私有配置与目录。\n")
+        code = f" / {exc.code}" if isinstance(exc, AccessError) else ""
+        parser.exit(1, f"部署配置未通过：{type(exc).__name__}{code}。请检查私有配置与目录。\n")
 
 
 if __name__ == "__main__":
