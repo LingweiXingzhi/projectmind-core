@@ -16,6 +16,7 @@
     <script src="/archworkbench.js" defer></script>
     <script src="/governed-tasks.js" defer></script>
     <script src="/work-records.js" defer></script>
+    <script src="/collaboration.js" defer></script>
     <script src="/user-guide.js" defer></script>
   </head>
   <body>
@@ -237,7 +238,7 @@
                   <div id="arch-review-status" class="compare-status">先保存版本草稿，再预览这次确认的内容。</div>
                   <div id="arch-review-result" class="compare-result"></div>
                   </div>
-                <section id="ux-delivery-panel" class="compare-card ux-delivery-panel" aria-labelledby="ux-delivery-title"><h2 id="ux-delivery-title">下一步：交接理解，或落实代码修改</h2><p id="ux-delivery-status" role="status"></p><div class="compare-controls"><button class="button primary" id="arch-handover-button" type="button" disabled>生成同版交接包</button><button class="button ghost" id="ux-prepare-task" type="button">落实代码修改</button><button class="button ghost" id="arch-versions-button" type="button" disabled>版本历史</button></div><div id="arch-version-result" class="compare-result"></div>
+                <section id="ux-delivery-panel" class="compare-card ux-delivery-panel" aria-labelledby="ux-delivery-title"><h2 id="ux-delivery-title">下一步：交接理解，或落实代码修改</h2><p id="ux-delivery-status" role="status"></p><div class="compare-controls"><button class="button primary" id="arch-handover-button" type="button" disabled>生成同版交接包</button><button class="button ghost" type="button" data-jump="collab">整理交接内容</button><button class="button ghost" id="ux-prepare-task" type="button">落实代码修改</button><button class="button ghost" id="arch-versions-button" type="button" disabled>版本历史</button></div><div id="arch-version-result" class="compare-result"></div>
                   <details id="ux-task-panel" class="ux-task-help"><summary>代码需要修改？交给队友实施</summary><p>图的理解不对，先编辑节点或用文字纠正；代码行为不符合预期，再创建开发任务。先给选中节点补充期望过程和代码证据，队友接手后回挂实际提交、实测，并由人确认关闭。</p><p id="ux-task-prereqs" role="status"></p><div class="compare-controls"><button class="button ghost" id="ux-task-process" disabled>填写期望执行步骤</button><button class="button ghost" id="ux-task-evidence" disabled>补充代码证据</button><button class="button ghost" id="arch-fixtask-button" type="button" disabled>为选中节点创建开发任务</button><button class="button ghost" id="arch-fixtasks-button" type="button" disabled>查看任务进度 / 接手 / 核验</button></div></details>
                   <div id="arch-task-result" class="compare-result" aria-live="polite"></div><section id="governed-task-panel" hidden aria-labelledby="governed-task-title"></section>
                 </section>
@@ -368,6 +369,13 @@
                 <button class="button ghost collab-tab" data-page="/ext/continuity" type="button">延续上下文</button>
                 <button class="button ghost collab-tab" data-page="/ext/worklog" type="button">工作日志</button>
               </div>
+              <section id="collab-shared" hidden aria-label="当前项目协同交接">
+                <div class="compare-controls"><label>交接哪个项目 <select id="collab-workspace" aria-label="交接项目"></select></label><button class="button ghost" id="collab-refresh" type="button">刷新项目状态</button><button class="button ghost" id="collab-open-workspace" type="button">回到架构工作台</button></div>
+                <p id="collab-status" role="status">选择项目，再下载交接包、整理上下文或记录下一步。</p>
+                <section id="collab-package-panel" class="compare-card"><h2>把已发布版本交给队友</h2><p>下载版本文件，让队友看到相同的功能图与确认范围；工作进展和下一步可在另两个标签中补充。</p><button class="button primary" id="collab-export" type="button" disabled>生成交接包</button><div id="collab-package-result" class="compare-result"></div></section>
+                <section id="collab-context-panel" class="compare-card" hidden><h2>让下一位接着做</h2><p>从当前项目的版本、未关闭任务和工作记录整理上下文。记录保持参与者声明，未核实的内容不会自动变成确认结论。</p><div class="compare-controls"><button class="button primary" id="collab-context-refresh" type="button" disabled>整理当前上下文</button><button class="button ghost" id="collab-context-copy" type="button" disabled>复制给下一位</button><button class="button ghost" id="collab-context-download" type="button" disabled>下载上下文</button></div><textarea id="collab-context-text" aria-label="交接上下文" rows="18" readonly style="width:100%;box-sizing:border-box"></textarea></section>
+                <section id="collab-records-panel" class="compare-card" hidden><h2>记录进展和下一步</h2><div data-shared-records="all" class="shared-records" hidden></div></section>
+              </section>
               <div class="collab-frame-wrap">
                 <iframe id="collab-frame" class="collab-frame" title="协作工具" data-src="/ext/handoff"></iframe>
               </div>

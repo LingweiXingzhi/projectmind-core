@@ -103,7 +103,7 @@
   async function start(){
     try{await api('/api/archloop/records');if(!window.projectmindSession)return;
       document.body.dataset.sharedRecords='true';
-      for(const panel of panels){panel.hidden=false;const view=panel.closest('.view');view.querySelector('iframe').hidden=true;view.querySelector('.mode-note').hidden=true;controllers.push(controller(panel));}
+      for(const panel of panels){panel.hidden=false;const view=panel.closest('.view');const frame=view.querySelector('iframe'),note=view.querySelector('.mode-note');if(frame)frame.hidden=true;if(note)note.hidden=true;controllers.push(controller(panel));}
       await Promise.all(controllers.map(c=>c.load()));window.refreshOverview?.(true);
     }catch(error){if(window.projectmindSession)for(const panel of panels){panel.hidden=false;panel.append(make('p','共享记录不可用：'+error.message));}}
   }

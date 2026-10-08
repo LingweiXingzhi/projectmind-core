@@ -37,7 +37,9 @@ function activateView(name, push=true) {
   if(name==='home' && window.refreshOverview) window.refreshOverview(true);
   document.dispatchEvent(new CustomEvent('projectmind:view',{detail:name}));
 }
+function isSharedServer(){return !!window.projectmindSession || !!document.querySelector('script[src="/auth-client.js"]');}
 function loadShellFrame(name) {
+  if(name==='collab' && isSharedServer()) return;
   if(document.body.dataset.mapMode!=='true') return;
   const frame=document.getElementById(name==='collab'?'collab-frame':`${name}-frame`);
   if(!frame || frame.getAttribute('src')) return;
@@ -48,7 +50,7 @@ for(const item of document.querySelectorAll('.top-nav .nav-item')) item.addEvent
 for(const tab of document.querySelectorAll('.collab-tab')) tab.addEventListener('click',()=>{
   for(const other of document.querySelectorAll('.collab-tab')) other.classList.toggle('active',other===tab);
   const frame=document.getElementById('collab-frame');
-  if(frame && document.body.dataset.mapMode==='true') frame.src=tab.dataset.page;
+  if(frame && !isSharedServer() && document.body.dataset.mapMode==='true') frame.src=tab.dataset.page;
 });
 document.addEventListener('click',event=>{const jump=event.target.closest('[data-jump]');if(jump)activateView(jump.dataset.jump);});
 window.addEventListener('popstate',()=>activateView(location.hash.slice(1)||'home',false));
@@ -89,7 +91,7 @@ activateView(VIEW_TITLES[location.hash.slice(1)]?location.hash.slice(1):'home',f
     if(loading)return force?loading.then(()=>overview(true)):loading;
     if(!force&&Date.now()-loadedAt<15000)return;
     loading=(async()=>{
-      const results=await Promise.allSettled([read('/api/snapshot'),read('/api/archloop/workspaces'),read(window.projectmindSession?'/api/archloop/records':'/api/extensions/worklog?action=list'),read('/api/ai-status')]);
+      const results=await Promise.allSettled([read('/api/snapshot'),read('/api/archloop/workspaces'),read(isSharedServer()?'/api/archloop/records':'/api/extensions/worklog?action=list'),read('/api/ai-status')]);
       const [snap,spaces,logs,ai]=results;
       cache.snapshot=snap.status==='fulfilled'?snap.value:null;
       cache.workspaces=spaces.status==='fulfilled'?spaces.value.workspaces.slice().sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))):[];
