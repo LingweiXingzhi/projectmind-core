@@ -928,6 +928,11 @@ class BackendB:
             # the caller's malformed declaration and must be refused
             # (BATCH-2 A-05, BATCH-3 A-05)
             coverage = coverage_for(record, draft["graph"], verify_code)
+            if meta.get('browserSession') and verify_code:
+                # A public static-facts review does not confirm intended
+                # process behavior. Explicit human coverage/design review may
+                # include processes; do not infer that authority from files.
+                coverage['processes'] = []
         else:
             # an explicit coverage must be honoured or rejected: falling back to
             # the default would widen the review scope the caller declared

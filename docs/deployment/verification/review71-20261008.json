@@ -1,0 +1,439 @@
+{
+  "schemaVersion": "projectmind_self_review_v1",
+  "lane": "71",
+  "upstreamParent": "2689f5c19cd7bf2265d4bb3c02c85070d08abcf4",
+  "fixedFullSuite": {
+    "exitCode": 0,
+    "seconds": 309.583,
+    "localSHA": "6e2b6ce791486874392bbd829643c9bc9801170c",
+    "tree": "352063d59196313345ed63115be22b10debb74a6",
+    "fixedSource": true
+  },
+  "unittest": {
+    "tests": 1061,
+    "seconds": 309.335,
+    "passed": 1059,
+    "skipped": 2,
+    "failures": 0,
+    "errors": 0,
+    "nodeAndCaddyOnPATH": true,
+    "realComponentsFromCurrentRepository": true
+  },
+  "fullLogSHA256": "778b9c3c7d9e3e33f399986dd783f7d24ec516d4595d182d367240ad6b47c136",
+  "skipReasons": [
+    {
+      "reason": "Pinned upstream 803c6736d1ab not present in local source snapshot history",
+      "count": 1
+    },
+    {
+      "reason": "Rule fixture has no expected process steps",
+      "count": 1
+    }
+  ],
+  "HTTPS": {
+    "schemaVersion": "local_https_rehearsal_v1",
+    "fixtureOnly": true,
+    "backend": "actual Waitress CLI",
+    "proxy": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=",
+    "localCertificateAndHostnameVerified": true,
+    "codeGitUnchanged": true,
+    "publicNetwork": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN",
+    "browser": "NOT_RUN_NOT_A_BROWSER_HARNESS",
+    "requests": 40,
+    "observations": [
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 401
+      },
+      {
+        "method": "POST",
+        "route": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/auth/session",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 409
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop/workspaces",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 403
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "route": "/api/archloop",
+        "status": 409
+      },
+      {
+        "method": "GET",
+        "route": "/api/archloop",
+        "status": 200
+      }
+    ],
+    "publishedFixtures": [
+      {
+        "context": "existing_project",
+        "mapRevision": "sha256:7167ca09f05e5bfd2d49c7795d84a6765b2e94ea4fe9b62c1c461584a28c9b0a",
+        "mapSourceRevision": "47fb833cc3fe1a340c6f270d4649d73a34d9fed8",
+        "codeRevision": "75335894ab0225ba263479d1a1eb3c37c8723eac"
+      },
+      {
+        "context": "planning",
+        "mapRevision": "sha256:7e031b6c1b3f1e2b38e1f830060cfce189524817bd37e1c54ec7166ad0b93d2b",
+        "mapSourceRevision": "0bfd1011965428dd650edf068c7cf6ba6344796f",
+        "codeRevision": null
+      }
+    ],
+    "crossSessionConfirmRejected": true,
+    "crossSessionPublishRejected": true,
+    "csrfRejected": true,
+    "wrongOriginRejected": true,
+    "trustedActorFromSession": true,
+    "planningNoFakeCodeSHA": true,
+    "secondServingProcessRejected": true,
+    "governedTasks": [
+      {
+        "id": "fix-9c12d79f269bd42943fb0ed08017a2bf",
+        "workspaceId": "ws_20261008150529_673c38",
+        "mapRevision": "sha256:7167ca09f05e5bfd2d49c7795d84a6765b2e94ea4fe9b62c1c461584a28c9b0a",
+        "revision": 2,
+        "status": "received",
+        "actorIdentity": "authenticated_account"
+      }
+    ],
+    "nativeHandoffSchema": true,
+    "sharedRecords": [
+      {
+        "id": "c23b775bf3954dbeb26bb9faa23c6449",
+        "workspaceId": "ws_20261008150529_673c38",
+        "version": 2,
+        "status": "ai_candidate",
+        "codeRevision": "75335894ab0225ba263479d1a1eb3c37c8723eac"
+      },
+      {
+        "id": "de2a69dc1ad84e208a3c18839c4f3ac0",
+        "workspaceId": "ws_20261008150530_97a483",
+        "version": 2,
+        "status": "ai_candidate",
+        "codeRevision": null
+      }
+    ],
+    "recordCASConflictRejected": true,
+    "recordActorFromSession": true,
+    "sourceLocalSHA": "4ecf09d626f7eb480f006a9ebdbf309815f3df12",
+    "sourceTree": "a3745aa07dd04ab3d8e440420510cecf1070df0f",
+    "sourceWorkingTreeDirty": false
+  },
+  "coldRestore": {
+    "schemaVersion": "cold_restore_fixture_v1",
+    "fixtureOnly": true,
+    "serviceStoppedBeforeCopy": true,
+    "sqliteIntegrity": "ok",
+    "bDocumentsEqual": true,
+    "aWorkspacesReopened": 2,
+    "architectureGitHeadEqual": true,
+    "newBrowserSessions": 0,
+    "scope": "same host, same registered code fixture; not cloud recovery",
+    "sourceLocalSHA": "4ecf09d626f7eb480f006a9ebdbf309815f3df12",
+    "sourceTree": "a3745aa07dd04ab3d8e440420510cecf1070df0f",
+    "dSQLiteIntegrity": "ok",
+    "dTasksEqual": true,
+    "dTasksReopened": 1,
+    "dSessionsRestored": 0,
+    "workRecordsSQLiteIntegrity": "ok",
+    "workRecordsAndHistoryEqual": true,
+    "workRecordsReopened": 2
+  },
+  "DOM": {
+    "result": "PASS_FULL_DOM_REAL_HTTP",
+    "scriptsLoaded": 11,
+    "requests": 124,
+    "scriptErrors": [],
+    "actorFromActualSession": true,
+    "registeredRepositorySelector": true,
+    "ruleCandidateApplied": true,
+    "expectedProcessSaved": true,
+    "fixtureDesignReviewPublished": true,
+    "governedTaskCreatedReceivedStarted": true,
+    "sharedRecordSavedEditedHistory": true,
+    "recordConflictRetainsInput": true,
+    "aiDecisionRemainsCandidate": true,
+    "nativeBrowser": "NOT_RUN",
+    "TLS": "SIMULATED_PROXY_HEADERS_ONLY",
+    "workspaceSwitchRetainsUnsavedInput": true,
+    "chineseLabels": true,
+    "unknownIdentifiersPreserved": true,
+    "nativeHandoffJsonCapturedUnchanged": true,
+    "layout": "NOT_RUN",
+    "realAI": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN",
+    "polyfills": [
+      "dialog",
+      "pointer capture",
+      "scroll",
+      "Blob URL/download capture"
+    ],
+    "codeGitUnchanged": true,
+    "sourceLocalSHA": "4ecf09d626f7eb480f006a9ebdbf309815f3df12",
+    "sourceWorkingTreeDirty": false
+  },
+  "runtimeSourceRelationship": {
+    "lane": "71",
+    "runtimeVerifiedSHA": "4ecf09d626f7eb480f006a9ebdbf309815f3df12",
+    "currentTestSHA": "6e2b6ce791486874392bbd829643c9bc9801170c",
+    "interveningFiles": [
+      "tests/test_real_b_integration.py",
+      "tests/test_real_ca_integration.py",
+      "tests/test_w6_smoke.py"
+    ],
+    "runtimeSemanticallyUnchanged": true
+  },
+  "nativeBrowser": {
+    "schemaVersion": "projectmind_native_browser_rehearsal_v1",
+    "status": "PASS",
+    "fixtureOnly": true,
+    "engine": "actual Chromium",
+    "requests": 102,
+    "pageErrors": [],
+    "actorFromActualSession": true,
+    "nativeDialogs": true,
+    "registeredRepositorySelector": true,
+    "ruleCandidateApplied": true,
+    "expectedProcessSaved": true,
+    "fixtureDesignReviewPublished": true,
+    "crossBrowserConfirmRejected": 403,
+    "crossBrowserPublishRejected": 403,
+    "secureHttpOnlySameSiteCookie": true,
+    "governedTaskCreatedReceivedStarted": true,
+    "nativeHandoffDownloadUnchanged": true,
+    "encodedVersionRoute": true,
+    "secondBrowserReadsSameVersion": true,
+    "mobileViewport": {
+      "width": 430,
+      "scrollWidth": 430
+    },
+    "taskFormFieldsFit": true,
+    "mobileAccountControlsFit": true,
+    "browserLocalCertificateException": true,
+    "realSecondDevice": "NOT_RUN",
+    "publicNetwork": "NOT_RUN",
+    "realAI": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN"
+  },
+  "nativeBrowserDriver": {
+    "schemaVersion": "local_https_rehearsal_v1",
+    "fixtureOnly": true,
+    "backend": "actual Waitress CLI",
+    "proxy": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=",
+    "localCertificateAndHostnameVerified": true,
+    "codeGitUnchanged": true,
+    "publicNetwork": "NOT_RUN",
+    "realTeamApproval": "NOT_RUN",
+    "browserReport": "BROWSER_REPORT.json",
+    "sourceLocalSHA": "4ecf09d626f7eb480f006a9ebdbf309815f3df12",
+    "sourceTree": "a3745aa07dd04ab3d8e440420510cecf1070df0f",
+    "sourceWorkingTreeDirty": false
+  },
+  "notRun": [
+    "public cloud/real domain/DNS/public CA",
+    "second physical device",
+    "real model semantic acceptance",
+    "actual teammate approval and real task verifier",
+    "complete upstream Git history from authenticated CLI"
+  ],
+  "review": {
+    "selfReview": true,
+    "independentHumanReview": "NOT_RUN",
+    "introducedCredentialOrMachinePathPatterns": 0,
+    "unrelatedSourceFilesAdded": false,
+    "formalModelChanged": false,
+    "mergePerformed": false
+  },
+  "runtimeVersions": {
+    "python": "3.12.14",
+    "node": "24.19.0",
+    "jsdom": "30.1.2",
+    "caddy": "2.11.7"
+  },
+  "commands": [
+    "python3 -m unittest discover -s tests -v",
+    "explicit node and caddy bin directories on PATH",
+    "PROJECTMIND_REAL_B_ROOT and PROJECTMIND_REAL_CA_ROOT set to the current source tree",
+    "rehearse_public_https.py with explicit Caddy and a new private output directory",
+    "rehearse_public_dom.py with explicit node/jsdom and a new private output directory",
+    "rehearse_public_browser.py with explicit node/Playwright/Caddy/browser cache and a new private output directory"
+  ]
+}

@@ -85,8 +85,8 @@ class RealDiffSmokeTests(unittest.TestCase):
     def setUp(self):
         # Use the deepest history that exists on this checkout (integration
         # branches may be younger than 5 commits).
-        count = int(git("rev-list", "--count", "HEAD").decode().strip())
-        depth = min(5, max(1, count - 1))
+        count = int(git("rev-list", "--first-parent", "--count", "HEAD").decode().strip())
+        depth = min(5, count - 1)
         if depth < 1:
             self.skipTest("no parent commit available")
         self.base = rev_of(f"HEAD~{depth}")

@@ -3,6 +3,7 @@ from email.message import Message
 from http import HTTPStatus
 import io
 import json
+import math
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import quote
@@ -40,8 +41,20 @@ class Application:
 
     def _json(self, raw):
         try:
-            value = json.loads(raw)
-        except (ValueError, UnicodeError):
+            def invalid_constant(_):
+                raise ValueError('non-finite JSON')
+            value = json.loads(raw, parse_constant=invalid_constant)
+            stack = [(value, 0)]
+            while stack:
+                item, depth = stack.pop()
+                check(depth <= 64, status=400)
+                if isinstance(item, float):
+                    check(math.isfinite(item), status=400)
+                if isinstance(item, dict):
+                    stack.extend((child, depth + 1) for child in item.values())
+                elif isinstance(item, list):
+                    stack.extend((child, depth + 1) for child in item)
+        except (ValueError, UnicodeError, RecursionError):
             raise AccessError(400, "INVALID_INPUT", "需要 JSON 对象") from None
         check(isinstance(value, dict))
         return value

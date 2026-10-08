@@ -40,7 +40,7 @@
       <main class="main-content">
         <header class="topbar">
           <div class="history-buttons"><button id="nav-back" class="icon-button" aria-label="后退">←</button><button id="nav-forward" class="icon-button" aria-label="前进">→</button></div>
-          <button id="command-open" class="search-trigger"><span>⌕</span> 搜索或跳转… <kbd>⌘K</kbd></button>
+          <button id="command-open" class="search-trigger" aria-label="搜索或跳转"><span>⌕</span><span class="search-label">搜索或跳转…</span><kbd>⌘K</kbd></button>
           <div class="breadcrumb"><strong id="breadcrumb-current">项目总览</strong></div>
           <div class="top-actions"><button class="icon-button" id="toggle-inspector" title="切换详情面板" aria-label="切换详情面板">◫</button><button class="icon-button" id="refresh-button" title="刷新 Git 提交" aria-label="刷新 Git 提交">⟳</button><button class="icon-button" id="copy-link" title="复制当前页面链接" aria-label="复制当前页面链接">↗</button></div>
         </header>
@@ -203,6 +203,12 @@
                   <div class="compare-heading"><div><h2>偏差处理</h2><p>修正认知更新图草稿；修正实现生成有验收的开发任务。改图不会自动修改程序。</p></div></div>
                   <div class="compare-controls">
                     <button class="button ghost" id="arch-sync-button" type="button" disabled>保存草稿到版本服务</button>
+                    <label>复核内容
+                      <select id="arch-review-mode">
+                        <option value="code">核查代码证据（不确认期望过程）</option>
+                        <option value="design">确认设计与期望过程（不核查代码）</option>
+                      </select>
+                    </label>
                     <button class="button ghost" id="arch-review-preview-button" type="button" disabled>人审预览（真实会话）</button>
                     <button class="button primary" id="arch-review-confirm-button" type="button" hidden disabled>确认接受</button>
                     <button class="button ghost" id="arch-review-reject-button" type="button" hidden disabled>拒绝</button>
@@ -357,4 +363,3 @@
     <div id="shell-toast" class="shell-toast" role="status" aria-live="polite"></div>
   </body>
 </html>
-

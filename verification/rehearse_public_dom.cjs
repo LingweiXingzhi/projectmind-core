@@ -112,7 +112,9 @@ async function main(config) {
   const original=await (await w.fetch('/api/archloop/workspaces/'+encodeURIComponent(handoff.workspaceId)+'/handover')).json();
   assert.deepEqual(handoff,original,'Downloaded JSON is the unchanged native handoff');
   assert.ok(downloads[0].name.includes(handoff.versionEnvelope.version.mapId));
-  assert.match(w.document.getElementById('arch-version-result').textContent,/同版交接包已导出/);
+  assert.match(w.document.getElementById('arch-version-result').textContent,/同版交接包/);
+  assert.equal(w.document.getElementById('arch-fixtask-button').hidden,true);
+  assert.equal(w.document.getElementById('arch-fixtasks-button').hidden,true);
   assert.ok(!w.document.getElementById('arch-version-result').textContent.includes('undefined'));
   w.activateView('worklog');
   const recordPanel=w.document.querySelector('[data-shared-records=all]');
