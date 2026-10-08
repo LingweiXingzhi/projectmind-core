@@ -11,6 +11,7 @@
     return value;
   };
   const base = () => `/api/archloop/workspaces/${encodeURIComponent(workspace.workspace.workspaceId)}`;
+  const label = value => typeof projectmindUiLabel === 'function' ? projectmindUiLabel(value) : value;
   async function api(method, path, body) {
     const response = await fetch(path, {method, headers: {'Content-Type': 'application/json'},
       body: method === 'POST' ? JSON.stringify(body) : undefined});
@@ -68,7 +69,8 @@
   }
   function taskCard(task, capability) {
     const card = element('article', undefined, 'detail-section');
-    card.append(element('h4', `${task.id} · ${task.status}`), element('p', task.deviation),
+    card.dataset.taskState = task.status;
+    card.append(element('h4', `${task.id} · ${label(task.status)}`), element('p', task.deviation),
       element('p', `基线 ${task.codeRevision} · 图 ${task.mapRevision}`),
       element('p', `允许路径：${task.scope.join('、')}`), element('p', `验收：${task.acceptance}`));
     if (task.submittedRevision) card.append(element('p', `回挂提交：${task.submittedRevision}`));

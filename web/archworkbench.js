@@ -1184,13 +1184,21 @@
     if (!state.envelope || state.busy) return;
     try {
       const packageData = await api("GET", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/handover`);
+      const version = packageData.versionEnvelope?.version || packageData;
+      const provenance = packageData.versionEnvelope?.provenance || packageData;
+      const blob = new Blob([JSON.stringify(packageData, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `handover-${version.mapId}-${String(version.mapRevision).slice(7, 19)}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
       const area = document.getElementById("arch-version-result");
       area.replaceChildren();
       area.append(el("div", "ai-candidate-label", "同版交接包（可交给下一位副本）"));
-      area.append(el("p", "ai-item", `图标识 ${packageData.mapId} · 图版本 ${packageData.mapRevision}`));
-      area.append(el("p", "ai-item", `架构来源 ${packageData.mapSourceRevision} · 未解决偏差 ${(packageData.unresolvedDeviations || []).length} · 未关闭任务 ${(packageData.openFixTasks || []).length}`));
+      area.append(el("p", "ai-item", `图标识 ${version.mapId} · 图版本 ${version.mapRevision}`));
+      area.append(el("p", "ai-item", `架构来源 ${provenance.mapSourceRevision} · 未解决偏差 ${(packageData.unresolvedDeviations || []).length} · 未关闭任务 ${(packageData.openFixTasks || []).length}`));
       area.append(el("p", "ai-provenance", packageData.importHint ? packageData.importHint.note : ""));
-      setStatus("arch-review-status", `同版交接包已导出：图标识 ${packageData.mapId} · 图版本 ${packageData.mapRevision} · 架构来源 ${packageData.mapSourceRevision}`);
+      setStatus("arch-review-status", `同版交接包已导出：图标识 ${version.mapId} · 图版本 ${version.mapRevision} · 架构来源 ${provenance.mapSourceRevision}`);
     } catch (error) {
       setStatus("arch-review-status", `导出失败（${error.code}）：${error.message}`, true);
     }
