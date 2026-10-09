@@ -1,0 +1,145 @@
+{
+  "proposalId": "prop_projectmind_dogfood_v1",
+  "kind": "rule_based",
+  "status": "candidate",
+  "codeRepoId": "LingweiXingzhi/projectmind-core",
+  "codeRevision": "803c6736d1ab01bee004a77c2d2b3b140b28cb12",
+  "verifiedCodeRevision": null,
+  "description": "ProjectMind 自身新增职责功能图候选草稿（待人审裁决）",
+  "graphCandidate": {
+    "nodes": [
+      {
+        "nodeId": "node_code_facts",
+        "title": "代码事实与静态分析",
+        "role": "提取仓库源码、AST 语法树、函数/类符号、静态导入依赖及代码变更 Diff",
+        "status": "implemented",
+        "evidence": [
+          {
+            "kind": "source_module",
+            "path": "repo_index/imports.py"
+          },
+          {
+            "kind": "source_module",
+            "path": "repo_index/symbols.py"
+          }
+        ],
+        "interfaces": [
+          "parse_imports",
+          "extract_symbols"
+        ]
+      },
+      {
+        "nodeId": "node_ca_engine",
+        "title": "CA 架构规约与收敛适配",
+        "role": "管理上下文架构包（CA Context Pack），核查规则接纳度，提供收敛策略",
+        "status": "implemented",
+        "evidence": [
+          {
+            "kind": "source_module",
+            "path": "extensions/map_proposal/ca_adapter.py"
+          }
+        ],
+        "interfaces": [
+          "adapt_ca_context"
+        ]
+      },
+      {
+        "nodeId": "node_map_proposal",
+        "title": "架构认知提案与过程偏差",
+        "role": "生成无图初图候选、自然语言纠偏 Patch、增量代码更新提案及运行时过程偏差检测",
+        "status": "implemented",
+        "evidence": [
+          {
+            "kind": "source_module",
+            "path": "extensions/map_proposal/engine.py"
+          },
+          {
+            "kind": "source_module",
+            "path": "extensions/map_proposal/candidates.py"
+          }
+        ],
+        "interfaces": [
+          "generate_bootstrap_proposal",
+          "generate_incremental_proposal",
+          "generate_nl_correction_patch",
+          "detect_process_deviations"
+        ]
+      },
+      {
+        "nodeId": "node_handoff_continuity",
+        "title": "跨端交接与上下文接续",
+        "role": "输出同版交接包，管理开发状态恢复点与跨设备协同",
+        "status": "implemented",
+        "evidence": [
+          {
+            "kind": "source_module",
+            "path": "extensions/handoff/handoff.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
+          },
+          {
+            "kind": "source_module",
+            "path": "extensions/continuity/store.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
+          }
+        ],
+        "interfaces": [
+          "export_handoff_bundle",
+          "apply_continuity_checkpoint"
+        ]
+      },
+      {
+        "nodeId": "node_worklog_audit",
+        "title": "审计工作日志与操作追踪",
+        "role": "记录开发足迹、操作事件流与本地核查审计记录",
+        "status": "implemented",
+        "evidence": [
+          {
+            "kind": "source_module",
+            "path": "extensions/worklog/store.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
+          }
+        ],
+        "interfaces": [
+          "record_entry",
+          "query_log"
+        ]
+      },
+      {
+        "nodeId": "node_experimental_bounds",
+        "title": "实验特性与边界隔离",
+        "role": "承载实验性 GitHub 桥接、未冻结原型的沙箱化隔离",
+        "status": "implemented",
+        "evidence": [
+          {
+            "kind": "source_module",
+            "path": "extensions/continuity_github/service.py",
+            "note": "目录引用改为该职责的入口模块文件；目录本身不是可取证的 blob"
+          }
+        ],
+        "interfaces": []
+      }
+    ],
+    "relations": [
+      {
+        "source": "node_map_proposal",
+        "target": "node_code_facts",
+        "kind": "static_reference"
+      },
+      {
+        "source": "node_map_proposal",
+        "target": "node_ca_engine",
+        "kind": "functional_collaboration"
+      },
+      {
+        "source": "node_handoff_continuity",
+        "target": "node_map_proposal",
+        "kind": "functional_collaboration"
+      }
+    ]
+  },
+  "warnings": [
+    "此架构图为 Role C 依据基线代码事实生成的候选建议草稿，未经人审确认为正式版本。",
+    "本轮集成分支修复：codeRevision 固定为本轮起点 803c6736d1ab01bee004a77c2d2b3b140b28cb12；原先的 c3d524d 提交中 candidates.py 尚不存在，且目录路径不是可取证的 blob（D-C-03）。",
+    "候选内容仍待人审裁决；固定提交只说明证据取自哪一版代码事实。"
+  ]
+}

@@ -1,2 +1,9 @@
 __pycache__/
 *.py[cod]
+
+# Architecture workbench runtime data (user workspaces live outside source control)
+data/archloop-workspaces/
+
+# Actual deployment credentials/configuration must live outside Git.
+accounts.json
+runtime.json

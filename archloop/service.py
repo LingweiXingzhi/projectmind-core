@@ -1,0 +1,1896 @@
+"""Workbench service facade (A role) — one place the HTTP layer talks to.
+
+Machine-readable failures via ContractError; every response carries backend
+labels so 演示数据 can never pass as production data. Publishing (human
+review) and fix-task handoff go through the adapter and refuse both the
+missing-backend case (BACKEND_UNAVAILABLE) and any dev-sample origin.
+"""
+from __future__ import annotations
+
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timezone
+
+from . import backend_c
+from . import context_pack as context_pack_module
+from . import fix_tasks as fix_tasks_module
+from . import correction as correction_module
+from . import generate as generate_module
+from . import ops as ops_module
+from .adapters import AdapterRegistry, DEV_SAMPLE_MODE, call_backend, reject_sample_review
+from .backend_b import b_to_a_graph
+from .contract import (ContractError, ID_PATTERN, identity_view, is_full_sha,
+                       semantic_revision, validate_workspace_identity)
+from .store import DraftStore, workspace_lock
+
+
+def _utcnow() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def stable_repo_id(repo_path: str, remote: str | None) -> str:
+    """Stable repository identity: the registered source URL, never the local
+    absolute directory (two clones of one source keep one identity). Only a
+    repository with no remote at all falls back to its local path."""
+    if remote:
+        locator = remote.rstrip("/")
+    else:
+        from pathlib import Path as _Path
+        locator = "local:" + str(_Path(repo_path).resolve())
+    # identical rule to B's code_identity (extensions/architecture_workspace/
+    # git_publication.py) so one source keeps one identity on both sides
+    return "repo-" + hashlib.sha256(locator.encode("utf-8")).hexdigest()
+
+
+class WorkbenchService:
+    def __init__(self, data_root, adapter: AdapterRegistry | None = None, *, allowed_repositories=None) -> None:
+        self.store = DraftStore(data_root)
+        self.adapter = adapter or AdapterRegistry()
+        # Git access is injected by app.py so this module reuses the host's
+        # hardened git runner (env stripping, no prompts) instead of copying
+        # repository rules; code facts always come from explicit revisions.
+        self.git = None
+        # Optional real B version service (single adapter layer: backend_b.py).
+        # Bound by app.py from server-side configuration only.
+        self.backend_b = None
+        # Optional D fix-task authority (backend_d.py) and the registered code
+        # roots its verification provider may resolve commits in.
+        self.backend_d = None
+        self.code_repo_roots: list[str] = []
+        self.work_records = None
+        from pathlib import Path
+        self.allowed_repositories = (None if allowed_repositories is None
+                                     else frozenset(Path(p).resolve() for p in allowed_repositories))
+
+    # ---------- injected git access ----------
+
+    def bind_git(self, git_callable) -> None:
+        self.git = git_callable
+
+    def _require_git(self):
+        if self.git is None:
+            raise ContractError("BACKEND_UNAVAILABLE", "本实例未绑定 Git 访问")
+        return self.git
+
+    def _code_repo_identity(self, root: str, remote: str | None) -> str:
+        """One identity for one registered source: when B's version service is
+        bound, use its registered repo id (origin-URL based); otherwise a
+        path-independent fallback. Two clones of one source never diverge
+        because of their local directories."""
+        backend_b = getattr(self, "backend_b", None)
+        if backend_b is not None and backend_b.available:
+            try:
+                return backend_b.repo_id_for(root)
+            except ContractError:
+                pass
+        return stable_repo_id(root, remote)
+
+    def probe_repo(self, repo_path: str) -> dict:
+        git = self._require_git()
+        from pathlib import Path as _Path
+        repo = _Path(repo_path).expanduser()
+        if self.allowed_repositories is not None and repo.resolve() not in self.allowed_repositories:
+            raise ContractError("REQUEST_FORBIDDEN", "代码仓库未在服务器登记")
+        if repo_path.startswith(("https://", "http://", "git@", "ssh://")):
+            raise ContractError("VALIDATION_FAILED", "这里需要运行服务的电脑上的 Git 项目目录。请先克隆 GitHub 项目，再填写本地目录。")
+        if not repo.is_dir():
+            raise ContractError("VALIDATION_FAILED", "找不到这个项目目录。请检查路径，并确认目录位于运行服务的电脑上。")
+        try:
+            root = git(repo, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").strip()
+        except Exception as exc:
+            raise ContractError("VALIDATION_FAILED", "无法读取这个 Git 项目。请选择已克隆的 Git 仓库目录，并检查目录访问权限。") from exc
+        try:
+            head = git(repo, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
+        except Exception as exc:
+            raise ContractError("VALIDATION_FAILED", "这个仓库还没有可读取的代码提交。请先完成首次 Git 提交，再导入项目。") from exc
+        try:
+            remote = git(repo, "remote", "get-url", "origin").decode("utf-8", errors="replace").strip()
+        except Exception:
+            remote = None
+        raw = git(repo, "ls-tree", "-r", "-z", "--name-only", head)
+        tracked = [part.decode("utf-8", errors="replace") for part in raw.split(b"\0") if part]
+        return {"root": root, "head": head, "remote": remote, "trackedFiles": tracked}
+
+    def diff_repo(self, repo_path: str, base: str, target: str) -> list[dict]:
+        git = self._require_git()
+        from pathlib import Path as _Path
+        raw = git(_Path(repo_path), "diff", "--name-status", "-z", "-M", base, target, "--")
+        parts = [part.decode("utf-8", errors="replace") for part in raw.split(b"\0") if part]
+        changes = []
+        index = 0
+        while index < len(parts):
+            code = parts[index]
+            index += 1
+            if code.startswith(("R", "C")):
+                old_path, path = parts[index:index + 2]
+                index += 2
+                changes.append({"code": code, "oldPath": old_path, "path": path})
+            else:
+                changes.append({"code": code, "path": parts[index]})
+                index += 1
+        return changes
+
+    # ---------- workspace lifecycle ----------
+
+    def create_workspace(self, request: dict) -> dict:
+        context = request.get("context")
+        title = (request.get("title") or "").strip()
+        if not title:
+            raise ContractError("VALIDATION_FAILED", "请为工作区命名")
+        identity = {
+            "workspaceId": None,
+            "codeRepoId": None,
+            "mapId": None,
+            "codeRevision": None,
+            "mapSourceRevision": None,
+            "verifiedCodeRevision": None,
+        }
+        repo_path = request.get("repoPath")
+        if context in ("existing_project", "mixed"):
+            if not isinstance(repo_path, str) or not repo_path.strip():
+                raise ContractError("VALIDATION_FAILED", "已有项目需要仓库路径")
+            probe = self.probe_repo(repo_path.strip())
+            identity["codeRepoId"] = self._code_repo_identity(probe["root"], probe.get("remote"))
+            identity["codeRevision"] = probe["head"]
+            identity["repoPath"] = probe["root"]
+            if context == "existing_project":
+                identity["mapId"] = f"map-{identity['codeRepoId'][5:]}"
+        provided_map_id = request.get("mapId")
+        if provided_map_id is not None:
+            # second copy / same-version handover: the caller names the durable
+            # graph identity that was registered elsewhere (never inferred)
+            if not isinstance(provided_map_id, str) or not ID_PATTERN.fullmatch(provided_map_id):
+                raise ContractError("VALIDATION_FAILED", "mapId 不合法")
+            identity["mapId"] = provided_map_id
+        workspace_id = f"ws_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}"
+        identity["workspaceId"] = workspace_id
+        validate_workspace_identity(identity, context)
+        record = {
+            "workspaceId": workspace_id,
+            "title": title,
+            "context": context,
+            "identity": identity,
+            "mapIdProvided": provided_map_id is not None,
+            "description": request.get("description", ""),
+            "goals": request.get("goals", ""),
+            "constraints": request.get("constraints", ""),
+            "createdAt": _utcnow(),
+            "updatedAt": _utcnow(),
+            "draft": None,
+        }
+        self.store.create_workspace(record)
+        return self._envelope(record, mode=request.get("mode", "production"))
+
+    def open_workspace(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        return self._envelope(record)
+
+    def list_workspaces(self) -> dict:
+        return {"workspaces": self.store.list_workspaces(), "backend": self._backend_label()}
+
+    def _backend_label(self) -> dict:
+        backend_b = getattr(self, "backend_b", None)
+        if backend_b is not None and backend_b.available:
+            status = backend_b.status()
+            return {
+                "kind": backend_b.KIND if status.get("available") else "unavailable",
+                "labeled": status.get("labeled"),
+                "origin": backend_b.KIND if status.get("available") else "unavailable",
+                "versionService": bool(status.get("available")),
+                "ref": backend_b.REF,
+                "reviewGateway": bool(status.get("reviewGateway")),
+                "reason": status.get("reason"),
+            }
+        persistence = self.adapter._backends.get("persistence")
+        delegating = bool(persistence and callable(persistence.get("call")))
+        # Draft storage and the version service are distinct capabilities:
+        # drafts stay in A's labeled local store until B's service actually
+        # takes them over; a bare registration without a callable is not an
+        # integration (FINAL-1 finding 8).
+        return {
+            "kind": "dev_sample_draft_store" if not delegating else "extension:persistence",
+            "labeled": ("草稿保存在本实例数据目录，等待 B 版本服务接入；不产生正式认知版本"
+                        if not delegating else
+                        "版本服务已委托注册后端；草稿暂存本实例，正式版本以后端发布结果为准"),
+            "origin": "dev_sample" if not delegating else "extension:persistence",
+            "versionService": delegating,
+        }
+
+    def _envelope(self, record: dict, mode: str = "production") -> dict:
+        draft = record.get("draft")
+        draft_revision = draft.get("draftRevision") if draft else None
+        map_revision = draft.get("graph", {}).get("mapRevision") if draft else None
+        # mapSourceRevision / verifiedCodeRevision are facts about the
+        # PUBLISHED graph; they apply to the identity only while the current
+        # draft IS that published revision. Once the draft moves on, the
+        # identity view nulls them and lastPublish carries the facts
+        # (FINAL-3 finding F5).
+        identity = dict(record["identity"])
+        last_publish = record.get("lastPublish")
+        # A's draft hash (maprev-...) and B's immutable version id (sha256:...)
+        # are different formats: the published pair is recorded together and
+        # compared field by field (BATCH-1 C-01).
+        # published facts apply only while the draft IS the published version
+        # AND the code binding still points at the revision that was verified;
+        # a rebind to a newer commit must not inherit verifiedCodeRevision
+        published_here = bool(last_publish) and draft is not None \
+            and draft.get("publishedMapRevision") == last_publish.get("mapRevision") \
+            and map_revision == last_publish.get("aMapRevision") \
+            and last_publish.get("codeRevision") in (None, identity.get("codeRevision"))
+        if not published_here:
+            identity["mapSourceRevision"] = None
+            identity["verifiedCodeRevision"] = None
+        else:
+            # the immutable version id (sha256:...) is what the team shares;
+            # show it while the draft is exactly that published version
+            map_revision = last_publish.get("mapRevision")
+        return {
+            "workspace": {key: record.get(key) for key in
+                          ("workspaceId", "title", "context", "description", "goals", "constraints",
+                           "createdAt", "updatedAt")},
+            "identity": identity_view(identity, map_revision, draft_revision),
+            "draft": draft,
+            "lastPublish": last_publish,
+            "backend": self._backend_label(),
+            "generation": generate_module.generate_status(),
+            "mode": mode,
+        }
+
+    # ---------- generation ----------
+
+    def tracked_at(self, repo_path: str, sha: str) -> set[str]:
+        """Files present at one specific full SHA — never the worktree, never
+        a fresher HEAD (FINAL-1 finding 3: evidence must be checked against
+        the revision it claims to describe)."""
+        git = self._require_git()
+        from pathlib import Path as _Path
+        raw = git(_Path(repo_path), "ls-tree", "-r", "-z", "--name-only", sha)
+        return {part.decode("utf-8", errors="replace") for part in raw.split(b"\0") if part}
+
+    def _evidence_guard(self, graph: dict, record: dict, basis_sha: str | None,
+                        tracked: set[str] | None = None) -> dict:
+        """Enforce evidence honesty before a graph may enter a draft.
+
+        Every draft write path (generation, direct ops, legacy import) goes
+        through here (FINAL-1 finding 2). The check runs against the exact
+        revision the graph claims to describe (basis_sha), never a fresher
+        HEAD. existing_project/mixed: code_fact paths missing from that
+        revision downgrade to kind=unknown with a recorded downgrade.
+        planning: code_fact evidence is rejected outright — there is no
+        repository to check against.
+        """
+        context = record["context"]
+        if context == "planning":
+            for node in graph.get("nodes", []):
+                for item in node.get("evidence", []):
+                    # missing kind means code_fact by contract: normalize
+                    # before the check so it cannot slip through (FINAL-1 #2)
+                    if item.get("kind", "code_fact") == "code_fact":
+                        raise ContractError("VALIDATION_FAILED",
+                                            f"规划工作区不允许代码事实证据（节点 {node.get('id')}）；请改为需求依据")
+            return graph
+        if tracked is None:
+            if not basis_sha:
+                raise ContractError("VALIDATION_FAILED", "缺少证据核查基准 SHA")
+            tracked = self.tracked_at(record["identity"]["repoPath"], basis_sha)
+        downgraded = []
+        for node in graph.get("nodes", []):
+            for item in node.get("evidence", []):
+                if item.get("kind", "code_fact") == "code_fact" and item.get("path") not in tracked:
+                    item["kind"] = "unknown"
+                    item["reason"] = f"{item.get('reason', '')}（该路径未在提交 {basis_sha[:12]} 中核实，降级为未知）"
+                    downgraded.append({"nodeId": node.get("id"), "path": item.get("path")})
+        if downgraded:
+            graph = dict(graph)
+            graph["evidenceDowngrades"] = downgraded
+        return graph
+
+    @staticmethod
+    def _context_pack_summary(context_pack: dict, source_revision: str) -> dict:
+        """The persisted summary of one built pack.
+
+        It keeps what the correction payload and C's bootstrap read (symbols,
+        imports, excerpts, docs, coverage) plus what the pack deliberately did
+        NOT read (skipped/excluded), so a later correction never has to fall
+        back to a bare path list (BATCH-2 CORRECTION-01).
+        """
+        return {
+            "packVersion": 2,
+            "codeRevision": source_revision,
+            "coverage": context_pack.get("coverage"),
+            "entryPoints": context_pack.get("entryPoints", [])[:40],
+            "limits": list(context_pack.get("limits", []) or []),
+            "docs": [{"path": item["path"], "excerpt": item.get("excerpt", "")}
+                     for item in context_pack.get("docs", [])[:6]],
+            "skipped": list(context_pack.get("skipped", []) or [])[:50],
+            "excluded": list(context_pack.get("excluded", []) or [])[:50],
+            "files": [{"path": item["path"],
+                       "symbols": item.get("symbols", [])[:40],
+                       "imports": item.get("imports", [])[:40],
+                       "excerpt": item.get("excerpt", ""),
+                       "truncated": bool(item.get("truncated"))}
+                      for item in context_pack.get("files", [])],
+            "at": _utcnow(),
+        }
+
+    def _active_context_pack(self, record: dict) -> dict | None:
+        """The controlled pack for the workspace's *current* code binding.
+
+        Built from the pinned revision whenever a correction needs it, so a
+        correction can never send the model excerpts from a revision the draft
+        has already left (BATCH-2 CORRECTION-01). Planning workspaces (and
+        workspaces whose binding was never a real commit) get None: there are
+        no code facts to include.
+        """
+        identity = record["identity"]
+        repo_path = identity.get("repoPath")
+        revision = identity.get("codeRevision")
+        if not repo_path or not revision:
+            return None
+        return context_pack_module.build_context_pack(repo_path, revision)
+
+    def generate(self, workspace_id: str, request: dict) -> dict:
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            identity = record["identity"]
+            mode = request.get("mode", "production")
+            repo_facts = {}
+            source_revision = identity.get("codeRevision")
+            context_pack = None
+            if identity.get("repoPath"):
+                probe = self.probe_repo(identity["repoPath"])
+                source_revision = probe["head"]
+                # a real generation input: the fixed commit's bounded source
+                # excerpts, symbols, imports and docs, with recorded coverage
+                # (file names alone are not "having read the project").
+                context_pack = context_pack_module.build_context_pack(
+                    identity["repoPath"], source_revision)
+                repo_facts = {
+                    "codeRepoId": identity.get("codeRepoId"),
+                    "codeRevision": source_revision,
+                    "trackedFiles": probe.get("trackedFiles", [])[:400],
+                    "contextPack": context_pack,
+                }
+                record["lastContextPack"] = self._context_pack_summary(context_pack, source_revision)
+            if mode == "rule_based":
+                # explicit rule-based route (C's engine), never labeled as AI
+                candidate = self._c_call("bootstrap_candidate",
+                                             {"context": record["context"], "record": record})
+                graph = self._evidence_guard(candidate["graph"], record, source_revision)
+                graph["mapRevision"] = semantic_revision(graph)
+                candidate_id = f"cand_{secrets.token_hex(5)}"
+                record["lastCandidate"] = {
+                    "candidateId": candidate_id, "graph": graph, "origin": "rule_based",
+                    "status": "rule_based", "sourceCodeRevision": source_revision,
+                    "unknowns": candidate.get("warnings", []), "openQuestions": [],
+                    "labeled": "规则候选（C 规则引擎，非 AI 生成）", "storedAt": _utcnow(),
+                    "proposalId": candidate.get("proposalId")}
+                record["updatedAt"] = _utcnow()
+                self.store.save_workspace_record(record)
+                self.store.append_history(workspace_id, {
+                    "type": "generation", "origin": "rule_based", "at": _utcnow(),
+                    "candidateId": candidate_id, "sourceCodeRevision": source_revision,
+                    "proposalId": candidate.get("proposalId")})
+                return {"status": "rule_based", "origin": "rule_based", "graph": graph,
+                        "candidateId": candidate_id, "sourceCodeRevision": source_revision,
+                        "warnings": candidate.get("warnings", []),
+                        "contextCoverage": (context_pack or {}).get("coverage"),
+                        "labeled": "C 规则引擎候选：不冒充 AI 生成，需人工修改与确认"}
+            if mode == DEV_SAMPLE_MODE:
+                sample = request.get("sampleGraph")
+                if not isinstance(sample, dict):
+                    raise ContractError("DEV_SAMPLE_DISABLED", "演示模式需要明确提供样例图；不会用样例顶替真实 AI 生成")
+                result = generate_module.sample_candidate(sample, record["context"])
+            else:
+                result = generate_module.generate_candidate({
+                    "context": record["context"],
+                    "description": record.get("description", ""),
+                    "goals": record.get("goals", ""),
+                    "constraints": record.get("constraints", ""),
+                }, repo_facts=repo_facts)
+            if result.get("status") in ("ai_generated", "dev_sample"):
+                # The candidate is stored server-side with its origin and the
+                # exact code revision it was generated from; applying later can
+                # only pick this stored candidate (no origin laundering).
+                tracked = self.tracked_at(identity["repoPath"], source_revision) \
+                    if identity.get("repoPath") and source_revision else None
+                graph = self._evidence_guard(result["graph"], record, source_revision, tracked)
+                graph["mapRevision"] = semantic_revision(graph)  # evidence downgrades change semantics
+                candidate_id = f"cand_{secrets.token_hex(5)}"
+                record["lastCandidate"] = {
+                    "candidateId": candidate_id,
+                    "graph": graph,
+                    "origin": result["origin"],
+                    "status": result["status"],
+                    "sourceCodeRevision": source_revision,
+                    "unknowns": result.get("unknowns", []),
+                    "openQuestions": result.get("openQuestions", []),
+                    "labeled": result.get("labeled"),
+                    "storedAt": _utcnow(),
+                }
+                record["generation"] = {"status": result["status"], "at": _utcnow(),
+                                        "mapRevision": graph["mapRevision"],
+                                        "candidateId": candidate_id}
+                record["updatedAt"] = _utcnow()
+                self.store.save_workspace_record(record)
+                self.store.append_history(workspace_id, {"type": "generation", "origin": result["origin"],
+                                                         "at": _utcnow(),
+                                                         "candidateId": candidate_id,
+                                                         "sourceCodeRevision": source_revision})
+                result = dict(result)
+                result["graph"] = graph
+                result["candidateId"] = candidate_id
+                result["sourceCodeRevision"] = source_revision
+            return result
+
+    def apply_candidate(self, workspace_id: str, request: dict) -> dict:
+        """User accepted a stored candidate: it becomes the working draft.
+
+        Only the server-stored candidate can be applied (origin is not
+        client-chosen), any existing draft is CAS-guarded, and the candidate's
+        generation basis must match the workspace's bound revision.
+        """
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            candidate = record.get("lastCandidate")
+            if not candidate:
+                raise ContractError("VALIDATION_FAILED", "没有已存储的候选；请先生成")
+            candidate_id = request.get("candidateId")
+            if candidate_id != candidate["candidateId"]:
+                raise ContractError("STALE_CONTEXT", "候选已过期或不存在；请重新生成",
+                                    {"expected": candidate["candidateId"]})
+            if record["identity"].get("codeRevision") is not None \
+                    and candidate.get("sourceCodeRevision") \
+                    and record["identity"]["codeRevision"] != candidate["sourceCodeRevision"]:
+                raise ContractError("STALE_CONTEXT",
+                                    "候选的生成依据与工作区绑定提交不一致；请先复核并回挂",
+                                    {"candidateBasis": candidate["sourceCodeRevision"],
+                                     "boundRevision": record["identity"]["codeRevision"]})
+            existing_draft = record.get("draft")
+            if existing_draft is not None:
+                expected = request.get("expectedDraftRevision")
+                if not isinstance(expected, str) or expected != existing_draft["draftRevision"]:
+                    raise ContractError("REVISION_CONFLICT", "已有草稿被修改过；请先查看差异再决定替换",
+                                        {"expected": expected, "current": existing_draft["draftRevision"]})
+            graph = ops_module.validate_graph(candidate["graph"])
+            graph["mapRevision"] = semantic_revision(graph)
+            draft = self._new_draft(record, graph, origin=candidate["origin"])
+            draft["lineage"] = [candidate["origin"]]
+            draft["generationMeta"] = {
+                "origin": candidate["origin"],
+                "generatedFromCodeRevision": candidate.get("sourceCodeRevision"),
+                "unknowns": candidate.get("unknowns", []),
+                "openQuestions": candidate.get("openQuestions", []),
+            }
+            record["draft"] = draft
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {"type": "apply_candidate", "origin": draft["origin"],
+                                                     "at": _utcnow(), "draftRevision": draft["draftRevision"],
+                                                     "candidateId": candidate["candidateId"]})
+            return self._envelope(record)
+
+    def _new_draft(self, record: dict, graph: dict, origin: str) -> dict:
+        return {
+            "draftRevision": semantic_revision(graph) + f"-{secrets.token_hex(4)}",
+            "baseMapRevision": None,
+            "graph": graph,
+            "baseGraph": graph,
+            "origin": origin,
+            "updatedAt": _utcnow(),
+        }
+
+    # ---------- drafts ----------
+
+    def load_draft(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        return self._envelope(record)
+
+    def apply_ops(self, workspace_id: str, request: dict) -> dict:
+        with workspace_lock(workspace_id):
+            return self._apply_ops_locked(workspace_id, request)
+
+    def _apply_ops_locked(self, workspace_id: str, request: dict) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        draft = record.get("draft")
+        expected = request.get("expectedDraftRevision")
+        if draft is None:
+            raise ContractError("VALIDATION_FAILED", "工作区还没有草稿；先生成或导入候选图")
+        if not isinstance(expected, str) or expected != draft["draftRevision"]:
+            raise ContractError("REVISION_CONFLICT", "草稿已被他人修改；请刷新差异后重试",
+                                {"expected": expected, "current": draft["draftRevision"]})
+        operations = request.get("operations")
+        if not isinstance(operations, list) or not operations:
+            raise ContractError("VALIDATION_FAILED", "operations 必须是非空列表")
+        graph = draft["graph"]
+        applied = []
+        for op in operations:
+            graph = ops_module.apply_operation(graph, op)
+            applied.append(op.get("type"))
+        # direct edits go through the same evidence honesty guard as
+        # generation (FINAL-1 finding 2)
+        bound = record["identity"].get("codeRevision")
+        graph = self._evidence_guard(graph, record, bound)
+        # the guard can mutate evidence (semantic content): recompute the
+        # graph's own revision field so identity never shows a stale digest
+        # (FINAL-2 finding F1)
+        graph["mapRevision"] = semantic_revision(graph)
+        new_draft = {
+            "draftRevision": semantic_revision(graph) + f"-{secrets.token_hex(4)}",
+            "baseMapRevision": draft.get("baseMapRevision"),
+            "graph": graph,
+            "baseGraph": draft.get("baseGraph") or draft["graph"],
+            "origin": draft.get("origin") if draft.get("origin") != "ai_candidate" else "edited_candidate",
+            "lineage": draft.get("lineage", [draft.get("origin")]),
+            "generationMeta": draft.get("generationMeta"),
+            "publishedMapRevision": draft.get("publishedMapRevision"),
+            "updatedAt": _utcnow(),
+        }
+        record["draft"] = new_draft
+        record["updatedAt"] = _utcnow()
+        self.store.save_workspace_record(record)
+        self.store.append_history(workspace_id, {"type": "apply_ops", "at": _utcnow(),
+                                                 "operations": applied,
+                                                 "actor": request.get("actor", "local_user"),
+                                                 "draftRevision": new_draft["draftRevision"]})
+        return self._envelope(record)
+
+    def node_impact(self, workspace_id: str, node_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        draft = record.get("draft")
+        if draft is None:
+            raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+        return ops_module.node_impact(draft["graph"], node_id)
+
+    def draft_diff(self, workspace_id: str) -> dict:
+        """Diff between the accepted candidate (baseGraph) and the current draft."""
+        record = self.store.load_workspace(workspace_id)
+        draft = record.get("draft")
+        if draft is None:
+            raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+        base = draft.get("baseGraph") or {"nodes": [], "edges": []}
+        return ops_module.diff_graphs(base, draft["graph"])
+
+    # ---------- natural-language correction ----------
+
+    def correction_preview(self, workspace_id: str, request: dict) -> dict:
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            expected = request.get("expectedDraftRevision")
+            if not isinstance(expected, str):
+                raise ContractError("VALIDATION_FAILED",
+                                    "缺少 expectedDraftRevision（应使用草稿当前的 draftRevision）")
+            if expected != draft["draftRevision"]:
+                raise ContractError("REVISION_CONFLICT", "草稿已变化，请刷新后再发起纠正",
+                                    {"expected": expected, "current": draft["draftRevision"]})
+            instruction = (request.get("instruction") or "").strip()
+            if not instruction:
+                raise ContractError("VALIDATION_FAILED", "请描述要纠正的内容")
+            selected = request.get("selectedNodeIds", [])
+            if not isinstance(selected, list) or not selected:
+                raise ContractError("VALIDATION_FAILED", "请选择要纠正的节点或区域")
+            mode = request.get("mode", "production")
+            if mode == DEV_SAMPLE_MODE:
+                preview = self._sample_correction(record, draft, instruction, selected)
+                origin = "dev_sample"
+                labeled = "演示纠正预览（本地规则生成，非 AI）"
+                note = preview["note"]
+            elif mode == "rule_based":
+                # explicit C rule engine route: real module, labeled rule_based
+                reply = self._c_call("nl_patch_candidate",
+                                             {"graph": draft["graph"], "nodeId": selected[0],
+                                              "instruction": instruction})
+                operations = reply["operations"]
+                probe_graph = draft["graph"]
+                for op in operations:
+                    probe_graph = ops_module.apply_operation(probe_graph, op)
+                preview = {"operations": operations, "graph": probe_graph}
+                origin = "rule_based"
+                labeled = "规则纠正预览（C 规则引擎，非 AI）"
+                note = (reply.get("labeled") or "由 C 规则引擎按所选节点生成；"
+                        "只做局部操作，不代表 AI 理解。")
+            else:
+                # real model correction: bounded operations validated by the op
+                # engine; without a configured model this is NOT_RUN, never a
+                # silent fallback to a demo note. The source context is built
+                # from the *current* binding, not from a cached summary of an
+                # older revision (BATCH-2 CORRECTION-01).
+                context_pack = self._active_context_pack(record) if request.get(
+                    "includeSourceContext", True) else None
+                reply = correction_module.correct_with_model(record, draft, instruction,
+                                                             selected, context_pack)
+                preview = {"operations": reply["operations"], "graph": reply["graph"]}
+                origin = "ai_generated"
+                labeled = "真实模型纠正预览（AI 候选，需人确认）"
+                note = reply.get("explanation") or "模型返回的局部纠正操作。"
+                if reply.get("unknowns") or reply.get("openQuestions"):
+                    note = (note + " 未确定：" + "；".join(
+                        list(reply.get("unknowns", [])) + list(reply.get("openQuestions", [])))).strip()
+            # The preview (operations + the draft revision it was based on) is
+            # stored server-side; applying later must name the proposal and
+            # pass an expiry check, so a stale preview cannot overwrite newer
+            # edits (MID-1 finding 9).
+            proposal_id = f"prop_{secrets.token_hex(6)}"
+            record["lastCorrectionPreview"] = {
+                "proposalId": proposal_id,
+                "baseDraftRevision": draft["draftRevision"],
+                "baseMapRevision": draft["graph"].get("mapRevision"),
+                "operations": preview["operations"],
+                "graph": preview["graph"],
+                "origin": origin,
+                "labeled": labeled,
+                "instruction": instruction,
+                "storedAt": _utcnow(),
+            }
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {"type": "correction_preview", "at": _utcnow(),
+                                                     "proposalId": proposal_id,
+                                                     "instruction": instruction,
+                                                     "selected": selected, "origin": origin})
+            return {
+                "proposalId": proposal_id,
+                "origin": origin,
+                "labeled": labeled,
+                "operations": preview["operations"],
+                "baseDraftRevision": draft["draftRevision"],
+                "diff": ops_module.diff_graphs(draft["graph"], preview["graph"]),
+                "note": note,
+            }
+
+    def apply_correction(self, workspace_id: str, request: dict) -> dict:
+        """Apply a stored correction preview by proposalId (expiry-checked)."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            preview = record.get("lastCorrectionPreview")
+            if draft is None or not preview:
+                raise ContractError("NOT_FOUND", "没有已存储的纠正预览")
+            proposal_id = request.get("proposalId")
+            if not isinstance(proposal_id, str) or proposal_id != preview["proposalId"]:
+                raise ContractError("NOT_FOUND", "纠正预览不存在或已过期；请重新生成",
+                                    {"expected": preview["proposalId"]})
+            expected = request.get("expectedDraftRevision")
+            if not isinstance(expected, str) or expected != preview["baseDraftRevision"]:
+                raise ContractError("STALE_CONTEXT", "请求与预览基准不一致；请使用预览返回的 baseDraftRevision",
+                                    {"previewBasis": preview["baseDraftRevision"], "expected": expected})
+            if preview["baseDraftRevision"] != draft["draftRevision"]:
+                # the draft moved on after the preview was taken: the preview
+                # is void and must be regenerated (MID-1 finding 9)
+                raise ContractError("STALE_CONTEXT", "纠正预览基于旧草稿；草稿已变化，预览作废",
+                                    {"previewBasis": preview["baseDraftRevision"],
+                                     "current": draft["draftRevision"]})
+            graph = draft["graph"]
+            applied = []
+            for op in preview["operations"]:
+                graph = ops_module.apply_operation(graph, op)
+                applied.append(op.get("type"))
+            bound = record["identity"].get("codeRevision")
+            graph = self._evidence_guard(graph, record, bound)
+            graph["mapRevision"] = semantic_revision(graph)  # FINAL-2 F1
+            lineage = list(draft.get("lineage", [draft.get("origin")]))
+            if preview["origin"] == "dev_sample" and "dev_sample" not in lineage:
+                lineage.append("dev_sample")
+            new_draft = {
+                "draftRevision": semantic_revision(graph) + f"-{secrets.token_hex(4)}",
+                "baseMapRevision": draft.get("baseMapRevision"),
+                "graph": graph,
+                "baseGraph": draft.get("baseGraph") or draft["graph"],
+                # sample-derived content keeps the sample marking: it can never
+                # pass review as if it were clean (MID-1 finding 3)
+                "origin": "dev_sample" if preview["origin"] == "dev_sample" else draft.get("origin"),
+                "lineage": lineage,
+                "generationMeta": draft.get("generationMeta"),
+                "publishedMapRevision": draft.get("publishedMapRevision"),
+                "updatedAt": _utcnow(),
+            }
+            record["draft"] = new_draft
+            record["lastCorrectionPreview"] = None
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {"type": "apply_correction", "at": _utcnow(),
+                                                     "proposalId": proposal_id,
+                                                     "origin": preview["origin"],
+                                                     "operations": applied,
+                                                     "draftRevision": new_draft["draftRevision"]})
+            return self._envelope(record)
+
+    def _sample_correction(self, record: dict, draft: dict, instruction: str, selected: list[str]) -> dict:
+        """Labeled dev-sample preview: deterministic heuristic, no model call.
+
+        Only callable in explicit dev-sample mode; operations show the UI
+        shape a real C backend must return.
+        """
+        graph = draft["graph"]
+        target_id = selected[0]
+        node = next((n for n in graph["nodes"] if n["id"] == target_id), None)
+        if node is None:
+            raise ContractError("NOT_FOUND", f"节点不存在: {target_id}")
+        operations = [{"type": "update_node", "nodeId": target_id,
+                       "fields": {"summary": node.get("summary", "") + "（演示纠正：请以真实后端替换此预览）"}}]
+        preview_graph = ops_module.apply_operation(graph, operations[0])
+        return {"operations": operations, "graph": preview_graph,
+                "note": "演示纠正预览：由本地确定性规则生成，仅验证交互；不代表 AI 输出。"}
+
+    # ---------- implementation fix tasks (persisted; D authoritative when bound) --
+
+    def _backend_d(self):
+        backend_d = getattr(self, "backend_d", None)
+        if backend_d is None or not getattr(backend_d, "available", False):
+            return None
+        return backend_d
+
+    def _governed_tasks(self):
+        """#62 authenticated task bridge (GovernedTasks) when the shared-server
+        entry bound it; app.py's local entry binds BackendD above instead."""
+        backend_d = getattr(self, "backend_d", None)
+        if backend_d is None or not hasattr(backend_d, "action"):
+            return None
+        return backend_d
+
+    def list_fix_tasks(self, workspace_id: str) -> dict:
+        self.store.load_workspace(workspace_id)
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            listing = backend_d.list_tasks(workspace_id)
+            listing["workspaceId"] = workspace_id
+            listing["statuses"] = list(fix_tasks_module.STATUSES)
+            return listing
+        governed = self._governed_tasks()
+        if governed is not None:
+            return governed.tasks(workspace_id)
+        tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
+        return {"workspaceId": workspace_id, "tasks": tasks,
+                "statuses": list(fix_tasks_module.STATUSES),
+                "backend": {"kind": "a_local_seam", "ref": "A 兼容 seam（D 未接入）"},
+                "labeled": ("A 工作台持久化的实施任务；提交回挂后仍需人确认核查结论"
+                            if tasks else "该工作区还没有修正任务")}
+
+    def update_fix_task(self, workspace_id: str, task_id: str, request: dict,
+                        server_context: dict | None = None) -> dict:
+        self.store.load_workspace(workspace_id)
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            # ownership is checked BEFORE any state change: reading the task and
+            # validating its workspace first, so a request for another
+            # workspace's task can never write and then be rejected (FINAL-D-01)
+            current = backend_d.get_task(task_id)
+            if current.get("workspaceId") != workspace_id:
+                raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
+            # D owns the task state machine; the operator comes from the
+            # server-side write session, never from the request body
+            task = backend_d.update(task_id, request, server_context)
+            self.store.append_history(workspace_id, {
+                "type": "fix_task_update", "at": _utcnow(), "taskId": task_id,
+                "status": task.get("status"), "backend": "d_fix_tasks"})
+            return task
+        if self._governed_tasks() is not None:
+            raise ContractError('VALIDATION_FAILED', '治理任务须使用任务 governance 接口及固定版本 CAS')
+        with workspace_lock(workspace_id):
+            task = fix_tasks_module.update_task(self.store.root, workspace_id, task_id, request)
+            self.store.append_history(workspace_id, {
+                "type": "fix_task_update", "at": _utcnow(), "taskId": task_id,
+                "status": task["status"], "actor": request.get("actor")})
+            return task
+
+    def fix_task_markdown(self, workspace_id: str, task_id: str) -> dict:
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            task = backend_d.get_task(task_id)
+            if task.get("workspaceId") != workspace_id:
+                raise ContractError("STALE_CONTEXT", "任务不属于该工作区")
+            return {**backend_d.markdown(task_id), "taskId": task_id,
+                    "filename": f"{task_id}.md"}
+        governed = self._governed_tasks()
+        if governed is not None:
+            self.store.load_workspace(workspace_id)
+            return governed.markdown(workspace_id, task_id)
+        task = fix_tasks_module.load_task(self.store.root, workspace_id, task_id)
+        return {"taskId": task_id, "markdown": fix_tasks_module.task_markdown(task),
+                "filename": f"{task_id}.md"}
+
+    # ---------- same-version handover (A compatibility export until D lands) --
+
+    def export_handover(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        governed = self._governed_tasks()
+        if governed is not None:
+            return governed.handover(record)
+        binding = record.get("backendB") or {}
+        if not binding.get("workspaceId"):
+            raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务，无法导出同版交接包")
+        last_publish = record.get("lastPublish") or {}
+        map_revision = last_publish.get("mapRevision")
+        if not map_revision:
+            raise ContractError("VALIDATION_FAILED", "尚未产生正式版本；交接包必须指向不可变版本")
+        envelope = self._backend_b().export_version(binding["workspaceId"], map_revision)
+        version = envelope["version"]
+        backend_d = self._backend_d()
+        if backend_d is not None:
+            tasks = [{"taskId": task.get("id"), "status": task.get("status"),
+                      "observation": task.get("deviation", "")[:200],
+                      "targetCodeRevision": task.get("codeRevision")}
+                     for task in backend_d.list_tasks(workspace_id)["tasks"]]
+            producer = "A 工作台导出；任务状态来自 D 的权威修正任务服务（PR #54）"
+        else:
+            tasks = fix_tasks_module.load_tasks(self.store.root, workspace_id)
+            producer = "A 工作台（D 的同版交接模块未接入时的兼容导出；结构与 CONTRACT_V1 一致）"
+        open_tasks = [{"taskId": task["taskId"], "status": task["status"],
+                       "observation": task.get("observation", "")[:200],
+                       "targetCodeRevision": task.get("targetCodeRevision")}
+                      for task in tasks if task.get("status") != "verified"]
+        package = {
+            "packageType": "architecture_handover_v1",
+            "producer": producer,
+            "workspaceId": workspace_id,
+            "mapId": version["mapId"],
+            "mapRevision": version["mapRevision"],
+            "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
+            "codeRepoId": version["codeRepoId"],
+            "codeRevision": version["codeRevision"],
+            "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+            "graphNature": version["status"],
+            "reviewCoverage": version["reviewCoverage"],
+            "limits": version["limits"],
+            "unresolvedDeviations": record.get("deviations", []),
+            "openFixTasks": open_tasks,
+            "designHistory": record.get("designHistory", []),
+            "graph": b_to_a_graph(version["graph"], version),
+            "importHint": {
+                "endpoint": "/api/archloop/import-handover",
+                "requiredFields": ["mapId", "mapRevision", "mapSourceRevision", "repoPath"],
+                "note": "第二副本必须按架构 Git 固定提交读取并核对来源；同版不等于同一套本地目录",
+            },
+        }
+        self.store.append_history(workspace_id, {
+            "type": "handover_export", "at": _utcnow(), "mapRevision": map_revision,
+            "mapSourceRevision": package["mapSourceRevision"]})
+        return package
+
+    def import_handover(self, request: dict) -> dict:
+        package = request.get("package")
+        repo_path = (request.get("repoPath") or "").strip()
+        if not isinstance(package, dict) or package.get("packageType") != "architecture_handover_v1":
+            raise ContractError("VALIDATION_FAILED", "需要 architecture_handover_v1 交接包")
+        if not repo_path:
+            raise ContractError("VALIDATION_FAILED", "需要第二副本的仓库路径")
+        for field in ("mapId", "mapRevision", "mapSourceRevision"):
+            if not package.get(field):
+                raise ContractError("VALIDATION_FAILED", f"交接包缺少 {field}")
+        existing_workspace = request.get("workspaceId")
+        if existing_workspace:
+            # re-import / refresh inside an existing second copy: same
+            # workspace, version read again from the Git bytes
+            result = self.import_version(existing_workspace, {
+                "mapRevision": package["mapRevision"],
+                "mapSourceRevision": package["mapSourceRevision"],
+                "expectedMapRevision": request.get("expectedMapRevision")})
+            result["workspace"] = {"workspaceId": existing_workspace}
+            # never echo a package-declared mapId: the verified version's own
+            # identity is authoritative (BATCH-1C HANDOVER-02)
+            result["identity"] = {"mapId": result["version"]["mapId"]}
+            if package.get("mapId") != result["version"]["mapId"]:
+                result["packageMapIdMismatch"] = {"package": package.get("mapId"),
+                                                  "verified": result["version"]["mapId"]}
+        else:
+            result = self.open_from_version({
+                "mapId": package["mapId"], "mapRevision": package["mapRevision"],
+                "mapSourceRevision": package["mapSourceRevision"], "repoPath": repo_path,
+                "title": request.get("title") or "同版接手（交接包）",
+                "expectedMapRevision": request.get("expectedMapRevision")})
+        # a mismatch between the package's own graph and the Git bytes is a
+        # tampered/stale package: the imported version wins, and the difference
+        # is reported instead of being silently accepted
+        package_graph = package.get("graph")
+        imported_graph = result.get("graph")
+        comparison = None
+        if isinstance(package_graph, dict):
+            same_content = self._graph_fingerprint(package_graph) == \
+                self._graph_fingerprint(imported_graph)
+            same_revision = package.get("mapRevision") == result["version"]["mapRevision"]
+            same_map_id = package.get("mapId") == result["version"]["mapId"]
+            comparison = {"contentMatches": same_content, "revisionMatches": same_revision,
+                          "mapIdMatches": same_map_id}
+            if not (same_content and same_revision):
+                comparison["note"] = ("交接包内容与架构 Git 实际版本不一致（包可能被改过或过期）："
+                                      "以 Git 版本为准，并请核对交接来源")
+        result["handoverComparison"] = comparison
+        return result
+
+    @staticmethod
+    def _graph_fingerprint(graph: dict) -> str:
+        """Canonical content fingerprint of an A-projection graph.
+
+        It must cover every semantic field the version identity covers —
+        responsibilities, assumptions, provenance, interfaces, evidence text,
+        process steps/branches/next/allowed failures and their ORDER — otherwise
+        a tampered handover package could still report a content match
+        (BATCH-1C HANDOVER-01). Volatile display fields (mapRevision,
+        positions) are excluded.
+        """
+        import hashlib as _hashlib
+        import json as _json
+
+        def clean(node: dict) -> dict:
+            return {key: value for key, value in node.items()
+                    if key not in ("position", "mapRevision")}
+
+        payload = {
+            "nodes": sorted((clean(node) for node in graph.get("nodes", []) or []),
+                            key=lambda item: str(item.get("id"))),
+            "edges": sorted((clean(edge) for edge in graph.get("edges", []) or []),
+                            key=lambda item: _json.dumps(item, sort_keys=True, ensure_ascii=False)),
+        }
+        canonical = _json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        return _hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    # ---------- C module: process deviations and incremental proposals ----------
+
+    def deviations(self, workspace_id: str, request: dict) -> dict:
+        """C's deviation detection on the current draft (read-only, honest UNKNOWN)."""
+        record = self.store.load_workspace(workspace_id)
+        draft = record.get("draft")
+        if draft is None:
+            raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+        traces = request.get("observedTraces")
+        if traces is not None and (not isinstance(traces, list) or len(traces) > 200):
+            raise ContractError("VALIDATION_FAILED", "observedTraces 必须是列表，最多 200 条（可为空）")
+        result = self._c_call("deviations_for",
+                                  {"graph": draft["graph"], "traces": traces or [],
+                                   "identity": record.get("identity")})
+        result["draftRevision"] = draft["draftRevision"]
+        result["mapRevision"] = draft["graph"].get("mapRevision")
+        result["observedTracesProvided"] = bool(traces)
+        self.store.append_history(workspace_id, {
+            "type": "deviation_check", "at": _utcnow(), "verdict": result.get("verdict"),
+            "count": len(result.get("deviations", [])), "traces": bool(traces)})
+        return result
+
+    def incremental_proposal(self, workspace_id: str) -> dict:
+        """C's incremental candidate for a real code change (candidate only)."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            identity = record["identity"]
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            if not identity.get("repoPath") or not identity.get("codeRevision"):
+                raise ContractError("VALIDATION_FAILED", "该工作区没有关联代码")
+            probe = self.probe_repo(identity["repoPath"])
+            target = probe["head"]
+            base = identity["codeRevision"]
+            if target == base:
+                return {"status": "no_change", "baseCodeRevision": base, "targetCodeRevision": target,
+                        "operations": [], "labeled": "代码未变化；没有增量候选"}
+            changes = self.diff_repo(identity["repoPath"], base, target)
+            facts_diff = {
+                "added_files": [c["path"] for c in changes if c["code"].startswith("A")],
+                "modified_files": [c["path"] for c in changes if c["code"].startswith("M")],
+                "deleted_files": [c["path"] for c in changes if c["code"].startswith("D")],
+                "renamed_files": [{"from": c.get("oldPath"), "to": c["path"]}
+                                  for c in changes if c["code"].startswith("R")],
+            }
+            reply = self._c_call("incremental_candidate",
+                                             {"graph": draft["graph"], "baseCodeRevision": base,
+                                              "targetCodeRevision": target, "factsDiff": facts_diff})
+            reply.update({"status": "ok", "baseCodeRevision": base, "targetCodeRevision": target,
+                          "changeSummary": {"added": len(facts_diff["added_files"]),
+                                            "modified": len(facts_diff["modified_files"]),
+                                            "deleted": len(facts_diff["deleted_files"]),
+                                            "renamed": len(facts_diff["renamed_files"])},
+                          "changes": changes})
+            self.store.append_history(workspace_id, {
+                "type": "incremental_proposal", "at": _utcnow(), "base": base, "target": target,
+                "proposalId": reply.get("proposalId"), "operations": len(reply.get("operations", []))})
+            return reply
+
+    # ---------- review & publish (B seam) ----------
+
+    def submit_review(self, workspace_id: str, request: dict) -> dict:
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            if request.get("origin") == "dev_sample" or draft.get("origin") == "dev_sample"                     or "dev_sample" in (draft.get("lineage") or []):
+                reject_sample_review({"origin": "dev_sample"})
+            decision = request.get("decision")
+            if decision not in ("accept", "partial", "reject"):
+                raise ContractError("VALIDATION_FAILED", "decision 必须是 accept/partial/reject")
+            actor = (request.get("actor") or "").strip()
+            if not actor:
+                raise ContractError("VALIDATION_FAILED", "复核需要 actor（本机操作者声明）")
+            expected_map = request.get("expectedMapRevision")
+            if not isinstance(expected_map, str) or expected_map != draft["graph"].get("mapRevision"):
+                raise ContractError("REVISION_CONFLICT", "图版本已变化；请按最新预览重试",
+                                    {"expected": expected_map, "current": draft["graph"].get("mapRevision")})
+            # Record the human decision first: the review happened even when
+            # the version backend is missing; what must never happen is a
+            # version. Everything up to the publish write-back stays inside
+            # the workspace lock (FINAL-1 finding 4).
+            self.store.append_history(workspace_id, {
+                "type": "review_decision", "at": _utcnow(), "decision": decision,
+                "actor": actor, "reason": request.get("reason", ""),
+                "proposalId": request.get("proposalId"),
+                "mapRevision": draft["graph"].get("mapRevision"),
+                "delivery": "recorded_locally_pending_b_backend",
+            })
+            backend = self.adapter.backend("persistence", "production")
+            if backend.get("kind") == "dev_sample":
+                raise ContractError(
+                    "BACKEND_UNAVAILABLE",
+                    "B 的版本服务尚未接入：本次人审决定已记录在草稿历史，但没有产生任何正式认知版本。",
+                    {"decision": decision, "mapRevision": draft["graph"].get("mapRevision")},
+                )
+            # A real backend is registered: delegate the publish transaction
+            # with the reviewed content and the recorded decision.
+            reply = call_backend(backend, "publish_reviewed_graph", {
+                "workspaceId": record["workspaceId"],
+                "mapRevision": draft["graph"].get("mapRevision"),
+                "graph": draft["graph"],
+                "decision": decision,
+                "actor": actor,
+                "reason": request.get("reason", ""),
+                "proposalId": request.get("proposalId"),
+            })
+            if reply.get("status") == "published":
+                published_revision = reply.get("mapRevision") or draft["graph"].get("mapRevision")
+                # atomic re-check: the draft must still be the one that was
+                # reviewed before the publish result is written back
+                current = self.store.load_workspace(workspace_id)
+                if current["draft"]["draftRevision"] != draft["draftRevision"]:
+                    raise ContractError("REVISION_CONFLICT",
+                                        "发布期间草稿又被修改；发布结果未写入，请重新复核",
+                                        {"publishedMapRevision": published_revision})
+                current["draft"]["publishedMapRevision"] = published_revision
+                current["draft"]["mapSourceRevision"] = reply.get("mapSourceRevision")
+                current["identity"]["mapSourceRevision"] = reply.get("mapSourceRevision")
+                current["identity"]["verifiedCodeRevision"] = reply.get("verifiedCodeRevision")
+                # published identity is a fact about the last publish, kept
+                # separate from the current draft's identity (FINAL-2 F5)
+                current["lastPublish"] = {
+                    "mapRevision": published_revision,
+                    # A-side hash of the graph that was published, so the
+                    # envelope can compare like with like (BATCH-1 C-01)
+                    "aMapRevision": draft["graph"].get("mapRevision"),
+                    "mapSourceRevision": reply.get("mapSourceRevision"),
+                    "verifiedCodeRevision": reply.get("verifiedCodeRevision"),
+                    "actor": actor,
+                    "at": _utcnow(),
+                }
+                current["updatedAt"] = _utcnow()
+                self.store.save_workspace_record(current)
+                self.store.append_history(workspace_id, {"type": "publish", "at": _utcnow(),
+                                                         "mapRevision": published_revision,
+                                                         "mapSourceRevision": reply.get("mapSourceRevision")})
+                return self._envelope(current)
+            raise ContractError("BACKEND_UNAVAILABLE",
+                                "版本后端未确认发布结果；不显示成功。",
+                                {"reply": reply.get("status")})
+
+    # ---------- B version backend: real save / review / publish / history ----------
+
+    def bind_backend_b(self, backend) -> None:
+        """Bind the configured B service (single adapter layer, backend_b.py)."""
+        self.backend_b = backend
+        if backend is not None:
+            self.adapter.register("persistence", {
+                "kind": backend.KIND, "call": backend.call, "ref": backend.REF,
+                "labeled": "B 的真实版本服务（架构草稿/人审/不可变版本）",
+            })
+
+    def bind_backend_c(self, backend=None) -> None:
+        """Register C's real candidate engine as the proposal backend.
+
+        C ships with this repository, so the workbench registers it whenever
+        the module is importable; the registered state then reflects the calls
+        the service actually makes (D-A-03), instead of an unregistered
+        side-channel import.
+        """
+        descriptor = backend if backend is not None else backend_c.descriptor()
+        if descriptor is None:
+            return
+        self.adapter.register("correction", descriptor)
+
+    def bind_backend_d(self, backend) -> None:
+        """Register D's real fix-task/handover backend (authoritative seam)."""
+        self.backend_d = backend
+        if backend is not None and getattr(backend, "available", False):
+            self.adapter.register("handoff", backend.descriptor())
+
+    def bind_code_repositories(self, paths) -> None:
+        """Registered code roots this instance may verify fix-task commits in."""
+        self.code_repo_roots = [str(path) for path in (paths or [])]
+
+    def _c_call(self, action: str, payload: dict) -> dict:
+        """Call C through its registered adapter (falls back to the module only
+        when no descriptor is registered, e.g. a bare unit-test service)."""
+        descriptor = self.adapter._backends.get("correction")
+        if descriptor is not None:
+            return call_backend(descriptor, action, payload)
+        return backend_c.call(action, payload)
+
+    def _backend_b(self):
+        backend_b = getattr(self, "backend_b", None)
+        if backend_b is None or not backend_b.available:
+            reason = getattr(backend_b, "reason", None) or "未配置专用数据根与架构 Git 工作副本"
+            raise ContractError("BACKEND_UNAVAILABLE", f"B 的真实版本服务未接入：{reason}")
+        return backend_b
+
+    def backend_status(self) -> dict:
+        backend_b = getattr(self, "backend_b", None)
+        backend_d = getattr(self, "backend_d", None)
+        return {
+            "versionService": backend_b.status() if backend_b is not None
+            else {"available": False, "reason": "未绑定 B 版本服务", "kind": "unavailable"},
+            "candidates": backend_c.c_status(),
+            "fixTasks": (backend_d.status() if backend_d is not None
+                         else {"available": False, "kind": "unavailable",
+                               "reason": "未绑定 D 修正任务服务"}),
+            "adapter": self.adapter.listing(),
+            "generation": generate_module.generate_status(),
+            "persistence": self._backend_label(),
+            "governedTasks": self._governed_tasks().status() if self._governed_tasks() is not None else {
+                "available": False, "reason": "未绑定新任务治理层"},
+            "workRecords": self.work_records.status() if self.work_records is not None else {
+                "available": False, "reason": "未绑定共享工作记录服务"},
+        }
+
+    def bind_work_records(self, backend):
+        self.work_records = backend
+
+    def records_backend(self):
+        if self.work_records is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定共享工作记录服务')
+        return self.work_records
+
+    def list_work_records(self, workspace_id=None):
+        return self.records_backend().listing(workspace_id)
+
+    def save_work_record(self, workspace_id, request, meta):
+        with workspace_lock(workspace_id):
+            return self.records_backend().save(self.store.load_workspace(workspace_id), request, meta)
+
+    def work_record_history(self, workspace_id, entry_id):
+        return self.records_backend().history(workspace_id, entry_id)
+
+    def export_work_records(self, workspace_id):
+        return self.records_backend().export(workspace_id)
+
+    def fix_task_hints(self, workspace_id):
+        governed = self._governed_tasks()
+        if governed is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return governed.hints(self.store.load_workspace(workspace_id))
+
+    def governed_task_action(self, workspace_id, task_id, request, meta):
+        governed = self._governed_tasks()
+        if governed is None:
+            raise ContractError('BACKEND_UNAVAILABLE', '未绑定新任务治理层')
+        with workspace_lock(workspace_id):
+            return governed.action(self.store.load_workspace(workspace_id), task_id, request, meta)
+
+    @staticmethod
+    def _require_meta(meta) -> dict:
+        if not isinstance(meta, dict) or not meta.get("peer") or not meta.get("host") \
+                or not meta.get("origin"):
+            raise ContractError("VALIDATION_FAILED",
+                                "缺少真实请求元数据：peer/host/origin 必须由服务端从请求注入")
+        return meta
+
+    @staticmethod
+    def _sample_guard(draft: dict) -> None:
+        if draft.get("origin") == "dev_sample" or "dev_sample" in (draft.get("lineage") or []):
+            reject_sample_review({"origin": "dev_sample"})
+
+    def sync_draft_to_backend(self, workspace_id: str, request: dict) -> dict:
+        """Write the current A draft into B's real draft space (server-side)."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            backend_b = self._backend_b()
+            result = backend_b.sync_draft(record, draft["graph"],
+                                          origin=draft.get("origin", "manual"))
+            binding = dict(result["binding"])
+            binding["aDraftRevisionAtSync"] = draft["draftRevision"]
+            binding["bBaseMapRevision"] = result["draft"]["baseMapRevision"]
+            record["backendB"] = binding
+            if not record.get("mapIdProvided"):
+                # the version service assigns the durable graph identity; A's
+                # identity follows it so both sides name the same map
+                record["identity"]["mapId"] = binding.get("mapId")
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "backend_sync", "at": _utcnow(), "bDraftId": binding["draftId"],
+                "bDraftRevision": binding["bDraftRevision"],
+                "operations": len(result.get("operations", [])), "created": result.get("created")})
+            return {"backend": self._backend_label(), "bDraftId": binding["draftId"],
+                    "bDraftRevision": binding["bDraftRevision"],
+                    "operations": result.get("operations", []),
+                    "envelope": self._envelope(record)}
+
+    def _ensure_synced(self, record: dict, backend_b) -> dict:
+        """Auto-sync the A draft into B when A moved on since the last sync."""
+        draft = record["draft"]
+        binding = dict(record.get("backendB") or {})
+        if binding.get("draftId") and binding.get("aDraftRevisionAtSync") == draft["draftRevision"]:
+            return binding
+        result = backend_b.sync_draft(record, draft["graph"], origin=draft.get("origin", "manual"))
+        binding = dict(result["binding"])
+        binding["aDraftRevisionAtSync"] = draft["draftRevision"]
+        binding["bBaseMapRevision"] = result["draft"]["baseMapRevision"]
+        record["backendB"] = binding
+        if not record.get("mapIdProvided"):
+            record["identity"]["mapId"] = binding.get("mapId")
+        self.store.save_workspace_record(record)
+        return binding
+
+    def review_preview(self, workspace_id: str, request: dict, meta: dict) -> dict:
+        """Server-side review preview through B's Gateway (real session values)."""
+        meta = self._require_meta(meta)
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            self._sample_guard(draft)
+            backend_b = self._backend_b()
+            actor = (meta.get("actor") if meta.get("browserSession") else request.get("actor")) or ""
+            actor = actor.strip()
+            if not actor:
+                raise ContractError("VALIDATION_FAILED", "人审预览需要 actor（本机操作者声明）")
+            self._ensure_synced(record, backend_b)
+            session = backend_b.create_session(actor, meta)
+            # the coverage key is forwarded only when the caller actually named
+            # one: "absent" (use the default) and "explicit null" (a malformed
+            # declaration) must not collapse into the same request
+            # (BATCH-3 A-05)
+            preview_request = {
+                "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
+                "reason": request.get("reason", ""),
+                "limits": request.get("limits"),
+                "verifyCode": request.get("verifyCode"),
+                "rejectedCandidates": request.get("rejectedCandidates"),
+            }
+            if "coverage" in request:
+                preview_request["coverage"] = request["coverage"]
+            result = backend_b.preview_review(record, preview_request, meta)
+            b_draft = backend_b.draft_state(record)
+            record["backendB"]["lastPreview"] = {
+                "previewDigest": result["previewDigest"],
+                "confirmationToken": result["confirmationToken"], "actor": actor,
+                "at": _utcnow(), "expiresInSeconds": result["expiresInSeconds"],
+                "bDraftRevision": b_draft["draftRevision"],
+                "aDraftRevision": draft["draftRevision"]}
+            if meta.get("browserSession"):
+                record["backendB"]["lastPreview"]["browserSession"] = meta["browserSession"]
+            record["backendB"]["sessionSecret"] = {
+                "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
+                "actor": actor, "at": _utcnow()}
+            self.store.save_workspace_record(record)
+            preview = result["preview"]
+            self.store.append_history(workspace_id, {
+                "type": "review_preview", "at": _utcnow(), "actor": actor,
+                "previewDigest": result["previewDigest"],
+                "coverage": preview["reviewCoverage"], "bDraftRevision": b_draft["draftRevision"]})
+            return {
+                "previewDigest": result["previewDigest"],
+                # the confirmation token stays on the server: the browser only
+                # proves it saw THIS preview by echoing the digest (BATCH-1 B-01)
+                "expiresInSeconds": result["expiresInSeconds"],
+                "beforeGraph": (b_to_a_graph(preview["beforeGraph"], preview)
+                                if preview.get("beforeGraph") else None),
+                "afterGraph": b_to_a_graph(preview["afterGraph"], preview),
+                "appliedOperations": preview["appliedOperations"],
+                "rejectedCandidates": preview["rejectedCandidates"],
+                "reviewCoverage": preview["reviewCoverage"],
+                "limits": preview["limits"], "verifyCode": preview["verifyCode"],
+                "bDraftRevision": b_draft["draftRevision"], "origin": preview["origin"],
+                "labeled": "真实版本服务的人审预览：已绑定该草稿与代码版本，确认后才会产生版本",
+            }
+
+    def review_confirm(self, workspace_id: str, request: dict, meta: dict) -> dict:
+        meta = self._require_meta(meta)
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            self._sample_guard(draft)
+            backend_b = self._backend_b()
+            binding = record.get("backendB") or {}
+            last = binding.get("lastPreview")
+            self._browser_review_binding(last, meta)
+            session = binding.get("sessionSecret") or {}
+            if not last or not session:
+                raise ContractError("HUMAN_REVIEW_REQUIRED", "没有先执行人审预览；请先预览再确认")
+            if request.get("previewDigest") != last["previewDigest"]:
+                raise ContractError("HUMAN_REVIEW_REQUIRED",
+                                    "确认与已存储的预览不一致；请重新预览",
+                                    {"expectedDigest": last["previewDigest"]})
+            if last.get("aDraftRevision") != draft["draftRevision"]:
+                # the draft was edited after the preview: the preview is void
+                raise ContractError("REVISION_CONFLICT",
+                                    "草稿在人审预览之后又被修改；预览作废，请重新预览",
+                                    {"previewBasis": last.get("aDraftRevision"),
+                                     "current": draft["draftRevision"]})
+            result = backend_b.confirm_review(record, {
+                "sessionId": session["sessionId"], "csrfToken": session["csrfToken"],
+                "confirmationToken": last["confirmationToken"],  # server-side only
+                "previewDigest": request["previewDigest"],
+                "decision": request.get("decision"),
+            }, meta)
+            binding["reviewId"] = result["reviewId"]
+            binding["reviewDecision"] = result["decision"]
+            if result.get("publicationToken"):
+                binding["publication"] = {
+                    "token": result["publicationToken"], "reviewId": result["reviewId"],
+                    "expectedMapRevision": binding.get("bBaseMapRevision"), "at": _utcnow()}
+            record["backendB"] = binding
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "review_decision", "at": _utcnow(), "actor": last.get("actor"),
+                "decision": result["decision"], "reviewId": result["reviewId"],
+                "mapRevision": draft.get("graph", {}).get("mapRevision"),
+                "delivery": "recorded_by_b_review_gateway_pending_publish"
+                if result.get("publicationToken") else "rejected_by_b_review_gateway"})
+            return {"reviewId": result["reviewId"], "decision": result["decision"],
+                    "publicationAuthorized": bool(result.get("publicationToken")),
+                    "verifiedCodeRevision": result.get("verifiedCodeRevision"),
+                    "labeled": ("已确认：发布授权保存在服务端；点击发布产生不可变版本"
+                                if result.get("publicationToken") else
+                                "已拒绝：不产生发布授权，不产生版本")}
+
+    def publish_version(self, workspace_id: str, request: dict, meta: dict) -> dict:
+        meta = self._require_meta(meta)
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            self._sample_guard(draft)
+            backend_b = self._backend_b()
+            binding = record.get("backendB") or {}
+            self._browser_review_binding(binding.get("lastPreview"), meta)
+            publication = binding.get("publication")
+            if not publication:
+                raise ContractError("HUMAN_REVIEW_REQUIRED",
+                                    "没有已确认的人审授权；发布必须经过 预览→确认→发布")
+            # publishing requires the human-review session itself to still be
+            # valid: the Host/Origin check alone is not a session check
+            # (BATCH-1 B-02; B's integration guide step 6)
+            backend_b.assert_session_active(record, meta)
+            reviewed_revision = (binding.get("lastPreview") or {}).get("aDraftRevision")
+            if reviewed_revision is not None and reviewed_revision != draft["draftRevision"]:
+                raise ContractError("REVISION_CONFLICT",
+                                    "草稿在确认之后又被修改；当前页面与已审核内容不一致，请重新走人审",
+                                    {"reviewed": reviewed_revision, "current": draft["draftRevision"]})
+            envelope = backend_b.publish(record, {"publicationToken": publication["token"]}, meta)
+            version = envelope["version"]
+            provenance = envelope["provenance"]
+            record["lastPublish"] = {
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": provenance.get("mapSourceRevision"),
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "actor": (binding.get("lastPreview") or {}).get("actor"), "at": _utcnow()}
+            record["identity"]["mapSourceRevision"] = provenance.get("mapSourceRevision")
+            record["identity"]["verifiedCodeRevision"] = version.get("verifiedCodeRevision")
+            draft["publishedMapRevision"] = version["mapRevision"]
+            record["lastPublish"]["aMapRevision"] = draft["graph"].get("mapRevision")
+            record["lastPublish"]["codeRevision"] = version["codeRevision"]
+            record.setdefault("publishedVersions", []).append({
+                "mapRevision": version["mapRevision"],
+                "aMapRevision": draft["graph"].get("mapRevision"),
+                "mapSourceRevision": provenance.get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "status": version["status"], "at": _utcnow()})
+            binding.pop("publication", None)
+            binding.pop("lastPreview", None)
+            record["backendB"] = binding
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "publish", "at": _utcnow(), "mapRevision": version["mapRevision"],
+                "mapSourceRevision": provenance.get("mapSourceRevision"),
+                "backend": backend_b.KIND})
+            return {
+                "version": {key: version[key] for key in
+                            ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                             "verifiedCodeRevision", "status", "origin")},
+                "provenance": provenance,
+                "graph": b_to_a_graph(version["graph"], version),
+                "reviewCoverage": version["reviewCoverage"],
+                "confirmation": version["confirmation"], "limits": version["limits"],
+                "envelope": self._envelope(record),
+                "labeled": "B 版本服务产生并经 Git 提交的不可变认知版本",
+            }
+
+    @staticmethod
+    def _browser_review_binding(preview, meta):
+        stored = (preview or {}).get("browserSession")
+        current = meta.get("browserSession")
+        if stored is not None or current is not None:
+            if not isinstance(stored, str) or not isinstance(current, str) \
+                    or not stored.isascii() or not current.isascii() or not hmac.compare_digest(stored, current):
+                raise ContractError("REQUEST_FORBIDDEN", "人审预览属于另一个浏览器会话，请在当前会话重新预览")
+
+    def version_history(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        binding = record.get("backendB") or {}
+        versions = list(record.get("publishedVersions", []))
+        return {"workspaceId": workspace_id, "versions": versions,
+                "bWorkspaceId": binding.get("workspaceId"), "mapId": binding.get("mapId"),
+                "currentMapRevision": (record.get("draft") or {}).get("publishedMapRevision"),
+                "backend": self._backend_label()}
+
+    def version_detail(self, workspace_id: str, map_revision: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        binding = record.get("backendB") or {}
+        if not binding.get("workspaceId"):
+            raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务")
+        envelope = self._backend_b().export_version(binding["workspaceId"], map_revision)
+        version = envelope["version"]
+        return {"version": {key: version[key] for key in
+                            ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                             "verifiedCodeRevision", "status", "origin")},
+                "provenance": envelope["provenance"],
+                "graph": b_to_a_graph(version["graph"], version),
+                "reviewCoverage": version["reviewCoverage"],
+                "confirmation": version["confirmation"], "limits": version["limits"]}
+
+    def import_version(self, workspace_id: str, request: dict) -> dict:
+        """Second client: read the immutable Git bytes for a published revision."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            binding = record.get("backendB") or {}
+            if not binding.get("workspaceId"):
+                raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务")
+            map_revision = request.get("mapRevision")
+            map_source_revision = request.get("mapSourceRevision")
+            if not map_revision or not map_source_revision:
+                raise ContractError("VALIDATION_FAILED", "需要 mapRevision 与 mapSourceRevision")
+            envelope = self._backend_b().import_git_version(
+                binding["workspaceId"], map_revision=map_revision,
+                map_source_revision=map_source_revision,
+                expected_map_revision=request.get("expectedMapRevision"))
+            version = envelope["version"]
+            # the imported version is a fact about what was read from Git; it
+            # only becomes the CURRENT draft's identity when the draft content
+            # actually equals that version. Re-importing an old version into an
+            # edited draft must not re-associate it with newer edits
+            # (BATCH-1C C-01).
+            draft = record.get("draft")
+            imported_projection = b_to_a_graph(version["graph"], version)
+            draft_matches = bool(draft) and \
+                self._graph_fingerprint(draft["graph"]) == self._graph_fingerprint(imported_projection)
+            if draft is not None:
+                if draft_matches:
+                    draft["publishedMapRevision"] = version["mapRevision"]
+                else:
+                    draft.pop("publishedMapRevision", None)
+            record["lastPublish"] = {
+                "mapRevision": version["mapRevision"],
+                "aMapRevision": (draft or {}).get("graph", {}).get("mapRevision") if draft_matches else None,
+                "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "appliesToCurrentDraft": draft_matches,
+                "actor": "import_git_version", "at": _utcnow()}
+            record.setdefault("publishedVersions", []).append({
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "status": version["status"], "at": _utcnow(), "imported": True})
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "import_git_version", "at": _utcnow(),
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope["provenance"].get("mapSourceRevision")})
+            return {"version": {key: version[key] for key in
+                                ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                                 "verifiedCodeRevision", "status", "origin")},
+                    "provenance": envelope["provenance"],
+                    "graph": b_to_a_graph(version["graph"], version),
+                    "reviewCoverage": version["reviewCoverage"],
+                    "confirmation": version["confirmation"], "limits": version["limits"],
+                    "labeled": "第二副本从架构 Git 固定提交读取的同版内容"}
+
+    def open_from_version(self, request: dict) -> dict:
+        """Second copy: open the same graph version as a NEW workspace.
+
+        The caller supplies the registered mapId, the immutable mapRevision and
+        the architecture Git source SHA. The version bytes are read from Git
+        and verified; a label in the request is never trusted.
+        """
+        map_id = (request.get("mapId") or "").strip()
+        map_revision = (request.get("mapRevision") or "").strip()
+        map_source_revision = (request.get("mapSourceRevision") or "").strip()
+        repo_path = (request.get("repoPath") or "").strip()
+        if not map_id or not map_revision or not map_source_revision or not repo_path:
+            raise ContractError("VALIDATION_FAILED",
+                                "需要 mapId/mapRevision/mapSourceRevision/repoPath")
+        backend_b = self._backend_b()
+        envelope = self.create_workspace({
+            "context": "existing_project",
+            "title": request.get("title") or "同版接手（第二副本）",
+            "repoPath": repo_path, "mapId": map_id,
+            "description": request.get("description", "按同版交接包打开同一认知版本")})
+        workspace_id = envelope["workspace"]["workspaceId"]
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            binding = dict(record.get("backendB") or {})
+            workspace_b = backend_b.ensure_workspace(record)
+            binding.update({"workspaceId": workspace_b["workspaceId"],
+                            "mapId": workspace_b["mapId"]})
+            record["backendB"] = binding
+            envelope_b = backend_b.import_git_version(
+                binding["workspaceId"], map_revision=map_revision,
+                map_source_revision=map_source_revision,
+                expected_map_revision=request.get("expectedMapRevision"))
+            version = envelope_b["version"]
+            record["lastPublish"] = {
+                "mapRevision": version["mapRevision"],
+                # a freshly opened second copy has no draft equal to the
+                # version yet: the published facts stay historical until the
+                # copy's own draft is reviewed (BATCH-1B C-01)
+                "aMapRevision": None,
+                "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "appliesToCurrentDraft": False,
+                "actor": "open_from_version", "at": _utcnow()}
+            record.setdefault("publishedVersions", []).append({
+                "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision"),
+                "codeRevision": version["codeRevision"],
+                "verifiedCodeRevision": version.get("verifiedCodeRevision"),
+                "status": version["status"], "at": _utcnow(), "imported": True})
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "open_from_version", "at": _utcnow(),
+                "mapId": version["mapId"], "mapRevision": version["mapRevision"],
+                "mapSourceRevision": envelope_b["provenance"].get("mapSourceRevision")})
+            result = self._envelope(record)
+        result.update({
+            "version": {key: version[key] for key in
+                        ("mapId", "mapRevision", "codeRepoId", "codeRevision",
+                         "verifiedCodeRevision", "status", "origin")},
+            "provenance": envelope_b["provenance"],
+            "graph": b_to_a_graph(version["graph"], version),
+            "reviewCoverage": version["reviewCoverage"],
+            "confirmation": version["confirmation"], "limits": version["limits"],
+            "labeled": "第二副本从架构 Git 固定提交读取并核对来源后的同版内容"})
+        return result
+
+    def associate_code(self, workspace_id: str, request: dict) -> dict:
+        """Planning workspace: explicitly associate a real repository (keeps design history)."""
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            if record["context"] != "planning":
+                raise ContractError("VALIDATION_FAILED", "只有规划工作区需要关联代码")
+            repo_path = (request.get("repoPath") or "").strip()
+            if not repo_path:
+                raise ContractError("VALIDATION_FAILED", "需要仓库路径")
+            probe = self.probe_repo(repo_path)
+            backend_b = self._backend_b()
+            binding = record.get("backendB") or {}
+            if not binding.get("workspaceId"):
+                raise ContractError("VALIDATION_FAILED", "该工作区尚未接入版本服务")
+            code_repo_id = backend_b.repo_id_for(probe["root"])
+            backend_b.associate_code(binding["workspaceId"], code_repo_id=code_repo_id,
+                                     code_revision=probe["head"],
+                                     expected_map_revision=request.get("expectedMapRevision"))
+            identity = record["identity"]
+            confirmed_design = (record.get("lastPublish") or {}).get("mapRevision")
+            if confirmed_design:
+                # the confirmed design version stays in history: associating
+                # code never rewrites what was confirmed as a design
+                record.setdefault("designHistory", []).append(confirmed_design)
+            identity["codeRepoId"] = code_repo_id
+            identity["codeRevision"] = probe["head"]
+            identity["repoPath"] = probe["root"]
+            if not identity.get("mapId"):
+                identity["mapId"] = binding.get("mapId")
+            record["context"] = "mixed"
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "associate_code", "at": _utcnow(), "codeRepoId": code_repo_id,
+                "codeRevision": probe["head"],
+                "note": "规划图关联真实代码：设计确认不等于实现完成"})
+            return self._envelope(record)
+
+    # ---------- change recheck (P4) ----------
+
+    def recheck(self, workspace_id: str) -> dict:
+        with workspace_lock(workspace_id):
+            return self._recheck_locked(workspace_id)
+
+    def _recheck_locked(self, workspace_id: str) -> dict:
+        record = self.store.load_workspace(workspace_id)
+        identity = record["identity"]
+        if not identity.get("repoPath") or not identity.get("codeRevision"):
+            raise ContractError("VALIDATION_FAILED", "该工作区没有关联代码，无法做代码变化复核")
+        probe = self.probe_repo(identity["repoPath"])
+        new_head = probe["head"]
+        result = {
+            "oldCodeRevision": identity["codeRevision"],
+            "newCodeRevision": new_head,
+            "changed": new_head != identity["codeRevision"],
+        }
+        if result["changed"]:
+            changes = self.diff_repo(identity["repoPath"], identity["codeRevision"], new_head)
+            result["comparison"] = {"baseRevision": identity["codeRevision"], "targetRevision": new_head,
+                                    "changes": changes}
+            # renames must flag nodes still citing the old path too
+            # (FINAL-1 finding 6)
+            changed_paths = {c["path"] for c in changes}
+            changed_paths |= {c["oldPath"] for c in changes if c.get("oldPath")}
+            draft = record.get("draft")
+            stale_nodes = []
+            if draft:
+                for node in draft["graph"]["nodes"]:
+                    hit = sorted({item["path"] for item in node.get("evidence", [])
+                                  if item.get("kind", "code_fact") == "code_fact" and item["path"] in changed_paths})
+                    if hit:
+                        stale_nodes.append({"nodeId": node["id"], "title": node["title"], "paths": hit})
+            result["staleNodes"] = stale_nodes
+            result["note"] = "代码已前进；列出的节点声明的代码证据出现在差异中，需要人复核。不代表架构已变化。"
+        else:
+            result["staleNodes"] = []
+        identity["latestObservedCodeRevision"] = new_head
+        record["updatedAt"] = _utcnow()
+        self.store.save_workspace_record(record)
+        self.store.append_history(record["workspaceId"], {"type": "recheck", "at": _utcnow(),
+                                                          "old": result["oldCodeRevision"],
+                                                          "new": new_head})
+        return result
+
+    def rebind_code_revision(self, workspace_id: str, request: dict) -> dict:
+        """Re-bind the workspace to a newly reviewed code revision (P4 回挂).
+
+        This is a local record: until D's verification lands the rebind never
+        sets verifiedCodeRevision, so nothing here claims the new code was
+        human-verified.
+        """
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            identity = record["identity"]
+            if not identity.get("repoPath"):
+                raise ContractError("VALIDATION_FAILED", "该工作区没有关联代码")
+            actor = (request.get("actor") or "").strip()
+            if not actor:
+                raise ContractError("VALIDATION_FAILED", "回挂需要 actor（本机操作者声明）")
+            expected = request.get("expectedNewCodeRevision")
+            probe = self.probe_repo(identity["repoPath"])
+            if not is_full_sha(expected) or expected != probe["head"]:
+                raise ContractError("STALE_CONTEXT", "回挂目标与仓库当前 HEAD 不一致；请先刷新复核",
+                                    {"expected": expected, "head": probe["head"]})
+            old = identity.get("codeRevision")
+            identity["codeRevision"] = expected
+            # the cached context summary describes the OLD revision: rebuild it
+            # for the new binding (and never keep a stale one when the new
+            # revision cannot be read) so corrections and C's bootstrap stop
+            # reading facts from a revision the workspace has left
+            # (BATCH-2 CORRECTION-01)
+            try:
+                refreshed_pack = context_pack_module.build_context_pack(identity["repoPath"], expected)
+                record["lastContextPack"] = self._context_pack_summary(refreshed_pack, expected)
+            except Exception:
+                record["lastContextPack"] = None
+            record["updatedAt"] = _utcnow()
+            self.store.save_workspace_record(record)
+            self.store.append_history(workspace_id, {
+                "type": "rebind", "at": _utcnow(), "actor": actor,
+                "from": old, "to": expected,
+                "note": request.get("note", ""),
+                "delivery": "local_rebind_pending_d_verification",
+            })
+            return self._envelope(record)
+
+    # ---------- fix task (D seam) ----------
+
+    def import_legacy_map(self, workspace_id: str, request: dict) -> dict:
+        with workspace_lock(workspace_id):
+            return self._import_legacy_locked(workspace_id, request)
+
+    def _import_legacy_locked(self, workspace_id: str, request: dict) -> dict:
+        """Import the legacy curated demo map as an unconfirmed draft.
+
+        Compatibility seam (A instruction: legacy map gets a clear read-only
+        compatible path into the new workspace). The import never claims the
+        old demo graph was confirmed: every node becomes candidate/human_input
+        with an explicit import note, and legacy relations become
+        functional_collaboration — never expected_sequence, so imports cannot
+        disguise themselves as runtime chains.
+        """
+        record = self.store.load_workspace(workspace_id)
+        legacy = request.get("legacyMap")
+        if not isinstance(legacy, dict) or not isinstance(legacy.get("nodes"), list):
+            raise ContractError("VALIDATION_FAILED", "需要 legacyMap{note, nodes[], edges[]}")
+        # replacing an existing draft is CAS-guarded like any other write
+        # (FINAL-1 finding 1)
+        existing_draft = record.get("draft")
+        if existing_draft is not None:
+            expected = request.get("expectedDraftRevision")
+            if not isinstance(expected, str) or expected != existing_draft["draftRevision"]:
+                raise ContractError("REVISION_CONFLICT", "已有草稿被修改过；请先查看差异再决定导入",
+                                    {"expected": expected, "current": existing_draft["draftRevision"]})
+        note = legacy.get("note", "")
+        nodes = []
+        for node in legacy["nodes"]:
+            if not isinstance(node, dict) or not node.get("id"):
+                raise ContractError("VALIDATION_FAILED", "legacy 节点缺少 id")
+            evidence = [{"path": item.get("path", ""), "reason": item.get("reason", ""), "kind": "code_fact"}
+                        for item in node.get("evidence", []) if isinstance(item, dict) and item.get("path")]
+            nodes.append({
+                "id": node["id"], "title": node.get("title", node["id"]),
+                "summary": node.get("summary", ""), "status": "candidate",
+                "provenance": "human_input",
+                "entryPoints": [node["entryPoint"]] if node.get("entryPoint") else [],
+                "interfaces": [], "evidence": evidence, "process": [],
+                "importNote": f"来自 legacy 人工演示图：{note}",
+            })
+        edges = [{"from": edge.get("from"), "to": edge.get("to"),
+                  "type": "functional_collaboration",
+                  "label": f"{edge.get('label', '')}（legacy 导入，非运行链）"}
+                 for edge in legacy.get("edges", []) if isinstance(edge, dict)]
+        graph = {"nodes": nodes, "edges": edges}
+        # structural validation before anything is stored: bad IDs or dangling
+        # edges fail loudly instead of entering the workspace
+        ops_module.validate_graph(graph)
+        bound = record["identity"].get("codeRevision")
+        graph = self._evidence_guard(graph, record, bound)
+        # the guard can mutate evidence (semantic content): recompute the
+        # graph's own revision field so identity never shows a stale digest
+        # (FINAL-2 finding F1)
+        graph["mapRevision"] = semantic_revision(graph)
+        graph["mapRevision"] = semantic_revision(graph)
+        # F2 (FINAL-3): an import that claims dev_sample origin stays tainted —
+        # a sample graph cannot launder itself into a reviewable legacy_import
+        # by being submitted as a "legacy map".
+        import_origin = "legacy_import"
+        if request.get("origin") == "dev_sample" or legacy.get("origin") == "dev_sample":
+            import_origin = "dev_sample"
+        draft = self._new_draft(record, graph, origin=import_origin)
+        # replacing a sample draft does not wash its mark: the origin chain is
+        # carried so review still refuses sample-tainted lineages (FINAL-2 F2)
+        lineage = []
+        if existing_draft is not None:
+            lineage = list(existing_draft.get("lineage", [existing_draft.get("origin")]))
+            draft["publishedMapRevision"] = existing_draft.get("publishedMapRevision")
+        lineage.append(import_origin)
+        draft["lineage"] = lineage
+        record["draft"] = draft
+        record["updatedAt"] = _utcnow()
+        self.store.save_workspace_record(record)
+        self.store.append_history(workspace_id, {"type": "import_legacy", "at": _utcnow(),
+                                                 "nodes": len(nodes), "edges": len(edges),
+                                                 "draftRevision": draft["draftRevision"]})
+        return self._envelope(record)
+
+    def create_fix_task(self, workspace_id: str, request: dict,
+                        server_context: dict | None = None, meta: dict | None = None) -> dict:
+        with workspace_lock(workspace_id):
+            record = self.store.load_workspace(workspace_id)
+            draft = record.get("draft")
+            if draft is None:
+                raise ContractError("VALIDATION_FAILED", "工作区还没有草稿")
+            governed = self._governed_tasks()
+            if governed is not None:
+                return governed.create(record, request, meta)
+            mode = request.get("mode", "production")
+            if mode == DEV_SAMPLE_MODE:
+                return self._sample_fix_task(record, draft, request)
+            # D's real FixTaskService is authoritative whenever it is bound:
+            # one store owns task state, A adapts the request (CONTRACT_V1 §7)
+            backend_d = self._backend_d()
+            if backend_d is not None:
+                task = backend_d.create(record, draft, request, server_context)
+                self.store.append_history(workspace_id, {
+                    "type": "fix_task", "at": _utcnow(), "taskId": task.get("id") or task.get("taskId"),
+                    "deviationId": task.get("deviationId"),
+                    "targetCodeRevision": task.get("codeRevision"), "backend": "d_fix_tasks"})
+                return task
+            # a registered real handoff backend (legacy extension seam) owns the
+            # delegation; without one, the workbench persists a real task
+            # itself instead of falling back to a sample
+            try:
+                backend = self.adapter.backend("handoff", mode)
+            except ContractError:
+                backend = None
+            if backend is not None and backend.get("kind") != "dev_sample":
+                return self._legacy_fix_task_delegation(record, draft, request)
+            task = fix_tasks_module.create_task(self.store.root, record, draft, request)
+            task["envelope"] = self._envelope(record)
+            self.store.append_history(workspace_id, {
+                "type": "fix_task", "at": _utcnow(), "taskId": task["taskId"],
+                "deviationId": task.get("deviationId"),
+                "targetCodeRevision": task.get("targetCodeRevision")})
+            return task
+
+    def _sample_fix_task(self, record: dict, draft: dict, request: dict) -> dict:
+        deviation = (request.get("deviation") or "").strip()
+        if not deviation:
+            raise ContractError("VALIDATION_FAILED", "请描述偏差内容")
+        return {
+            "taskType": "implementation_fix",
+            "labeled": "演示数据 · 修正实现任务样例",
+            "origin": "dev_sample",
+            "deviationId": f"dev_{secrets.token_hex(4)}",
+            "workspaceId": record["workspaceId"],
+            "mapRevision": draft["graph"].get("mapRevision"),
+            "expectedProcessRef": request.get("expectedProcessRef"),
+            "observation": deviation,
+            "evidence": request.get("evidence", []),
+            "acceptance": request.get("acceptance", ""),
+            "status": "queued",
+            "note": "演示样例：真实任务请使用生产模式创建。",
+        }
+
+    def _legacy_fix_task_delegation(self, record: dict, draft: dict, request: dict) -> dict:
+        """Delegate to a registered real handoff backend (D's module)."""
+        deviation = (request.get("deviation") or "").strip()
+        if not deviation:
+            raise ContractError("VALIDATION_FAILED", "请描述偏差内容")
+        backend = self.adapter.backend("handoff", request.get("mode", "production"))
+        if backend.get("kind") == "dev_sample":
+            task = {
+                "taskType": "implementation_fix",
+                "labeled": "演示数据 · 修正实现任务样例",
+                "origin": "dev_sample",
+                "deviationId": f"dev_{secrets.token_hex(4)}",
+                "workspaceId": record["workspaceId"],
+                "mapRevision": draft["graph"].get("mapRevision"),
+                "expectedProcessRef": request.get("expectedProcessRef"),
+                "observation": deviation,
+                "evidence": request.get("evidence", []),
+                "acceptance": request.get("acceptance", ""),
+                "status": "queued",
+                "note": "改图不会自动修改程序；实施者在独立分支交付后回挂 SHA 再验证。",
+            }
+            self.store.append_history(workspace_id, {"type": "fixtask_sample", "at": _utcnow(),
+                                                     "deviationId": task["deviationId"]})
+            return task
+        # a registered real handoff backend receives the delegation
+        # (FINAL-1 finding 9: do not refuse when a backend exists)
+        return call_backend(backend, "create_fix_task", {
+            "workspaceId": record["workspaceId"],
+            "mapRevision": draft["graph"].get("mapRevision"),
+            "expectedProcessRef": request.get("expectedProcessRef"),
+            "deviation": deviation,
+            "evidence": request.get("evidence", []),
+            "acceptance": request.get("acceptance", ""),
+        })

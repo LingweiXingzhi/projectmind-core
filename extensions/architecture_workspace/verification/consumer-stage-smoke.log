@@ -1,0 +1,1 @@
+{"result": "PASS", "secondCloneEqual": true, "conflicts": ["REVISION_CONFLICT", "EVIDENCE_MISMATCH", "STALE_CONTEXT"], "legacyImport": null, "consumerCalls": 17, "consumerContract": "A_REVIEW_PENDING"}

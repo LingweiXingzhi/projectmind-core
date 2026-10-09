@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>上下文事实检查器</title>
+<style>
+  body { font-family: Consolas, monospace; margin: 24px; background: #fafafa; color: #222; }
+  h1 { font-size: 20px; } h2 { font-size: 15px; margin-top: 22px; border-bottom: 1px solid #ddd; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #eee; }
+  .ok { color: #0a7d32; } .warn { color: #b26a00; } .bad { color: #b21d1d; }
+  .small { color: #666; font-size: 12px; }
+  pre { background: #f0f0f0; padding: 8px; font-size: 12px; white-space: pre-wrap; }
+  button { margin: 4px 6px 12px 0; padding: 4px 10px; }
+</style>
+
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;color:#28364f;background:#f8f9fc;color-scheme:light}body{font-size:13px}h1,h2,h3{letter-spacing:-.025em;color:#20304d}button,input,textarea,select{font:inherit;border-radius:6px}button{padding:7px 11px;background:#fafcff;border:1px solid #dce4f0;color:#526788;cursor:pointer}button:hover{background:#edf3fe}button:focus-visible,a:focus-visible{outline:2px solid #4b82ed;outline-offset:2px}input,select,textarea{background:#fcfdff;border:1px solid #dbe3ef;color:#344e75;padding:8px 10px}input:focus,textarea:focus{outline:2px solid #e0eafa;border-color:#8eb0ef}button.primary,.primary{background:#1c62e6;border-color:#1c62e6;color:#fff}.embedded>header{display:none!important}.embedded{margin:0!important;max-width:none!important;padding:0!important}.embedded>body>a{display:none}dialog{border-radius:12px;box-shadow:0 10px 50px #32446c22}dialog::backdrop{background:#283c6233;backdrop-filter:none}.status{border-radius:6px;background:#f9fcff;color:#48658f;border:1px solid #dbe5f4;box-shadow:0 5px 25px #405d8018;font-size:12px}
+</style>
+<script>if(window.self!==window.top){document.documentElement.classList.add('embedded');document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('embedded'));}</script>
+</head>
+<body>
+<h1>上下文事实检查器</h1>
+<div class="small">派生视图 — 当前事实底座（不是需要人工维护的第二份真源）。登记表指纹： <span id="hash">…</span></div>
+<button onclick="load('state')">当前事实</button>
+<button onclick="load('conflicts')">冲突</button>
+<button onclick="load('claims')">原始声明</button>
+<div id="out">正在读取…</div>
+<script src="/evidence-links.js"></script>
+<script>
+async function load(action) {
+  const out = document.getElementById("out");
+  out.textContent = "正在读取…";
+  try {
+    const res = await fetch(`/api/extensions/context_authority?action=${action}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (action === "state" || action === undefined) return renderState(data);
+    if (action === "conflicts") return renderConflicts(data);
+    out.replaceChildren(element("pre", JSON.stringify(data, null, 2)));
+  } catch (error) {
+    out.textContent = `上下文事实服务不可用： ${error.message}`;
+  }
+}
+function element(tag, text) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function details(row, title) {
+  const node = element("details");
+  node.append(element("summary", title), element("pre", JSON.stringify(row, null, 2)));
+  return node;
+}
+function renderState(s) {
+  document.getElementById("hash").textContent = s.registry_hash || "";
+  const out = document.getElementById("out");
+  out.replaceChildren(element("h2", "当前项目事实"));
+  const table = element("table");
+  const header = element("tr");
+  for (const title of ["字段 / 范围", "内容", "类型", "证据"]) header.append(element("th", title));
+  table.append(header);
+  const rows = s.current_by_scope || Object.entries(s.current || {}).map(([key, value]) => ({key, ...value}));
+  for (const row of rows) {
+    const tr = element("tr");
+    tr.append(element("td", `${row.key} / ${row.scope}`), element("td", JSON.stringify(row.value)), element("td", projectmindUiLabel(row.type)));
+    const td = element("td");
+    td.append(details(row, (row.claim_ids || []).join(", ")));
+    tr.append(td);
+    table.append(tr);
+  }
+  out.append(table);
+  for (const [field, title] of [["conflicts", "冲突 — 需要人工处理"], ["registry_problems", "登记表问题 — 需要人工处理"], ["stale", "过期 / 已被替代"], ["proposals", "候选提案"], ["research", "研究记录"], ["historical", "历史记录"], ["verification_unavailable", "无法核验"]]) {
+    const items = s[field] || [];
+    const heading = element("h2", `${title}: ${items.length}`);
+    heading.className = items.length && ["conflicts", "registry_problems"].includes(field) ? "bad" : "warn";
+    out.append(heading);
+    for (const row of items) out.append(details(row, `${row.key || row.kind || ""} / ${row.scope || ""} ${row.claim_id || ""}`));
+  }
+}
+function renderConflicts(c) {
+  document.getElementById("out").replaceChildren(element("h2", `冲突： ${(c.conflicts || []).length} — 需要人工处理`), element("pre", JSON.stringify(c.conflicts || [], null, 2)));
+}
+load("state");
+</script>
+</body>
+</html>
+

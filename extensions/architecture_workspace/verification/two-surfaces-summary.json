@@ -1,0 +1,45 @@
+{
+  "testedLocalCodeCommit": "13a6c3b20393eb33e1bacb2acf9f1c983a4b65ed",
+  "testedRemoteCodeCommit": "4d03906976c41a25e361f515f0f06a2d6a9484d3",
+  "testedCodeTree": "2322c4de651310d79cacdd92c44ab5bcf73e78a1",
+  "codeManifestFiles": 121,
+  "b": {
+    "tests": 127,
+    "seconds": 44.407,
+    "result": "OK",
+    "skipped": 0
+  },
+  "full": {
+    "tests": 731,
+    "seconds": 182.57,
+    "result": "OK",
+    "skipped": 22,
+    "executed": 709
+  },
+  "fixtureHttp": {
+    "tests": 16,
+    "guardTests": 2,
+    "actualSocketTests": 14,
+    "includedInCombinedAndFull": true
+  },
+  "surfaceCli": {
+    "calls": 21,
+    "checks": 17,
+    "result": "PASS",
+    "cleanCodeCommit": true
+  },
+  "initialHttpAssertion": {
+    "tests": 15,
+    "passed": 14,
+    "failed": 1,
+    "case": "test_real_http_prepare_review_publish_never_exports_private_grants",
+    "reason": "Overstrong test asserted no raw publication token in V1 private SQLite; original internal intent response intentionally persists there. No API authorization bypass observed.",
+    "correction": "Check browser responses, committed version bytes and source files for raw grants; check private SQLite permissions and nonpersistence of session cookie/CSRF, plus no logs.",
+    "childEnvironment": "Initial child socket binding blocked; root actual socket binding and tests ran."
+  },
+  "realAUi": "NOT_RUN",
+  "realCInference": "NOT_RUN",
+  "realDHandoff": "NOT_RUN",
+  "contract": "A_REVIEW_PENDING",
+  "projectModelImpact": "MINOR"
+}

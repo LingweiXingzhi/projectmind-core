@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "projectmind_host_preparation_v1",
+  "publicOrigin": "https://projectmind.example.invalid",
+  "domainPending": true,
+  "servicesStarted": false,
+  "filesSHA256": {
+    "Caddyfile": "668f063f0866b5250e374152c6c6e3961e950d5a91d53ad4adf65ded5515f025",
+    "activate.sh": "ca45b11e34e10cb4384fb9c58a61c677cffb43b257688bbbefd97446f5a08870",
+    "backup.sh": "15fe486a22290f9047610c4d05e2bcfa27eecdf46b3775196ca344fdee5cf624",
+    "install.sh": "7ec53c9ab3243a89183df6a55c1cb2b48c15834b4caaa5c8ef8f41855d1b81bf",
+    "projectmind-proxy.service": "5f1312c1a385f0d64fdd01252b704f3ce268e04059611f7bbcae56b52dbffe0d",
+    "projectmind.service": "66b4904bfc818c834a1edf2925e07724e8b7e9b2709bffc66ccd82bdb5540b04",
+    "runtime.json": "7a4b25c63ec10178583f6a0fd676aab42a9c100b36b232bfe2afcd3c16fb16e9"
+  },
+  "next": [
+    "configure code/architecture sources",
+    "create private accounts",
+    "install fixed release",
+    "host preflight",
+    "real DNS/TLS/device acceptance"
+  ]
+}

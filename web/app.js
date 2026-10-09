@@ -407,7 +407,7 @@ async function init() {
   try {
     const response = await fetch("/api/snapshot");
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "无法读取仓库");
+    if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : (result.error && result.error.message) || "无法读取仓库");
     snapshot = result;
     comparison = null;
     aiResult = null;
@@ -415,7 +415,7 @@ async function init() {
     aiMessage = null;
     loadLayout();
     for (const id of ["save-layout-button", "reset-layout-button", "export-draft-button"]) document.getElementById(id).disabled = false;
-    document.getElementById("repo-name").textContent = result.repository;
+    document.getElementById("repo-name").textContent = document.body.dataset.activeProjectTitle || "选择你的项目";
     document.getElementById("revision").textContent = result.revision;
     document.getElementById("branch-name").textContent = result.branch;
     document.getElementById("node-count").textContent = `${result.nodes.length} 个功能部分`;

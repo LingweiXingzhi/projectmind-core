@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "local_https_rehearsal_v1",
+  "fixtureOnly": true,
+  "backend": "actual Waitress CLI",
+  "proxy": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=",
+  "localCertificateAndHostnameVerified": true,
+  "codeGitUnchanged": true,
+  "publicNetwork": "NOT_RUN",
+  "realTeamApproval": "NOT_RUN",
+  "browser": "NOT_RUN_NOT_A_BROWSER_HARNESS",
+  "requests": 30,
+  "observations": [
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop/workspaces",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "route": "/api/archloop",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "route": "/api/archloop",
+      "status": 200
+    }
+  ],
+  "publishedFixtures": [
+    {
+      "context": "existing_project",
+      "mapRevision": "sha256:adc586b0ab66546e6fb1483ab5daa01d65bc34e69c48abf329abcc91ef1dfab2",
+      "mapSourceRevision": "6eabb33f916d8d66938f82b29e6a231fd15c830a",
+      "codeRevision": "004c30d5c94d35ceb509821320a49607b2a5e704"
+    },
+    {
+      "context": "planning",
+      "mapRevision": "sha256:5640643ed59dc0c575b985a51a7749ec2717ca151aaabb5567934c532f10f233",
+      "mapSourceRevision": "2fd891a48d156794d3cc8f490a9c33d91990f663",
+      "codeRevision": null
+    }
+  ],
+  "crossSessionConfirmRejected": true,
+  "crossSessionPublishRejected": true,
+  "csrfRejected": true,
+  "wrongOriginRejected": true,
+  "trustedActorFromSession": true,
+  "planningNoFakeCodeSHA": true,
+  "secondServingProcessRejected": true,
+  "governedTasks": [
+    {
+      "id": "fix-d9efbaafc4080201b47691fc3fd8c616",
+      "workspaceId": "ws_20261008095823_dedd32",
+      "mapRevision": "sha256:adc586b0ab66546e6fb1483ab5daa01d65bc34e69c48abf329abcc91ef1dfab2",
+      "revision": 2,
+      "status": "received",
+      "actorIdentity": "authenticated_account"
+    }
+  ],
+  "nativeHandoffSchema": true,
+  "sourceLocalSHA": "453553face25ae045c80e941e33e68bcff875ca2",
+  "sourceTree": "89c2194215e3ec8c67c5fb8e4c920df238d19995",
+  "sourceWorkingTreeDirty": false
+}

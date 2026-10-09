@@ -1,0 +1,1076 @@
+{
+  "existing": {
+    "packet": {
+      "schemaVersion": "architecture_handoff_v1",
+      "workspaceId": "workspace-D-consumer-existing",
+      "versionEnvelope": {
+        "version": {
+          "schemaVersion": "architecture_version_v1",
+          "mapId": "map-065945b84453065241f134282a8658ec",
+          "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+          "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+          "verifiedCodeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+          "status": "confirmed_cognition",
+          "graph": {
+            "edges": [],
+            "evidence": [
+              {
+                "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+                "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+                "id": "code-demo",
+                "kind": "code",
+                "lineEnd": 2,
+                "lineStart": 1,
+                "path": "demo.py",
+                "reason": "Actual fixture Git bytes"
+              },
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo",
+                  "code-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "unknown",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "code_entry",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Human correction in fixture",
+                "title": "Fixture function"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Demonstrate"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "reviewCoverage": {
+            "edges": [],
+            "evidence": [
+              "code-demo",
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "limits": [
+            "SIMULATED HUMAN IN TEST FIXTURE ONLY",
+            "核查仅适用于列明覆盖；不证明运行时全流程"
+          ],
+          "origin": "ai_generated",
+          "confirmation": {
+            "nodes": {
+              "confirmed": [
+                "node-demo"
+              ],
+              "unconfirmed": []
+            },
+            "edges": {
+              "confirmed": [],
+              "unconfirmed": []
+            },
+            "processes": {
+              "confirmed": [
+                "process-demo"
+              ],
+              "unconfirmed": []
+            },
+            "evidence": {
+              "confirmed": [
+                "code-demo",
+                "goal-demo"
+              ],
+              "unconfirmed": []
+            }
+          },
+          "review": {
+            "actor": "TEST_ONLY_SIMULATED_HUMAN",
+            "actorIdentity": "local_operator_declaration",
+            "afterGraph": {
+              "edges": [],
+              "evidence": [
+                {
+                  "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+                  "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+                  "id": "code-demo",
+                  "kind": "code",
+                  "lineEnd": 2,
+                  "lineStart": 1,
+                  "path": "demo.py",
+                  "reason": "Actual fixture Git bytes"
+                },
+                {
+                  "content": "Demonstrate B version lifecycle",
+                  "id": "goal-demo",
+                  "kind": "user_goal",
+                  "reason": "Synthetic test requirement"
+                }
+              ],
+              "nodes": [
+                {
+                  "evidenceIds": [
+                    "goal-demo",
+                    "code-demo"
+                  ],
+                  "id": "node-demo",
+                  "implementationStatus": "unknown",
+                  "interfaces": [
+                    {
+                      "description": "Test contract",
+                      "evidenceIds": [
+                        "goal-demo",
+                        "code-demo"
+                      ],
+                      "id": "interface-demo",
+                      "kind": "code_entry",
+                      "name": "demo"
+                    }
+                  ],
+                  "responsibility": "Human correction in fixture",
+                  "title": "Fixture function"
+                }
+              ],
+              "processes": [
+                {
+                  "evidenceIds": [],
+                  "id": "process-demo",
+                  "kind": "expected",
+                  "steps": [
+                    {
+                      "allowedFailures": [
+                        "invalid input"
+                      ],
+                      "branches": [],
+                      "condition": "",
+                      "evidenceIds": [
+                        "goal-demo",
+                        "code-demo"
+                      ],
+                      "id": "step-demo",
+                      "inputs": [],
+                      "nextStepIds": [],
+                      "nodeId": "node-demo",
+                      "outputs": [
+                        "result"
+                      ],
+                      "title": "Demonstrate"
+                    }
+                  ],
+                  "title": "Expected process"
+                }
+              ],
+              "schemaVersion": "architecture_graph_v1"
+            },
+            "appliedOperations": [
+              {
+                "changes": {
+                  "responsibility": "Human correction in fixture"
+                },
+                "id": "node-demo",
+                "op": "node.update",
+                "operationId": "operation-1290ff4b631e86a5e348ede576fcf3c8",
+                "source": "human"
+              }
+            ],
+            "beforeGraph": null,
+            "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+            "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+            "decision": "accept",
+            "draftId": "draft-b09e1ecf1d6883baef2129edb620e56a",
+            "draftRevision": 2,
+            "expectedMapRevision": null,
+            "limits": [
+              "SIMULATED HUMAN IN TEST FIXTURE ONLY"
+            ],
+            "mapId": "map-065945b84453065241f134282a8658ec",
+            "origin": "ai_generated",
+            "previewDigest": "sha256:78aa8bedde0b695d425aa57a0eb35833b2cb4ae3a305e2a68ab2ba02b79ece6c",
+            "proposalId": "proposal-57afa703d223bb2e4fdf615f56b29c2e",
+            "reason": "Test fixture approval, not owner approval",
+            "rejectedCandidates": [],
+            "reviewCoverage": {
+              "edges": [],
+              "evidence": [
+                "code-demo",
+                "goal-demo"
+              ],
+              "nodes": [
+                "node-demo"
+              ],
+              "processes": [
+                "process-demo"
+              ],
+              "scope": "all"
+            },
+            "reviewId": "review-f1fce3709c2af63cc87ce16e4348f28e",
+            "reviewedAt": 1791365677.5862901,
+            "verifiedCodeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+            "verifyCode": true,
+            "workspaceId": "workspace-9667a885e35439844c608d394ca5fd96"
+          },
+          "mapRevision": "sha256:b25a7f59fb4305a7bf44724b4601765c771a1576d4c5e060e3dbce797d8c814a"
+        },
+        "provenance": {
+          "mapSourceRevision": "49c8827ab8e4d7567a6dadb291a212e2ed53c762",
+          "sourceKind": "git_commit"
+        }
+      },
+      "sources": {
+        "code": "https://example.invalid/projectmind-b-fixture.git",
+        "architecture": "https://example.invalid/b-architecture.git"
+      },
+      "task": {
+        "state": "pending",
+        "nextAction": "核查来源与固定版本"
+      },
+      "references": {
+        "candidates": [],
+        "reviews": [],
+        "deviations": [],
+        "logs": []
+      },
+      "trust": "untrusted_until_local_git_check",
+      "limits": [
+        "传输摘要仅检查内容一致，不认证来源或操作者。",
+        "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。"
+      ],
+      "transportDigest": "sha256:f1a9643fd94701d12c8861ae1752788d7b74b6c8a9cca83a12480125628144cf"
+    },
+    "inspection": {
+      "status": "same_version_git_checked",
+      "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+      "mapId": "map-065945b84453065241f134282a8658ec",
+      "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+      "mapRevision": "sha256:b25a7f59fb4305a7bf44724b4601765c771a1576d4c5e060e3dbce797d8c814a",
+      "mapSourceRevision": "49c8827ab8e4d7567a6dadb291a212e2ed53c762",
+      "verifiedCodeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+      "reviewCoverage": {
+        "edges": [],
+        "evidence": [
+          "code-demo",
+          "goal-demo"
+        ],
+        "nodes": [
+          "node-demo"
+        ],
+        "processes": [
+          "process-demo"
+        ],
+        "scope": "all"
+      },
+      "graphStatus": "confirmed_cognition",
+      "versionEnvelope": {
+        "version": {
+          "schemaVersion": "architecture_version_v1",
+          "mapId": "map-065945b84453065241f134282a8658ec",
+          "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+          "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+          "verifiedCodeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+          "status": "confirmed_cognition",
+          "graph": {
+            "edges": [],
+            "evidence": [
+              {
+                "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+                "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+                "id": "code-demo",
+                "kind": "code",
+                "lineEnd": 2,
+                "lineStart": 1,
+                "path": "demo.py",
+                "reason": "Actual fixture Git bytes"
+              },
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo",
+                  "code-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "unknown",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "code_entry",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Human correction in fixture",
+                "title": "Fixture function"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo",
+                      "code-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Demonstrate"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "reviewCoverage": {
+            "edges": [],
+            "evidence": [
+              "code-demo",
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "limits": [
+            "SIMULATED HUMAN IN TEST FIXTURE ONLY",
+            "核查仅适用于列明覆盖；不证明运行时全流程"
+          ],
+          "origin": "ai_generated",
+          "confirmation": {
+            "nodes": {
+              "confirmed": [
+                "node-demo"
+              ],
+              "unconfirmed": []
+            },
+            "edges": {
+              "confirmed": [],
+              "unconfirmed": []
+            },
+            "processes": {
+              "confirmed": [
+                "process-demo"
+              ],
+              "unconfirmed": []
+            },
+            "evidence": {
+              "confirmed": [
+                "code-demo",
+                "goal-demo"
+              ],
+              "unconfirmed": []
+            }
+          },
+          "review": {
+            "actor": "TEST_ONLY_SIMULATED_HUMAN",
+            "actorIdentity": "local_operator_declaration",
+            "afterGraph": {
+              "edges": [],
+              "evidence": [
+                {
+                  "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+                  "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+                  "id": "code-demo",
+                  "kind": "code",
+                  "lineEnd": 2,
+                  "lineStart": 1,
+                  "path": "demo.py",
+                  "reason": "Actual fixture Git bytes"
+                },
+                {
+                  "content": "Demonstrate B version lifecycle",
+                  "id": "goal-demo",
+                  "kind": "user_goal",
+                  "reason": "Synthetic test requirement"
+                }
+              ],
+              "nodes": [
+                {
+                  "evidenceIds": [
+                    "goal-demo",
+                    "code-demo"
+                  ],
+                  "id": "node-demo",
+                  "implementationStatus": "unknown",
+                  "interfaces": [
+                    {
+                      "description": "Test contract",
+                      "evidenceIds": [
+                        "goal-demo",
+                        "code-demo"
+                      ],
+                      "id": "interface-demo",
+                      "kind": "code_entry",
+                      "name": "demo"
+                    }
+                  ],
+                  "responsibility": "Human correction in fixture",
+                  "title": "Fixture function"
+                }
+              ],
+              "processes": [
+                {
+                  "evidenceIds": [],
+                  "id": "process-demo",
+                  "kind": "expected",
+                  "steps": [
+                    {
+                      "allowedFailures": [
+                        "invalid input"
+                      ],
+                      "branches": [],
+                      "condition": "",
+                      "evidenceIds": [
+                        "goal-demo",
+                        "code-demo"
+                      ],
+                      "id": "step-demo",
+                      "inputs": [],
+                      "nextStepIds": [],
+                      "nodeId": "node-demo",
+                      "outputs": [
+                        "result"
+                      ],
+                      "title": "Demonstrate"
+                    }
+                  ],
+                  "title": "Expected process"
+                }
+              ],
+              "schemaVersion": "architecture_graph_v1"
+            },
+            "appliedOperations": [
+              {
+                "changes": {
+                  "responsibility": "Human correction in fixture"
+                },
+                "id": "node-demo",
+                "op": "node.update",
+                "operationId": "operation-1290ff4b631e86a5e348ede576fcf3c8",
+                "source": "human"
+              }
+            ],
+            "beforeGraph": null,
+            "codeRepoId": "repo-94905b5a7d62845ae2515746699f010c4f9f2448fcf74b1ffdd5138f48acd1b5",
+            "codeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+            "decision": "accept",
+            "draftId": "draft-b09e1ecf1d6883baef2129edb620e56a",
+            "draftRevision": 2,
+            "expectedMapRevision": null,
+            "limits": [
+              "SIMULATED HUMAN IN TEST FIXTURE ONLY"
+            ],
+            "mapId": "map-065945b84453065241f134282a8658ec",
+            "origin": "ai_generated",
+            "previewDigest": "sha256:78aa8bedde0b695d425aa57a0eb35833b2cb4ae3a305e2a68ab2ba02b79ece6c",
+            "proposalId": "proposal-57afa703d223bb2e4fdf615f56b29c2e",
+            "reason": "Test fixture approval, not owner approval",
+            "rejectedCandidates": [],
+            "reviewCoverage": {
+              "edges": [],
+              "evidence": [
+                "code-demo",
+                "goal-demo"
+              ],
+              "nodes": [
+                "node-demo"
+              ],
+              "processes": [
+                "process-demo"
+              ],
+              "scope": "all"
+            },
+            "reviewId": "review-f1fce3709c2af63cc87ce16e4348f28e",
+            "reviewedAt": 1791365677.5862901,
+            "verifiedCodeRevision": "6abba48ffab45899de9dc83368c45e545f527962",
+            "verifyCode": true,
+            "workspaceId": "workspace-9667a885e35439844c608d394ca5fd96"
+          },
+          "mapRevision": "sha256:b25a7f59fb4305a7bf44724b4601765c771a1576d4c5e060e3dbce797d8c814a"
+        },
+        "provenance": {
+          "mapSourceRevision": "49c8827ab8e4d7567a6dadb291a212e2ed53c762",
+          "sourceKind": "git_commit"
+        }
+      },
+      "formalMapWritten": false,
+      "limits": [
+        "传输摘要仅检查内容一致，不认证来源或操作者。",
+        "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。",
+        "只证明指定 Git 内容一致，未认证人审身份，也不证明新代码符合期望。"
+      ]
+    },
+    "actualBExport": true,
+    "humanReview": "TEST_ONLY_SIMULATED_HUMAN"
+  },
+  "planning": {
+    "packet": {
+      "schemaVersion": "architecture_handoff_v1",
+      "workspaceId": "workspace-D-consumer-planning",
+      "versionEnvelope": {
+        "version": {
+          "schemaVersion": "architecture_version_v1",
+          "mapId": "map-1d23c9be65399e2dffbbd2bd50b88cc8",
+          "codeRepoId": null,
+          "codeRevision": null,
+          "verifiedCodeRevision": null,
+          "status": "confirmed_design",
+          "graph": {
+            "edges": [],
+            "evidence": [
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "planned",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "team_contract",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Test demonstration",
+                "title": "Fixture function"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Demonstrate"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "reviewCoverage": {
+            "edges": [],
+            "evidence": [
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "limits": [
+            "SIMULATED HUMAN IN TEST FIXTURE ONLY",
+            "核查仅适用于列明覆盖；不证明运行时全流程"
+          ],
+          "origin": "ai_generated",
+          "confirmation": {
+            "nodes": {
+              "confirmed": [
+                "node-demo"
+              ],
+              "unconfirmed": []
+            },
+            "edges": {
+              "confirmed": [],
+              "unconfirmed": []
+            },
+            "processes": {
+              "confirmed": [
+                "process-demo"
+              ],
+              "unconfirmed": []
+            },
+            "evidence": {
+              "confirmed": [
+                "goal-demo"
+              ],
+              "unconfirmed": []
+            }
+          },
+          "review": {
+            "actor": "TEST_ONLY_SIMULATED_HUMAN",
+            "actorIdentity": "local_operator_declaration",
+            "afterGraph": {
+              "edges": [],
+              "evidence": [
+                {
+                  "content": "Demonstrate B version lifecycle",
+                  "id": "goal-demo",
+                  "kind": "user_goal",
+                  "reason": "Synthetic test requirement"
+                }
+              ],
+              "nodes": [
+                {
+                  "evidenceIds": [
+                    "goal-demo"
+                  ],
+                  "id": "node-demo",
+                  "implementationStatus": "planned",
+                  "interfaces": [
+                    {
+                      "description": "Test contract",
+                      "evidenceIds": [
+                        "goal-demo"
+                      ],
+                      "id": "interface-demo",
+                      "kind": "team_contract",
+                      "name": "demo"
+                    }
+                  ],
+                  "responsibility": "Test demonstration",
+                  "title": "Fixture function"
+                }
+              ],
+              "processes": [
+                {
+                  "evidenceIds": [],
+                  "id": "process-demo",
+                  "kind": "expected",
+                  "steps": [
+                    {
+                      "allowedFailures": [
+                        "invalid input"
+                      ],
+                      "branches": [],
+                      "condition": "",
+                      "evidenceIds": [
+                        "goal-demo"
+                      ],
+                      "id": "step-demo",
+                      "inputs": [],
+                      "nextStepIds": [],
+                      "nodeId": "node-demo",
+                      "outputs": [
+                        "result"
+                      ],
+                      "title": "Demonstrate"
+                    }
+                  ],
+                  "title": "Expected process"
+                }
+              ],
+              "schemaVersion": "architecture_graph_v1"
+            },
+            "appliedOperations": [],
+            "beforeGraph": null,
+            "codeRepoId": null,
+            "codeRevision": null,
+            "decision": "accept",
+            "draftId": "draft-3d42144aba6b09424aa03abe593b5e6f",
+            "draftRevision": 1,
+            "expectedMapRevision": null,
+            "limits": [
+              "SIMULATED HUMAN IN TEST FIXTURE ONLY"
+            ],
+            "mapId": "map-1d23c9be65399e2dffbbd2bd50b88cc8",
+            "origin": "ai_generated",
+            "previewDigest": "sha256:7b04c69c3a94056e9ef52de7dc3b28235261be6431c318fe7ea3fd81b811dc29",
+            "proposalId": "proposal-30efdc2dd8251621272869cbf3fa6cb9",
+            "reason": "Test fixture approval, not owner approval",
+            "rejectedCandidates": [],
+            "reviewCoverage": {
+              "edges": [],
+              "evidence": [
+                "goal-demo"
+              ],
+              "nodes": [
+                "node-demo"
+              ],
+              "processes": [
+                "process-demo"
+              ],
+              "scope": "all"
+            },
+            "reviewId": "review-1dcea9c6dcb404084682c5d7c9ddd582",
+            "reviewedAt": 1791365677.6581237,
+            "verifiedCodeRevision": null,
+            "verifyCode": false,
+            "workspaceId": "workspace-f5510963f1c12dc95dbd59f97ae6929e"
+          },
+          "mapRevision": "sha256:174fdb964d0a65e24475bede9c0bcf6f27ef2c085ea279994eabd0d399436233"
+        },
+        "provenance": {
+          "mapSourceRevision": "1806787dd0f859d830d8a04f1cecd7accdfe7c1c",
+          "sourceKind": "git_commit"
+        }
+      },
+      "sources": {
+        "code": null,
+        "architecture": "https://example.invalid/b-architecture.git"
+      },
+      "task": {
+        "state": "pending",
+        "nextAction": "核查来源与固定版本"
+      },
+      "references": {
+        "candidates": [],
+        "reviews": [],
+        "deviations": [],
+        "logs": []
+      },
+      "trust": "untrusted_until_local_git_check",
+      "limits": [
+        "传输摘要仅检查内容一致，不认证来源或操作者。",
+        "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。"
+      ],
+      "transportDigest": "sha256:8b3a4df53c5a20f33e86ad77ddd8d7d90406c39913324de793815995a850ea4c"
+    },
+    "inspection": {
+      "status": "same_version_git_checked",
+      "codeRepoId": null,
+      "mapId": "map-1d23c9be65399e2dffbbd2bd50b88cc8",
+      "codeRevision": null,
+      "mapRevision": "sha256:174fdb964d0a65e24475bede9c0bcf6f27ef2c085ea279994eabd0d399436233",
+      "mapSourceRevision": "1806787dd0f859d830d8a04f1cecd7accdfe7c1c",
+      "verifiedCodeRevision": null,
+      "reviewCoverage": {
+        "edges": [],
+        "evidence": [
+          "goal-demo"
+        ],
+        "nodes": [
+          "node-demo"
+        ],
+        "processes": [
+          "process-demo"
+        ],
+        "scope": "all"
+      },
+      "graphStatus": "confirmed_design",
+      "versionEnvelope": {
+        "version": {
+          "schemaVersion": "architecture_version_v1",
+          "mapId": "map-1d23c9be65399e2dffbbd2bd50b88cc8",
+          "codeRepoId": null,
+          "codeRevision": null,
+          "verifiedCodeRevision": null,
+          "status": "confirmed_design",
+          "graph": {
+            "edges": [],
+            "evidence": [
+              {
+                "content": "Demonstrate B version lifecycle",
+                "id": "goal-demo",
+                "kind": "user_goal",
+                "reason": "Synthetic test requirement"
+              }
+            ],
+            "nodes": [
+              {
+                "evidenceIds": [
+                  "goal-demo"
+                ],
+                "id": "node-demo",
+                "implementationStatus": "planned",
+                "interfaces": [
+                  {
+                    "description": "Test contract",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "interface-demo",
+                    "kind": "team_contract",
+                    "name": "demo"
+                  }
+                ],
+                "responsibility": "Test demonstration",
+                "title": "Fixture function"
+              }
+            ],
+            "processes": [
+              {
+                "evidenceIds": [],
+                "id": "process-demo",
+                "kind": "expected",
+                "steps": [
+                  {
+                    "allowedFailures": [
+                      "invalid input"
+                    ],
+                    "branches": [],
+                    "condition": "",
+                    "evidenceIds": [
+                      "goal-demo"
+                    ],
+                    "id": "step-demo",
+                    "inputs": [],
+                    "nextStepIds": [],
+                    "nodeId": "node-demo",
+                    "outputs": [
+                      "result"
+                    ],
+                    "title": "Demonstrate"
+                  }
+                ],
+                "title": "Expected process"
+              }
+            ],
+            "schemaVersion": "architecture_graph_v1"
+          },
+          "reviewCoverage": {
+            "edges": [],
+            "evidence": [
+              "goal-demo"
+            ],
+            "nodes": [
+              "node-demo"
+            ],
+            "processes": [
+              "process-demo"
+            ],
+            "scope": "all"
+          },
+          "limits": [
+            "SIMULATED HUMAN IN TEST FIXTURE ONLY",
+            "核查仅适用于列明覆盖；不证明运行时全流程"
+          ],
+          "origin": "ai_generated",
+          "confirmation": {
+            "nodes": {
+              "confirmed": [
+                "node-demo"
+              ],
+              "unconfirmed": []
+            },
+            "edges": {
+              "confirmed": [],
+              "unconfirmed": []
+            },
+            "processes": {
+              "confirmed": [
+                "process-demo"
+              ],
+              "unconfirmed": []
+            },
+            "evidence": {
+              "confirmed": [
+                "goal-demo"
+              ],
+              "unconfirmed": []
+            }
+          },
+          "review": {
+            "actor": "TEST_ONLY_SIMULATED_HUMAN",
+            "actorIdentity": "local_operator_declaration",
+            "afterGraph": {
+              "edges": [],
+              "evidence": [
+                {
+                  "content": "Demonstrate B version lifecycle",
+                  "id": "goal-demo",
+                  "kind": "user_goal",
+                  "reason": "Synthetic test requirement"
+                }
+              ],
+              "nodes": [
+                {
+                  "evidenceIds": [
+                    "goal-demo"
+                  ],
+                  "id": "node-demo",
+                  "implementationStatus": "planned",
+                  "interfaces": [
+                    {
+                      "description": "Test contract",
+                      "evidenceIds": [
+                        "goal-demo"
+                      ],
+                      "id": "interface-demo",
+                      "kind": "team_contract",
+                      "name": "demo"
+                    }
+                  ],
+                  "responsibility": "Test demonstration",
+                  "title": "Fixture function"
+                }
+              ],
+              "processes": [
+                {
+                  "evidenceIds": [],
+                  "id": "process-demo",
+                  "kind": "expected",
+                  "steps": [
+                    {
+                      "allowedFailures": [
+                        "invalid input"
+                      ],
+                      "branches": [],
+                      "condition": "",
+                      "evidenceIds": [
+                        "goal-demo"
+                      ],
+                      "id": "step-demo",
+                      "inputs": [],
+                      "nextStepIds": [],
+                      "nodeId": "node-demo",
+                      "outputs": [
+                        "result"
+                      ],
+                      "title": "Demonstrate"
+                    }
+                  ],
+                  "title": "Expected process"
+                }
+              ],
+              "schemaVersion": "architecture_graph_v1"
+            },
+            "appliedOperations": [],
+            "beforeGraph": null,
+            "codeRepoId": null,
+            "codeRevision": null,
+            "decision": "accept",
+            "draftId": "draft-3d42144aba6b09424aa03abe593b5e6f",
+            "draftRevision": 1,
+            "expectedMapRevision": null,
+            "limits": [
+              "SIMULATED HUMAN IN TEST FIXTURE ONLY"
+            ],
+            "mapId": "map-1d23c9be65399e2dffbbd2bd50b88cc8",
+            "origin": "ai_generated",
+            "previewDigest": "sha256:7b04c69c3a94056e9ef52de7dc3b28235261be6431c318fe7ea3fd81b811dc29",
+            "proposalId": "proposal-30efdc2dd8251621272869cbf3fa6cb9",
+            "reason": "Test fixture approval, not owner approval",
+            "rejectedCandidates": [],
+            "reviewCoverage": {
+              "edges": [],
+              "evidence": [
+                "goal-demo"
+              ],
+              "nodes": [
+                "node-demo"
+              ],
+              "processes": [
+                "process-demo"
+              ],
+              "scope": "all"
+            },
+            "reviewId": "review-1dcea9c6dcb404084682c5d7c9ddd582",
+            "reviewedAt": 1791365677.6581237,
+            "verifiedCodeRevision": null,
+            "verifyCode": false,
+            "workspaceId": "workspace-f5510963f1c12dc95dbd59f97ae6929e"
+          },
+          "mapRevision": "sha256:174fdb964d0a65e24475bede9c0bcf6f27ef2c085ea279994eabd0d399436233"
+        },
+        "provenance": {
+          "mapSourceRevision": "1806787dd0f859d830d8a04f1cecd7accdfe7c1c",
+          "sourceKind": "git_commit"
+        }
+      },
+      "formalMapWritten": false,
+      "limits": [
+        "传输摘要仅检查内容一致，不认证来源或操作者。",
+        "日志/候选/反馈保留参与者记录状态；未核查运行行为为 UNKNOWN。",
+        "只证明指定 Git 内容一致，未认证人审身份，也不证明新代码符合期望。"
+      ]
+    },
+    "actualBExport": true,
+    "humanReview": "TEST_ONLY_SIMULATED_HUMAN"
+  },
+  "planningInitialMissingCommit": "STALE_CONTEXT until explicit configured fixture fetch; no automatic import fetch"
+}

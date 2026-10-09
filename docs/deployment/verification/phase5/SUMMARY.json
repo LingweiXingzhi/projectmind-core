@@ -1,0 +1,16 @@
+{
+  "runtimeLocalSHA": "9c2b3840b0ef039b686c043bb6e83b37736865c9",
+  "runtimeRemoteSHA": "6a62766e97c0a972f01c4249a108a708803617a3",
+  "runtimeTree": "4dbdc00ea7146270527d305ec1b414aead0dda3d",
+  "tests": 1008,
+  "passed": 985,
+  "skipped": 23,
+  "seconds": 261.003,
+  "exitCode": 0,
+  "httpsRequests": 40,
+  "fullDomHttpRequests": 117,
+  "provider": "local protocol stand-in only",
+  "nativeBrowser": "NOT_RUN",
+  "realAI": "NOT_RUN",
+  "publicCloud": "NOT_RUN"
+}

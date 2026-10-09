@@ -1,0 +1,23 @@
+[Unit]
+Description=ProjectMind authenticated application
+After=network.target
+
+[Service]
+Type=simple
+User=projectmind
+Group=projectmind
+WorkingDirectory=/opt/projectmind/app
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=-/etc/projectmind/ai.env
+ExecStart=/opt/projectmind/venv/bin/python -m deployment.server serve --config /etc/projectmind/runtime.json --port 8765
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+PrivateTmp=true
+ReadWritePaths=/var/lib/projectmind
+
+[Install]
+WantedBy=multi-user.target
