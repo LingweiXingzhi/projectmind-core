@@ -1,0 +1,42 @@
+{
+  "missing_file": {
+    "input": {
+      "revision": "b0e7d56b1d148b9489c8330b1ed5718ad1f037a2",
+      "paths": [
+        "missing.py"
+      ]
+    },
+    "httpStatus": 400,
+    "response": {
+      "error": "所选文件在指定提交中不存在；请核对提交和相对路径"
+    }
+  },
+  "invalid_revision": {
+    "input": {
+      "revision": "HEAD"
+    },
+    "httpStatus": 400,
+    "response": {
+      "error": "revision 必须是完整的 40 或 64 位小写 Git 提交 SHA"
+    }
+  },
+  "absolute_path": {
+    "input": {
+      "revision": "b0e7d56b1d148b9489c8330b1ed5718ad1f037a2",
+      "paths": [
+        "/etc/passwd"
+      ]
+    },
+    "httpStatus": 400,
+    "response": {
+      "error": "路径须为仓库内相对文件路径，使用 /，不能含 .. 或控制字符"
+    }
+  },
+  "invalid_json": {
+    "input": "{invalid json",
+    "httpStatus": 400,
+    "response": {
+      "error": "JSON 无效"
+    }
+  }
+}

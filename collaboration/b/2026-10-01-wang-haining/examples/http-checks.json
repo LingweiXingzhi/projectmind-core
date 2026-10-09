@@ -1,0 +1,17 @@
+{
+  "passed": 11,
+  "checks": [
+    "snapshot supplies full SHA",
+    "real reference ExtensionHost loads B",
+    "POST complete facts",
+    "real committed names and lines",
+    "GET exact path matches POST facts",
+    "empty selection preserved",
+    "missing_file gives HTTP400",
+    "invalid_revision gives HTTP400",
+    "absolute_path gives HTTP400",
+    "malformed JSON gives HTTP400",
+    "oversized POST gives HTTP400"
+  ],
+  "revision": "b0e7d56b1d148b9489c8330b1ed5718ad1f037a2"
+}

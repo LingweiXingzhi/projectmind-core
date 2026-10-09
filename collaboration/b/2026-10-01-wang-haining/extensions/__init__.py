@@ -1,0 +1,1 @@
+"""Local prototype extension namespace."""
