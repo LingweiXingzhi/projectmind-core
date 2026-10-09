@@ -417,6 +417,7 @@
       genStatus.textContent = generation.configured
         ? `已就绪：${generation.model} @ ${generation.provider || "已配置端点"}`
           + `${generation.protocol ? "（" + generation.protocol + "）" : ""}。点击生成候选图。`
+          + `${generation.reasoningEffort ? " 请求思考强度：" + ({low:"低",high:"高",max:"最高",none:"关闭"}[generation.reasoningEffort] || generation.reasoningEffort) + "。" : ""}`
         : (generation.note || "AI 未配置。");
     }
 

@@ -106,6 +106,7 @@ def generate_status() -> dict:
         "provider": status.get("provider"),
         "protocol": status.get("protocol"),
         "requestTimeoutSeconds": status.get("requestTimeoutSeconds"),
+        "reasoningEffort": status.get("reasoningEffort"),
         "note": status["note"],
         "generation": "ready" if status["configured"] else "NOT_RUN_AWAITING_CONFIGURATION",
     }
