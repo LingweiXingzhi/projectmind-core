@@ -28,6 +28,8 @@ Environment (server-side only; a client can never choose a model or endpoint):
 | `PROJECTMIND_AI_MODEL` | model id, e.g. `deepseek-chat`, `qwen-plus`, `kimi-k2.6`, `gpt-4o-mini` |
 | `PROJECTMIND_AI_BASE_URL` | endpoint base, e.g. `https://api.deepseek.com/v1` |
 | `PROJECTMIND_AI_PROTOCOL` | `auto` (default), `responses` or `chat_completions` |
+| `PROJECTMIND_AI_TIMEOUT_SECONDS` | total request wait, default 180 seconds, at most 600 |
+| `PROJECTMIND_AI_REASONING_EFFORT` | DeepSeek V4 effort, default `low`; `high`/`max`/`none` also supported |
 
 `auto` uses `responses` for `api.openai.com` and `chat_completions` for every
 other base URL. With no base URL set the OpenAI default is kept, so the
@@ -70,6 +72,7 @@ class AICancelled(AIError):
 
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 180
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_REQUEST_BYTES = 1024 * 1024
 _WORKERS = threading.BoundedSemaphore(4)
@@ -241,6 +244,29 @@ def validate_config(key, model, base, protocol):
             "protocol": protocol, "configured": bool(key and model)}
 
 
+def request_timeout_seconds() -> float:
+    """Trusted server waiting policy; never accepts a browser override."""
+    try:
+        value = float(os.environ.get('PROJECTMIND_AI_TIMEOUT_SECONDS', DEFAULT_REQUEST_TIMEOUT_SECONDS))
+    except (TypeError, ValueError):
+        raise AIError('模型整体时间配置必须是允许范围内的有限正数。') from None
+    if not math.isfinite(value) or not 0 < value <= 600:
+        raise AIError('模型整体时间配置必须是允许范围内的有限正数。')
+    return value
+
+
+def _reasoning_effort(config):
+    # DeepSeek V4 and the official rolling aliases support this policy.
+    # Legacy DeepSeek and other providers retain their existing wire contract.
+    model = config['model'].lower()
+    if not (model.startswith('deepseek-v4') or model in ('deepseek-flash', 'deepseek-pro')):
+        return None
+    effort = os.environ.get('PROJECTMIND_AI_REASONING_EFFORT', 'low').strip().lower()
+    if effort not in ('low', 'high', 'max', 'none'):
+        raise AIError('模型思考强度配置无效；请使用 low/high/max/none。')
+    return effort
+
+
 def ai_status() -> dict:
     """Public AI status: what is configured and how to configure the rest.
 
@@ -249,6 +275,8 @@ def ai_status() -> dict:
     """
     try:
         config = ai_config()
+        wait = request_timeout_seconds()
+        effort = _reasoning_effort(config)
     except AIError as exc:
         return {"configured": False, "model": None, "protocol": None, "provider": None,
                 "note": f"AI 配置无效：{exc}"}
@@ -262,6 +290,9 @@ def ai_status() -> dict:
             "note": (f"服务端已配置模型 {config['model']} @ {config['host']}"
                      f"（{config['protocol']}）；生成结果是待确认的 AI 候选。")}
     settings = _SETTINGS.get()
+    result['requestTimeoutSeconds'] = wait
+    if effort is not None:
+        result['reasoningEffort'] = effort
     if settings is not None:
         result["budget"] = settings.budget()
     return result
@@ -401,6 +432,7 @@ def _payload_text(payload):
 
 
 def _request_body(config, instructions, payload, schema_name, schema):
+    effort = _reasoning_effort(config)
     if config['protocol'] == 'chat_completions':
         structure = STRUCTURE_INSTRUCTION.format(
             schema=json.dumps(schema, ensure_ascii=False, separators=(",", ":"), allow_nan=False))
@@ -408,6 +440,10 @@ def _request_body(config, instructions, payload, schema_name, schema):
             {"role": "system", "content": instructions + structure},
             {"role": "user", "content": _payload_text(payload)}], "stream": False,
             "response_format": {"type": "json_object"}}
+        if effort is not None:
+            result['thinking'] = {'type': 'disabled' if effort == 'none' else 'enabled'}
+            if effort != 'none':
+                result['reasoning_effort'] = effort
         if "outputLimit" in config:
             field = "max_completion_tokens" if config.get("host") == "api.openai.com" else "max_tokens"
             result[field] = config["outputLimit"]
@@ -420,6 +456,8 @@ def _request_body(config, instructions, payload, schema_name, schema):
         "text": {"format": {"type": "json_schema", "name": schema_name,
                             "strict": True, "schema": schema}},
     }
+    if effort is not None:
+        result['reasoning'] = {'effort': effort}
     if "outputLimit" in config:
         result["max_output_tokens"] = config["outputLimit"]
     return result
@@ -493,9 +531,11 @@ def _parse_json_text(text: str, schema: dict) -> dict:
 
 
 def call_model(instructions: str, payload: dict, schema_name: str, schema: dict,
-               timeout: float = 60, *, cancel_event: threading.Event | None = None) -> dict:
+               timeout: float | None = None, *, cancel_event: threading.Event | None = None) -> dict:
     """One total-budget call; cancellation is a trusted server-side Event."""
     started = time.monotonic()
+    if timeout is None:
+        timeout = request_timeout_seconds()
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) \
             or not math.isfinite(timeout) or timeout <= 0:
         raise AIError('模型整体时间限制必须是有限正数。')

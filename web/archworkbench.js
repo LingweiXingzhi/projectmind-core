@@ -417,6 +417,7 @@
       genStatus.textContent = generation.configured
         ? `已就绪：${generation.model} @ ${generation.provider || "已配置端点"}`
           + `${generation.protocol ? "（" + generation.protocol + "）" : ""}。点击生成候选图。`
+          + `${generation.reasoningEffort ? " 请求思考强度：" + ({low:"低",high:"高",max:"最高",none:"关闭"}[generation.reasoningEffort] || generation.reasoningEffort) + "。" : ""}`
         : (generation.note || "AI 未配置。");
     }
 
@@ -929,7 +930,9 @@
     if (!state.envelope || state.busy || !requireSavedEditors()) return;
     state.busy = true;
     renderWorkspace();
-    setGenStatus("正在调用已配置模型生成候选图…（最长约 1 分钟）");
+    const wait = state.envelope.generation?.requestTimeoutSeconds;
+    const waitHint = Number.isFinite(wait) && wait > 0 ? `（最长约 ${Math.ceil(wait / 60)} 分钟）` : "（请等待完整结果）";
+    setGenStatus(`正在调用已配置模型生成候选图…${waitHint}。请勿重复提交。`);
     try {
       const result = await api("POST", `/api/archloop/workspaces/${state.envelope.workspace.workspaceId}/generate`, {});
       if (result.status === "ai_generated") {
